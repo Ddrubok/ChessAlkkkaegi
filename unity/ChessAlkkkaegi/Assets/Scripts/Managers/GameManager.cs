@@ -30,53 +30,138 @@ public class GameManager
     public void Save() { PlayerPrefs.Save(); }
 
     private ChessPiece _selected;
-    private Vector3 _dragStartWorld;
+    private Vector3 _aimStart;
+    // ponytail: arrow-shaped aim. Thick shaft, thin head tip. Off until a piece is selected.
+    private LineRenderer _aim;
+    private void EnsureAim()
+    {
+        if (_aim != null) return;
+        var go = new GameObject("AimArrow");
+        _aim = go.AddComponent<LineRenderer>();
+        _aim.positionCount = 2;
+        _aim.startWidth = _squareSize * 0.12f;
+        _aim.endWidth = _squareSize * 0.03f;
+        _aim.numCapVertices = 3;
+        var sh = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        _aim.material = new Material(sh);
+        _aim.enabled = false;
+    }
     private bool _isDragging;
     private const float MaxDrag = 5f;
-    private const float LaunchPower = 12f;
+    // ponytail: web ChessAlkkagi tuning: maxLaunchSpeed=11, power 0..1 * speed.
+    private const float MaxLaunchSpeed = 11f;
+
+    // ponytail: ground-plane picking so zoom/FOV never breaks selection or aiming.
+    private bool MouseToBoard(out Vector3 p)
+    {
+        p = Vector3.zero;
+        var cam = Camera.main;
+        if (cam == null) return false;
+        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        Plane plane = new Plane(Vector3.up, new Vector3(0f, _boardSurfaceY, 0f));
+        if (plane.Raycast(ray, out float enter)) { p = ray.GetPoint(enter); return true; }
+        return false;
+    }
 
     public void Tick()
     {
         if (_isGameEnd || !_started) return;
+        if (Camera.main == null) return;
+        EnsureAim();
+
+
+        // ponytail: wait until launched piece stops, then flip turn.
+        if (_launched != null)
+        {
+            bool stopped = _launched.Rigidbody.linearVelocity.sqrMagnitude < 0.01f;
+            bool grounded = _launched.Rigidbody.IsSleeping();
+            if (stopped || grounded)
+            {
+                EndTurn();
+            }
+        }
+        // ponytail: arrow shows only after a piece is selected, while dragging.
+        if (_isDragging && _selected != null && MouseToBoard(out Vector3 cur))
+        {
+            cur.y = 0f;
+            Vector3 d = _aimStart - cur;
+            float len = Mathf.Min(d.magnitude, MaxDrag);
+            Vector3 dir = d.sqrMagnitude > 0.0001f ? d.normalized : Vector3.zero;
+            Vector3 origin = _selected.transform.position; origin.y = _boardSurfaceY + 0.05f;
+            _aim.SetPosition(0, origin);
+            _aim.SetPosition(1, origin + dir * (len + _squareSize * 0.5f));
+            _aim.startColor = Color.Lerp(Color.white, Color.red, len / MaxDrag);
+            _aim.endColor = Color.Lerp(Color.white, Color.red, len / MaxDrag);
+            _aim.enabled = true;
+        }
 
         if (Input.GetMouseButtonDown(0))
         {
-            if (Camera.main == null) return;
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, 100f))
+            if (!MouseToBoard(out Vector3 hit)) return;
+
+            if (_selected == null)
             {
-                if (TrySelectPiece(hit.point, out ChessPiece piece))
+                // phase 1: tap a piece of the current team to select + zoom in.
+                if (TrySelectPiece(hit, out ChessPiece piece))
                 {
+                    if (_selected != null) _selected.SetSelected(false);
                     _selected = piece;
-                    _dragStartWorld = hit.point;
-                    _isDragging = true;
+                    _selected.SetSelected(true);
+                    ZoomToPiece(piece);
                 }
+            }
+            else
+            {
+                // phase 2: press to start aiming (pull-back flick).
+                _aimStart = hit; _aimStart.y = 0f;
+                _isDragging = true;
             }
         }
         else if (_isDragging && Input.GetMouseButtonUp(0))
         {
-            if (Camera.main == null)
+            if (!MouseToBoard(out Vector3 hit))
             {
-                _selected = null;
+                _aim.enabled = false;
                 _isDragging = false;
                 return;
             }
 
-            Vector3 mousePos = Input.mousePosition;
-            mousePos.z = Camera.main.WorldToScreenPoint(_dragStartWorld).z;
-            Vector3 releaseWorld = Camera.main.ScreenToWorldPoint(mousePos);
+            Vector3 aimEnd = hit; aimEnd.y = 0f;
+            Vector3 dir = _aimStart - aimEnd;
+            float dragLen = Mathf.Min(dir.magnitude, MaxDrag);
 
-            Vector3 dragDir = _dragStartWorld - releaseWorld;
-            dragDir.y = 0f;
+            // ponytail: a tap (no drag) cancels selection instead of a zero-power launch ending the turn.
+            if (dragLen < 0.01f)
+            {
+                _aim.enabled = false;
+                _selected.SetSelected(false);
+                _selected = null;
+                _isDragging = false;
+                SetupCamera(_currentTurn);
+                return;
+            }
 
-            float dragLen = Mathf.Min(dragDir.magnitude, MaxDrag);
-            float power = (dragLen / MaxDrag) * LaunchPower;
-
-            LaunchPiece(_selected, dragDir, power);
+            float power = dragLen / MaxDrag;
+            _aim.enabled = false;
+            _selected.SetSelected(false);
+            LaunchPiece(_selected, dir, power);
 
             _selected = null;
             _isDragging = false;
         }
+    }
+
+    // ponytail: zoom toward piece from current turn side. No hard-coded -Z.
+    private void ZoomToPiece(ChessPiece piece)
+    {
+        var cam = Camera.main;
+        if (cam == null) return;
+
+        Vector3 p = piece.transform.position;
+        float sgn = _currentTurn == ETeam.White ? -1f : 1f;
+        float dist = Mathf.Max(_boardSize, 1f) * 0.5f;
+        cam.transform.position = p + new Vector3(0f, dist * 0.8f, sgn * dist * 0.8f);
+        cam.transform.LookAt(p);
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -99,12 +184,12 @@ public class GameManager
         _isGameEnd = false;
         _currentTurn = ETeam.White;
 
-        SetupCamera();
-
         _board = Managers.Resource.Instantiate("Chessboard");
         MeasureBoard();
         if (_board != null)
             AutoSizeBoardCollider(_board);
+
+        SetupCamera(_currentTurn);
 
         // 8x8 grid: file 0..7 (a..h), rank 0..7. White on ranks 0-1, Black on 6-7.
         int wy = 0;
@@ -174,16 +259,17 @@ public class GameManager
             b.size.z / Mathf.Max(Mathf.Abs(lossy.z), 0.0001f));
     }
 
-    private void SetupCamera()
+    // ponytail: web-style 48deg pitch, board-fit distance. No extreme zoom-in/out.
+    private void SetupCamera(ETeam team)
     {
         var cam = Camera.main;
-        if (cam != null)
-        {
-            cam.transform.position = new Vector3(0f, 12f, -10f);
-            cam.transform.rotation = Quaternion.Euler(50f, 0f, 0f);
-        }
-    }
+        if (cam == null) return;
 
+        float sgn = team == ETeam.White ? -1f : 1f;
+        float dist = Mathf.Max(_boardSize, 1f) * 0.75f;
+        cam.transform.position = new Vector3(_boardCenterX, dist, _boardCenterZ + sgn * dist);
+        cam.transform.LookAt(new Vector3(_boardCenterX, _boardSurfaceY, _boardCenterZ));
+    }
     private void Spawn(ETeam team, EChessPieceType type, Vector3 gridPos)
     {
         GameObject go = Managers.Resource.Instantiate($"chessPieces/{type}");
@@ -203,7 +289,9 @@ public class GameManager
         foreach (ChessPiece p in _pieces)
         {
             if (!p.IsAlive || p.Team != _currentTurn) continue;
-            float d = Vector3.Distance(p.transform.position, worldPos);
+            // ponytail: XZ-only distance so picking the top of a tall piece still selects it.
+            Vector3 pp = p.transform.position; pp.y = worldPos.y;
+            float d = Vector3.Distance(pp, worldPos);
             if (d < closest)
             {
                 closest = d;
@@ -214,18 +302,25 @@ public class GameManager
         return piece != null;
     }
 
-    public void LaunchPiece(ChessPiece piece, Vector3 dragDir, float power)
+    // ponytail: web-style velocity launch. power 0..1 * MaxLaunchSpeed.
+    // ponytail: launch only. Turn flips when the piece stops or rings out, not on launch.
+    public void LaunchPiece(ChessPiece piece, Vector3 dir, float power)
     {
         if (piece == null || !piece.IsAlive || piece.Team != _currentTurn) return;
 
-        Vector3 force = dragDir.normalized * power;
-        Vector3 impact = piece.transform.position + new Vector3(0f, 0.3f, 0f);
-        piece.Launch(force, impact);
-
-        _currentTurn = _currentTurn == ETeam.White ? ETeam.Black : ETeam.White;
-        Managers.Message.Dispatch(EGlobalEvent.TurnChanged, new EventData<ETeam>(_currentTurn));
+        Vector3 v = dir.normalized * Mathf.Clamp01(power) * MaxLaunchSpeed;
+        piece.Launch(v);
+        _launched = piece;
     }
 
+    private void OnPieceRingOut(EventData eventData)
+    {
+        var piece = (eventData as EventData<ChessPiece>)?.value;
+        if (piece != null)
+            Debug.Log($"[GameManager] Ring Out: {piece.PieceType} ({piece.Team})");
+        EndTurn();
+        CheckWinCondition();
+    }
     private void OnPieceRingOut(EventData eventData)
     {
         var piece = (eventData as EventData<ChessPiece>)?.value;

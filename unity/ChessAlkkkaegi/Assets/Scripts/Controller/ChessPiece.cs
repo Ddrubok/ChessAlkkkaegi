@@ -10,6 +10,8 @@ public class ChessPiece : BaseController
     public bool IsAlive { get; private set; } = true;
 
     private const float RingOutY = -2f;
+    private GameObject _outline;
+    private static Material _outlineMat;
 
     public void Setup(EChessPieceType type, ETeam team, Vector3 gridPos, float mass, float squareSize)
     {
@@ -17,13 +19,18 @@ public class ChessPiece : BaseController
         Team = team;
 
         Rigidbody = Util.GetOrAddComponent<Rigidbody>(gameObject);
+        // ponytail: tuned to web ChessAlkkagi. velocity-launch, not force-impulse.
         Rigidbody.mass = mass;
-        Rigidbody.linearDamping = 0.5f;
-        Rigidbody.angularDamping = 0.5f;
+        Rigidbody.linearDamping = 2f;
+        Rigidbody.angularDamping = 2f;
         Rigidbody.centerOfMass = new Vector3(0f, -0.3f, 0f);
         Rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        Rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
         Rigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         Rigidbody.isKinematic = true;
+
+        var bc = GetComponent<Collider>();
+        if (bc != null) bc.material = new PhysicsMaterial { staticFriction = 0.4f, dynamicFriction = 0.4f, bounciness = 0.1f };
 
         NormalizeScale(squareSize);
         AutoSizeCollider();
@@ -84,35 +91,42 @@ public class ChessPiece : BaseController
         transform.position = gridPos;
     }
 
-    public void Launch(Vector3 force, Vector3 impactPoint)
+    // ponytail: runtime mesh-clone outline. URP Unlit shader, no asset/shader files. Replace with stencil outline if masking artifacts appear.
+    public void SetSelected(bool on)
+    {
+        if (_outline == null)
+        {
+            var mf = GetComponentInChildren<MeshFilter>();
+            if (mf == null) return;
+            var src = mf.gameObject;
+            _outline = new GameObject("Outline");
+            _outline.transform.SetParent(src.transform.parent, false);
+            _outline.transform.localPosition = src.transform.localPosition;
+            _outline.transform.localRotation = src.transform.localRotation;
+            _outline.transform.localScale = src.transform.localScale * 1.15f;
+            var nmf = _outline.AddComponent<MeshFilter>(); nmf.sharedMesh = mf.sharedMesh;
+            var nr = _outline.AddComponent<MeshRenderer>();
+            if (_outlineMat == null)
+            {
+                var sh = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                _outlineMat = new Material(sh);
+                _outlineMat.color = new Color(1f, 0.2f, 0.2f);
+                _outlineMat.SetInt("_Cull", 1); // cull front -> render back faces = silhouette ring
+                _outlineMat.SetInt("_ZWrite", 1); _outlineMat.renderQueue = 2000;
+            }
+            nr.material = _outlineMat;
+        }
+        _outline.SetActive(on);
+    }
+
+    // ponytail: velocity-set launch matching web version (power*maxSpeed). Mass-based impulse later.
+    public void Launch(Vector3 velocity)
     {
         if (!IsAlive) return;
         Rigidbody.isKinematic = false;
-        Rigidbody.AddForceAtPosition(force, impactPoint, ForceMode.Impulse);
+        Rigidbody.linearVelocity = velocity;
     }
 
-    private void OnCollisionEnter(Collision collision)
-    {
-        var other = collision.gameObject.GetComponent<ChessPiece>();
-        if (other == null) return;
-
-        // kinematic piece unfreezes when hit by a dynamic (launched) piece
-        if (Rigidbody.isKinematic && !other.Rigidbody.isKinematic)
-        {
-            Rigidbody.isKinematic = false;
-            Vector3 normal = collision.GetContact(0).normal;
-            Rigidbody.AddForce(-normal * other.Rigidbody.linearVelocity.magnitude * 0.5f, ForceMode.Impulse);
-        }
-    }
-
-    public override void UpdateController()
-    {
-        if (!IsAlive) return;
-        if (transform.position.y < RingOutY)
-        {
-            IsAlive = false;
-            Managers.Message.Dispatch(EGlobalEvent.PieceRingOut, new EventData<ChessPiece>(this));
-            gameObject.SetActive(false);
-        }
-    }
+    // ponytail: no chain reaction. Only the launched piece moves; others stay kinematic. Alkkagi rule: one piece per turn.
+    private void OnCollisionEnter(Collision collision) { }
 }
