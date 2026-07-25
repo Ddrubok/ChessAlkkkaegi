@@ -24,19 +24,9 @@ import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { MeshoptSimplifier } from "meshoptimizer/simplifier";
+import { PIECE_TYPES, type PieceType } from "../config";
 import "./convert.css";
 
-// 이 순서 하나에서 타입과 GLB 최상위 노드 계약을 함께 파생해 이름 목록의 불일치를 막는다.
-const PIECE_TYPES = [
-  "Pawn",
-  "Rook",
-  "Knight",
-  "Bishop",
-  "Queen",
-  "King",
-] as const;
-
-type PieceType = (typeof PIECE_TYPES)[number];
 type StageName = "parse" | "classify" | "simplify" | "export";
 type StageStatus = "pending" | "running" | "done" | "error";
 type LastAction = "inspect" | "convert";
@@ -71,6 +61,7 @@ interface Workspace {
 interface GroupControls {
   select: HTMLSelectElement;
   budget: HTMLInputElement;
+  baseFlattenEps: HTMLInputElement;
 }
 
 interface CrossCheckResult {
@@ -86,6 +77,10 @@ interface CrossCheckResults {
 interface ColliderSample {
   points: Point3[];
   aabbMatches: boolean;
+  baseRadius: number;
+  // 샘플링 전 평탄화된 바닥의 모든 중복 제거 후보 수이며 볼록껍질 정점 수와 다르다.
+  basePointCount: number;
+  baseHullPointCount: number;
 }
 
 interface FinalAlignment {
@@ -103,6 +98,10 @@ interface PieceConversion {
   bounds: Vector3;
   colliderPoints: Point3[];
   colliderAabbMatches: boolean;
+  baseRadius: number;
+  basePointCount: number;
+  baseFlattenEps: number;
+  baseHullPointCount: number;
   finalAlignment: FinalAlignment;
   identity: boolean;
 }
@@ -157,6 +156,12 @@ const EXPECTED_SOURCE_HASH =
 
 // Rapier convexHull 입력 크기와 브라우저 메타 파일 크기를 제한하는 상한이다.
 const MAX_COLLIDER_POINTS = 400;
+
+// 얕은 원뿔형 바닥을 안정된 지지면으로 바꾸는 기본 높이 허용치다.
+const BASE_FLATTEN_EPS = 0.004;
+
+// 점 하나나 좁은 선분으로 서는 콜라이더를 거부하기 위한 최소 지지 다각형 정점 수다.
+const MIN_BASE_HULL_POINTS = 12;
 
 // GLB 2.0 청크를 읽고 다시 조립할 때 사용하는 고정 식별자다.
 const GLB_MAGIC = 0x46546c67;
@@ -809,11 +814,34 @@ function renderGroups(groups: PieceGroup[]): void {
     );
     budgetLabel.append(budget);
 
-    fields.append(heading, stats, typeLabel, budgetLabel);
+    const baseFlattenLabel = document.createElement("label");
+    baseFlattenLabel.textContent = "바닥 평탄화 ε";
+    const baseFlattenEps = document.createElement("input");
+    baseFlattenEps.type = "number";
+    baseFlattenEps.min = "0";
+    baseFlattenEps.step = "0.0001";
+    baseFlattenEps.value = String(BASE_FLATTEN_EPS);
+    baseFlattenEps.setAttribute(
+      "aria-label",
+      `${group.observedVertexCount} 정점 그룹 바닥 평탄화 허용치`,
+    );
+    baseFlattenLabel.append(baseFlattenEps);
+
+    fields.append(
+      heading,
+      stats,
+      typeLabel,
+      budgetLabel,
+      baseFlattenLabel,
+    );
     card.append(previewHost, fields);
     groupGrid.append(card);
 
-    groupControls.set(group.observedVertexCount, { select, budget });
+    groupControls.set(group.observedVertexCount, {
+      select,
+      budget,
+      baseFlattenEps,
+    });
     previewControllers.push(
       new PreviewController(previewHost, group.representative),
     );
@@ -825,6 +853,7 @@ function renderGroups(groups: PieceGroup[]): void {
       updateAssignmentState();
     });
     budget.addEventListener("input", updateAssignmentState);
+    baseFlattenEps.addEventListener("input", updateAssignmentState);
   }
 
   updateAssignmentState();
@@ -842,14 +871,20 @@ function hasValidAssignments(): boolean {
     (control) => control.select.value,
   );
   const unique = new Set(assigned);
-  const budgetsValid = [...groupControls.values()].every((control) => {
-    const value = Number(control.budget.value);
-    return Number.isInteger(value) && value >= 100;
+  const inputsValid = [...groupControls.values()].every((control) => {
+    const budget = Number(control.budget.value);
+    const baseFlattenEps = Number(control.baseFlattenEps.value);
+    return (
+      Number.isInteger(budget) &&
+      budget >= 100 &&
+      Number.isFinite(baseFlattenEps) &&
+      baseFlattenEps >= 0
+    );
   });
   return (
     unique.size === PIECE_TYPES.length &&
     PIECE_TYPES.every((type) => unique.has(type)) &&
-    budgetsValid
+    inputsValid
   );
 }
 
@@ -889,7 +924,7 @@ function updateAssignmentState(): void {
 
   if (!assignmentsValid) {
     runMessage.textContent =
-      "각 종류를 정확히 한 번씩 지정하고 100 이상의 정수 예산을 입력하세요.";
+      "각 종류를 정확히 한 번씩 지정하고 100 이상의 정수 예산과 0 이상의 바닥 평탄화 허용치를 입력하세요.";
   } else if (!automaticPass && !crossCheckOverride.checked) {
     runMessage.textContent =
       "위치 또는 높이 교차 확인이 실패했습니다. 수동 지정을 검토하고 경고 확인란을 선택해야 진행할 수 있습니다.";
@@ -960,6 +995,25 @@ function readBudget(group: PieceGroup): number {
     );
   }
   return budget;
+}
+
+/**
+ * 그룹 카드의 바닥 평탄화 허용치를 읽고 음수나 숫자가 아닌 입력을 거부한다.
+ */
+function readBaseFlattenEps(group: PieceGroup): number {
+  const control = groupControls.get(group.observedVertexCount);
+  if (control === undefined) {
+    throw new Error(
+      `${group.observedVertexCount} 정점 그룹의 바닥 평탄화 입력을 찾지 못했습니다.`,
+    );
+  }
+  const baseFlattenEps = Number(control.baseFlattenEps.value);
+  if (!Number.isFinite(baseFlattenEps) || baseFlattenEps < 0) {
+    throw new Error(
+      `${control.select.value} 바닥 평탄화 허용치는 0 이상의 숫자여야 합니다.`,
+    );
+  }
+  return baseFlattenEps;
 }
 
 /**
@@ -1333,18 +1387,85 @@ function compactGeometry(
 }
 
 /**
- * 여섯 축 극점을 먼저 보존하고 최원점 샘플링으로 나머지를 채운 뒤 AABB 일치를 보장한다.
+ * 바닥 후보의 외곽선을 모두 보존해야 실제 접촉면이 한 점이 아닌 지지 다각형이 된다.
+ */
+function computeBaseHullIndices(
+  points: Point3[],
+  baseIndices: number[],
+): number[] {
+  const sorted = [...baseIndices].sort((leftIndex, rightIndex) => {
+    const left = points[leftIndex];
+    const right = points[rightIndex];
+    return left[0] - right[0] || left[2] - right[2];
+  });
+
+  if (sorted.length <= 1) {
+    return sorted;
+  }
+
+  const cross = (
+    originIndex: number,
+    leftIndex: number,
+    rightIndex: number,
+  ): number => {
+    const origin = points[originIndex];
+    const left = points[leftIndex];
+    const right = points[rightIndex];
+    return (
+      (left[0] - origin[0]) * (right[2] - origin[2]) -
+      (left[2] - origin[2]) * (right[0] - origin[0])
+    );
+  };
+
+  const lower: number[] = [];
+  for (const index of sorted) {
+    while (
+      lower.length >= 2 &&
+      cross(lower[lower.length - 2], lower[lower.length - 1], index) <= 0
+    ) {
+      lower.pop();
+    }
+    lower.push(index);
+  }
+
+  const upper: number[] = [];
+  for (let index = sorted.length - 1; index >= 0; index -= 1) {
+    const pointIndex = sorted[index];
+    while (
+      upper.length >= 2 &&
+      cross(upper[upper.length - 2], upper[upper.length - 1], pointIndex) <= 0
+    ) {
+      upper.pop();
+    }
+    upper.push(pointIndex);
+  }
+
+  lower.pop();
+  upper.pop();
+  return [...lower, ...upper];
+}
+
+/**
+ * 콜라이더 복사본의 얕은 바닥 돌출만 평탄화한 뒤 지지 외곽선과 축 극점을 우선 보존한다.
  */
 function createColliderPoints(
   geometry: BufferGeometry,
   type: PieceType,
+  baseFlattenEps: number,
 ): ColliderSample {
+  geometry.computeBoundingBox();
+  const geometryBounds = requireBounds(
+    geometry,
+    `${type} 콜라이더 바닥 평탄화`,
+  );
+  const minimumY = geometryBounds.min.y;
   const position = geometry.getAttribute("position");
   const unique = new Map<string, Point3>();
   for (let index = 0; index < position.count; index += 1) {
+    const sourceY = position.getY(index);
     const point: Point3 = [
       position.getX(index),
-      position.getY(index),
+      Math.abs(sourceY - minimumY) <= baseFlattenEps ? minimumY : sourceY,
       position.getZ(index),
     ];
     const key = point.join(",");
@@ -1356,6 +1477,25 @@ function createColliderPoints(
   const points = [...unique.values()];
   if (points.length === 0) {
     throw new Error(`${type} 감축 지오메트리에 충돌체 후보점이 없습니다.`);
+  }
+
+  const baseIndices: number[] = [];
+  let baseRadius = 0;
+  for (let index = 0; index < points.length; index += 1) {
+    if (points[index][1] === minimumY) {
+      baseIndices.push(index);
+      baseRadius = Math.max(
+        baseRadius,
+        Math.hypot(points[index][0], points[index][2]),
+      );
+    }
+  }
+  const basePointCount = baseIndices.length;
+  const baseHullIndices = computeBaseHullIndices(points, baseIndices);
+  if (baseHullIndices.length < MIN_BASE_HULL_POINTS) {
+    throw new Error(
+      `${type} 콜라이더 바닥의 2D 볼록껍질이 ${baseHullIndices.length}점뿐입니다. 최소 ${MIN_BASE_HULL_POINTS}점이 필요하므로 바닥 평탄화 ε를 조정하세요.`,
+    );
   }
 
   const extremeIndices = [0, 0, 0, 0, 0, 0];
@@ -1383,11 +1523,16 @@ function createColliderPoints(
   const targetCount = Math.min(MAX_COLLIDER_POINTS, points.length);
   const selectedIndices: number[] = [];
   const selected = new Uint8Array(points.length);
-  for (const extremeIndex of extremeIndices) {
-    if (selected[extremeIndex] === 0) {
-      selected[extremeIndex] = 1;
-      selectedIndices.push(extremeIndex);
+  for (const priorityIndex of [...baseHullIndices, ...extremeIndices]) {
+    if (selected[priorityIndex] === 0) {
+      selected[priorityIndex] = 1;
+      selectedIndices.push(priorityIndex);
     }
+  }
+  if (selectedIndices.length > MAX_COLLIDER_POINTS) {
+    throw new Error(
+      `${type} 콜라이더의 바닥 볼록껍질과 축 극점 ${selectedIndices.length}개가 ${MAX_COLLIDER_POINTS}점 상한을 초과합니다.`,
+    );
   }
 
   const minimumDistances = new Float64Array(points.length);
@@ -1445,7 +1590,13 @@ function createColliderPoints(
     ],
   );
   assertColliderAabbMatches(geometry, type, sampled);
-  return { points: sampled, aabbMatches: true };
+  return {
+    points: sampled,
+    aabbMatches: true,
+    baseRadius,
+    basePointCount,
+    baseHullPointCount: baseHullIndices.length,
+  };
 }
 
 /**
@@ -1767,7 +1918,12 @@ async function convertWorkspace(): Promise<void> {
       const bounds = requireBounds(simplified, `${type} 감축 결과`);
       const size = bounds.getSize(new Vector3());
       const afterTriangles = countTriangles(simplified);
-      const collider = createColliderPoints(simplified, type);
+      const baseFlattenEps = readBaseFlattenEps(group);
+      const collider = createColliderPoints(
+        simplified,
+        type,
+        baseFlattenEps,
+      );
       if (collider.points.length > MAX_COLLIDER_POINTS) {
         throw new Error(
           `${type} 충돌체 점이 상한 ${MAX_COLLIDER_POINTS}개를 초과했습니다.`,
@@ -1784,6 +1940,10 @@ async function convertWorkspace(): Promise<void> {
         bounds: size,
         colliderPoints: collider.points,
         colliderAabbMatches: collider.aabbMatches,
+        baseRadius: collider.baseRadius,
+        basePointCount: collider.basePointCount,
+        baseFlattenEps,
+        baseHullPointCount: collider.baseHullPointCount,
         finalAlignment,
         identity: true,
       });
@@ -1840,6 +2000,10 @@ async function convertWorkspace(): Promise<void> {
               y: roundNumber(piece.bounds.y),
               z: roundNumber(piece.bounds.z),
             },
+            baseRadius: roundNumber(piece.baseRadius),
+            basePointCount: piece.basePointCount,
+            baseFlattenEps: roundNumber(piece.baseFlattenEps),
+            baseHullPointCount: piece.baseHullPointCount,
             colliderPoints: piece.colliderPoints,
           },
         ]),
@@ -1911,6 +2075,9 @@ function renderReport(report: ConversionReport): void {
           <td>${piece.observedVertexCount.toLocaleString("ko-KR")}</td>
           <td>${piece.beforeTriangles.toLocaleString("ko-KR")} → ${piece.afterTriangles.toLocaleString("ko-KR")}</td>
           <td>minY ${piece.finalAlignment.minY.toExponential(6)} / center x ${piece.finalAlignment.centerX.toExponential(6)} / z ${piece.finalAlignment.centerZ.toExponential(6)}</td>
+          <td>${piece.baseFlattenEps.toFixed(4)}</td>
+          <td>전체 후보 ${piece.basePointCount.toLocaleString("ko-KR")}점 / 볼록껍질 ${piece.baseHullPointCount.toLocaleString("ko-KR")}점</td>
+          <td>${piece.baseRadius.toFixed(6)}</td>
           <td>${piece.colliderPoints.length.toLocaleString("ko-KR")} / ${MAX_COLLIDER_POINTS}</td>
           <td>${piece.colliderAabbMatches ? "일치" : "불일치"}</td>
           <td>${piece.identity ? "통과" : "실패"}</td>
@@ -1956,6 +2123,9 @@ function renderReport(report: ConversionReport): void {
           <th>관측 position.count</th>
           <th>감축 전 → 후 triangles</th>
           <th>최종 정렬</th>
+          <th>바닥 평탄화 ε</th>
+          <th>바닥 후보 / 볼록껍질</th>
+          <th>바닥 반지름</th>
           <th>콜라이더 점</th>
           <th>콜라이더 AABB</th>
           <th>TRS identity</th>
