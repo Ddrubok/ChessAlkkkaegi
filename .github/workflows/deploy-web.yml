@@ -1,0 +1,59 @@
+# web 폴더의 웹 버전만 GitHub Pages로 배포한다. unity, resource 폴더는 건드리지 않는다.
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    # 웹과 무관한 커밋에서는 배포가 돌지 않게 경로를 제한한다.
+    paths:
+      - "web/**"
+      - ".github/workflows/deploy-web.yml"
+  # 코드 변경 없이 손으로 다시 배포하고 싶을 때 사용한다.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포가 겹치면 나중 것만 남긴다.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # package-lock.json 그대로 설치해 로컬과 같은 버전으로 빌드한다.
+      - run: npm ci
+
+      # build 스크립트가 tsc 검사까지 수행하므로 타입 오류는 여기서 걸린다.
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
