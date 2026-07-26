@@ -1,0 +1,3243 @@
+{
+  "schemaVersion": 4,
+  "status": "baseline-complete",
+  "configuration": {
+    "baselineRunsPerProfile": 12,
+    "maximumStage": 30,
+    "playerModel": {
+      "targeting": "r35-edge-aligned",
+      "minimumPower": 0.35,
+      "maximumPower": 0.85,
+      "profileJitterDegrees": {
+        "accurate": 2,
+        "normal": 8,
+        "unskilled": 15
+      }
+    }
+  },
+  "r35": {
+    "profiles": [
+      {
+        "profile": "accurate",
+        "runCount": 12,
+        "matchCount": 30,
+        "averageWhiteSelfOutsPerMatch": 7.566666666666666,
+        "averageBlackSelfOutsPerMatch": 3.1,
+        "averageTurnsPerMatch": 65.33333333333333,
+        "deathStageDistribution": {
+          "values": [
+            1,
+            4,
+            5,
+            1,
+            1,
+            5,
+            1,
+            3,
+            3,
+            1,
+            3,
+            2
+          ],
+          "median": 2.5,
+          "modes": [
+            1
+          ],
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      {
+        "profile": "normal",
+        "runCount": 12,
+        "matchCount": 21,
+        "averageWhiteSelfOutsPerMatch": 7.285714285714286,
+        "averageBlackSelfOutsPerMatch": 2.380952380952381,
+        "averageTurnsPerMatch": 72.04761904761905,
+        "deathStageDistribution": {
+          "values": [
+            1,
+            2,
+            3,
+            1,
+            3,
+            3,
+            1,
+            2,
+            2,
+            1,
+            1,
+            1
+          ],
+          "median": 1.5,
+          "modes": [
+            1
+          ],
+          "minimum": 1,
+          "maximum": 3
+        }
+      },
+      {
+        "profile": "unskilled",
+        "runCount": 12,
+        "matchCount": 15,
+        "averageWhiteSelfOutsPerMatch": 7.6,
+        "averageBlackSelfOutsPerMatch": 2.8,
+        "averageTurnsPerMatch": 76.2,
+        "deathStageDistribution": {
+          "values": [
+            1,
+            1,
+            1,
+            2,
+            1,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
+          ],
+          "median": 1,
+          "modes": [
+            1
+          ],
+          "minimum": 1,
+          "maximum": 2
+        }
+      }
+    ]
+  },
+  "baseline": {
+    "schemaVersion": 2,
+    "configuration": {
+      "runsPerProfile": 12,
+      "totalRuns": 36,
+      "maximumStage": 30,
+      "maximumTurnsPerMatch": 200,
+      "maximumSimulatedSecondsPerTurn": 120,
+      "cardPriority": [
+        "force",
+        "weight",
+        "size",
+        "giantPawn",
+        "proneStart"
+      ],
+      "permanentUpgrades": "none",
+      "whitePlayerPolicy": {
+        "target": "nearest-board-edge",
+        "shooter": "maximum-edge-alignment-above-0.3",
+        "fallback": "nearest-own-to-target",
+        "minimumPower": 0.35,
+        "maximumPower": 0.85
+      },
+      "profiles": [
+        {
+          "id": "accurate",
+          "label": "정확",
+          "jitterDegrees": 2
+        },
+        {
+          "id": "normal",
+          "label": "보통",
+          "jitterDegrees": 8
+        },
+        {
+          "id": "unskilled",
+          "label": "서툼",
+          "jitterDegrees": 15
+        }
+      ],
+      "enemyDifficulty": {
+        "id": "r37-v3-player-current-runtime",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 1,
+        "cardEffectScale": 1,
+        "playerPowerMinimum": 0.35,
+        "playerPowerMaximum": 0.85,
+        "useRuntimeDefaults": true
+      }
+    },
+    "runs": [
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 0,
+        "seed": 0,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 106,
+            "physicsSteps": 27226,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 4,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1231.31
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 77,
+            "physicsSteps": 19865,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 14,
+            "selfOuts": {
+              "white": 6,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 2
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 928.47
+          }
+        ],
+        "wallTimeMs": 2341.19
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 1,
+        "seed": 1,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 97,
+            "physicsSteps": 24756,
+            "whitePiecesLost": 6,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 2,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 10,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1347.03
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 97,
+            "physicsSteps": 28051,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 12,
+            "selfOuts": {
+              "white": 7,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 4
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1968.92
+          }
+        ],
+        "wallTimeMs": 3415.91
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 2,
+        "seed": 2,
+        "outcome": "loss",
+        "finalStage": 5,
+        "clearedStages": 4,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 1,
+          "forcePicks": 3,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 4
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 3,
+            "offered": [
+              "force",
+              "proneStart",
+              "weight"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 4,
+            "offered": [
+              "proneStart",
+              "giantPawn",
+              "weight"
+            ],
+            "selected": "weight"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 105,
+            "physicsSteps": 32869,
+            "whitePiecesLost": 9,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 4,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 7,
+              "black": 0
+            },
+            "forcedSettleCount": 5,
+            "wallTimeMs": 1776.3
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 120,
+            "physicsSteps": 35318,
+            "whitePiecesLost": 11,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 2,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 5,
+              "black": 0
+            },
+            "forcedSettleCount": 6,
+            "wallTimeMs": 1658.21
+          },
+          {
+            "stage": 3,
+            "winner": "white",
+            "turns": 119,
+            "physicsSteps": 37635,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 10,
+            "wallTimeMs": 2066.38
+          },
+          {
+            "stage": 4,
+            "winner": "white",
+            "turns": 79,
+            "physicsSteps": 23123,
+            "whitePiecesLost": 15,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 3,
+              "black": 6
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 1,
+              "black": 0
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1157.96
+          },
+          {
+            "stage": 5,
+            "winner": "black",
+            "turns": 62,
+            "physicsSteps": 23998,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 13,
+            "selfOuts": {
+              "white": 4,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 3
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1328.28
+          }
+        ],
+        "wallTimeMs": 8250.87
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 3,
+        "seed": 3,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 110,
+            "physicsSteps": 30505,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 6,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1493.35
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 166,
+            "physicsSteps": 48070,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 2,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 0
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 2810.44
+          }
+        ],
+        "wallTimeMs": 4428.04
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 4,
+        "seed": 4,
+        "outcome": "loss",
+        "finalStage": 3,
+        "clearedStages": 2,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 2,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 2
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 110,
+            "physicsSteps": 28926,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 6,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1443.24
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 120,
+            "physicsSteps": 27394,
+            "whitePiecesLost": 15,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 4,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 1,
+              "black": 0
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 1223.71
+          },
+          {
+            "stage": 3,
+            "winner": "black",
+            "turns": 119,
+            "physicsSteps": 33637,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 14,
+            "selfOuts": {
+              "white": 5,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 2
+            },
+            "forcedSettleCount": 4,
+            "wallTimeMs": 1260.17
+          }
+        ],
+        "wallTimeMs": 4070.3
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 5,
+        "seed": 5,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 160,
+            "physicsSteps": 47702,
+            "whitePiecesLost": 11,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 3,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 5,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 2825.56
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 81,
+            "physicsSteps": 24143,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 13,
+            "selfOuts": {
+              "white": 6,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 3
+            },
+            "forcedSettleCount": 4,
+            "wallTimeMs": 1151.15
+          }
+        ],
+        "wallTimeMs": 4075.47
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 6,
+        "seed": 6,
+        "outcome": "loss",
+        "finalStage": 4,
+        "clearedStages": 3,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 3,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 3
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 3,
+            "offered": [
+              "force",
+              "proneStart",
+              "weight"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 95,
+            "physicsSteps": 29552,
+            "whitePiecesLost": 11,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 5,
+              "black": 0
+            },
+            "forcedSettleCount": 5,
+            "wallTimeMs": 1363.19
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 116,
+            "physicsSteps": 33371,
+            "whitePiecesLost": 13,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 7,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 3,
+              "black": 0
+            },
+            "forcedSettleCount": 4,
+            "wallTimeMs": 1564.31
+          },
+          {
+            "stage": 3,
+            "winner": "white",
+            "turns": 94,
+            "physicsSteps": 22594,
+            "whitePiecesLost": 15,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 7,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 1,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1267
+          },
+          {
+            "stage": 4,
+            "winner": "black",
+            "turns": 86,
+            "physicsSteps": 25095,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 8,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 5,
+            "wallTimeMs": 1192.31
+          }
+        ],
+        "wallTimeMs": 5586.03
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 7,
+        "seed": 7,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 70,
+            "physicsSteps": 25378,
+            "whitePiecesLost": 9,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 4,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 7,
+              "black": 0
+            },
+            "forcedSettleCount": 6,
+            "wallTimeMs": 1484.18
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 88,
+            "physicsSteps": 25407,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 11,
+            "selfOuts": {
+              "white": 8,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 5
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1147.69
+          }
+        ],
+        "wallTimeMs": 2731.16
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 8,
+        "seed": 8,
+        "outcome": "loss",
+        "finalStage": 3,
+        "clearedStages": 2,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 2,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 2
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 89,
+            "physicsSteps": 22632,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 6,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 0
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 1294.54
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 130,
+            "physicsSteps": 33021,
+            "whitePiecesLost": 10,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 6,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1449.08
+          },
+          {
+            "stage": 3,
+            "winner": "black",
+            "turns": 104,
+            "physicsSteps": 27831,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 1,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1700.09
+          }
+        ],
+        "wallTimeMs": 4590.48
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 9,
+        "seed": 9,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 119,
+            "physicsSteps": 31599,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 10,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1577.42
+          }
+        ],
+        "wallTimeMs": 1632.4
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 10,
+        "seed": 10,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 125,
+            "physicsSteps": 31357,
+            "whitePiecesLost": 10,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 1,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 6,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 2087.19
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 111,
+            "physicsSteps": 31233,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 9,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1215.12
+          }
+        ],
+        "wallTimeMs": 3402.36
+      },
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "runIndex": 11,
+        "seed": 11,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 99,
+            "physicsSteps": 27264,
+            "whitePiecesLost": 11,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 5,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1443.35
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 114,
+            "physicsSteps": 29835,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 13,
+            "selfOuts": {
+              "white": 9,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 3
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1329.71
+          }
+        ],
+        "wallTimeMs": 2876.41
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 0,
+        "seed": 12,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 96,
+            "physicsSteps": 24206,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 3,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1203.86
+          }
+        ],
+        "wallTimeMs": 1255.13
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 1,
+        "seed": 13,
+        "outcome": "loss",
+        "finalStage": 4,
+        "clearedStages": 3,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 3,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 3
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 3,
+            "offered": [
+              "force",
+              "proneStart",
+              "weight"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 107,
+            "physicsSteps": 26042,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 7,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1242.61
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 116,
+            "physicsSteps": 29002,
+            "whitePiecesLost": 12,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 2,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 4,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1303.44
+          },
+          {
+            "stage": 3,
+            "winner": "white",
+            "turns": 97,
+            "physicsSteps": 34237,
+            "whitePiecesLost": 12,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 4,
+              "black": 0
+            },
+            "forcedSettleCount": 12,
+            "wallTimeMs": 1679.68
+          },
+          {
+            "stage": 4,
+            "winner": "black",
+            "turns": 76,
+            "physicsSteps": 21534,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 7,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 811.46
+          }
+        ],
+        "wallTimeMs": 5225.22
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 2,
+        "seed": 14,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 108,
+            "physicsSteps": 27807,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 8,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1201.46
+          }
+        ],
+        "wallTimeMs": 1253.25
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 3,
+        "seed": 15,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 86,
+            "physicsSteps": 23899,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 12,
+            "selfOuts": {
+              "white": 7,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 4
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1238.82
+          }
+        ],
+        "wallTimeMs": 1287.37
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 4,
+        "seed": 16,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 106,
+            "physicsSteps": 29267,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 14,
+            "selfOuts": {
+              "white": 3,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 2
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1544.12
+          }
+        ],
+        "wallTimeMs": 1600.17
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 5,
+        "seed": 17,
+        "outcome": "draw-timeout",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "draw-timeout",
+            "turns": 200,
+            "physicsSteps": 49691,
+            "whitePiecesLost": 15,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 3,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 1,
+              "black": 1
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 2647.73
+          }
+        ],
+        "wallTimeMs": 2696.32
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 6,
+        "seed": 18,
+        "outcome": "loss",
+        "finalStage": 3,
+        "clearedStages": 2,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 2,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 2
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 111,
+            "physicsSteps": 38497,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 9,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 5,
+            "wallTimeMs": 2072.55
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 96,
+            "physicsSteps": 26298,
+            "whitePiecesLost": 10,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 6,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 6,
+              "black": 0
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 1143.22
+          },
+          {
+            "stage": 3,
+            "winner": "black",
+            "turns": 66,
+            "physicsSteps": 18864,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 9,
+            "selfOuts": {
+              "white": 7,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 7
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 762.6
+          }
+        ],
+        "wallTimeMs": 4125.03
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 7,
+        "seed": 19,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 129,
+            "physicsSteps": 33604,
+            "whitePiecesLost": 11,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 4,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 5,
+              "black": 0
+            },
+            "forcedSettleCount": 4,
+            "wallTimeMs": 1471.05
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 111,
+            "physicsSteps": 32348,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 11,
+            "selfOuts": {
+              "white": 9,
+              "black": 0
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 5
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 2039.81
+          }
+        ],
+        "wallTimeMs": 3612.5
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 8,
+        "seed": 20,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 110,
+            "physicsSteps": 30914,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 3,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1845.63
+          }
+        ],
+        "wallTimeMs": 1892.52
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 9,
+        "seed": 21,
+        "outcome": "loss",
+        "finalStage": 6,
+        "clearedStages": 5,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 2,
+          "forcePicks": 3,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 5
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 3,
+            "offered": [
+              "force",
+              "proneStart",
+              "weight"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 4,
+            "offered": [
+              "proneStart",
+              "giantPawn",
+              "weight"
+            ],
+            "selected": "weight"
+          },
+          {
+            "clearedStage": 5,
+            "offered": [
+              "proneStart",
+              "weight",
+              "size"
+            ],
+            "selected": "weight"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 119,
+            "physicsSteps": 34266,
+            "whitePiecesLost": 15,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 6,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 1,
+              "black": 0
+            },
+            "forcedSettleCount": 4,
+            "wallTimeMs": 1780.78
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 97,
+            "physicsSteps": 24502,
+            "whitePiecesLost": 12,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 4,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1423.89
+          },
+          {
+            "stage": 3,
+            "winner": "white",
+            "turns": 84,
+            "physicsSteps": 21683,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 6,
+              "black": 7
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 989.21
+          },
+          {
+            "stage": 4,
+            "winner": "white",
+            "turns": 76,
+            "physicsSteps": 20499,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 6,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 989.66
+          },
+          {
+            "stage": 5,
+            "winner": "white",
+            "turns": 99,
+            "physicsSteps": 29056,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1453.19
+          },
+          {
+            "stage": 6,
+            "winner": "black",
+            "turns": 70,
+            "physicsSteps": 24197,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 14,
+            "selfOuts": {
+              "white": 3,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 2
+            },
+            "forcedSettleCount": 4,
+            "wallTimeMs": 1158.55
+          }
+        ],
+        "wallTimeMs": 8081.16
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 10,
+        "seed": 22,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 84,
+            "physicsSteps": 21898,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 13,
+            "selfOuts": {
+              "white": 8,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 3
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 967.43
+          }
+        ],
+        "wallTimeMs": 1016.06
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "runIndex": 11,
+        "seed": 23,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 92,
+            "physicsSteps": 23723,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1320.68
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 80,
+            "physicsSteps": 21944,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 14,
+            "selfOuts": {
+              "white": 5,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 2
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1095.66
+          }
+        ],
+        "wallTimeMs": 2523.04
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 0,
+        "seed": 24,
+        "outcome": "loss",
+        "finalStage": 3,
+        "clearedStages": 2,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 2,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 2
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 117,
+            "physicsSteps": 35706,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 4,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 10,
+            "wallTimeMs": 1833.09
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 126,
+            "physicsSteps": 33424,
+            "whitePiecesLost": 13,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 8
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 3,
+              "black": 0
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 1336.42
+          },
+          {
+            "stage": 3,
+            "winner": "black",
+            "turns": 81,
+            "physicsSteps": 29594,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 14,
+            "selfOuts": {
+              "white": 8,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 2
+            },
+            "forcedSettleCount": 7,
+            "wallTimeMs": 1509.32
+          }
+        ],
+        "wallTimeMs": 4821.95
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 1,
+        "seed": 25,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 124,
+            "physicsSteps": 30129,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 12,
+            "selfOuts": {
+              "white": 6,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 4
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 1282.48
+          }
+        ],
+        "wallTimeMs": 1330.78
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 2,
+        "seed": 26,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 86,
+            "physicsSteps": 21779,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 13,
+            "selfOuts": {
+              "white": 7,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 3
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 999.19
+          }
+        ],
+        "wallTimeMs": 1050.32
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 3,
+        "seed": 27,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 114,
+            "physicsSteps": 27447,
+            "whitePiecesLost": 12,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 4,
+              "black": 0
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1476.86
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 118,
+            "physicsSteps": 29792,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 13,
+            "selfOuts": {
+              "white": 5,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 3
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1610.81
+          }
+        ],
+        "wallTimeMs": 3186.42
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 4,
+        "seed": 28,
+        "outcome": "loss",
+        "finalStage": 3,
+        "clearedStages": 2,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 2,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 2
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          },
+          {
+            "clearedStage": 2,
+            "offered": [
+              "proneStart",
+              "size",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 121,
+            "physicsSteps": 30452,
+            "whitePiecesLost": 10,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 2,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 6,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1688.95
+          },
+          {
+            "stage": 2,
+            "winner": "white",
+            "turns": 104,
+            "physicsSteps": 26081,
+            "whitePiecesLost": 15,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 9,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 1,
+              "black": 0
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 1179.17
+          },
+          {
+            "stage": 3,
+            "winner": "black",
+            "turns": 74,
+            "physicsSteps": 20704,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 12,
+            "selfOuts": {
+              "white": 7,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 4
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 1018.85
+          }
+        ],
+        "wallTimeMs": 4045.2
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 5,
+        "seed": 29,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 124,
+            "physicsSteps": 28995,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 5,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1991.45
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 110,
+            "physicsSteps": 29357,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 6,
+              "black": 4
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1574.29
+          }
+        ],
+        "wallTimeMs": 3667.98
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 6,
+        "seed": 30,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 104,
+            "physicsSteps": 29163,
+            "whitePiecesLost": 14,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 3,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 2,
+              "black": 0
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1474.37
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 83,
+            "physicsSteps": 27654,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 12,
+            "selfOuts": {
+              "white": 7,
+              "black": 3
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 4
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 1529.8
+          }
+        ],
+        "wallTimeMs": 3097.56
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 7,
+        "seed": 31,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 103,
+            "physicsSteps": 26691,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 13,
+            "selfOuts": {
+              "white": 5,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 3
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 1761.59
+          }
+        ],
+        "wallTimeMs": 1809.01
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 8,
+        "seed": 32,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 79,
+            "physicsSteps": 21540,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 9,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 819.65
+          }
+        ],
+        "wallTimeMs": 868.67
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 9,
+        "seed": 33,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 170,
+            "physicsSteps": 45820,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 15,
+            "selfOuts": {
+              "white": 2,
+              "black": 5
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 1
+            },
+            "forcedSettleCount": 2,
+            "wallTimeMs": 2048.21
+          }
+        ],
+        "wallTimeMs": 2095.25
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 10,
+        "seed": 34,
+        "outcome": "loss",
+        "finalStage": 1,
+        "clearedStages": 0,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 0,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 0
+        },
+        "cardPicks": [],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "black",
+            "turns": 183,
+            "physicsSteps": 44216,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 13,
+            "selfOuts": {
+              "white": 8,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 3
+            },
+            "forcedSettleCount": 1,
+            "wallTimeMs": 2050.87
+          }
+        ],
+        "wallTimeMs": 2101.15
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "runIndex": 11,
+        "seed": 35,
+        "outcome": "loss",
+        "finalStage": 2,
+        "clearedStages": 1,
+        "finalCards": {
+          "sizePicks": 0,
+          "weightPicks": 0,
+          "forcePicks": 1,
+          "giantPawn": false,
+          "proneStart": false,
+          "picksSoFar": 1
+        },
+        "cardPicks": [
+          {
+            "clearedStage": 1,
+            "offered": [
+              "size",
+              "proneStart",
+              "force"
+            ],
+            "selected": "force"
+          }
+        ],
+        "matches": [
+          {
+            "stage": 1,
+            "winner": "white",
+            "turns": 96,
+            "physicsSteps": 30085,
+            "whitePiecesLost": 13,
+            "blackPiecesLost": 16,
+            "selfOuts": {
+              "white": 8,
+              "black": 2
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 3,
+              "black": 0
+            },
+            "forcedSettleCount": 3,
+            "wallTimeMs": 1959.15
+          },
+          {
+            "stage": 2,
+            "winner": "black",
+            "turns": 73,
+            "physicsSteps": 22303,
+            "whitePiecesLost": 16,
+            "blackPiecesLost": 8,
+            "selfOuts": {
+              "white": 7,
+              "black": 1
+            },
+            "initialPieces": {
+              "white": 16,
+              "black": 16
+            },
+            "remainingPieces": {
+              "white": 0,
+              "black": 8
+            },
+            "forcedSettleCount": 0,
+            "wallTimeMs": 982.61
+          }
+        ],
+        "wallTimeMs": 3039.31
+      }
+    ],
+    "aggregate": {
+      "profiles": [
+        {
+          "profile": "accurate",
+          "profileLabel": "정확",
+          "jitterDegrees": 2,
+          "runCount": 12,
+          "lossRuns": 12,
+          "drawTimeoutRuns": 0,
+          "stageCapRuns": 0,
+          "deathStageDistribution": {
+            "values": [
+              2,
+              2,
+              5,
+              2,
+              3,
+              2,
+              4,
+              2,
+              3,
+              1,
+              2,
+              2
+            ],
+            "median": 2,
+            "modes": [
+              2
+            ],
+            "minimum": 1,
+            "maximum": 5
+          },
+          "byStage": [
+            {
+              "stage": 1,
+              "attempts": 12,
+              "wins": 11,
+              "losses": 1,
+              "draws": 0,
+              "winRate": 0.9166666666666666,
+              "averageTurns": 107.08333333333333,
+              "averageWhiteSelfOuts": 4.666666666666667,
+              "averageBlackSelfOuts": 2.75,
+              "aiForceSteps": 0
+            },
+            {
+              "stage": 2,
+              "attempts": 11,
+              "wins": 4,
+              "losses": 7,
+              "draws": 0,
+              "winRate": 0.36363636363636365,
+              "averageTurns": 110.9090909090909,
+              "averageWhiteSelfOuts": 5.909090909090909,
+              "averageBlackSelfOuts": 3,
+              "aiForceSteps": 0
+            },
+            {
+              "stage": 3,
+              "attempts": 4,
+              "wins": 2,
+              "losses": 2,
+              "draws": 0,
+              "winRate": 0.5,
+              "averageTurns": 109,
+              "averageWhiteSelfOuts": 4.5,
+              "averageBlackSelfOuts": 3.25,
+              "aiForceSteps": 1
+            },
+            {
+              "stage": 4,
+              "attempts": 2,
+              "wins": 1,
+              "losses": 1,
+              "draws": 0,
+              "winRate": 0.5,
+              "averageTurns": 82.5,
+              "averageWhiteSelfOuts": 5.5,
+              "averageBlackSelfOuts": 4,
+              "aiForceSteps": 1
+            },
+            {
+              "stage": 5,
+              "attempts": 1,
+              "wins": 0,
+              "losses": 1,
+              "draws": 0,
+              "winRate": 0,
+              "averageTurns": 62,
+              "averageWhiteSelfOuts": 4,
+              "averageBlackSelfOuts": 5,
+              "aiForceSteps": 2
+            }
+          ],
+          "wallTimeMs": 47400.619999999995
+        },
+        {
+          "profile": "normal",
+          "profileLabel": "보통",
+          "jitterDegrees": 8,
+          "runCount": 12,
+          "lossRuns": 11,
+          "drawTimeoutRuns": 1,
+          "stageCapRuns": 0,
+          "deathStageDistribution": {
+            "values": [
+              1,
+              4,
+              1,
+              1,
+              1,
+              3,
+              2,
+              1,
+              6,
+              1,
+              2
+            ],
+            "median": 1,
+            "modes": [
+              1
+            ],
+            "minimum": 1,
+            "maximum": 6
+          },
+          "byStage": [
+            {
+              "stage": 1,
+              "attempts": 12,
+              "wins": 5,
+              "losses": 6,
+              "draws": 1,
+              "winRate": 0.4166666666666667,
+              "averageTurns": 112.33333333333333,
+              "averageWhiteSelfOuts": 5.5,
+              "averageBlackSelfOuts": 3.0833333333333335,
+              "aiForceSteps": 0
+            },
+            {
+              "stage": 2,
+              "attempts": 5,
+              "wins": 3,
+              "losses": 2,
+              "draws": 0,
+              "winRate": 0.6,
+              "averageTurns": 100,
+              "averageWhiteSelfOuts": 5.4,
+              "averageBlackSelfOuts": 3,
+              "aiForceSteps": 0
+            },
+            {
+              "stage": 3,
+              "attempts": 3,
+              "wins": 2,
+              "losses": 1,
+              "draws": 0,
+              "winRate": 0.6666666666666666,
+              "averageTurns": 82.33333333333333,
+              "averageWhiteSelfOuts": 6,
+              "averageBlackSelfOuts": 3.3333333333333335,
+              "aiForceSteps": 1
+            },
+            {
+              "stage": 4,
+              "attempts": 2,
+              "wins": 1,
+              "losses": 1,
+              "draws": 0,
+              "winRate": 0.5,
+              "averageTurns": 76,
+              "averageWhiteSelfOuts": 6.5,
+              "averageBlackSelfOuts": 3.5,
+              "aiForceSteps": 1
+            },
+            {
+              "stage": 5,
+              "attempts": 1,
+              "wins": 1,
+              "losses": 0,
+              "draws": 0,
+              "winRate": 1,
+              "averageTurns": 99,
+              "averageWhiteSelfOuts": 5,
+              "averageBlackSelfOuts": 3,
+              "aiForceSteps": 2
+            },
+            {
+              "stage": 6,
+              "attempts": 1,
+              "wins": 0,
+              "losses": 1,
+              "draws": 0,
+              "winRate": 0,
+              "averageTurns": 70,
+              "averageWhiteSelfOuts": 3,
+              "averageBlackSelfOuts": 4,
+              "aiForceSteps": 2
+            }
+          ],
+          "wallTimeMs": 34567.770000000004
+        },
+        {
+          "profile": "unskilled",
+          "profileLabel": "서툼",
+          "jitterDegrees": 15,
+          "runCount": 12,
+          "lossRuns": 12,
+          "drawTimeoutRuns": 0,
+          "stageCapRuns": 0,
+          "deathStageDistribution": {
+            "values": [
+              3,
+              1,
+              1,
+              2,
+              3,
+              2,
+              2,
+              1,
+              1,
+              1,
+              1,
+              2
+            ],
+            "median": 1.5,
+            "modes": [
+              1
+            ],
+            "minimum": 1,
+            "maximum": 3
+          },
+          "byStage": [
+            {
+              "stage": 1,
+              "attempts": 12,
+              "wins": 6,
+              "losses": 6,
+              "draws": 0,
+              "winRate": 0.5,
+              "averageTurns": 118.41666666666667,
+              "averageWhiteSelfOuts": 5.333333333333333,
+              "averageBlackSelfOuts": 2.9166666666666665,
+              "aiForceSteps": 0
+            },
+            {
+              "stage": 2,
+              "attempts": 6,
+              "wins": 2,
+              "losses": 4,
+              "draws": 0,
+              "winRate": 0.3333333333333333,
+              "averageTurns": 102.33333333333333,
+              "averageWhiteSelfOuts": 6.5,
+              "averageBlackSelfOuts": 4.166666666666667,
+              "aiForceSteps": 0
+            },
+            {
+              "stage": 3,
+              "attempts": 2,
+              "wins": 0,
+              "losses": 2,
+              "draws": 0,
+              "winRate": 0,
+              "averageTurns": 77.5,
+              "averageWhiteSelfOuts": 7.5,
+              "averageBlackSelfOuts": 2.5,
+              "aiForceSteps": 1
+            }
+          ],
+          "wallTimeMs": 31113.6
+        }
+      ],
+      "aiSelfOutTrend": {
+        "matchCount": 74,
+        "unbuffedMatchCount": 58,
+        "buffedMatchCount": 16,
+        "unbuffedAverageBlackSelfOuts": 3.0689655172413794,
+        "buffedAverageBlackSelfOuts": 3.4375,
+        "difference": 0.36853448275862055,
+        "pearsonForceStepsVsBlackSelfOuts": 0.11944352864869784,
+        "stageThreePlusMatchCount": 16,
+        "stageThreePlusPearsonForceStepsVsBlackSelfOuts": 0.15947323018612516,
+        "byForceStep": [
+          {
+            "forceStep": 0,
+            "matchCount": 58,
+            "averageBlackSelfOuts": 3.0689655172413794
+          },
+          {
+            "forceStep": 1,
+            "matchCount": 13,
+            "averageBlackSelfOuts": 3.3076923076923075
+          },
+          {
+            "forceStep": 2,
+            "matchCount": 3,
+            "averageBlackSelfOuts": 4
+          }
+        ],
+        "conclusion": "힘 버프 구간에서 AI 자멸이 증가했다"
+      }
+    },
+    "totalWallTimeMs": 113087.83
+  },
+  "baselineInstrument": [
+    {
+      "profile": "accurate",
+      "runCount": 12,
+      "matchCount": 30,
+      "averageWhiteSelfOutsPerMatch": 5.133333333333334,
+      "averageBlackSelfOutsPerMatch": 3.066666666666667,
+      "averageTurnsPerMatch": 105.6
+    },
+    {
+      "profile": "normal",
+      "runCount": 12,
+      "matchCount": 24,
+      "averageWhiteSelfOutsPerMatch": 5.5,
+      "averageBlackSelfOutsPerMatch": 3.1666666666666665,
+      "averageTurnsPerMatch": 100.66666666666667
+    },
+    {
+      "profile": "unskilled",
+      "runCount": 12,
+      "matchCount": 20,
+      "averageWhiteSelfOutsPerMatch": 5.9,
+      "averageBlackSelfOutsPerMatch": 3.25,
+      "averageTurnsPerMatch": 109.5
+    }
+  ]
+}
