@@ -35,20 +35,41 @@ function createFakeTransportPair() {
   const createEndpoint = (sender) => {
     const messageHandlers = new Set();
     const stateHandlers = new Set();
+    const deferredMessages = [];
     return {
       sender,
       peer: null,
       log: [],
       dropKinds: new Set(),
+      deferMessages: false,
       disconnectCause: null,
+      // 실제 데이터 채널처럼 닫힌 뒤 전송을 즉시 거절하기 위한 연결 상태다.
+      connected: true,
       send(payload) {
+        if (!this.connected) {
+          throw new Error(
+            "P2P 데이터 채널이 아직 연결되지 않았습니다.",
+          );
+        }
         const cloned = JSON.parse(JSON.stringify(payload));
         this.log.push({ sender, payload: cloned });
         if (this.dropKinds.has(cloned.kind)) {
           return;
         }
+        if (this.deferMessages) {
+          deferredMessages.push(cloned);
+          return;
+        }
+        this.deliver(cloned);
+      },
+      deliver(payload) {
         for (const handler of this.peer.messageHandlers) {
-          handler(cloned);
+          handler(payload);
+        }
+      },
+      flushDeferred() {
+        for (const payload of deferredMessages.splice(0)) {
+          this.deliver(payload);
         }
       },
       onMessage(handler) {
@@ -61,11 +82,16 @@ function createFakeTransportPair() {
         return () => stateHandlers.delete(handler);
       },
       close() {
+        if (!this.connected) {
+          return;
+        }
+        this.connected = false;
         this.disconnectCause = "graceful-close";
         for (const handler of stateHandlers) {
           handler("disconnected");
         }
         if (this.peer !== null) {
+          this.peer.connected = false;
           this.peer.disconnectCause = "peer-connection-failed";
           for (const handler of this.peer.stateHandlers) {
             handler("disconnected");
@@ -123,6 +149,31 @@ async function createMatchRuntime(modules, meta) {
   );
   modules.turn.setTurnGameMode(turnRuntime, "online");
   return { physicsRuntime, sceneRuntime, turnRuntime };
+}
+
+/**
+ * 재대결도 최초 대국과 같은 물리 스폰·사전 정착 경로로 32말 표준 월드를 다시 만든다.
+ */
+function resetMatchRuntime(modules, meta, runtime) {
+  modules.physics.resetPhysicsPieces(
+    runtime.physicsRuntime,
+    meta,
+    modules.layout.PIECE_INSTANCES,
+    { gameMode: "online", stageNumber: 1 },
+  );
+  modules.physics.preSettlePhysics(runtime.physicsRuntime);
+  for (const mesh of runtime.sceneRuntime.pieceMeshes.values()) {
+    runtime.sceneRuntime.scene.remove(mesh);
+  }
+  runtime.sceneRuntime.pieceMeshes.clear();
+  for (const binding of runtime.physicsRuntime.pieces.values()) {
+    const mesh = new Mesh();
+    mesh.name = binding.instance.id;
+    runtime.sceneRuntime.scene.add(mesh);
+    runtime.sceneRuntime.pieceMeshes.set(binding.instance.id, mesh);
+  }
+  modules.turn.resetTurnRuntime(runtime.turnRuntime);
+  modules.turn.setTurnGameMode(runtime.turnRuntime, "online");
 }
 
 /**
@@ -233,6 +284,98 @@ function settleSingle(modules, runtime) {
     `방장 단독 월드가 ${maximumSteps} step 안에 정착하지 못했습니다: ${runtime.turnRuntime.phase}`,
   );
   return steps;
+}
+
+/**
+ * 재대결 상태 머신 한 사례가 사용할 두 표준 월드와 실제 온라인 런타임을 만든다.
+ */
+async function createRematchCheckPair(modules, meta, label) {
+  const host = await createMatchRuntime(modules, meta);
+  const guest = await createMatchRuntime(modules, meta);
+  const transports = createFakeTransportPair();
+  const counters = {
+    hostPrepared: 0,
+    guestPrepared: 0,
+    hostStarted: 0,
+    guestStarted: 0,
+  };
+  const hostOnline = modules.online.createOnlineRuntime(
+    transports.host,
+    host.turnRuntime,
+    null,
+    "white",
+    {
+      prepareRematch: async () => {
+        counters.hostPrepared += 1;
+        resetMatchRuntime(modules, meta, host);
+      },
+      onRematchStarted: () => {
+        counters.hostStarted += 1;
+      },
+    },
+    { matchId: `rematch-check-${label}` },
+  );
+  const guestOnline = modules.online.createOnlineRuntime(
+    transports.guest,
+    guest.turnRuntime,
+    null,
+    "black",
+    {
+      prepareRematch: async () => {
+        counters.guestPrepared += 1;
+        resetMatchRuntime(modules, meta, guest);
+      },
+      onRematchStarted: () => {
+        counters.guestStarted += 1;
+      },
+    },
+    { matchId: `rematch-check-${label}` },
+  );
+  hostOnline.startMatch();
+  guestOnline.startMatch();
+  await Promise.all([
+    hostOnline.waitUntilReady(),
+    guestOnline.waitUntilReady(),
+  ]);
+  hostOnline.resign("white");
+  assertCondition(
+    host.turnRuntime.phase === "match-over" &&
+      guest.turnRuntime.phase === "match-over",
+    `${label} 재대결 검증용 이전 결과가 양쪽에 남지 않았습니다.`,
+  );
+  return {
+    host,
+    guest,
+    transports,
+    counters,
+    hostOnline,
+    guestOnline,
+  };
+}
+
+/**
+ * 재대결 비동기 보드 준비와 ready 해시 교환이 모두 끝날 때까지 기다린다.
+ */
+async function flushRematchPair(pair) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await Promise.all([
+      pair.hostOnline.flush(),
+      pair.guestOnline.flush(),
+    ]);
+    if (pair.hostOnline.active && pair.guestOnline.active) {
+      return;
+    }
+  }
+}
+
+/**
+ * 두 재대결 월드를 정리해 다음 사례에 Rapier 자원이 남지 않게 한다.
+ */
+function closeRematchPair(pair) {
+  pair.hostOnline.close();
+  pair.guestOnline.close();
+  pair.host.physicsRuntime.world.free();
+  pair.guest.physicsRuntime.world.free();
 }
 
 try {
@@ -874,6 +1017,206 @@ try {
   recreatedGuestOnline.close();
   freshHost.physicsRuntime.world.free();
   recreatedGuest.physicsRuntime.world.free();
+
+  const acceptedRematch = await createRematchCheckPair(
+    modules,
+    meta,
+    "accept",
+  );
+  const acceptedPreviousMatchId =
+    acceptedRematch.hostOnline.matchId;
+  acceptedRematch.hostOnline.offerRematch();
+  assertCondition(
+    acceptedRematch.guestOnline.getRematchStatus().phase ===
+      "incoming",
+    "재대결 요청이 참가자에게 incoming으로 도착하지 않았습니다.",
+  );
+  acceptedRematch.guestOnline.respondRematch(true);
+  await flushRematchPair(acceptedRematch);
+  const acceptedInitialHost =
+    await stateHash.capturePhysicsStateHash(
+      acceptedRematch.host.physicsRuntime,
+    );
+  const acceptedInitialGuest =
+    await stateHash.capturePhysicsStateHash(
+      acceptedRematch.guest.physicsRuntime,
+    );
+  const acceptedInitialLogLengths = [
+    acceptedRematch.hostOnline.turnLog.length,
+    acceptedRematch.guestOnline.turnLog.length,
+  ];
+  assertCondition(
+    acceptedRematch.hostOnline.active &&
+      acceptedRematch.guestOnline.active &&
+      acceptedRematch.hostOnline.matchId !==
+        acceptedPreviousMatchId &&
+      acceptedRematch.hostOnline.matchId ===
+        acceptedRematch.guestOnline.matchId &&
+      acceptedRematch.hostOnline.nextTurnIndex === 0 &&
+      acceptedRematch.guestOnline.nextTurnIndex === 0 &&
+      acceptedInitialHost.sha256 ===
+        acceptedInitialGuest.sha256 &&
+      acceptedRematch.counters.hostPrepared === 1 &&
+      acceptedRematch.counters.guestPrepared === 1 &&
+      acceptedInitialLogLengths[0] === 0 &&
+      acceptedInitialLogLengths[1] === 0 &&
+      acceptedRematch.hostOnline.lastResumeReplayMatched === null &&
+      acceptedRematch.guestOnline.lastResumeReplayMatched === null,
+    `재대결 수락 뒤 턴 0 준비가 다릅니다: id=${acceptedRematch.hostOnline.matchId}/${acceptedRematch.guestOnline.matchId}, turn=${acceptedRematch.hostOnline.nextTurnIndex}/${acceptedRematch.guestOnline.nextTurnIndex}, prepared=${acceptedRematch.counters.hostPrepared}/${acceptedRematch.counters.guestPrepared}`,
+  );
+  for (let turnIndex = 0; turnIndex < 4; turnIndex += 1) {
+    const localRuntime =
+      acceptedRematch.host.turnRuntime.currentSide === "white"
+        ? acceptedRematch.host
+        : acceptedRematch.guest;
+    const localOnline =
+      acceptedRematch.host.turnRuntime.currentSide === "white"
+        ? acceptedRematch.hostOnline
+        : acceptedRematch.guestOnline;
+    const queued = localOnline.queueLocalLaunch(
+      createScriptedRequest(localRuntime, turnIndex),
+    );
+    assertCondition(
+      queued.accepted,
+      `재대결 뒤 ${turnIndex}번 발사가 거절됐습니다: ${queued.reason}`,
+    );
+    settlePair(
+      modules,
+      acceptedRematch.host,
+      acceptedRematch.guest,
+      acceptedRematch.hostOnline,
+      acceptedRematch.guestOnline,
+    );
+    await Promise.all([
+      acceptedRematch.hostOnline.flush(),
+      acceptedRematch.guestOnline.flush(),
+    ]);
+  }
+  const acceptedFinalHost =
+    await stateHash.capturePhysicsStateHash(
+      acceptedRematch.host.physicsRuntime,
+    );
+  const acceptedFinalGuest =
+    await stateHash.capturePhysicsStateHash(
+      acceptedRematch.guest.physicsRuntime,
+    );
+  assertCondition(
+    acceptedFinalHost.sha256 === acceptedFinalGuest.sha256 &&
+      acceptedRematch.hostOnline.desyncCount === 0 &&
+      acceptedRematch.guestOnline.desyncCount === 0 &&
+      acceptedRematch.hostOnline.nextTurnIndex === 4 &&
+      acceptedRematch.guestOnline.nextTurnIndex === 4,
+    `재대결 뒤 4수 동기화 실패: hash=${acceptedFinalHost.sha256}/${acceptedFinalGuest.sha256}, desync=${acceptedRematch.hostOnline.desyncCount}/${acceptedRematch.guestOnline.desyncCount}`,
+  );
+  console.log(
+    `[통과 l] 재대결 요청→수락: matchId=${acceptedRematch.hostOnline.matchId}, active=${acceptedRematch.hostOnline.active}/${acceptedRematch.guestOnline.active}, turn=0→4, freshLog=${acceptedInitialLogLengths.join("/")}, initialHash=${acceptedInitialHost.sha256}, finalHash=${acceptedFinalHost.sha256}, desync=0/0`,
+  );
+  closeRematchPair(acceptedRematch);
+
+  const declinedRematch = await createRematchCheckPair(
+    modules,
+    meta,
+    "decline",
+  );
+  const declinedMatchId = declinedRematch.hostOnline.matchId;
+  declinedRematch.hostOnline.offerRematch();
+  declinedRematch.guestOnline.respondRematch(false);
+  assertCondition(
+    declinedRematch.hostOnline.matchId === declinedMatchId &&
+      declinedRematch.guestOnline.matchId === declinedMatchId &&
+      declinedRematch.host.turnRuntime.phase === "match-over" &&
+      declinedRematch.guest.turnRuntime.phase === "match-over" &&
+      declinedRematch.hostOnline.getRematchStatus().phase ===
+        "declined" &&
+      declinedRematch.counters.hostPrepared === 0 &&
+      declinedRematch.counters.guestPrepared === 0,
+    "재대결 거절 뒤 이전 결과나 매치 ID가 보존되지 않았습니다.",
+  );
+  declinedRematch.hostOnline.offerRematch();
+  const secondOffer =
+    declinedRematch.guestOnline.getRematchStatus();
+  assertCondition(
+    secondOffer.phase === "incoming" &&
+      secondOffer.offerId === "white-2",
+    `거절 뒤 두 번째 요청이 열리지 않았습니다: ${JSON.stringify(secondOffer)}`,
+  );
+  declinedRematch.hostOnline.cancelRematch();
+  console.log(
+    `[통과 m] 재대결 거절: matchId=${declinedMatchId} 유지, phase=match-over/match-over, 두 번째 offerId=white-2`,
+  );
+  closeRematchPair(declinedRematch);
+
+  const simultaneousRematch = await createRematchCheckPair(
+    modules,
+    meta,
+    "simultaneous",
+  );
+  simultaneousRematch.transports.host.deferMessages = true;
+  simultaneousRematch.transports.guest.deferMessages = true;
+  simultaneousRematch.hostOnline.offerRematch();
+  simultaneousRematch.guestOnline.offerRematch();
+  simultaneousRematch.transports.host.deferMessages = false;
+  simultaneousRematch.transports.guest.deferMessages = false;
+  simultaneousRematch.transports.host.flushDeferred();
+  simultaneousRematch.transports.guest.flushDeferred();
+  await flushRematchPair(simultaneousRematch);
+  const simultaneousHostHash =
+    await stateHash.capturePhysicsStateHash(
+      simultaneousRematch.host.physicsRuntime,
+    );
+  const simultaneousGuestHash =
+    await stateHash.capturePhysicsStateHash(
+      simultaneousRematch.guest.physicsRuntime,
+    );
+  assertCondition(
+    simultaneousRematch.hostOnline.matchId ===
+      "rematch-white-1" &&
+      simultaneousRematch.guestOnline.matchId ===
+        "rematch-white-1" &&
+      simultaneousRematch.hostOnline.nextTurnIndex === 0 &&
+      simultaneousRematch.guestOnline.nextTurnIndex === 0 &&
+      simultaneousHostHash.sha256 ===
+        simultaneousGuestHash.sha256 &&
+      simultaneousRematch.counters.hostPrepared === 1 &&
+      simultaneousRematch.counters.guestPrepared === 1 &&
+      simultaneousRematch.counters.hostStarted === 1 &&
+      simultaneousRematch.counters.guestStarted === 1,
+    `동시 재대결 요청이 하나의 방장 요청으로 합쳐지지 않았습니다: id=${simultaneousRematch.hostOnline.matchId}/${simultaneousRematch.guestOnline.matchId}, prepared=${simultaneousRematch.counters.hostPrepared}/${simultaneousRematch.counters.guestPrepared}, started=${simultaneousRematch.counters.hostStarted}/${simultaneousRematch.counters.guestStarted}`,
+  );
+  console.log(
+    `[통과 n] 동시 재대결 요청: winnerOffer=white-1, matchId=rematch-white-1, reset=1/1, turn=0, hash=${simultaneousHostHash.sha256}`,
+  );
+  closeRematchPair(simultaneousRematch);
+
+  const disconnectedRematch = await createRematchCheckPair(
+    modules,
+    meta,
+    "disconnect",
+  );
+  const disconnectedMatchId =
+    disconnectedRematch.hostOnline.matchId;
+  disconnectedRematch.transports.host.close();
+  disconnectedRematch.hostOnline.terminate();
+  let disconnectReason = "";
+  try {
+    disconnectedRematch.hostOnline.offerRematch();
+  } catch (error) {
+    disconnectReason =
+      error instanceof Error ? error.message : String(error);
+  }
+  assertCondition(
+    disconnectReason ===
+      "상대 연결이 끊겨 재대결을 요청할 수 없습니다." &&
+      disconnectedRematch.hostOnline.matchId ===
+        disconnectedMatchId &&
+      disconnectedRematch.counters.hostPrepared === 0 &&
+      disconnectedRematch.counters.guestPrepared === 0,
+    `단절 종료 뒤 재대결이 명확히 거절되지 않았습니다: reason=${disconnectReason}, id=${disconnectedRematch.hostOnline.matchId}`,
+  );
+  console.log(
+    `[통과 o] 연결 단절 종료 뒤 재대결 거절: reason="${disconnectReason}", newMatch=false`,
+  );
+  closeRematchPair(disconnectedRematch);
 } finally {
   await vite.close();
 }

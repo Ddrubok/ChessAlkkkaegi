@@ -43,6 +43,8 @@ export interface OnlineReadyMessage {
   matchId: string;
   // 방장은 백, 참가자는 흑이라는 연결 역할을 함께 검증한다.
   side: PieceSide;
+  // 입력을 열기 전에 양쪽 표준 시작 월드가 같은지 확인하는 원시 상태 해시다.
+  stateHash: string;
 }
 
 export interface OnlineTurnMessage
@@ -116,6 +118,21 @@ export interface OnlineResignMessage {
   side: PieceSide;
 }
 
+export type OnlineRematchAction =
+  | "offer"
+  | "accept"
+  | "decline"
+  | "cancel";
+
+export interface OnlineRematchMessage {
+  // 종료된 대국 위에서 새 대국 합의를 교환하는 메시지 종류다.
+  kind: "rematch";
+  // 요청·수락·거절·취소 중 수행할 재대결 동작이다.
+  action: OnlineRematchAction;
+  // 요청을 결정적으로 식별하고 새 매치 ID를 함께 도출하는 값이다.
+  offerId: string;
+}
+
 export type OnlineMessage =
   | OnlineReadyMessage
   | OnlineTurnMessage
@@ -124,7 +141,27 @@ export type OnlineMessage =
   | OnlineStateSnapshotMessage
   | OnlineResumeMessage
   | OnlineResumeTailMessage
-  | OnlineResignMessage;
+  | OnlineResignMessage
+  | OnlineRematchMessage;
+
+export type OnlineRematchPhase =
+  | "idle"
+  | "outgoing"
+  | "incoming"
+  | "declined"
+  | "starting"
+  | "failed";
+
+export interface OnlineRematchStatus {
+  // 결과 화면이 표시할 현재 재대결 상태다.
+  phase: OnlineRematchPhase;
+  // 현재 응답하거나 기다리는 요청 ID이며 평상시에는 null이다.
+  offerId: string | null;
+  // 결과 화면에 그대로 표시할 한국어 상태 설명이다.
+  message: string;
+  // 살아 있는 피어 링크가 있어 재대결 메시지를 보낼 수 있는지 나타낸다.
+  connected: boolean;
+}
 
 export interface OnlineTransport {
   // 실제 링크는 사용자 상태와 분리해 원래 끊김 원인을 제공한다.
@@ -144,6 +181,12 @@ export interface OnlineRuntimeHooks {
   onDisconnected?: (cause: PeerDisconnectCause) => void;
   // 기권 진영이 확정되면 기존 결과 화면을 열도록 알린다.
   onResigned?: (resignedSide: PieceSide) => void;
+  // 재대결 합의 뒤 기존 새 대국 경로로 표준 보드를 다시 준비한다.
+  prepareRematch?: (matchId: string) => Promise<void>;
+  // 요청·대기·거절·실패 상태가 바뀔 때 결과 오버레이를 갱신한다.
+  onRematchStateChange?: (status: OnlineRematchStatus) => void;
+  // 턴 0 해시까지 일치해 새 대국 입력이 열렸음을 화면 계층에 알린다.
+  onRematchStarted?: (matchId: string) => void;
 }
 
 export interface OnlinePeerSession {
@@ -264,6 +307,14 @@ export interface OnlineRuntime {
   replaceTransport(transport: OnlineTransport): Promise<void>;
   // 내 진영의 기권을 상대에게 알리고 양쪽 결과 흐름을 끝낸다.
   resign(side?: PieceSide): void;
+  // 연결된 결과 화면에서 결정적 ID로 재대결을 요청한다.
+  offerRematch(): void;
+  // 상대 재대결 요청을 수락하거나 거절한다.
+  respondRematch(accept: boolean): void;
+  // 아직 수락되지 않은 내 재대결 요청을 취소한다.
+  cancelRematch(): void;
+  // 결과 화면과 셀프테스트가 읽을 현재 재대결 상태를 반환한다.
+  getRematchStatus(): OnlineRematchStatus;
   // 연결 단절 대국을 승패 없이 종료하고 모든 후속 입력을 막는다.
   terminate(): void;
   // 턴 후크·조준·연결·카메라 소유 설정을 모두 정리한다.
@@ -274,6 +325,7 @@ export interface OnlineRuntime {
 const READY_RETRY_MILLISECONDS = 500;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 const MATCH_ID_PATTERN = /^[a-zA-Z0-9-]{8,64}$/u;
+const REMATCH_OFFER_ID_PATTERN = /^(white|black)-[1-9][0-9]*$/u;
 const LOBBY_CODE_PREFIX = "ca-online-1";
 
 /**
@@ -327,13 +379,18 @@ export function parseOnlineMessage(
   const source = payload as Record<string, unknown>;
   switch (source.kind) {
     case "ready": {
-      if (source.side !== "white" && source.side !== "black") {
-        throw new Error("온라인 ready 진영이 유효하지 않습니다.");
+      if (
+        (source.side !== "white" && source.side !== "black") ||
+        typeof source.stateHash !== "string" ||
+        !SHA256_PATTERN.test(source.stateHash)
+      ) {
+        throw new Error("온라인 ready 진영 또는 해시가 유효하지 않습니다.");
       }
       return {
         kind: "ready",
         matchId: parseMatchId(source.matchId, "온라인 ready"),
         side: source.side,
+        stateHash: source.stateHash,
       };
     }
     case "turn": {
@@ -533,6 +590,27 @@ export function parseOnlineMessage(
       }
       return { kind: "resign", side: source.side };
     }
+    case "rematch": {
+      if (
+        source.action !== "offer" &&
+        source.action !== "accept" &&
+        source.action !== "decline" &&
+        source.action !== "cancel"
+      ) {
+        throw new Error("온라인 rematch 동작이 유효하지 않습니다.");
+      }
+      if (
+        typeof source.offerId !== "string" ||
+        !REMATCH_OFFER_ID_PATTERN.test(source.offerId)
+      ) {
+        throw new Error("온라인 rematch 요청 식별자가 유효하지 않습니다.");
+      }
+      return {
+        kind: "rematch",
+        action: source.action,
+        offerId: source.offerId,
+      };
+    }
     default:
       throw new Error(`알 수 없는 온라인 메시지 종류 ${String(source.kind)}입니다.`);
   }
@@ -696,7 +774,7 @@ export function createOnlineRuntime(
 ): OnlineRuntime {
   let currentTransport = transport;
   const isHost = mySide === "white";
-  const matchId = parseMatchId(
+  let matchId = parseMatchId(
     options.matchId ?? "legacy-online-match",
     "온라인 런타임",
   );
@@ -715,6 +793,7 @@ export function createOnlineRuntime(
   let lastReadySentAt = Number.NEGATIVE_INFINITY;
   let lastResumeSentAt = Number.NEGATIVE_INFINITY;
   let readyResolver: (() => void) | null = null;
+  let readyRejecter: ((reason: Error) => void) | null = null;
   let pendingWork = Promise.resolve();
   let transportConnected = true;
   let sessionEnded = false;
@@ -732,6 +811,18 @@ export function createOnlineRuntime(
   let resumeReplayMatched = false;
   let resumeTargetTurnIndex: number | null = null;
   let resumeTargetHash: string | null = null;
+  let localReadyHash: string | null = null;
+  let remoteReadyHash: string | null = null;
+  let rematchOfferCounter = 0;
+  let outgoingRematchOfferId: string | null = null;
+  let incomingRematchOfferId: string | null = null;
+  let rematchPreparationId: string | null = null;
+  let rematchStatus: OnlineRematchStatus = {
+    phase: "idle",
+    offerId: null,
+    message: "",
+    connected: true,
+  };
 
   // 상대 조준 표시와 예약 발사를 함께 지워 연결 종료 뒤 화면과 발사가 남지 않게 한다.
   const cancelRemoteTelegraph = (): void => {
@@ -743,6 +834,40 @@ export function createOnlineRuntime(
     }
     runtime.remoteTelegraph = null;
   };
+
+  // 재대결 상태를 불변 복사본으로 저장하고 결과 화면 구독자에게 즉시 알린다.
+  const setRematchStatus = (
+    next: Omit<OnlineRematchStatus, "connected">,
+  ): void => {
+    rematchStatus = {
+      ...next,
+      connected: transportConnected,
+    };
+    hooks.onRematchStateChange?.({ ...rematchStatus });
+  };
+
+  // 살아 있는 링크와 종료된 대국이 모두 있어야 재대결 협상을 허용한다.
+  const assertCanRematch = (): void => {
+    if (!transportConnected) {
+      throw new Error(
+        "상대 연결이 끊겨 재대결을 요청할 수 없습니다.",
+      );
+    }
+    if (turnRuntime.phase !== "match-over") {
+      throw new Error(
+        "대국 결과가 확정된 뒤에만 재대결할 수 있습니다.",
+      );
+    }
+    if (hooks.prepareRematch === undefined) {
+      throw new Error(
+        "재대결용 새 대국 준비 경로가 연결되지 않았습니다.",
+      );
+    }
+  };
+
+  // 요청 ID만으로 양쪽이 별도 왕복 없이 같은 새 매치 식별자를 만든다.
+  const deriveRematchMatchId = (offerId: string): string =>
+    parseMatchId(`rematch-${offerId}`, "재대결");
 
   const runtime: OnlineRuntime = {
     transport: currentTransport,
@@ -872,17 +997,25 @@ export function createOnlineRuntime(
       setTurnSettledHandler(turnRuntime, settledHandler);
       setTurnCameraPerspectiveSide(turnRuntime, mySide);
       beginCurrentTurnCameraRotation(turnRuntime);
-      runtime.localReady = true;
       if (rejoiningSession) {
+        runtime.localReady = true;
         lastResumeSentAt = performance.now();
         pendingWork = pendingWork.then(async () => {
           await sendResumeState();
           runtime.lastEvent = "대국을 이어받는 중입니다.";
         });
       } else {
-        sendReady(performance.now());
-        updateActiveState();
-        runtime.lastEvent = "내 보드 준비 완료";
+        runtime.localReady = false;
+        pendingWork = pendingWork.then(async () => {
+          const state = await capturePhysicsStateHash(
+            turnRuntime.physicsRuntime,
+          );
+          localReadyHash = state.sha256;
+          runtime.localReady = true;
+          sendReady(performance.now());
+          updateActiveState();
+          runtime.lastEvent = "내 보드 준비 완료";
+        });
       }
     },
 
@@ -890,8 +1023,9 @@ export function createOnlineRuntime(
       if (runtime.active) {
         return Promise.resolve();
       }
-      return new Promise<void>((resolve) => {
+      return new Promise<void>((resolve, reject) => {
         readyResolver = resolve;
+        readyRejecter = reject;
       });
     },
 
@@ -1082,6 +1216,89 @@ export function createOnlineRuntime(
       runtime.lastEvent = `${side} 기권`;
     },
 
+    offerRematch(): void {
+      assertCanRematch();
+      if (
+        rematchStatus.phase === "outgoing" ||
+        rematchStatus.phase === "incoming" ||
+        rematchStatus.phase === "starting"
+      ) {
+        throw new Error("이미 처리 중인 재대결 요청이 있습니다.");
+      }
+      rematchOfferCounter += 1;
+      const offerId = `${mySide}-${rematchOfferCounter}`;
+      outgoingRematchOfferId = offerId;
+      incomingRematchOfferId = null;
+      const message: OnlineRematchMessage = {
+        kind: "rematch",
+        action: "offer",
+        offerId,
+      };
+      currentTransport.send(message);
+      setRematchStatus({
+        phase: "outgoing",
+        offerId,
+        message: "상대 응답을 기다리는 중",
+      });
+    },
+
+    respondRematch(accept: boolean): void {
+      assertCanRematch();
+      const offerId = incomingRematchOfferId;
+      if (
+        rematchStatus.phase !== "incoming" ||
+        offerId === null
+      ) {
+        throw new Error("응답할 상대 재대결 요청이 없습니다.");
+      }
+      const message: OnlineRematchMessage = {
+        kind: "rematch",
+        action: accept ? "accept" : "decline",
+        offerId,
+      };
+      currentTransport.send(message);
+      incomingRematchOfferId = null;
+      if (accept) {
+        beginRematch(offerId);
+      } else {
+        setRematchStatus({
+          phase: "idle",
+          offerId: null,
+          message: "",
+        });
+      }
+    },
+
+    cancelRematch(): void {
+      assertCanRematch();
+      const offerId = outgoingRematchOfferId;
+      if (
+        rematchStatus.phase !== "outgoing" ||
+        offerId === null
+      ) {
+        throw new Error("취소할 재대결 요청이 없습니다.");
+      }
+      const message: OnlineRematchMessage = {
+        kind: "rematch",
+        action: "cancel",
+        offerId,
+      };
+      currentTransport.send(message);
+      outgoingRematchOfferId = null;
+      setRematchStatus({
+        phase: "idle",
+        offerId: null,
+        message: "",
+      });
+    },
+
+    getRematchStatus(): OnlineRematchStatus {
+      return {
+        ...rematchStatus,
+        connected: transportConnected,
+      };
+    },
+
     terminate(): void {
       sessionEnded = true;
       runtime.active = false;
@@ -1089,6 +1306,11 @@ export function createOnlineRuntime(
       turnRuntime.sceneRuntime.controls.enabled = false;
       cancelRemoteTelegraph();
       runtime.lastEvent = "연결 단절 대국 종료";
+      setRematchStatus({
+        phase: "idle",
+        offerId: null,
+        message: "",
+      });
     },
 
     close(): void {
@@ -1121,13 +1343,107 @@ export function createOnlineRuntime(
     },
   };
 
+  // 새 표준 보드를 준비한 뒤 기록·복구 상태를 비우고 턴 0 ready 해시 교환을 시작한다.
+  const beginRematch = (offerId: string): void => {
+    const nextMatchId = deriveRematchMatchId(offerId);
+    if (
+      rematchPreparationId === nextMatchId ||
+      runtime.matchId === nextMatchId
+    ) {
+      return;
+    }
+    if (hooks.prepareRematch === undefined) {
+      throw new Error(
+        "재대결용 새 대국 준비 경로가 연결되지 않았습니다.",
+      );
+    }
+    rematchPreparationId = nextMatchId;
+    outgoingRematchOfferId = null;
+    incomingRematchOfferId = null;
+    runtime.active = false;
+    runtime.localReady = false;
+    runtime.remoteReady = false;
+    turnRuntime.sceneRuntime.controls.enabled = false;
+    cancelRemoteTelegraph();
+    setRematchStatus({
+      phase: "starting",
+      offerId,
+      message: "새 대국을 준비하는 중입니다",
+    });
+    matchId = nextMatchId;
+    runtime.matchId = nextMatchId;
+    sessionEnded = false;
+    rejoiningSession = false;
+    replayingResumeTail = false;
+    replayTurnIndex = null;
+    runtime.nextTurnIndex = 0;
+    runtime.activeTurn = null;
+    runtime.turnLog.length = 0;
+    runtime.desyncCount = 0;
+    runtime.lastResumeTransferBytes = 0;
+    runtime.lastResumeReplayMatched = null;
+    runtime.lastHashComparison = null;
+    localHashes.clear();
+    authoritativeHashes.clear();
+    hostSnapshots.clear();
+    requestedSnapshots.clear();
+    awaitingResumeSnapshot = false;
+    resumeReplayMatched = false;
+    resumeTargetTurnIndex = null;
+    resumeTargetHash = null;
+    localReadyHash = null;
+    remoteReadyHash = null;
+    runtime.localReady = false;
+    runtime.remoteReady = false;
+    const prepareRematch = hooks.prepareRematch;
+    pendingWork = pendingWork
+      .then(async () => {
+        await prepareRematch(nextMatchId);
+        setTurnCameraPerspectiveSide(turnRuntime, mySide);
+        beginCurrentTurnCameraRotation(turnRuntime);
+        const state = await capturePhysicsStateHash(
+          turnRuntime.physicsRuntime,
+        );
+        localReadyHash = state.sha256;
+        runtime.localReady = true;
+        sendReady(performance.now());
+        updateActiveState();
+        runtime.lastEvent = "재대결 턴 0 해시 대조 중";
+      })
+      .catch((error: unknown) => {
+        const failure =
+          error instanceof Error ? error : new Error(String(error));
+        rematchPreparationId = null;
+        runtime.active = false;
+        turnRuntime.phase = "match-over";
+        turnRuntime.sceneRuntime.controls.enabled = false;
+        setRematchStatus({
+          phase: "failed",
+          offerId,
+          message: `재대결 시작 실패: ${failure.message}`,
+        });
+        console.error(failure.stack ?? failure.message);
+      });
+  };
+
   // 최초 ready 또는 재접속 동기화가 끝나면 입력과 메뉴 대기를 함께 해제한다.
   const activateRuntime = (event: string): void => {
+    const startedRematchId = rematchPreparationId;
     rejoiningSession = false;
     runtime.active = true;
     runtime.lastEvent = event;
     readyResolver?.();
     readyResolver = null;
+    readyRejecter = null;
+    if (startedRematchId !== null) {
+      rematchPreparationId = null;
+      setRematchStatus({
+        phase: "idle",
+        offerId: null,
+        message: "",
+      });
+      hooks.onRematchStarted?.(startedRematchId);
+    }
   };
 
   // 양쪽 ready가 모두 도착하면 입력을 열고 메뉴 대기를 해제한다.
@@ -1135,9 +1451,36 @@ export function createOnlineRuntime(
     if (
       sessionEnded ||
       runtime.active ||
+      !transportConnected ||
       !runtime.localReady ||
-      !runtime.remoteReady
+      !runtime.remoteReady ||
+      localReadyHash === null ||
+      remoteReadyHash === null
     ) {
+      return;
+    }
+    if (localReadyHash !== remoteReadyHash) {
+      const failure = new Error(
+        `온라인 턴 0 상태 해시가 다릅니다: local=${localReadyHash}, remote=${remoteReadyHash}`,
+      );
+      runtime.active = false;
+      turnRuntime.phase = "match-over";
+      turnRuntime.sceneRuntime.controls.enabled = false;
+      runtime.lastEvent = "턴 0 해시 불일치";
+      readyRejecter?.(failure);
+      readyResolver = null;
+      readyRejecter = null;
+      if (rematchPreparationId !== null) {
+        const failedOfferId =
+          rematchStatus.offerId ?? outgoingRematchOfferId;
+        rematchPreparationId = null;
+        setRematchStatus({
+          phase: "failed",
+          offerId: failedOfferId,
+          message: "재대결 시작 실패: 턴 0 상태가 서로 다릅니다.",
+        });
+      }
+      console.error(failure.stack ?? failure.message);
       return;
     }
     activateRuntime("양쪽 보드 준비 완료");
@@ -1149,6 +1492,11 @@ export function createOnlineRuntime(
       kind: "ready",
       matchId,
       side: mySide,
+      stateHash:
+        localReadyHash ??
+        (() => {
+          throw new Error("온라인 ready를 보낼 로컬 상태 해시가 없습니다.");
+        })(),
     };
     currentTransport.send(message);
     lastReadySentAt = now;
@@ -1290,14 +1638,25 @@ export function createOnlineRuntime(
 
   // 프로토콜 오류를 전체 스택으로 남기고 온라인 입력을 닫는다.
   const handleProtocolError = (error: unknown): void => {
-    const fullError =
-      error instanceof Error
-        ? (error.stack ?? error.message)
-        : String(error);
+    const failure =
+      error instanceof Error ? error : new Error(String(error));
+    const fullError = failure.stack ?? failure.message;
     console.error(`[온라인 프로토콜] ${fullError}`);
     runtime.active = false;
     cancelRemoteTelegraph();
     runtime.lastEvent = "프로토콜 오류";
+    readyRejecter?.(failure);
+    readyResolver = null;
+    readyRejecter = null;
+    if (rematchPreparationId !== null) {
+      const failedOfferId = rematchStatus.offerId;
+      rematchPreparationId = null;
+      setRematchStatus({
+        phase: "failed",
+        offerId: failedOfferId,
+        message: `재대결 시작 실패: ${failure.message}`,
+      });
+    }
   };
 
   const handleMessage = (payload: object): void => {
@@ -1305,18 +1664,24 @@ export function createOnlineRuntime(
       const message = parseOnlineMessage(payload);
       switch (message.kind) {
         case "ready": {
-          if (sessionEnded) {
+          if (
+            sessionEnded &&
+            rematchPreparationId === null
+          ) {
             return;
           }
-          if (message.matchId !== matchId) {
+          const expectedMatchId =
+            rematchPreparationId ?? matchId;
+          if (message.matchId !== expectedMatchId) {
             throw new Error(
-              `온라인 ready 매치가 다릅니다: local=${matchId}, remote=${message.matchId}`,
+              `온라인 ready 매치가 다릅니다: local=${expectedMatchId}, remote=${message.matchId}`,
             );
           }
           if (message.side === mySide) {
             throw new Error("상대 ready 진영이 내 진영과 같습니다.");
           }
           runtime.remoteReady = true;
+          remoteReadyHash = message.stateHash;
           updateActiveState();
           return;
         }
@@ -1571,6 +1936,89 @@ export function createOnlineRuntime(
           runtime.lastEvent = `${message.side} 기권`;
           return;
         }
+        case "rematch": {
+          if (
+            runtime.matchId ===
+              deriveRematchMatchId(message.offerId)
+          ) {
+            return;
+          }
+          if (rematchPreparationId !== null) {
+            if (message.action === "offer") {
+              const winningOfferId =
+                rematchStatus.offerId;
+              if (winningOfferId === null) {
+                throw new Error(
+                  "준비 중인 재대결 요청 식별자가 없습니다.",
+                );
+              }
+              currentTransport.send({
+                kind: "rematch",
+                action: "accept",
+                offerId: winningOfferId,
+              } satisfies OnlineRematchMessage);
+            }
+            return;
+          }
+          assertCanRematch();
+          if (message.action === "offer") {
+            if (outgoingRematchOfferId !== null) {
+              const winningOfferId = isHost
+                ? outgoingRematchOfferId
+                : message.offerId;
+              const acceptance: OnlineRematchMessage = {
+                kind: "rematch",
+                action: "accept",
+                offerId: winningOfferId,
+              };
+              currentTransport.send(acceptance);
+              beginRematch(winningOfferId);
+              return;
+            }
+            incomingRematchOfferId = message.offerId;
+            setRematchStatus({
+              phase: "incoming",
+              offerId: message.offerId,
+              message: "상대가 재대결을 요청했습니다",
+            });
+            return;
+          }
+          if (message.action === "accept") {
+            if (
+              outgoingRematchOfferId === null &&
+              rematchPreparationId === null
+            ) {
+              throw new Error(
+                "보내지 않은 재대결 요청의 수락이 도착했습니다.",
+              );
+            }
+            beginRematch(message.offerId);
+            return;
+          }
+          if (message.action === "decline") {
+            if (message.offerId !== outgoingRematchOfferId) {
+              throw new Error(
+                "현재 요청과 다른 재대결 거절이 도착했습니다.",
+              );
+            }
+            outgoingRematchOfferId = null;
+            setRematchStatus({
+              phase: "declined",
+              offerId: message.offerId,
+              message: "상대가 재대결을 거절했습니다",
+            });
+            return;
+          }
+          if (message.offerId === incomingRematchOfferId) {
+            incomingRematchOfferId = null;
+            setRematchStatus({
+              phase: "idle",
+              offerId: null,
+              message: "",
+            });
+          }
+          return;
+        }
       }
     } catch (error: unknown) {
       handleProtocolError(error);
@@ -1581,11 +2029,27 @@ export function createOnlineRuntime(
     removeMessageHandler = currentTransport.onMessage(handleMessage);
     removeStateHandler = currentTransport.onStateChange((state) => {
       transportConnected = state === "connected";
+      if (state === "connected") {
+        rematchStatus = {
+          ...rematchStatus,
+          connected: true,
+        };
+        hooks.onRematchStateChange?.({ ...rematchStatus });
+      }
       if (state === "disconnected" || state === "failed") {
         runtime.active = false;
         rejoiningSession = true;
         cancelRemoteTelegraph();
         runtime.lastEvent = "연결 끊김";
+        outgoingRematchOfferId = null;
+        incomingRematchOfferId = null;
+        rematchStatus = {
+          phase: "idle",
+          offerId: null,
+          message: "",
+          connected: false,
+        };
+        hooks.onRematchStateChange?.({ ...rematchStatus });
         hooks.onDisconnected?.(
           currentTransport.disconnectCause ?? null,
         );

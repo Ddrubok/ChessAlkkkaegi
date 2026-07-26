@@ -21,6 +21,7 @@ import {
 import {
   createPhysicsRuntime,
   preSettlePhysics,
+  resetPhysicsPieces,
   type PhysicsRuntime,
 } from "../physics";
 import type { SceneRuntime } from "../scene";
@@ -33,6 +34,7 @@ import {
 import {
   applyPendingLaunchBeforeStep,
   createTurnRuntime,
+  resetTurnRuntime,
   setTurnGameMode,
   updateTurnAfterStep,
   type TurnRuntime,
@@ -66,6 +68,18 @@ export interface OnlineSelfTestState {
   guestExists: boolean;
   // 재접속 전후에 같은 대국임을 확인하는 매치 식별자다.
   matchId: string | null;
+  // 방장 런타임이 현재 사용 중인 매치 식별자다.
+  hostMatchId: string | null;
+  // 참가자 런타임이 현재 사용 중인 매치 식별자다.
+  guestMatchId: string | null;
+  // 방장 결과 화면의 재대결 요청·응답 단계다.
+  hostRematchPhase: ReturnType<OnlineRuntime["getRematchStatus"]>["phase"] | null;
+  // 참가자 결과 화면의 재대결 요청·응답 단계다.
+  guestRematchPhase: ReturnType<OnlineRuntime["getRematchStatus"]>["phase"] | null;
+  // 방장이 기다리거나 응답할 재대결 요청 ID다.
+  hostRematchOfferId: string | null;
+  // 참가자가 기다리거나 응답할 재대결 요청 ID다.
+  guestRematchOfferId: string | null;
   // 마지막 전체 기록 재개 때 방장이 보낸 기록 꼬리와 스냅샷 JSON 바이트 합계다.
   resumeTransferBytes: number;
   // 새 참가자가 스냅샷 없이 전체 입력 재생만으로 권위 해시에 도달했는지 나타낸다.
@@ -123,6 +137,13 @@ export interface OnlineSelfTestApi {
   makeGuestOneTurnBehind(): Promise<OnlineSelfTestState>;
   // 지정 진영의 실제 온라인 기권 메시지를 실행한다.
   resign(side: PieceSide): Promise<OnlineSelfTestState>;
+  // 지정 진영에서 결과 화면의 재대결 요청을 보낸다.
+  offerRematch(side: PieceSide): Promise<OnlineSelfTestState>;
+  // 지정 진영에서 받은 재대결 요청을 수락하거나 거절한다.
+  respondRematch(
+    side: PieceSide,
+    accept: boolean,
+  ): Promise<OnlineSelfTestState>;
 }
 
 export interface OnlineSelfTestRuntime {
@@ -145,8 +166,8 @@ export interface OnlineSelfTestOptions {
   hostAimRuntime: AimRuntime;
   // 두 월드가 같은 발사 속도·타점 설정을 쓰게 할 현재 조절값이다.
   tuningSettings: RuntimeTuningSettings;
-  // 버프 없는 온라인 표준 보드로 화면 런타임을 초기화한다.
-  prepareHostBoard(): Promise<void>;
+  // 버프 없는 온라인 표준 보드로 화면 런타임을 초기화하며, 재대결 때는 현재 P2P 링크를 보존한다.
+  prepareHostBoard(preserveOnlineRuntime: boolean): Promise<void>;
   // 메인 입력·디버그 루프가 화면 호스트 온라인 런타임을 사용하도록 연결한다.
   setHostOnlineRuntime(runtime: OnlineRuntime | null): void;
   // 최초 호출이면 화면 RAF 루프를 시작한다.
@@ -291,6 +312,48 @@ async function createGuestMatch(
   );
   setTurnGameMode(turnRuntime, "online");
   return { physicsRuntime, sceneRuntime, turnRuntime };
+}
+
+/**
+ * 재대결 참가자도 최초 게스트와 같은 스폰·조절판·사전 정착 경로로 표준 보드를 다시 만든다.
+ */
+function resetGuestMatch(
+  match: GuestMatchRuntime,
+  options: OnlineSelfTestOptions,
+): void {
+  resetPhysicsPieces(
+    match.physicsRuntime,
+    options.assets.meta,
+    PIECE_INSTANCES,
+    { gameMode: "online", stageNumber: 1 },
+  );
+  const tuningRuntime = createTuningRuntime(
+    document.createElement("div"),
+    match.physicsRuntime,
+  );
+  Object.assign(tuningRuntime.settings, options.tuningSettings);
+  reapplyTuningPhysicsSettings(tuningRuntime);
+  preSettlePhysics(match.physicsRuntime);
+  for (const mesh of match.sceneRuntime.pieceMeshes.values()) {
+    match.sceneRuntime.scene.remove(mesh);
+  }
+  match.sceneRuntime.pieceMeshes.clear();
+  for (const binding of match.physicsRuntime.pieces.values()) {
+    const geometry = options.assets.geometries.get(
+      binding.instance.type,
+    );
+    if (geometry === undefined) {
+      throw new Error(
+        `${binding.instance.type} 재대결 게스트 geometry가 없습니다.`,
+      );
+    }
+    const mesh = new Mesh(geometry);
+    mesh.name = binding.instance.id;
+    match.sceneRuntime.scene.add(mesh);
+    match.sceneRuntime.pieceMeshes.set(binding.instance.id, mesh);
+  }
+  resetTurnRuntime(match.turnRuntime);
+  setTurnGameMode(match.turnRuntime, "online");
 }
 
 /**
@@ -663,6 +726,12 @@ export function createOnlineSelfTestRuntime(
         guestActive: false,
         guestExists: false,
         matchId: null,
+        hostMatchId: null,
+        guestMatchId: null,
+        hostRematchPhase: null,
+        guestRematchPhase: null,
+        hostRematchOfferId: null,
+        guestRematchOfferId: null,
         resumeTransferBytes: 0,
         resumeReplayMatched: null,
         comparedHostHash: null,
@@ -688,6 +757,9 @@ export function createOnlineSelfTestRuntime(
     const guestOnline = active.guestOnline;
     const guestMatch = active.guestMatch;
     const dynamicComparison = readDynamicComparison();
+    const hostRematch = active.hostOnline.getRematchStatus();
+    const guestRematch =
+      guestOnline?.getRematchStatus() ?? null;
     return {
       hostSide: "white",
       guestSide: "black",
@@ -707,6 +779,12 @@ export function createOnlineSelfTestRuntime(
       guestActive: guestOnline?.active ?? false,
       guestExists: guestOnline !== null && guestMatch !== null,
       matchId: active.hostOnline.matchId,
+      hostMatchId: active.hostOnline.matchId,
+      guestMatchId: guestOnline?.matchId ?? null,
+      hostRematchPhase: hostRematch.phase,
+      guestRematchPhase: guestRematch?.phase ?? null,
+      hostRematchOfferId: hostRematch.offerId,
+      guestRematchOfferId: guestRematch?.offerId ?? null,
       resumeTransferBytes:
         active.hostOnline.lastResumeTransferBytes,
       resumeReplayMatched:
@@ -827,7 +905,7 @@ export function createOnlineSelfTestRuntime(
   const api: OnlineSelfTestApi = {
     async start(): Promise<OnlineSelfTestState> {
       destroy();
-      await options.prepareHostBoard();
+      await options.prepareHostBoard(false);
       const guestMatch = await createGuestMatch(options);
       // 화면 월드는 재사용 월드 재시작, 게스트는 새 월드 생성이므로 사전 정착의 원시 비트와 접촉 캐시가 다를 수 있다.
       // 실제 온라인 복구 경로를 양쪽에 똑같이 적용해 좌표뿐 아니라 다음 물리 step의 출발 절차도 맞춘다.
@@ -854,7 +932,11 @@ export function createOnlineSelfTestRuntime(
           options.hostTurnRuntime,
           options.hostAimRuntime,
           "white",
-          {},
+          {
+            prepareRematch: async () => {
+              await options.prepareHostBoard(true);
+            },
+          },
           { matchId: SELF_TEST_MATCH_ID },
         );
         guestOnline = createOnlineRuntime(
@@ -862,7 +944,11 @@ export function createOnlineSelfTestRuntime(
           guestMatch.turnRuntime,
           null,
           "black",
-          {},
+          {
+            prepareRematch: async () => {
+              resetGuestMatch(guestMatch, options);
+            },
+          },
           { matchId: SELF_TEST_MATCH_ID },
         );
         active = {
@@ -1007,7 +1093,11 @@ export function createOnlineSelfTestRuntime(
           guestMatch.turnRuntime,
           null,
           "black",
-          {},
+          {
+            prepareRematch: async () => {
+              resetGuestMatch(guestMatch, options);
+            },
+          },
           { matchId: current.hostOnline.matchId },
         );
         current.guestMatch = guestMatch;
@@ -1127,6 +1217,53 @@ export function createOnlineSelfTestRuntime(
           active!.guestOnline?.active === false,
       );
       return readState();
+    },
+
+    async offerRematch(
+      side: PieceSide,
+    ): Promise<OnlineSelfTestState> {
+      if (
+        active === null ||
+        active.guestOnline === null
+      ) {
+        throw new Error("먼저 window.__onlineSelfTest.start()를 실행하세요.");
+      }
+      (side === "white"
+        ? active.hostOnline
+        : active.guestOnline
+      ).offerRematch();
+      return readState();
+    },
+
+    async respondRematch(
+      side: PieceSide,
+      accept: boolean,
+    ): Promise<OnlineSelfTestState> {
+      const current = active;
+      const guestOnline = current?.guestOnline ?? null;
+      if (current === null || guestOnline === null) {
+        throw new Error("먼저 window.__onlineSelfTest.start()를 실행하세요.");
+      }
+      const previousMatchId = current.hostOnline.matchId;
+      (side === "white"
+        ? current.hostOnline
+        : guestOnline
+      ).respondRematch(accept);
+      if (accept) {
+        await waitForCondition(
+          "재대결 표준 보드와 턴 0 해시 준비",
+          10_000,
+          () =>
+            current.hostOnline.active &&
+            guestOnline.active &&
+            current.hostOnline.matchId !== previousMatchId &&
+            current.hostOnline.matchId ===
+              guestOnline.matchId &&
+            current.hostOnline.nextTurnIndex === 0 &&
+            guestOnline.nextTurnIndex === 0,
+        );
+      }
+      return await refreshState();
     },
   };
 

@@ -71,7 +71,10 @@ import type {
   ReplayDevelopmentRuntime,
   ReplayHeaderSource,
 } from "./replay";
-import type { OnlineRuntime } from "./online";
+import type {
+  OnlineRematchStatus,
+  OnlineRuntime,
+} from "./online";
 import type { OnlineSelfTestRuntime } from "./tools/online-selftest";
 import {
   selectStageSpawnInstances,
@@ -117,7 +120,26 @@ function assertBoardTops(renderTop: number, physicsTop: number): void {
  * 최종 에셋을 읽고 씬과 물리를 구성한 뒤 고정 스텝 루프를 시작한다.
  */
 async function bootstrap(): Promise<void> {
-  app.replaceChildren();
+  const inlineLoadingPanel =
+    document.querySelector<HTMLElement>("#boot-loading");
+  const loadingPanel =
+    inlineLoadingPanel ?? document.createElement("section");
+  loadingPanel.className = "loading-panel";
+  loadingPanel.setAttribute("role", "status");
+  loadingPanel.setAttribute("aria-live", "polite");
+  let loadingPhase =
+    loadingPanel.querySelector<HTMLParagraphElement>(
+      "#boot-loading-phase",
+    );
+  if (loadingPhase === null) {
+    loadingPhase = document.createElement("p");
+    loadingPhase.id = "boot-loading-phase";
+    loadingPanel.replaceChildren(loadingPhase);
+  }
+  loadingPhase.textContent =
+    "ChessAlkkagi 에셋을 불러오는 중입니다";
+  // app을 비울 때 인라인 부트 노드를 함께 넘겨 같은 요소를 유지한다.
+  app.replaceChildren(loadingPanel);
   const metaRuntime = createMetaRuntime();
   let startModeAction:
     | ((mode: GameMode) => Promise<void>)
@@ -139,15 +161,28 @@ async function bootstrap(): Promise<void> {
       await returnToMenuAction();
     },
   );
-  const loadingPanel = document.createElement("section");
-  loadingPanel.className = "loading-panel";
-  loadingPanel.setAttribute("role", "status");
-  loadingPanel.setAttribute("aria-live", "polite");
-  loadingPanel.innerHTML =
-    "<p>ChessAlkkagi 에셋을 불러오는 중입니다…</p>";
-  app.append(loadingPanel);
-
-  const assets = await loadChessAssets();
+  const assets = await loadChessAssets((event) => {
+    const loadedBytes =
+      Number.isFinite(event.loaded) && event.loaded > 0
+        ? event.loaded
+        : 0;
+    if (
+      event.lengthComputable &&
+      Number.isFinite(event.total) &&
+      event.total > 0
+    ) {
+      const ratio = loadedBytes / event.total;
+      const percent = Number.isFinite(ratio)
+        ? Math.round(Math.min(1, Math.max(0, ratio)) * 100)
+        : 0;
+      loadingPhase.textContent =
+        `말 모델을 불러오는 중입니다 ${percent}%`;
+      return;
+    }
+    const downloadedMegabytes = loadedBytes / (1024 * 1024);
+    loadingPhase.textContent =
+      `말 모델을 불러오는 중입니다 ${downloadedMegabytes.toFixed(1)}MB`;
+  });
   if (
     new URLSearchParams(window.location.search).get("probe") === "1"
   ) {
@@ -171,14 +206,15 @@ async function bootstrap(): Promise<void> {
     boardHalfExtent,
   );
 
-  loadingPanel.textContent = "물리 월드를 준비하는 중입니다…";
+  loadingPhase.textContent = "물리 월드를 준비하는 중입니다";
   const physicsRuntime = await createPhysicsRuntime(
     assets.meta,
     PIECE_INSTANCES,
     boardHalfExtent,
   );
   assertBoardTops(sceneRuntime.boardTop, physicsRuntime.boardTop);
-  loadingPanel.textContent = "말의 시작 자세를 안정시키는 중입니다…";
+  loadingPhase.textContent =
+    "말의 시작 자세를 안정시키는 중입니다";
   preSettlePhysics(physicsRuntime);
   synchronizePieceMeshes(sceneRuntime, physicsRuntime);
   loadingPanel.remove();
@@ -446,6 +482,125 @@ async function bootstrap(): Promise<void> {
     }
   });
   const matchRuntime = createMatchRuntime(app, resetBoard);
+  const matchResultPanel =
+    matchRuntime.overlay.querySelector<HTMLElement>(
+      ".match-result-panel",
+    );
+  const matchResultActions =
+    matchRuntime.overlay.querySelector<HTMLElement>(
+      ".match-result-actions",
+    );
+  if (matchResultPanel === null || matchResultActions === null) {
+    throw new Error("온라인 재대결 버튼을 넣을 결과 화면이 없습니다.");
+  }
+  const rematchStatusText = document.createElement("p");
+  rematchStatusText.hidden = true;
+  rematchStatusText.setAttribute("aria-live", "polite");
+  const rematchButton = document.createElement("button");
+  rematchButton.type = "button";
+  rematchButton.textContent = "재대결";
+  rematchButton.hidden = true;
+  const rematchCancelButton = document.createElement("button");
+  rematchCancelButton.type = "button";
+  rematchCancelButton.textContent = "요청 취소";
+  rematchCancelButton.hidden = true;
+  const rematchAcceptButton = document.createElement("button");
+  rematchAcceptButton.type = "button";
+  rematchAcceptButton.textContent = "수락";
+  rematchAcceptButton.hidden = true;
+  const rematchDeclineButton = document.createElement("button");
+  rematchDeclineButton.type = "button";
+  rematchDeclineButton.textContent = "거절";
+  rematchDeclineButton.hidden = true;
+  matchResultPanel.insertBefore(
+    rematchStatusText,
+    matchResultActions,
+  );
+  matchResultActions.prepend(
+    rematchButton,
+    rematchCancelButton,
+    rematchAcceptButton,
+    rematchDeclineButton,
+  );
+
+  // 온라인 결과와 연결 상태를 함께 보고 필요한 재대결 조작만 노출한다.
+  const renderRematchControls = (
+    status: OnlineRematchStatus | null,
+  ): void => {
+    const showsOnlineResult =
+      gameModeRuntime?.mode === "online" &&
+      matchRuntime.winner !== null &&
+      status?.connected === true;
+    rematchButton.hidden = true;
+    rematchCancelButton.hidden = true;
+    rematchAcceptButton.hidden = true;
+    rematchDeclineButton.hidden = true;
+    rematchButton.disabled = false;
+    rematchButton.textContent = "재대결";
+    rematchStatusText.hidden = true;
+    rematchStatusText.textContent = "";
+    if (!showsOnlineResult || status === null) {
+      return;
+    }
+    if (status.phase === "idle") {
+      rematchButton.hidden = false;
+      return;
+    }
+    rematchStatusText.hidden = false;
+    rematchStatusText.textContent = status.message;
+    if (status.phase === "outgoing") {
+      rematchButton.hidden = false;
+      rematchButton.disabled = true;
+      rematchButton.textContent = "상대 응답을 기다리는 중";
+      rematchCancelButton.hidden = false;
+    } else if (status.phase === "incoming") {
+      rematchAcceptButton.hidden = false;
+      rematchDeclineButton.hidden = false;
+    } else if (status.phase === "declined") {
+      rematchButton.hidden = false;
+    }
+  };
+
+  // 재대결 UI 오류는 전체 스택을 남기고 결과 화면에서 이유를 바로 보여 준다.
+  const showRematchActionError = (error: unknown): void => {
+    const fullError =
+      error instanceof Error
+        ? (error.stack ?? error.message)
+        : String(error);
+    console.error(fullError);
+    rematchStatusText.hidden = false;
+    rematchStatusText.textContent =
+      error instanceof Error ? error.message : String(error);
+  };
+  rematchButton.addEventListener("click", () => {
+    try {
+      onlineRuntime?.offerRematch();
+    } catch (error: unknown) {
+      showRematchActionError(error);
+    }
+  });
+  rematchCancelButton.addEventListener("click", () => {
+    try {
+      onlineRuntime?.cancelRematch();
+    } catch (error: unknown) {
+      showRematchActionError(error);
+    }
+  });
+  rematchAcceptButton.addEventListener("click", () => {
+    try {
+      onlineRuntime?.respondRematch(true);
+    } catch (error: unknown) {
+      showRematchActionError(error);
+    }
+  });
+  rematchDeclineButton.addEventListener("click", () => {
+    try {
+      onlineRuntime?.respondRematch(false);
+    } catch (error: unknown) {
+      showRematchActionError(error);
+    }
+  });
+
   setMatchOverHandler(turnRuntime, (winner) => {
     lockInputForMatchOver(inputRuntime);
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
@@ -532,6 +687,11 @@ async function bootstrap(): Promise<void> {
         ? onlineRuntime?.mySide ?? null
         : null,
     );
+    if (gameMode === "online") {
+      renderRematchControls(
+        onlineRuntime?.getRematchStatus() ?? null,
+      );
+    }
   });
   let gameLoopStarted = false;
   const ensureGameLoopStarted = (): void => {
@@ -576,6 +736,19 @@ async function bootstrap(): Promise<void> {
         session.mySide,
         {
           onDisconnected: showDisconnectOverlay,
+          prepareRematch: async () => {
+            await resetBoard({
+              gameMode: "online",
+              stageNumber: 1,
+            });
+          },
+          onRematchStateChange: renderRematchControls,
+          onRematchStarted: () => {
+            hideDisconnectOverlay();
+            hideMatchResult(matchRuntime);
+            renderRematchControls(null);
+            onlineResignButton.hidden = false;
+          },
           onResigned: (resignedSide) => {
             hideDisconnectOverlay();
             onlineResignButton.hidden = true;
@@ -593,6 +766,9 @@ async function bootstrap(): Promise<void> {
               null,
               () => returnToMainMenu(menuRuntime),
               onlineRuntime?.mySide ?? null,
+            );
+            renderRematchControls(
+              onlineRuntime?.getRematchStatus() ?? null,
             );
           },
         },
@@ -619,6 +795,7 @@ async function bootstrap(): Promise<void> {
     onlineRuntime?.close();
     onlineRuntime = null;
     onlineResignButton.hidden = true;
+    renderRematchControls(null);
     hideDisconnectOverlay();
     await switchGameMode(gameModeRuntime, mode, true);
     ensureGameLoopStarted();
@@ -683,6 +860,7 @@ async function bootstrap(): Promise<void> {
     onlineRuntime?.close();
     onlineRuntime = null;
     onlineResignButton.hidden = true;
+    renderRematchControls(null);
     hideDisconnectOverlay();
     await switchGameMode(gameModeRuntime, "hotseat", true);
     hideMatchResult(matchRuntime);
@@ -721,14 +899,19 @@ async function bootstrap(): Promise<void> {
       hostTurnRuntime: turnRuntime,
       hostAimRuntime: aimRuntime,
       tuningSettings: tuningRuntime.settings,
-      async prepareHostBoard(): Promise<void> {
+      async prepareHostBoard(
+        preserveOnlineRuntime: boolean,
+      ): Promise<void> {
         if (gameModeRuntime === null) {
           throw new Error(
             "온라인 셀프테스트 대전 모드가 준비되지 않았습니다.",
           );
         }
-        onlineRuntime?.close();
-        onlineRuntime = null;
+        // 최초 시작만 이전 런타임을 닫고, 재대결 준비는 현재 P2P 링크를 그대로 사용한다.
+        if (!preserveOnlineRuntime) {
+          onlineRuntime?.close();
+          onlineRuntime = null;
+        }
         await switchGameMode(
           gameModeRuntime,
           "online",
