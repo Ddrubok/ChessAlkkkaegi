@@ -1,4 +1,8 @@
 import { Box3, MathUtils } from "three";
+import {
+  updateAiRuntime,
+  type AiRuntime,
+} from "./ai";
 import { updateAimVisuals, type AimRuntime } from "./aim";
 import {
   FIXED_STEP,
@@ -11,6 +15,7 @@ import {
   updateInputRuntime,
   type InputRuntime,
 } from "./input";
+import type { GameModeRuntime } from "./game-mode";
 import type {
   PhysicsRuntime,
   PieceBodyBinding,
@@ -206,6 +211,8 @@ export function startGameLoop(
   aimRuntime: AimRuntime,
   inputRuntime: InputRuntime,
   turnRuntime: TurnRuntime,
+  aiRuntime: AiRuntime,
+  gameModeRuntime: GameModeRuntime,
   tuningRuntime: TuningRuntime,
   boardHalfExtent: number,
 ): void {
@@ -305,6 +312,7 @@ export function startGameLoop(
         physicsRuntime,
       );
       updateTurnCamera(turnRuntime, now);
+      updateAiRuntime(aiRuntime, now);
       updateInputRuntime(inputRuntime, now);
       if (
         turnRuntime.phase !== "camera-rotating" &&
@@ -392,6 +400,7 @@ export function startGameLoop(
       physicsRuntime,
     );
     updateTurnCamera(turnRuntime, now);
+    updateAiRuntime(aiRuntime, now);
     updateInputRuntime(inputRuntime, now);
     if (
       turnRuntime.phase !== "camera-rotating" &&
@@ -434,11 +443,16 @@ export function startGameLoop(
         turnRuntime.currentSide === "white" ? "백" : "흑";
       const modeLabel =
         inputRuntime.mode === "classic" ? "클래식" : "당구";
+      const matchLabel =
+        gameModeRuntime.mode === "stage"
+          ? `스테이지${gameModeRuntime.stageNumber}`
+          : "2인";
       overlaySummaryText =
-        `${turnLabel}·${modeLabel}·수면${metrics.sleepingCount}/${physicsRuntime.pieces.size}` +
+        `${matchLabel}·${turnLabel}·${modeLabel}·수면${metrics.sleepingCount}/${physicsRuntime.pieces.size}` +
         `·OF${accumulatorOverflowCount}·상세`;
       overlayFullText = [
         `FPS: ${fps.toFixed(1)}`,
+        `대전 모드: ${gameModeRuntime.mode} / ${matchLabel}`,
         `현재 턴: ${turnRuntime.currentSide} / ${turnRuntime.phase}`,
         `입력 모드·상태: ${inputRuntime.mode} / ${inputRuntime.state} / ${selectedId}`,
         `시간 배속: ${tuningRuntime.settings.timeScale.toFixed(3)}×`,

@@ -8,7 +8,12 @@ import {
   REST_LINEAR_EPS,
 } from "./config";
 import type { LaunchRequest } from "./aim";
+import type { GameMode } from "./game-mode";
 import type { PieceSide } from "./layout";
+import {
+  determineMatchWinner,
+  type MatchWinner,
+} from "./match";
 import type {
   PhysicsRuntime,
   PieceBodyBinding,
@@ -16,8 +21,17 @@ import type {
 import type { SceneRuntime } from "./scene";
 import type { RuntimeTuningSettings } from "./tuning";
 
-export type TurnPhase = "settling" | "camera-rotating" | "ready";
+export type TurnPhase =
+  | "settling"
+  | "camera-rotating"
+  | "ready"
+  | "match-over";
 export type TurnCameraMode = "classic" | "billiards";
+
+export interface TurnLaunchRequest extends LaunchRequest {
+  // 플레이어는 1을 생략하고 흑 AI 스테이지 힘 버프만 목표 속도를 배수로 높인다.
+  speedMultiplier?: number;
+}
 
 interface CameraRotation {
   startedAt: number;
@@ -39,7 +53,7 @@ export interface TurnRuntime {
   // 정착 및 카메라 회전 동안 선택을 잠그는 턴 단계다.
   phase: TurnPhase;
   // 렌더 프레임이 아니라 다음 fixed-step 경계에 적용할 발사다.
-  pendingLaunch: LaunchRequest | null;
+  pendingLaunch: TurnLaunchRequest | null;
   // 초기 정착과 발사 뒤 정착을 구별해 전자에서는 턴을 넘기지 않는다.
   pendingTurnChange: boolean;
   // 모든 바디가 연속으로 느린 시간을 시뮬레이션 초로 누적한다.
@@ -60,8 +74,12 @@ export interface TurnRuntime {
   cameraRotation: CameraRotation | null;
   // 물리 제거와 입력 선택 목록 정리를 같은 경계에서 연결한다.
   onPieceRemoved: ((pieceId: string) => void) | null;
+  // 마지막 정착 뒤 승자가 생기면 카메라 회전 대신 결과 화면을 여는 연결점이다.
+  onMatchOver: ((winner: MatchWinner) => void) | null;
   // 당구식에서만 선택 중심과 근접 거리를 판 전체 보기로 함께 복원하도록 현재 모드를 보존한다.
   turnCameraMode: TurnCameraMode;
+  // 턴 교대 카메라와 흑 AI 제어 여부를 구분하는 현재 대전 모드다.
+  gameMode: GameMode;
   // 직전 발사 말에만 CCD를 유지하고 정착하면 즉시 해제하기 위한 id다.
   ccdPieceId: string | null;
   // 발사 강도와 라이브 물리값을 재생성 없이 참조하는 런타임 설정이다.
@@ -182,6 +200,13 @@ function readCameraAzimuth(sceneRuntime: SceneRuntime): number {
  */
 function beginTurnCameraRotation(runtime: TurnRuntime): void {
   const controls = runtime.sceneRuntime.controls;
+  if (typeof controls.update !== "function") {
+    // 브라우저 OrbitControls가 없는 헤드리스 물리 회귀는 카메라 애니메이션 없이 턴만 준비 상태로 넘긴다.
+    runtime.cameraRotation = null;
+    runtime.phase = "ready";
+    controls.enabled = true;
+    return;
+  }
   const dampingEnabled = controls.enableDamping;
   controls.enableDamping = false;
   controls.update();
@@ -304,7 +329,9 @@ export function createTurnRuntime(
     forcedSettleCountedForCurrentSettle: false,
     cameraRotation: null,
     onPieceRemoved: null,
+    onMatchOver: null,
     turnCameraMode: "billiards",
+    gameMode: "hotseat",
     ccdPieceId: null,
     tuningSettings,
   };
@@ -318,6 +345,16 @@ export function setTurnCameraMode(
   mode: TurnCameraMode,
 ): void {
   runtime.turnCameraMode = mode;
+}
+
+/**
+ * 현재 대전 모드를 턴 교대 카메라 정책에 반영한다.
+ */
+export function setTurnGameMode(
+  runtime: TurnRuntime,
+  mode: GameMode,
+): void {
+  runtime.gameMode = mode;
 }
 
 /**
@@ -350,6 +387,16 @@ export function setPieceRemovalHandler(
 }
 
 /**
+ * 턴 모듈이 DOM을 직접 알지 않고 결과 화면을 열도록 매치 종료 후크를 연결한다.
+ */
+export function setMatchOverHandler(
+  runtime: TurnRuntime,
+  handler: (winner: MatchWinner) => void,
+): void {
+  runtime.onMatchOver = handler;
+}
+
+/**
  * 현재 턴이 준비됐고 제거 대기 중이 아닌 활성 진영의 말만 선택하도록 판정한다.
  */
 export function canSelectTurnPiece(
@@ -377,7 +424,7 @@ export interface LaunchQueueResult {
  */
 export function queueTurnLaunch(
   runtime: TurnRuntime,
-  request: LaunchRequest,
+  request: TurnLaunchRequest,
 ): LaunchQueueResult {
   if (!canSelectTurnPiece(runtime, request.pieceId)) {
     return {
@@ -420,8 +467,16 @@ export function applyPendingLaunchBeforeStep(
   const preLaunchPosition = binding.body.translation();
   const preLaunchRotation = binding.body.rotation();
   const applicationPoint = request.applicationPoint;
+  const speedMultiplier = request.speedMultiplier ?? 1;
+  if (!Number.isFinite(speedMultiplier) || speedMultiplier <= 0) {
+    throw new Error(
+      `발사 속도 배수 ${speedMultiplier}가 유한한 양수가 아닙니다.`,
+    );
+  }
   const targetSpeed =
-    request.normalizedPower * runtime.tuningSettings.maxLaunchSpeed;
+    request.normalizedPower *
+    runtime.tuningSettings.maxLaunchSpeed *
+    speedMultiplier;
   const impulseMagnitude = binding.body.mass() * targetSpeed;
   const impulse = {
     x: request.direction.x * impulseMagnitude,
@@ -465,7 +520,7 @@ export function applyPendingLaunchBeforeStep(
   const posture =
     Math.acos(upDot) * (180 / Math.PI) < 30 ? "직립" : "넘어짐";
   console.info(
-    `[발사] step=${runtime.physicsStepNumber + 1}, ${binding.instance.id}(${posture}), 시작 위치=(${preLaunchPosition.x.toFixed(6)}, ${preLaunchPosition.y.toFixed(6)}, ${preLaunchPosition.z.toFixed(6)}), 시작 회전=(${preLaunchRotation.x.toFixed(8)}, ${preLaunchRotation.y.toFixed(8)}, ${preLaunchRotation.z.toFixed(8)}, ${preLaunchRotation.w.toFixed(8)}), 방향=(${request.direction.x.toFixed(8)}, ${request.direction.y.toFixed(8)}, ${request.direction.z.toFixed(8)}), 적용점=(${applicationPoint.x.toFixed(6)}, ${applicationPoint.y.toFixed(6)}, ${applicationPoint.z.toFixed(6)}), power=${request.normalizedPower.toFixed(4)}, target Δv=${targetSpeed.toFixed(6)}, actual Δv=${deltaVelocity.length().toFixed(6)}, 오차=${(relativeError * 100).toFixed(3)}%`,
+    `[발사] step=${runtime.physicsStepNumber + 1}, ${binding.instance.id}(${posture}), 시작 위치=(${preLaunchPosition.x.toFixed(6)}, ${preLaunchPosition.y.toFixed(6)}, ${preLaunchPosition.z.toFixed(6)}), 시작 회전=(${preLaunchRotation.x.toFixed(8)}, ${preLaunchRotation.y.toFixed(8)}, ${preLaunchRotation.z.toFixed(8)}, ${preLaunchRotation.w.toFixed(8)}), 방향=(${request.direction.x.toFixed(8)}, ${request.direction.y.toFixed(8)}, ${request.direction.z.toFixed(8)}), 적용점=(${applicationPoint.x.toFixed(6)}, ${applicationPoint.y.toFixed(6)}, ${applicationPoint.z.toFixed(6)}), power=${request.normalizedPower.toFixed(4)}, speed multiplier=${speedMultiplier.toFixed(4)}, target Δv=${targetSpeed.toFixed(6)}, actual Δv=${deltaVelocity.length().toFixed(6)}, 오차=${(relativeError * 100).toFixed(3)}%`,
   );
   if (relativeError > 0.01) {
     console.error(
@@ -536,8 +591,20 @@ function completeSettlement(runtime: TurnRuntime): void {
     return;
   }
   runtime.pendingTurnChange = false;
+  const winner = determineMatchWinner(
+    countRemainingPieces(runtime),
+    runtime.currentSide,
+  );
+  if (winner !== null) {
+    runtime.cameraRotation = null;
+    runtime.phase = "match-over";
+    runtime.sceneRuntime.controls.enabled = false;
+    runtime.onMatchOver?.(winner);
+    return;
+  }
   runtime.currentSide =
     runtime.currentSide === "white" ? "black" : "white";
+  // 스테이지 대전도 2인 대전과 같은 턴 카메라 회전을 쓴다 (07-26 개발자 결정으로 백 시점 고정 폐기).
   beginTurnCameraRotation(runtime);
 }
 
@@ -609,4 +676,24 @@ export function countRemainingPieces(
     }
   }
   return { white, black };
+}
+
+/**
+ * 새 물리·렌더 말이 준비된 뒤 콜백과 입력 모드는 보존하고 백 선공 상태만 초기화한다.
+ */
+export function resetTurnRuntime(runtime: TurnRuntime): void {
+  runtime.currentSide = "white";
+  runtime.phase = "ready";
+  runtime.pendingLaunch = null;
+  runtime.pendingTurnChange = false;
+  runtime.restHoldSeconds = 0;
+  runtime.settleSeconds = 0;
+  runtime.pendingRemovalIds.clear();
+  runtime.lastLaunchPower = 0;
+  runtime.lastLaunchInitialSpeed = 0;
+  runtime.physicsStepNumber = 0;
+  runtime.forcedSettleCount = 0;
+  runtime.forcedSettleCountedForCurrentSettle = false;
+  runtime.cameraRotation = null;
+  runtime.ccdPieceId = null;
 }

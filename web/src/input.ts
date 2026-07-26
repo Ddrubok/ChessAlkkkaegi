@@ -108,6 +108,10 @@ export interface InputModeStrategy {
 }
 
 export interface InputPolicy {
+  // 결과 화면 동안 포인터·키·카메라 입력을 한 가드로 막는 매치 상태 판정이다.
+  isInputBlocked: () => boolean;
+  // AI가 공유 조준 표시를 소유할 때 플레이어 선택 정리만 건너뛰는 판정이다.
+  isExternalAimActive: () => boolean;
   canSelectPiece: (pieceId: string) => boolean;
   isCameraRotating: () => boolean;
   queueLaunch: (request: LaunchRequest) => LaunchQueueOutcome;
@@ -640,7 +644,8 @@ function cancelInteraction(
   controls.enableDamping = true;
   controls.enabled =
     runtime.cameraTransition === null &&
-    !runtime.policy.isCameraRotating();
+    !runtime.policy.isCameraRotating() &&
+    !runtime.policy.isInputBlocked();
   runtime.state =
     !clearSelection &&
     runtime.mode === "billiards" &&
@@ -876,6 +881,15 @@ function handleCanvasPointerDown(
   runtime: InputRuntime,
   event: PointerEvent,
 ): void {
+  if (runtime.policy.isInputBlocked()) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
+  if (runtime.policy.isExternalAimActive()) {
+    // AI 조준 중에는 선택만 무시하고 이벤트를 막지 않아 OrbitControls 공전은 계속 허용한다.
+    return;
+  }
   if (runtime.state === "charging") {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -985,6 +999,10 @@ function handleCanvasPointerMove(
   runtime: InputRuntime,
   event: PointerEvent,
 ): void {
+  if (runtime.policy.isInputBlocked()) {
+    event.preventDefault();
+    return;
+  }
   const gesture = runtime.gesture;
   if (
     event.pointerId !== runtime.activePointerId ||
@@ -1032,6 +1050,10 @@ function handleCanvasPointerUp(
   runtime: InputRuntime,
   event: PointerEvent,
 ): void {
+  if (runtime.policy.isInputBlocked()) {
+    event.preventDefault();
+    return;
+  }
   const gesture = runtime.gesture;
   if (
     event.pointerId !== runtime.activePointerId ||
@@ -1090,7 +1112,8 @@ function integrateKeyboardCamera(
     wallDeltaSeconds <= 0 ||
     runtime.heldCameraKeys.size === 0 ||
     runtime.cameraTransition !== null ||
-    runtime.policy.isCameraRotating()
+    runtime.policy.isCameraRotating() ||
+    runtime.policy.isInputBlocked()
   ) {
     return;
   }
@@ -1229,6 +1252,16 @@ export function createInputRuntime(
   canvas.addEventListener("lostpointercapture", cancelPointer);
 
   window.addEventListener("keydown", (event) => {
+    if (runtime.policy.isInputBlocked()) {
+      if (
+        event.code === "Escape" ||
+        CAMERA_KEY_CODES.has(event.code)
+      ) {
+        event.preventDefault();
+      }
+      runtime.heldCameraKeys.clear();
+      return;
+    }
     if (event.code === "Escape") {
       cancelInteraction(runtime, false);
       return;
@@ -1333,8 +1366,10 @@ export function updateInputRuntime(
     }
   }
 
+  const externalAimActive =
+    runtime.policy.isExternalAimActive();
   const selectedId = runtime.aimRuntime.selectedPieceId;
-  if (selectedId !== null) {
+  if (selectedId !== null && !externalAimActive) {
     const binding = runtime.physicsRuntime.pieces.get(selectedId);
     if (
       binding === undefined ||
@@ -1353,13 +1388,15 @@ export function updateInputRuntime(
   const controls = runtime.sceneRuntime.controls;
   const aimingWithCamera =
     runtime.mode === "billiards" &&
-    runtime.aimRuntime.selectedPieceId !== null;
+    runtime.aimRuntime.selectedPieceId !== null &&
+    !externalAimActive;
   controls.enableDamping = !aimingWithCamera;
   controls.enabled =
     runtime.cameraTransition === null &&
     runtime.state !== "charging" &&
     runtime.state !== "aiming" &&
-    !runtime.policy.isCameraRotating();
+    !runtime.policy.isCameraRotating() &&
+    !runtime.policy.isInputBlocked();
   if (aimingWithCamera) {
     try {
       refreshBilliardsPreview(runtime);
@@ -1406,4 +1443,67 @@ export function handleInputPieceRemoved(
   if (wasSelected && runtime.mode === "billiards") {
     beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
   }
+}
+
+/**
+ * 결과 화면이 열릴 때 진행 중 입력·펄스·카메라 보간을 정리하고 조작을 잠근다.
+ */
+export function lockInputForMatchOver(runtime: InputRuntime): void {
+  cancelInteraction(runtime, true);
+  runtime.cameraTransition = null;
+  runtime.heldCameraKeys.clear();
+  for (const pulse of runtime.aimRuntime.pulses.values()) {
+    pulse.mesh.scale.setScalar(1);
+  }
+  runtime.aimRuntime.pulses.clear();
+  runtime.sceneRuntime.controls.enabled = false;
+}
+
+/**
+ * 새 32개 말 id를 선택 목록에 넣고 현재 모드를 보존한 백 기본 시점으로 즉시 돌아간다.
+ */
+export function resetInputAfterMatch(
+  runtime: InputRuntime,
+  pieceIds: Iterable<string>,
+): void {
+  cancelInteraction(runtime, true);
+  runtime.cameraTransition = null;
+  runtime.selectablePieceIds = new Set(pieceIds);
+  runtime.heldCameraKeys.clear();
+  runtime.lastUpdateTime = null;
+  runtime.adaptiveCloseDistance = null;
+  runtime.failureReason = null;
+  const controls = runtime.sceneRuntime.controls;
+  const policy = runtime.strategy.cameraPolicy;
+  const distance = runtime.sceneRuntime.minimumCameraDistance;
+  const minPolarAngle = MathUtils.degToRad(
+    90 - policy.maxPitchDegrees,
+  );
+  const maxPolarAngle = MathUtils.degToRad(
+    90 - policy.minPitchDegrees,
+  );
+  const phi = MathUtils.clamp(
+    Math.PI / 2 - MathUtils.degToRad(CAMERA_PITCH_DEG),
+    minPolarAngle,
+    maxPolarAngle,
+  );
+  controls.target.set(0, 0, 0);
+  controls.minPolarAngle = minPolarAngle;
+  controls.maxPolarAngle = maxPolarAngle;
+  controls.minDistance = distance;
+  controls.maxDistance =
+    runtime.mode === "classic"
+      ? Math.max(
+          distance * 1.8,
+          runtime.sceneRuntime.boardHalfExtent * 4,
+        )
+      : distance;
+  runtime.sceneRuntime.camera.position
+    .setFromSpherical(new Spherical(distance, phi, Math.PI))
+    .add(controls.target);
+  runtime.sceneRuntime.camera.lookAt(controls.target);
+  runtime.lastValidAzimuth = Math.PI;
+  controls.enableDamping = true;
+  controls.enabled = true;
+  controls.update();
 }

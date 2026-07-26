@@ -44,6 +44,48 @@ export const MAX_DRAG_PIXELS = 180;
 // 최대 세기에서 질량과 무관하게 목표로 하는 발사 직후 속도다.
 export const MAX_LAUNCH_SPEED = 11;
 
+// 흑 준비 턴이 된 뒤 실제 조준 고리를 보여 주기 전까지 기다리는 실시간 초다.
+export const AI_AIM_PREVIEW_DELAY = 0.25;
+
+// AI의 실제 세기를 0에서 최종값까지 기존 조준 색·활시위로 충전하는 실시간 초다.
+export const AI_AIM_CHARGE_SECONDS = 0.9;
+
+// 짝수 스테이지 한 단계마다 흑 말의 원래 hull 질량에 더하는 비율이다.
+export const STAGE_WEIGHT_STEP = 0.1;
+
+// 3 이상 홀수 스테이지 한 단계마다 흑 AI 목표 발사 속도에 더하는 비율이다.
+export const STAGE_FORCE_STEP = 0.05;
+
+// 3의 배수 스테이지 한 단계마다 흑 말의 렌더와 콜라이더에 더하는 균일 배율이다.
+export const STAGE_SIZE_STEP = 0.03;
+
+// 보드 격자에 물리적으로 들어가는 총 배율 상한이다. 초고스테이지에서 지그재그로도 안 들어가는 것을 막되 중량·힘 버프는 계속 누적한다.
+export const STAGE_MAX_PIECE_SCALE = 2.2;
+
+// 크기 카드를 한 번 고를 때 백 말의 총 배율에 더하는 값이다.
+export const CARD_SIZE_STEP = 0.03;
+
+// 중량 카드를 한 번 고를 때 백 말의 원래 hull 질량에 더하는 비율이다.
+export const CARD_WEIGHT_STEP = 0.1;
+
+// 힘 카드를 한 번 고를 때 플레이어 목표 발사 속도에 더하는 비율이다.
+export const CARD_FORCE_STEP = 0.05;
+
+// 뒷줄 최악 인접쌍(퀸+킹) 받침 합 0.429 × s가 칸 간격 0.536 − 0.02 이하가 되는 실측 상한이다. 카드로 그 이상 쌓아도 백 일반 말은 여기서 멈춘다.
+export const PLAYER_MAX_SIZE_SCALE = 1.2;
+
+// 스테이지 하나를 클리어할 때 즉시 지급하고 저장하는 영구 메타 포인트다.
+export const STAGE_CLEAR_POINTS = 100;
+
+// 영구 힘·중량 강화 한 레벨이 원래 속도·hull 질량에 더하는 비율이다.
+export const PERMANENT_UPGRADE_STEP = 0.01;
+
+// 말 종류별 힘·중량 트랙에서 구매할 수 있는 최대 레벨이다.
+export const PERMANENT_UPGRADE_MAX_LEVEL = 10;
+
+// 현재 레벨 N에서 다음 레벨을 살 때 (N + 1)에 곱하는 선형 비용 단위다.
+export const PERMANENT_UPGRADE_COST_UNIT = 100;
+
 // 세기와 무관한 짧은 경로 모양만 만들도록 실제 발사 속도와 분리한 안내용 기준 속도다.
 export const NOMINAL_GUIDE_SPEED = 3.5;
 

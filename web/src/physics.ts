@@ -13,14 +13,17 @@ import {
   PIECE_LINEAR_DAMPING,
   PIECE_RESTITUTION,
   PRE_SETTLE_MAX_STEPS,
-  SPAWN_GAP,
   WORLD_LENGTH_UNIT,
   type PieceType,
 } from "./config";
+import type { PieceInstance } from "./layout";
 import {
-  getCellCenter,
-  type PieceInstance,
-} from "./layout";
+  computeStagePieceScale,
+  computeStageSpawnPose,
+  computeUpgradeWeightFraction,
+  selectStageSpawnInstances,
+  type StageSpawnOptions,
+} from "./stage";
 
 export interface PieceMassProperties {
   mass: number;
@@ -42,6 +45,13 @@ export interface SpawnTranslation {
   z: number;
 }
 
+export interface SpawnRotation {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+}
+
 export interface PieceBodyBinding {
   // 개체 상태와 렌더 메시를 같은 id로 다시 찾기 위한 원본 인스턴스다.
   instance: PieceInstance;
@@ -49,12 +59,18 @@ export interface PieceBodyBinding {
   collider: RAPIER.Collider;
   // 이동량을 월드 원점이 아니라 실제 스폰 위치에서 재기 위한 기준점이다.
   spawnTranslation: SpawnTranslation;
+  // 포복 시작도 다시 검증할 수 있도록 보존하는 의도된 스폰 회전이다.
+  spawnRotation: SpawnRotation;
   // 밑동 추를 반복 조절해도 복리로 커지지 않도록 최초 hull 질량을 보존한다.
   originalHullMass: number;
   // 추가 점 질량과 합성된 목표 무게중심을 검증하기 위한 최초 로컬 무게중심이다.
   originalLocalCom: SpawnTranslation;
   // 밑동 추의 로컬 높이를 메시 자세와 무관하게 계산하는 원본 말 높이다.
   localPieceHeight: number;
+  // 렌더 메시와 콜라이더에 함께 적용된 현재 균일 크기 배율이다.
+  uniformScale: number;
+  // 조절판 추가 질량과 별도로 합성해야 하는 스테이지·런 카드 추가 질량 합계다.
+  upgradeAdditionalMass: number;
 }
 
 export interface PhysicsRuntime {
@@ -78,15 +94,16 @@ interface SpawnAabb {
 
 interface BodyCreationState {
   translation: SpawnTranslation;
-  rotation: {
-    x: number;
-    y: number;
-    z: number;
-    w: number;
-  };
+  rotation: SpawnRotation;
   linearVelocity: SpawnTranslation;
   angularVelocity: SpawnTranslation;
 }
+
+// 첫 로딩과 핫시트 재시작에서는 스테이지 버프를 전혀 적용하지 않는다.
+const DEFAULT_STAGE_SPAWN_OPTIONS: StageSpawnOptions = {
+  gameMode: "hotseat",
+  stageNumber: 1,
+};
 
 /**
  * Rapier가 계산한 질량·무게중심·주관성 모멘트가 물리 계산에 쓸 수 있는지 검증한다.
@@ -127,7 +144,7 @@ function readMassProperties(
 }
 
 /**
- * 스폰 회전까지 반영한 콜라이더 점 AABB를 만들어 496개 말 쌍의 초기 겹침을 검사한다.
+ * 스폰 회전까지 반영한 콜라이더 점 AABB를 만들어 모든 말 쌍의 초기 겹침을 검사한다.
  */
 function computeSpawnAabb(
   binding: PieceBodyBinding,
@@ -141,11 +158,45 @@ function computeSpawnAabb(
     minZ: Number.POSITIVE_INFINITY,
     maxZ: Number.NEGATIVE_INFINITY,
   };
-  const yawSign = binding.instance.side === "black" ? -1 : 1;
+  const rotation = binding.spawnRotation;
   for (const point of pieceMeta.colliderPoints) {
-    const x = binding.spawnTranslation.x + point[0] * yawSign;
-    const y = binding.spawnTranslation.y + point[1];
-    const z = binding.spawnTranslation.z + point[2] * yawSign;
+    const localX = point[0] * binding.uniformScale;
+    const localY = point[1] * binding.uniformScale;
+    const localZ = point[2] * binding.uniformScale;
+    const ix =
+      rotation.w * localX +
+      rotation.y * localZ -
+      rotation.z * localY;
+    const iy =
+      rotation.w * localY +
+      rotation.z * localX -
+      rotation.x * localZ;
+    const iz =
+      rotation.w * localZ +
+      rotation.x * localY -
+      rotation.y * localX;
+    const iw =
+      -rotation.x * localX -
+      rotation.y * localY -
+      rotation.z * localZ;
+    const x =
+      binding.spawnTranslation.x +
+      ix * rotation.w +
+      iw * -rotation.x +
+      iy * -rotation.z -
+      iz * -rotation.y;
+    const y =
+      binding.spawnTranslation.y +
+      iy * rotation.w +
+      iw * -rotation.y +
+      iz * -rotation.x -
+      ix * -rotation.z;
+    const z =
+      binding.spawnTranslation.z +
+      iz * rotation.w +
+      iw * -rotation.z +
+      ix * -rotation.y -
+      iy * -rotation.x;
     aabb.minX = Math.min(aabb.minX, x);
     aabb.maxX = Math.max(aabb.maxX, x);
     aabb.minY = Math.min(aabb.minY, y);
@@ -176,6 +227,7 @@ function spawnAabbsOverlap(left: SpawnAabb, right: SpawnAabb): boolean {
 function validateSpawnOverlaps(
   runtime: PhysicsRuntime,
   meta: ChessSetMeta,
+  allowStagePreSettle: boolean,
 ): void {
   const bindings = [...runtime.pieces.values()];
   const aabbs = bindings.map((binding) =>
@@ -194,10 +246,21 @@ function validateSpawnOverlaps(
   console.info(
     `[물리] 시작 시 말 쌍 AABB 겹침: ${overlapCount}/${pairCount}쌍`,
   );
-  if (pairCount !== 496) {
-    throw new Error(`초기 말 쌍이 496개가 아니라 ${pairCount}개입니다.`);
+  const expectedPairCount =
+    (bindings.length * (bindings.length - 1)) / 2;
+  if (pairCount !== expectedPairCount) {
+    throw new Error(
+      `초기 말 쌍이 ${expectedPairCount}개가 아니라 ${pairCount}개입니다.`,
+    );
   }
   if (overlapCount !== 0) {
+    // 스테이지 크기 버프의 AABB는 실제 볼록 콜라이더보다 보수적이므로 사전 안정화가 최종 안전성을 판정한다.
+    if (allowStagePreSettle) {
+      console.info(
+        `[물리] 스테이지 버프 AABB 겹침 ${overlapCount}쌍은 사전 안정화에서 실제 콜라이더로 검증합니다.`,
+      );
+      return;
+    }
     throw new Error(`스폰 시 ${overlapCount}개 말 쌍이 겹칩니다.`);
   }
 }
@@ -209,6 +272,7 @@ function createPieceColliderDescriptor(
   type: PieceType,
   colliderPoints: readonly ColliderPoint[],
   density: number,
+  uniformScale: number,
 ): RAPIER.ColliderDesc {
   if (!Number.isFinite(density) || density <= 0) {
     throw new Error(`${type} 콜라이더 밀도 ${density}가 유한한 양수가 아닙니다.`);
@@ -216,15 +280,20 @@ function createPieceColliderDescriptor(
   if (colliderPoints.length < 4) {
     throw new Error(`${type} 콜라이더 점은 최소 4개가 필요합니다.`);
   }
+  if (!Number.isFinite(uniformScale) || uniformScale <= 0) {
+    throw new Error(
+      `${type} 콜라이더 배율 ${uniformScale}가 유한한 양수가 아닙니다.`,
+    );
+  }
   const colliderVertices = new Float32Array(colliderPoints.length * 3);
   for (let index = 0; index < colliderPoints.length; index += 1) {
     const point = colliderPoints[index];
     if (!point.every(Number.isFinite)) {
       throw new Error(`${type} ${index}번 콜라이더 점에 유한하지 않은 좌표가 있습니다.`);
     }
-    colliderVertices[index * 3] = point[0];
-    colliderVertices[index * 3 + 1] = point[1];
-    colliderVertices[index * 3 + 2] = point[2];
+    colliderVertices[index * 3] = point[0] * uniformScale;
+    colliderVertices[index * 3 + 1] = point[1] * uniformScale;
+    colliderVertices[index * 3 + 2] = point[2] * uniformScale;
   }
   const descriptor = RAPIER.ColliderDesc.convexHull(colliderVertices);
   if (descriptor === null) {
@@ -245,7 +314,10 @@ function createPieceBodyFromState(
   colliderDescriptor: RAPIER.ColliderDesc,
   state: BodyCreationState,
   spawnTranslation: SpawnTranslation,
+  spawnRotation: SpawnRotation,
   localPieceHeight: number,
+  uniformScale: number,
+  upgradeWeightFraction: number,
   forceMassLog: boolean,
 ): PieceBodyBinding {
   const bodyDescriptor = RAPIER.RigidBodyDesc.dynamic()
@@ -270,14 +342,28 @@ function createPieceBodyFromState(
 
   const hadMassProperties = runtime.massProperties.has(instance.type);
   const properties = readMassProperties(body, instance.type);
+  const upgradeAdditionalMass =
+    properties.mass * upgradeWeightFraction;
+  if (upgradeAdditionalMass > 0) {
+    body.setAdditionalMassProperties(
+      upgradeAdditionalMass,
+      { x: 0, y: localPieceHeight * 0.06, z: 0 },
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0, w: 1 },
+      false,
+    );
+  }
   const binding: PieceBodyBinding = {
     instance,
     body,
     collider,
     spawnTranslation,
+    spawnRotation,
     originalHullMass: properties.mass,
     originalLocalCom: { ...properties.localCom },
     localPieceHeight,
+    uniformScale,
+    upgradeAdditionalMass,
   };
   runtime.pieces.set(instance.id, binding);
   runtime.massProperties.set(instance.type, properties);
@@ -296,6 +382,7 @@ export function createPieceBody(
   runtime: PhysicsRuntime,
   instance: PieceInstance,
   meta: ChessSetMeta,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): PieceBodyBinding {
   if (runtime.pieces.has(instance.id)) {
     throw new Error(`물리 개체 id ${instance.id}가 이미 존재합니다.`);
@@ -304,14 +391,21 @@ export function createPieceBody(
   if (pieceMeta === undefined) {
     throw new Error(`${instance.type} 콜라이더 메타데이터가 없습니다.`);
   }
-  const center = getCellCenter(instance.startingSquare, meta.cellSize);
-  const spawnTranslation = { x: center.x, y: SPAWN_GAP, z: center.z };
+  const pose = computeStageSpawnPose(instance, meta, stageOptions);
+  const uniformScale = computeStagePieceScale(
+    instance,
+    meta,
+    stageOptions,
+  );
+  const upgradeWeightFraction = computeUpgradeWeightFraction(
+    instance,
+    stageOptions,
+  );
+  const spawnTranslation = { ...pose.translation };
+  const spawnRotation = { ...pose.rotation };
   const state: BodyCreationState = {
     translation: { ...spawnTranslation },
-    rotation:
-      instance.side === "black"
-        ? { x: 0, y: 1, z: 0, w: 0 }
-        : { x: 0, y: 0, z: 0, w: 1 },
+    rotation: { ...spawnRotation },
     linearVelocity: { x: 0, y: 0, z: 0 },
     angularVelocity: { x: 0, y: 0, z: 0 },
   };
@@ -319,6 +413,7 @@ export function createPieceBody(
     instance.type,
     pieceMeta.colliderPoints,
     PIECE_DENSITY,
+    uniformScale,
   );
   return createPieceBodyFromState(
     runtime,
@@ -326,7 +421,10 @@ export function createPieceBody(
     colliderDescriptor,
     state,
     spawnTranslation,
-    pieceMeta.bounds.y,
+    spawnRotation,
+    pieceMeta.bounds.y * uniformScale,
+    uniformScale,
+    upgradeWeightFraction,
     false,
   );
 }
@@ -348,6 +446,7 @@ export function replacePieceBody(
     existing.instance.type,
     colliderPoints,
     density,
+    existing.uniformScale,
   );
   const translation = existing.body.translation();
   const rotation = existing.body.rotation();
@@ -377,6 +476,7 @@ export function replacePieceBody(
     },
   };
   const spawnTranslation = { ...existing.spawnTranslation };
+  const spawnRotation = { ...existing.spawnRotation };
 
   runtime.world.removeCollider(existing.collider, true);
   runtime.world.removeRigidBody(existing.body);
@@ -388,7 +488,10 @@ export function replacePieceBody(
     colliderDescriptor,
     state,
     spawnTranslation,
+    spawnRotation,
     existing.localPieceHeight,
+    existing.uniformScale,
+    existing.upgradeAdditionalMass / existing.originalHullMass,
     true,
   );
 }
@@ -400,6 +503,7 @@ export async function createPhysicsRuntime(
   meta: ChessSetMeta,
   instances: readonly PieceInstance[],
   boardHalfExtent: number,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): Promise<PhysicsRuntime> {
   await RAPIER.init();
   const world = new RAPIER.World({ x: 0, y: GRAVITY_Y, z: 0 });
@@ -429,10 +533,14 @@ export async function createPhysicsRuntime(
     massProperties: new Map(),
   };
 
-  for (const instance of instances) {
-    createPieceBody(runtime, instance, meta);
+  const spawnInstances = selectStageSpawnInstances(
+    instances,
+    stageOptions,
+  );
+  for (const instance of spawnInstances) {
+    createPieceBody(runtime, instance, meta, stageOptions);
   }
-  validateSpawnOverlaps(runtime, meta);
+  validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
   return runtime;
 }
 
@@ -466,4 +574,38 @@ export function preSettlePhysics(
     );
   }
   return { steps, cpuMilliseconds };
+}
+
+/**
+ * 보드 월드는 유지하면서 기존 말 바디와 연결표를 모두 비우고 표준 배치를 다시 만든다.
+ */
+export function resetPhysicsPieces(
+  runtime: PhysicsRuntime,
+  meta: ChessSetMeta,
+  instances: readonly PieceInstance[],
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of [...runtime.pieces.values()]) {
+    runtime.world.removeRigidBody(binding.body);
+  }
+  runtime.pieces.clear();
+  runtime.massProperties.clear();
+  const spawnInstances = selectStageSpawnInstances(
+    instances,
+    stageOptions,
+  );
+  for (const instance of spawnInstances) {
+    createPieceBody(runtime, instance, meta, stageOptions);
+  }
+  validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
+  const expectedWorldCount = spawnInstances.length + 1;
+  if (
+    runtime.pieces.size !== spawnInstances.length ||
+    runtime.world.bodies.len() !== expectedWorldCount ||
+    runtime.world.colliders.len() !== expectedWorldCount
+  ) {
+    throw new Error(
+      `재시작 물리 연결 누수 검사 실패: 말 ${runtime.pieces.size}/${spawnInstances.length}, 바디 ${runtime.world.bodies.len()}/${expectedWorldCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedWorldCount}`,
+    );
+  }
 }

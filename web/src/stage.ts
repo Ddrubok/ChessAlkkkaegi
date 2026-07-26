@@ -1,0 +1,358 @@
+import type { ChessSetMeta } from "./assets";
+import type { RunCardState } from "./cards";
+import {
+  CARD_SIZE_STEP,
+  CARD_WEIGHT_STEP,
+  deriveBoardHalfExtent,
+  PLAYER_MAX_SIZE_SCALE,
+  SPAWN_GAP,
+  STAGE_FORCE_STEP,
+  STAGE_MAX_PIECE_SCALE,
+  STAGE_SIZE_STEP,
+  STAGE_WEIGHT_STEP,
+} from "./config";
+import type { GameMode } from "./game-mode";
+import {
+  getCellCenter,
+  type CellCenter,
+  type PieceInstance,
+} from "./layout";
+import {
+  computePermanentWeightFraction,
+  type PermanentUpgrades,
+} from "./meta";
+
+// 확대된 폰 받침끼리 접촉하지 않도록 한 칸 간격에 추가하는 최소 여유다.
+const PAWN_ZIGZAG_MARGIN = 0.02;
+
+export type PawnTier = "none" | "rook" | "king";
+
+export interface StageBuffs {
+  // 2부터 현재까지 포함된 짝수 스테이지 수다.
+  weightSteps: number;
+  // 3부터 현재까지 포함된 홀수 스테이지 수다.
+  forceSteps: number;
+  // 현재까지 포함된 3의 배수 스테이지 수다.
+  sizeSteps: number;
+  // 현재 스테이지에서 흑 폰에 치환할 높이 등급이다.
+  pawnTier: PawnTier;
+}
+
+export interface StageSpawnOptions {
+  // 핫시트에서는 모든 스테이지 버프를 끄는 현재 대전 모드다.
+  gameMode: GameMode;
+  // 스테이지 모드에서 생성할 1 이상의 현재 단계다.
+  stageNumber: number;
+  // 플레이어 백 말에 매 리셋마다 다시 적용할 현재 런 카드 누적 상태다.
+  runCards?: Readonly<RunCardState>;
+  // 플레이어 백 말 종류별 중량에 매 리셋마다 합성할 영구 강화 상태다.
+  permanentUpgrades?: Readonly<PermanentUpgrades>;
+}
+
+export interface PieceSpawnPose {
+  // 렌더와 물리가 공유하는 의도된 월드 중심 위치다.
+  translation: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  // 직립 또는 포복 시작 자세를 나타내는 정규화된 월드 회전이다.
+  rotation: {
+    x: number;
+    y: number;
+    z: number;
+    w: number;
+  };
+}
+
+// 카드 상태가 없는 핫시트와 기존 회귀 호출이 공유하는 불변 기본값이다.
+const EMPTY_RUN_CARDS: Readonly<RunCardState> = {
+  sizePicks: 0,
+  weightPicks: 0,
+  forcePicks: 0,
+  giantPawn: false,
+  proneStart: false,
+  picksSoFar: 0,
+};
+
+/**
+ * 선택적 런 카드 상태를 효과가 없는 불변 기본값으로 정규화한다.
+ */
+function getRunCards(
+  options: StageSpawnOptions,
+): Readonly<RunCardState> {
+  return options.runCards ?? EMPTY_RUN_CARDS;
+}
+
+/**
+ * 외부 상태에 의존하지 않고 스테이지 번호를 누적 버프 단계 수로 변환한다.
+ */
+export function computeStageBuffs(stageNumber: number): StageBuffs {
+  if (!Number.isInteger(stageNumber) || stageNumber < 1) {
+    throw new Error(
+      `스테이지 번호 ${stageNumber}가 1 이상의 정수가 아닙니다.`,
+    );
+  }
+  return {
+    weightSteps: Math.floor(stageNumber / 2),
+    forceSteps:
+      stageNumber < 3 ? 0 : Math.floor((stageNumber - 1) / 2),
+    sizeSteps: Math.floor(stageNumber / 3),
+    pawnTier:
+      stageNumber >= 10
+        ? "king"
+        : stageNumber >= 5
+          ? "rook"
+          : "none",
+  };
+}
+
+/**
+ * 현재 모드·스테이지에서 한 말에 적용할 균일 콜라이더·렌더 배율을 계산한다.
+ */
+export function computeStagePieceScale(
+  instance: PieceInstance,
+  meta: ChessSetMeta,
+  options: StageSpawnOptions,
+): number {
+  if (options.gameMode !== "stage") {
+    return 1;
+  }
+  if (instance.side === "white") {
+    const runCards = getRunCards(options);
+    const generalScale =
+      1 + CARD_SIZE_STEP * runCards.sizePicks;
+    const tierScale =
+      instance.type === "Pawn" && runCards.giantPawn
+        ? meta.pieces.King.bounds.y / meta.pieces.Pawn.bounds.y
+        : 1;
+    return Math.min(
+      generalScale * tierScale,
+      tierScale > 1
+        ? STAGE_MAX_PIECE_SCALE
+        : PLAYER_MAX_SIZE_SCALE,
+    );
+  }
+  const buffs = computeStageBuffs(options.stageNumber);
+  const generalScale = 1 + STAGE_SIZE_STEP * buffs.sizeSteps;
+  if (instance.type !== "Pawn" || buffs.pawnTier === "none") {
+    return Math.min(generalScale, STAGE_MAX_PIECE_SCALE);
+  }
+  const pawnHeight = meta.pieces.Pawn.bounds.y;
+  const tierHeight =
+    buffs.pawnTier === "rook"
+      ? meta.pieces.Rook.bounds.y
+      : meta.pieces.King.bounds.y;
+  return Math.min(
+    generalScale * (tierHeight / pawnHeight),
+    STAGE_MAX_PIECE_SCALE,
+  );
+}
+
+/**
+ * 폰 콜라이더의 아래쪽 20% 점에서 최대 수평 반지름을 찾아 확대 후 받침 지름을 계산한다.
+ */
+export function computeScaledPawnSupportFlareDiameter(
+  meta: ChessSetMeta,
+  totalScale: number,
+): number {
+  const pawnMeta = meta.pieces.Pawn;
+  const minimumY = Math.min(
+    ...pawnMeta.colliderPoints.map((point) => point[1]),
+  );
+  const supportHeight = minimumY + pawnMeta.bounds.y * 0.2;
+  let maximumRadius = 0;
+  for (const point of pawnMeta.colliderPoints) {
+    if (point[1] <= supportHeight) {
+      maximumRadius = Math.max(
+        maximumRadius,
+        Math.hypot(point[0], point[2]),
+      );
+    }
+  }
+  if (maximumRadius <= 0) {
+    throw new Error(
+      "폰 콜라이더의 아래쪽 20%에서 받침 반지름을 찾지 못했습니다.",
+    );
+  }
+  return maximumRadius * 2 * totalScale;
+}
+
+/**
+ * 확대된 폰 받침이 한 줄 칸 간격에 여유를 두고 들어가지 않는지 판정한다.
+ */
+export function shouldUsePawnZigzag(
+  instance: PieceInstance,
+  meta: ChessSetMeta,
+  cellSize: number,
+  options: StageSpawnOptions,
+): boolean {
+  if (instance.type !== "Pawn") {
+    return false;
+  }
+  if (
+    instance.side === "white" &&
+    options.gameMode === "stage" &&
+    getRunCards(options).giantPawn
+  ) {
+    return false;
+  }
+  const totalScale = computeStagePieceScale(instance, meta, options);
+  return (
+    totalScale !== 1 &&
+    computeScaledPawnSupportFlareDiameter(meta, totalScale) +
+      PAWN_ZIGZAG_MARGIN >
+      cellSize
+  );
+}
+
+/**
+ * 현재 크기 버프에 맞춰 폰 지그재그까지 포함한 의도된 월드 스폰 중심을 반환한다.
+ */
+export function computeStageSpawnCenter(
+  instance: PieceInstance,
+  meta: ChessSetMeta,
+  options: StageSpawnOptions,
+): CellCenter {
+  const center = getCellCenter(
+    instance.startingSquare,
+    meta.cellSize,
+  );
+  const fileIndex =
+    instance.startingSquare.file.charCodeAt(0) -
+    "a".charCodeAt(0);
+  const isEvenNumberedPawn = fileIndex % 2 === 1;
+  if (
+    !isEvenNumberedPawn ||
+    !shouldUsePawnZigzag(instance, meta, meta.cellSize, options)
+  ) {
+    return center;
+  }
+  return {
+    x: center.x,
+    z:
+      center.z +
+      (instance.side === "black" ? -meta.cellSize : meta.cellSize),
+  };
+}
+
+/**
+ * 거대 폰 카드에 따라 소멸할 백 폰을 제외한 실제 스폰 개체 목록을 반환한다.
+ */
+export function selectStageSpawnInstances(
+  instances: readonly PieceInstance[],
+  options: StageSpawnOptions,
+): PieceInstance[] {
+  if (
+    options.gameMode !== "stage" ||
+    !getRunCards(options).giantPawn
+  ) {
+    return [...instances];
+  }
+  return instances.filter(
+    (instance) =>
+      !(
+        instance.side === "white" &&
+        instance.type === "Pawn" &&
+        ["a", "c", "e", "g"].includes(
+          instance.startingSquare.file,
+        )
+      ),
+  );
+}
+
+/**
+ * 포복 카드까지 포함해 한 말의 정확한 시작 위치와 회전을 계산한다.
+ */
+export function computeStageSpawnPose(
+  instance: PieceInstance,
+  meta: ChessSetMeta,
+  options: StageSpawnOptions,
+): PieceSpawnPose {
+  const center = computeStageSpawnCenter(instance, meta, options);
+  const uniformScale = computeStagePieceScale(instance, meta, options);
+  const usesProneStart =
+    options.gameMode === "stage" &&
+    instance.side === "white" &&
+    getRunCards(options).proneStart;
+  if (!usesProneStart) {
+    return {
+      translation: { x: center.x, y: SPAWN_GAP, z: center.z },
+      rotation:
+        instance.side === "black"
+          ? { x: 0, y: 1, z: 0, w: 0 }
+          : { x: 0, y: 0, z: 0, w: 1 },
+    };
+  }
+  const halfSqrt = Math.SQRT1_2;
+  if (instance.type === "Pawn") {
+    const minimumRotatedY = Math.min(
+      ...meta.pieces.Pawn.colliderPoints.map((point) => point[0]),
+    );
+    return {
+      translation: {
+        x: center.x,
+        y: SPAWN_GAP - minimumRotatedY * uniformScale,
+        z: center.z,
+      },
+      rotation: { x: 0, y: 0, z: halfSqrt, w: halfSqrt },
+    };
+  }
+  const minimumRotatedY = Math.min(
+    ...meta.pieces[instance.type].colliderPoints.map(
+      (point) => -point[2],
+    ),
+  );
+  return {
+    translation: {
+      x: center.x,
+      y: SPAWN_GAP - minimumRotatedY * uniformScale,
+      z: -deriveBoardHalfExtent(meta.cellSize),
+    },
+    rotation: { x: halfSqrt, y: 0, z: 0, w: halfSqrt },
+  };
+}
+
+/**
+ * 한 말의 원래 hull 질량에 더할 스테이지·카드 합산 질량 비율을 반환한다.
+ */
+export function computeUpgradeWeightFraction(
+  instance: PieceInstance,
+  options: StageSpawnOptions,
+): number {
+  if (options.gameMode !== "stage") {
+    return 0;
+  }
+  if (instance.side === "white") {
+    const cardFraction =
+      CARD_WEIGHT_STEP * getRunCards(options).weightPicks;
+    const permanentFraction =
+      options.permanentUpgrades === undefined
+        ? 0
+        : computePermanentWeightFraction(
+            options.permanentUpgrades,
+            instance.type,
+          );
+    return cardFraction + permanentFraction;
+  }
+  return (
+    STAGE_WEIGHT_STEP *
+    computeStageBuffs(options.stageNumber).weightSteps
+  );
+}
+
+/**
+ * 현재 스테이지의 흑 AI 목표 발사 속도 배수를 계산한다.
+ */
+export function computeStageAiSpeedMultiplier(
+  options: StageSpawnOptions,
+): number {
+  if (options.gameMode !== "stage") {
+    return 1;
+  }
+  return (
+    1 +
+    STAGE_FORCE_STEP *
+      computeStageBuffs(options.stageNumber).forceSteps
+  );
+}

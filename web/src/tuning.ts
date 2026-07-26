@@ -1,4 +1,7 @@
-import type { PhysicsRuntime } from "./physics";
+import type {
+  PhysicsRuntime,
+  PieceBodyBinding,
+} from "./physics";
 import {
   CAM_INITIAL_AIM_PITCH_DEG,
   CAM_KEY_DEG_PER_SEC,
@@ -159,6 +162,33 @@ function clampSetting(key: TuningKey, value: number): number {
 }
 
 /**
+ * 조절판 밑동 추와 스테이지·카드·영구 강화 추가 질량을 한 번에 적용한다.
+ */
+export function applyComposedWeightToBinding(
+  binding: PieceBodyBinding,
+  baseWeightMultiplier: number,
+): void {
+  if (
+    !Number.isFinite(baseWeightMultiplier) ||
+    baseWeightMultiplier < 0
+  ) {
+    throw new Error(
+      `밑동 추 배수 ${baseWeightMultiplier}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
+  const additionalMass =
+    binding.originalHullMass * baseWeightMultiplier +
+    binding.upgradeAdditionalMass;
+  binding.body.setAdditionalMassProperties(
+    additionalMass,
+    { x: 0, y: binding.localPieceHeight * 0.06, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0, w: 1 },
+    false,
+  );
+}
+
+/**
  * 현재 설정을 Rapier setter에 적용하되 잠든 바디는 의도적으로 깨우지 않는다.
  */
 function applyPhysicsSetting(
@@ -186,14 +216,9 @@ function applyPhysicsSetting(
     }
   } else if (key === "baseWeightMultiplier") {
     for (const binding of physicsRuntime.pieces.values()) {
-      const additionalMass =
-        binding.originalHullMass * settings.baseWeightMultiplier;
-      binding.body.setAdditionalMassProperties(
-        additionalMass,
-        { x: 0, y: binding.localPieceHeight * 0.06, z: 0 },
-        { x: 0, y: 0, z: 0 },
-        { x: 0, y: 0, z: 0, w: 1 },
-        false,
+      applyComposedWeightToBinding(
+        binding,
+        settings.baseWeightMultiplier,
       );
     }
   } else {
@@ -225,6 +250,23 @@ export function setTuningValue(
     }
   }
   applyPhysicsSetting(runtime, key);
+}
+
+/**
+ * 재생성된 말 바디에 현재 조절판의 물리값을 다시 적용해 화면 값과 실제 값을 보존한다.
+ */
+export function reapplyTuningPhysicsSettings(
+  runtime: TuningRuntime,
+): void {
+  for (const key of [
+    "friction",
+    "restitution",
+    "linearDamping",
+    "angularDamping",
+    "baseWeightMultiplier",
+  ] as const) {
+    applyPhysicsSetting(runtime, key);
+  }
 }
 
 /**
@@ -312,7 +354,9 @@ export function verifyTuningAfterStep(runtime: TuningRuntime): void {
       settings.angularDamping,
       `${binding.instance.id} 회전 감쇠`,
     );
-    const multiplier = settings.baseWeightMultiplier;
+    const multiplier =
+      settings.baseWeightMultiplier +
+      binding.upgradeAdditionalMass / binding.originalHullMass;
     const expectedMass = binding.originalHullMass * (1 + multiplier);
     const weightY = binding.localPieceHeight * 0.06;
     const expectedCom = {
