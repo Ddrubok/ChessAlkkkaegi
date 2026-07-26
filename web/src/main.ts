@@ -139,6 +139,18 @@ async function bootstrap(): Promise<void> {
   app.append(loadingPanel);
 
   const assets = await loadChessAssets();
+  if (
+    new URLSearchParams(window.location.search).get("probe") === "1"
+  ) {
+    const { runDeterminismProbe } = await import(
+      "./tools/determinism-probe"
+    );
+    window.__runDeterminismProbe = () =>
+      runDeterminismProbe(assets.meta);
+    console.info(
+      "[결정성 프로브] window.__runDeterminismProbe() 호출 준비가 끝났습니다.",
+    );
+  }
   if (PIECE_INSTANCES.length !== 32) {
     throw new Error(`시작 말 개수가 32개가 아니라 ${PIECE_INSTANCES.length}개입니다.`);
   }
