@@ -1,4 +1,5 @@
 import {
+  CARD_EFFECT_SCALE,
   CARD_FORCE_STEP,
   CARD_SIZE_STEP,
   PLAYER_MAX_SIZE_SCALE,
@@ -131,9 +132,18 @@ function hashCardDraw(stageNumber: number, picksSoFar: number): number {
  */
 export function getRemainingCardPool(
   state: Readonly<RunCardState>,
+  cardEffectScale: number = CARD_EFFECT_SCALE,
 ): UpgradeCard[] {
+  if (!Number.isFinite(cardEffectScale) || cardEffectScale < 0) {
+    throw new Error(
+      `카드 효과 배율 ${cardEffectScale}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
   const sizeReachedCap =
-    1 + CARD_SIZE_STEP * state.sizePicks >=
+    1 +
+      CARD_SIZE_STEP *
+        cardEffectScale *
+        state.sizePicks >=
     PLAYER_MAX_SIZE_SCALE;
   return UPGRADE_CARDS.filter(
     (card) =>
@@ -149,13 +159,17 @@ export function getRemainingCardPool(
 export function drawUpgradeCards(
   stageNumber: number,
   state: Readonly<RunCardState>,
+  cardEffectScale: number = CARD_EFFECT_SCALE,
 ): UpgradeCard[] {
   if (!Number.isInteger(stageNumber) || stageNumber < 1) {
     throw new Error(
       `카드를 뽑을 스테이지 ${stageNumber}가 1 이상의 정수가 아닙니다.`,
     );
   }
-  const remaining = getRemainingCardPool(state);
+  const remaining = getRemainingCardPool(
+    state,
+    cardEffectScale,
+  );
   const drawCount = Math.min(3, remaining.length);
   const drawn: UpgradeCard[] = [];
   let hash = hashCardDraw(stageNumber, state.picksSoFar);
@@ -173,10 +187,19 @@ export function drawUpgradeCards(
 export function applyCardPick(
   state: RunCardState,
   cardId: CardId,
+  cardEffectScale: number = CARD_EFFECT_SCALE,
 ): void {
+  if (!Number.isFinite(cardEffectScale) || cardEffectScale < 0) {
+    throw new Error(
+      `카드 효과 배율 ${cardEffectScale}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
   if (
     (cardId === "size" &&
-      1 + CARD_SIZE_STEP * state.sizePicks >=
+      1 +
+        CARD_SIZE_STEP *
+          cardEffectScale *
+          state.sizePicks >=
         PLAYER_MAX_SIZE_SCALE) ||
     (cardId === "giantPawn" && state.giantPawn) ||
     (cardId === "proneStart" && state.proneStart)
@@ -204,7 +227,16 @@ export function computePlayerLaunchSpeedMultiplier(
   gameMode: GameMode,
   state: Readonly<RunCardState>,
   permanentForceBonus = 0,
+  cardEffectScale: number = CARD_EFFECT_SCALE,
 ): number {
+  if (
+    !Number.isFinite(cardEffectScale) ||
+    cardEffectScale < 0
+  ) {
+    throw new Error(
+      `카드 효과 배율 ${cardEffectScale}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
   if (
     !Number.isFinite(permanentForceBonus) ||
     permanentForceBonus < 0
@@ -215,7 +247,9 @@ export function computePlayerLaunchSpeedMultiplier(
   }
   return gameMode === "stage"
     ? 1 +
-        CARD_FORCE_STEP * state.forcePicks +
+        CARD_FORCE_STEP *
+          cardEffectScale *
+          state.forcePicks +
         permanentForceBonus
     : 1;
 }

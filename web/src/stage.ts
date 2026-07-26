@@ -3,7 +3,9 @@ import type { RunCardState } from "./cards";
 import {
   CARD_SIZE_STEP,
   CARD_WEIGHT_STEP,
+  CARD_EFFECT_SCALE,
   deriveBoardHalfExtent,
+  ENEMY_STAGE_BUFF_SCALE,
   PLAYER_MAX_SIZE_SCALE,
   SPAWN_GAP,
   STAGE_FORCE_STEP,
@@ -47,6 +49,19 @@ export interface StageSpawnOptions {
   runCards?: Readonly<RunCardState>;
   // 플레이어 백 말 종류별 중량에 매 리셋마다 합성할 영구 강화 상태다.
   permanentUpgrades?: Readonly<PermanentUpgrades>;
+  // 측정 하네스만 흑 중량·힘·크기 단계값에 공통 적용하며 생략하면 config 기본값을 쓴다.
+  enemyBuffStepScale?: number;
+  // 측정 하네스만 백 크기·중량·힘 카드의 1회 효과에 공통 적용한다.
+  cardEffectScale?: number;
+}
+
+export interface EnemyStageStepValues {
+  // 현재 공통 배율이 적용된 흑 중량 한 단계 비율이다.
+  weightStep: number;
+  // 현재 공통 배율이 적용된 흑 AI 힘 한 단계 비율이다.
+  forceStep: number;
+  // 현재 공통 배율이 적용된 흑 크기 한 단계 비율이다.
+  sizeStep: number;
 }
 
 export interface PieceSpawnPose {
@@ -82,6 +97,38 @@ function getRunCards(
   options: StageSpawnOptions,
 ): Readonly<RunCardState> {
   return options.runCards ?? EMPTY_RUN_CARDS;
+}
+
+/**
+ * 카드 성장 배율을 검사해 측정값 또는 config 기본값을 반환한다.
+ */
+function getCardEffectScale(options: StageSpawnOptions): number {
+  const scale =
+    options.cardEffectScale ?? CARD_EFFECT_SCALE;
+  if (!Number.isFinite(scale) || scale < 0) {
+    throw new Error(
+      `카드 효과 배율 ${scale}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
+  return scale;
+}
+
+/**
+ * 세 종류 흑 스테이지 단계값에 같은 측정 배율을 적용하되 게임은 config 기본값을 사용한다.
+ */
+export function computeEnemyStageStepValues(
+  scale: number = ENEMY_STAGE_BUFF_SCALE,
+): EnemyStageStepValues {
+  if (!Number.isFinite(scale) || scale < 0) {
+    throw new Error(
+      `흑 스테이지 버프 배율 ${scale}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
+  return {
+    weightStep: STAGE_WEIGHT_STEP * scale,
+    forceStep: STAGE_FORCE_STEP * scale,
+    sizeStep: STAGE_SIZE_STEP * scale,
+  };
 }
 
 /**
@@ -121,7 +168,10 @@ export function computeStagePieceScale(
   if (instance.side === "white") {
     const runCards = getRunCards(options);
     const generalScale =
-      1 + CARD_SIZE_STEP * runCards.sizePicks;
+      1 +
+      CARD_SIZE_STEP *
+        getCardEffectScale(options) *
+        runCards.sizePicks;
     const tierScale =
       instance.type === "Pawn" && runCards.giantPawn
         ? meta.pieces.King.bounds.y / meta.pieces.Pawn.bounds.y
@@ -134,7 +184,10 @@ export function computeStagePieceScale(
     );
   }
   const buffs = computeStageBuffs(options.stageNumber);
-  const generalScale = 1 + STAGE_SIZE_STEP * buffs.sizeSteps;
+  const steps = computeEnemyStageStepValues(
+    options.enemyBuffStepScale,
+  );
+  const generalScale = 1 + steps.sizeStep * buffs.sizeSteps;
   if (instance.type !== "Pawn" || buffs.pawnTier === "none") {
     return Math.min(generalScale, STAGE_MAX_PIECE_SCALE);
   }
@@ -325,7 +378,9 @@ export function computeUpgradeWeightFraction(
   }
   if (instance.side === "white") {
     const cardFraction =
-      CARD_WEIGHT_STEP * getRunCards(options).weightPicks;
+      CARD_WEIGHT_STEP *
+      getCardEffectScale(options) *
+      getRunCards(options).weightPicks;
     const permanentFraction =
       options.permanentUpgrades === undefined
         ? 0
@@ -336,7 +391,9 @@ export function computeUpgradeWeightFraction(
     return cardFraction + permanentFraction;
   }
   return (
-    STAGE_WEIGHT_STEP *
+    computeEnemyStageStepValues(
+      options.enemyBuffStepScale,
+    ).weightStep *
     computeStageBuffs(options.stageNumber).weightSteps
   );
 }
@@ -352,7 +409,9 @@ export function computeStageAiSpeedMultiplier(
   }
   return (
     1 +
-    STAGE_FORCE_STEP *
+    computeEnemyStageStepValues(
+      options.enemyBuffStepScale,
+    ).forceStep *
       computeStageBuffs(options.stageNumber).forceSteps
   );
 }

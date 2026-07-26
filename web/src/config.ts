@@ -50,6 +50,18 @@ export const AI_AIM_PREVIEW_DELAY = 0.25;
 // AI의 실제 세기를 0에서 최종값까지 기존 조준 색·활시위로 충전하는 실시간 초다.
 export const AI_AIM_CHARGE_SECONDS = 0.9;
 
+// 흑 AI 샷 카운터 해시가 방향에 더하는 기본 좌우 오차 상한 각도다.
+export const AI_BASE_JITTER_DEGREES = 5;
+
+// 흑 AI 거리 비례 세기가 내려갈 수 있는 기본 하한이다.
+export const AI_BASE_POWER_MIN = 0.35;
+
+// 흑 AI 거리 비례 세기가 올라갈 수 있는 기본 상한이다.
+export const AI_BASE_POWER_MAX = 1;
+
+// 스테이지 흑 중량·힘·크기 단계값에 공통으로 곱하는 기본 난이도 배율이다.
+export const ENEMY_STAGE_BUFF_SCALE = 1;
+
 // 짝수 스테이지 한 단계마다 흑 말의 원래 hull 질량에 더하는 비율이다.
 export const STAGE_WEIGHT_STEP = 0.1;
 
@@ -70,6 +82,9 @@ export const CARD_WEIGHT_STEP = 0.1;
 
 // 힘 카드를 한 번 고를 때 플레이어 목표 발사 속도에 더하는 비율이다.
 export const CARD_FORCE_STEP = 0.05;
+
+// 크기·중량·힘 카드의 1회 효과에 공통으로 곱하는 로그라이트 성장 배율이다.
+export const CARD_EFFECT_SCALE = 1;
 
 // 뒷줄 최악 인접쌍(퀸+킹) 받침 합 0.429 × s가 칸 간격 0.536 − 0.02 이하가 되는 실측 상한이다. 카드로 그 이상 쌓아도 백 일반 말은 여기서 멈춘다.
 export const PLAYER_MAX_SIZE_SCALE = 1.2;

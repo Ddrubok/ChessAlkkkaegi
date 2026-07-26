@@ -11,6 +11,9 @@ import { computeStrikeApplicationPoint } from "./aimparams";
 import {
   AI_AIM_CHARGE_SECONDS,
   AI_AIM_PREVIEW_DELAY,
+  AI_BASE_JITTER_DEGREES,
+  AI_BASE_POWER_MAX,
+  AI_BASE_POWER_MIN,
 } from "./config";
 import type { GameMode } from "./game-mode";
 import type { PieceSide } from "./layout";
@@ -49,6 +52,15 @@ export interface AiDecision {
   variationDegrees: number;
 }
 
+export interface AiDecisionOverrides {
+  // 스윕에서 기본 좌우 오차 상한만 바꿀 수 있으며 생략하면 config 값을 쓴다.
+  jitterDegrees?: number;
+  // 스윕에서 거리 비례 세기 하한만 바꿀 수 있으며 생략하면 config 값을 쓴다.
+  minimumPower?: number;
+  // 스윕에서 거리 비례 세기 상한만 바꿀 수 있으며 생략하면 config 값을 쓴다.
+  maximumPower?: number;
+}
+
 export interface AiTelegraph {
   // 순수 결정 함수가 한 번 만든 뒤 표시와 실제 발사가 함께 쓰는 원본 결정이다.
   decision: AiDecision;
@@ -75,6 +87,10 @@ export interface AiRuntime {
   getGameMode: () => GameMode;
   // 다음 스테이지 진행 뒤 최신 AI 힘 단계를 읽는 함수다.
   getStageNumber: () => number;
+  // 측정 하네스만 순수 AI 결정 상수를 덮어쓰고 게임은 config 기본값을 읽는 함수다.
+  getDecisionOverrides: () => AiDecisionOverrides | undefined;
+  // 측정 하네스만 세 종류 적 버프의 공통 배율을 덮어쓰는 함수다.
+  getEnemyBuffStepScale: () => number | undefined;
   // 브라우저에서는 플레이어와 같은 조준 표시를 구동하고 헤드리스에서는 null이다.
   aimRuntime: AimRuntime | null;
   // 현재 판에서 승인된 AI 발사 수이며 재시작 때 0으로 돌아간다.
@@ -92,11 +108,22 @@ const HEADLESS_AI_SHOT_DELAY_MILLISECONDS = 800;
 const ZERO_DISTANCE_EPSILON_SQUARED = 1e-18;
 
 /**
- * 같은 샷 번호가 항상 같은 -5도 이상 5도 이하의 각도 변형을 만들게 한다.
+ * 같은 샷 번호가 항상 설정된 좌우 오차 범위 안의 같은 각도 변형을 만들게 한다.
  */
-function computeVariationDegrees(shotCounter: number): number {
+function computeVariationDegrees(
+  shotCounter: number,
+  jitterDegrees: number = AI_BASE_JITTER_DEGREES,
+): number {
+  if (!Number.isFinite(jitterDegrees) || jitterDegrees < 0) {
+    throw new Error(
+      `AI jitterDegrees ${jitterDegrees}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
   const hash = Math.imul(shotCounter + 1, 2_654_435_761) >>> 0;
-  return -5 + (hash / 0xffff_ffff) * 10;
+  return (
+    -jitterDegrees +
+    (hash / 0xffff_ffff) * jitterDegrees * 2
+  );
 }
 
 /**
@@ -105,6 +132,8 @@ function computeVariationDegrees(shotCounter: number): number {
 export function computeAiPower(
   distance: number,
   cellSize: number,
+  minimumPower: number = AI_BASE_POWER_MIN,
+  maximumPower: number = AI_BASE_POWER_MAX,
 ): number {
   if (!Number.isFinite(distance) || distance < 0) {
     throw new Error(`AI distance ${distance}가 유한한 음이 아닌 수가 아닙니다.`);
@@ -112,10 +141,21 @@ export function computeAiPower(
   if (!Number.isFinite(cellSize) || cellSize <= 0) {
     throw new Error(`AI cellSize ${cellSize}가 유한한 양수가 아닙니다.`);
   }
+  if (
+    !Number.isFinite(minimumPower) ||
+    !Number.isFinite(maximumPower) ||
+    minimumPower < 0 ||
+    maximumPower > 1 ||
+    minimumPower > maximumPower
+  ) {
+    throw new Error(
+      `AI power 범위 ${minimumPower}..${maximumPower}가 0 이상 1 이하의 올바른 순서가 아닙니다.`,
+    );
+  }
   return MathUtils.clamp(
-    0.35 + 0.5 * (distance / (4 * cellSize)),
-    0.35,
-    1,
+    minimumPower + 0.5 * (distance / (4 * cellSize)),
+    minimumPower,
+    maximumPower,
   );
 }
 
@@ -126,6 +166,7 @@ export function decideAiShot(
   pieces: readonly AiPiecePosition[],
   cellSize: number,
   shotCounter: number,
+  overrides: Readonly<AiDecisionOverrides> = {},
 ): AiDecision | null {
   if (!Number.isFinite(cellSize) || cellSize <= 0) {
     throw new Error(`AI cellSize ${cellSize}가 유한한 양수가 아닙니다.`);
@@ -167,7 +208,10 @@ export function decideAiShot(
     (selectedWhite.x - selectedBlack.x) / distance;
   const baseDirectionZ =
     (selectedWhite.z - selectedBlack.z) / distance;
-  const variationDegrees = computeVariationDegrees(shotCounter);
+  const variationDegrees = computeVariationDegrees(
+    shotCounter,
+    overrides.jitterDegrees,
+  );
   const variationRadians = MathUtils.degToRad(variationDegrees);
   const cosine = Math.cos(variationRadians);
   const sine = Math.sin(variationRadians);
@@ -175,7 +219,12 @@ export function decideAiShot(
     x: baseDirectionX * cosine - baseDirectionZ * sine,
     z: baseDirectionX * sine + baseDirectionZ * cosine,
   };
-  const power = computeAiPower(distance, cellSize);
+  const power = computeAiPower(
+    distance,
+    cellSize,
+    overrides.minimumPower,
+    overrides.maximumPower,
+  );
   return {
     pieceId: selectedBlack.id,
     targetPieceId: selectedWhite.id,
@@ -214,6 +263,7 @@ function prepareAiTelegraph(
     collectAiPiecePositions(runtime.physicsRuntime),
     runtime.cellSize,
     runtime.shotCounter,
+    runtime.getDecisionOverrides(),
   );
   if (decision === null) {
     return null;
@@ -258,6 +308,8 @@ function queuePreparedAiTelegraph(
   const speedMultiplier = computeStageAiSpeedMultiplier({
     gameMode: runtime.getGameMode(),
     stageNumber: runtime.getStageNumber(),
+    enemyBuffStepScale:
+      runtime.getEnemyBuffStepScale(),
   });
   const outcome = queueTurnLaunch(runtime.turnRuntime, {
     pieceId: decision.pieceId,
@@ -313,6 +365,12 @@ export function createAiRuntime(
   getGameMode: () => GameMode,
   getStageNumber: () => number = () => 1,
   aimRuntime: AimRuntime | null = null,
+  getDecisionOverrides: () =>
+    | AiDecisionOverrides
+    | undefined = () => undefined,
+  getEnemyBuffStepScale: () =>
+    | number
+    | undefined = () => undefined,
 ): AiRuntime {
   return {
     physicsRuntime,
@@ -321,6 +379,8 @@ export function createAiRuntime(
     cellSize,
     getGameMode,
     getStageNumber,
+    getDecisionOverrides,
+    getEnemyBuffStepScale,
     aimRuntime,
     shotCounter: 0,
     scheduledAt: null,
