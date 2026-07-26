@@ -69,6 +69,13 @@ const DEFAULT_SETTINGS: RuntimeTuningSettings = {
   strikeHeightRatio: STRIKE_HEIGHT_RATIO,
 };
 
+/**
+ * 게임과 헤드리스 도구가 같은 기본 조절값을 값 복사로 받도록 공개한다.
+ */
+export function createDefaultRuntimeTuningSettings(): RuntimeTuningSettings {
+  return { ...DEFAULT_SETTINGS };
+}
+
 // 화면 범위와 내부 단위 변환을 한 표로 고정해 세 UI 표현이 어긋나지 않게 한다.
 const DEFINITIONS: Record<TuningKey, TuningDefinition> = {
   timeScale: {
@@ -426,7 +433,7 @@ export function createTuningRuntime(
   container.append(panel);
   const runtime: TuningRuntime = {
     physicsRuntime,
-    settings: { ...DEFAULT_SETTINGS },
+    settings: createDefaultRuntimeTuningSettings(),
     panel,
     controls: new Map(),
     pendingPhysicsVerification: false,

@@ -74,6 +74,21 @@ export interface AiTelegraph {
   chargeStartedAt: number | null;
 }
 
+export interface DirectedShotTelegraph {
+  // 표시와 실제 발사에서 그대로 공유할 말 id다.
+  pieceId: string;
+  // 표시에서는 복사 정규화하지만 실제 발사 값 자체는 바꾸지 않는 방향이다.
+  direction: Vector3;
+  // 선택한 말의 실제 월드 타점이다.
+  applicationPoint: Vector3;
+  // 흰색에서 빨간색까지 충전할 실제 발사 세기다.
+  normalizedPower: number;
+  // 선택 고리를 처음 표시할 performance.now 기준 시각이다.
+  previewAt: number;
+  // 충전이 시작된 시각이며 미리보기 전에는 null이다.
+  chargeStartedAt: number | null;
+}
+
 export interface AiRuntime {
   // AI가 현재 말 위치와 바디를 읽는 물리 런타임이다.
   physicsRuntime: PhysicsRuntime;
@@ -401,6 +416,54 @@ function cancelAiSequence(runtime: AiRuntime): void {
 }
 
 /**
+ * AI와 온라인 상대가 같은 선택 고리·타점·방향·충전 진행을 한 프레임씩 구동한다.
+ * 반환값이 true면 실제 값을 기존 발사 큐에 넣을 시점이다.
+ */
+export function updateDirectedShotTelegraph(
+  aimRuntime: AimRuntime,
+  telegraph: DirectedShotTelegraph,
+  now: number,
+): boolean {
+  if (now < telegraph.previewAt) {
+    return false;
+  }
+  if (telegraph.chargeStartedAt === null) {
+    selectAimPiece(aimRuntime, telegraph.pieceId);
+    setAimApplicationPoint(
+      aimRuntime,
+      telegraph.applicationPoint,
+    );
+    beginDirectedAim(
+      aimRuntime,
+      telegraph.pieceId,
+      telegraph.direction,
+    );
+    updateDirectedAim(
+      aimRuntime,
+      telegraph.direction,
+      0,
+    );
+    telegraph.chargeStartedAt = now;
+    return false;
+  }
+  const chargeProgress = Math.min(
+    Math.max(
+      (now - telegraph.chargeStartedAt) /
+        1000 /
+        AI_AIM_CHARGE_SECONDS,
+      0,
+    ),
+    1,
+  );
+  updateDirectedAim(
+    aimRuntime,
+    telegraph.direction,
+    telegraph.normalizedPower * chargeProgress,
+  );
+  return chargeProgress >= 1;
+}
+
+/**
  * 입력 가드가 AI 조준을 플레이어 선택 정리와 구분하도록 현재 소유 상태를 반환한다.
  */
 export function isAiTelegraphActive(runtime: AiRuntime): boolean {
@@ -458,47 +521,22 @@ export function updateAiRuntime(
     return;
   }
   const telegraph = runtime.telegraph;
-  if (now < telegraph.previewAt) {
-    return;
-  }
-  if (telegraph.chargeStartedAt === null) {
-    selectAimPiece(
-      runtime.aimRuntime,
-      telegraph.decision.pieceId,
-    );
-    setAimApplicationPoint(
-      runtime.aimRuntime,
-      telegraph.applicationPoint,
-    );
-    beginDirectedAim(
-      runtime.aimRuntime,
-      telegraph.decision.pieceId,
-      telegraph.direction,
-    );
-    updateDirectedAim(
-      runtime.aimRuntime,
-      telegraph.direction,
-      0,
-    );
-    telegraph.chargeStartedAt = now;
-    return;
-  }
-
-  const chargeProgress = Math.min(
-    Math.max(
-      (now - telegraph.chargeStartedAt) /
-        1000 /
-        AI_AIM_CHARGE_SECONDS,
-      0,
-    ),
-    1,
-  );
-  updateDirectedAim(
+  const directedTelegraph: DirectedShotTelegraph = {
+    pieceId: telegraph.decision.pieceId,
+    direction: telegraph.direction,
+    applicationPoint: telegraph.applicationPoint,
+    normalizedPower: telegraph.decision.power,
+    previewAt: telegraph.previewAt,
+    chargeStartedAt: telegraph.chargeStartedAt,
+  };
+  const readyToLaunch = updateDirectedShotTelegraph(
     runtime.aimRuntime,
-    telegraph.direction,
-    telegraph.decision.power * chargeProgress,
+    directedTelegraph,
+    now,
   );
-  if (chargeProgress < 1) {
+  telegraph.chargeStartedAt =
+    directedTelegraph.chargeStartedAt;
+  if (!readyToLaunch) {
     return;
   }
   queuePreparedAiTelegraph(runtime, telegraph);

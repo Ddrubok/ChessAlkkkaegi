@@ -76,10 +76,18 @@ export interface TurnRuntime {
   onPieceRemoved: ((pieceId: string) => void) | null;
   // 마지막 정착 뒤 승자가 생기면 카메라 회전 대신 결과 화면을 여는 연결점이다.
   onMatchOver: ((winner: MatchWinner) => void) | null;
+  // 수락된 모든 플레이어·AI·향후 네트워크 발사를 수동 기록 계층에 알리는 연결점이다.
+  onLaunchAccepted:
+    | ((request: TurnLaunchRequest, side: PieceSide) => void)
+    | null;
+  // 낙하 제거와 정착이 끝난 한 턴의 상태 해시 시점을 기록 계층에 알리는 연결점이다.
+  onTurnSettled: (() => void) | null;
   // 당구식에서만 선택 중심과 근접 거리를 판 전체 보기로 함께 복원하도록 현재 모드를 보존한다.
   turnCameraMode: TurnCameraMode;
   // 턴 교대 카메라와 흑 AI 제어 여부를 구분하는 현재 대전 모드다.
   gameMode: GameMode;
+  // 온라인에서 턴과 무관하게 이 브라우저의 진영을 화면 아래에 고정하며 다른 모드에서는 null이다.
+  cameraPerspectiveSide: PieceSide | null;
   // 직전 발사 말에만 CCD를 유지하고 정착하면 즉시 해제하기 위한 id다.
   ccdPieceId: string | null;
   // 발사 강도와 라이브 물리값을 재생성 없이 참조하는 런타임 설정이다.
@@ -216,7 +224,12 @@ function beginTurnCameraRotation(runtime: TurnRuntime): void {
     runtime.sceneRuntime.camera.position.clone().sub(fromTarget),
   );
   const fromAzimuth = readCameraAzimuth(runtime.sceneRuntime);
-  const desiredAzimuth = runtime.currentSide === "white" ? Math.PI : 0;
+  const cameraSide =
+    runtime.gameMode === "online" &&
+    runtime.cameraPerspectiveSide !== null
+      ? runtime.cameraPerspectiveSide
+      : runtime.currentSide;
+  const desiredAzimuth = cameraSide === "white" ? Math.PI : 0;
   const shortestDelta = MathUtils.euclideanModulo(
     desiredAzimuth - fromAzimuth + Math.PI,
     Math.PI * 2,
@@ -330,8 +343,11 @@ export function createTurnRuntime(
     cameraRotation: null,
     onPieceRemoved: null,
     onMatchOver: null,
+    onLaunchAccepted: null,
+    onTurnSettled: null,
     turnCameraMode: "billiards",
     gameMode: "hotseat",
+    cameraPerspectiveSide: null,
     ccdPieceId: null,
     tuningSettings,
   };
@@ -355,6 +371,30 @@ export function setTurnGameMode(
   mode: GameMode,
 ): void {
   runtime.gameMode = mode;
+}
+
+/**
+ * 온라인에서는 내 진영, 기존 모드에서는 null을 넣어 활성 턴 기준 방위를 사용한다.
+ */
+export function setTurnCameraPerspectiveSide(
+  runtime: TurnRuntime,
+  side: PieceSide | null,
+): void {
+  runtime.cameraPerspectiveSide = side;
+}
+
+/**
+ * 온라인 대국 시작 직후에도 기존 턴 교대 카메라 보간으로 내 진영을 아래에 놓는다.
+ */
+export function beginCurrentTurnCameraRotation(
+  runtime: TurnRuntime,
+): void {
+  if (runtime.phase !== "ready") {
+    throw new Error(
+      `카메라 방향 준비는 ready 단계에서만 가능하지만 현재 ${runtime.phase}입니다.`,
+    );
+  }
+  beginTurnCameraRotation(runtime);
 }
 
 /**
@@ -394,6 +434,46 @@ export function setMatchOverHandler(
   handler: (winner: MatchWinner) => void,
 ): void {
   runtime.onMatchOver = handler;
+}
+
+/**
+ * 성공한 발사 입력을 물리 적용 시각과 독립적인 수동 기록기로 전달한다.
+ */
+export function setLaunchAcceptedHandler(
+  runtime: TurnRuntime,
+  handler:
+    | ((request: TurnLaunchRequest, side: PieceSide) => void)
+    | null,
+): void {
+  runtime.onLaunchAccepted = handler;
+}
+
+/**
+ * 한 발의 낙하 제거와 정착이 끝난 직후 상태 해시 후크를 연결한다.
+ */
+export function setTurnSettledHandler(
+  runtime: TurnRuntime,
+  handler: (() => void) | null,
+): void {
+  runtime.onTurnSettled = handler;
+}
+
+/**
+ * 수동 개발 후크 오류를 전체 스택으로 알리되 게임 턴 진행은 그대로 유지한다.
+ */
+function invokePassiveHook(
+  label: string,
+  callback: () => void,
+): void {
+  try {
+    callback();
+  } catch (error: unknown) {
+    const fullError =
+      error instanceof Error
+        ? (error.stack ?? error.message)
+        : String(error);
+    console.error(`[${label}] ${fullError}`);
+  }
 }
 
 /**
@@ -444,6 +524,11 @@ export function queueTurnLaunch(
   runtime.restHoldSeconds = 0;
   runtime.settleSeconds = 0;
   runtime.forcedSettleCountedForCurrentSettle = false;
+  if (runtime.onLaunchAccepted !== null) {
+    invokePassiveHook("대국 기록 발사 후크", () => {
+      runtime.onLaunchAccepted?.(request, runtime.currentSide);
+    });
+  }
   return { accepted: true, reason: null };
 }
 
@@ -591,6 +676,11 @@ function completeSettlement(runtime: TurnRuntime): void {
     return;
   }
   runtime.pendingTurnChange = false;
+  if (runtime.onTurnSettled !== null) {
+    invokePassiveHook("대국 기록 정착 후크", () => {
+      runtime.onTurnSettled?.();
+    });
+  }
   const winner = determineMatchWinner(
     countRemainingPieces(runtime),
     runtime.currentSide,

@@ -212,13 +212,20 @@ export function showMatchResult(
   upgradeCards: readonly UpgradeCard[] = [],
   onCardSelected: ((cardId: CardId) => Promise<void>) | null = null,
   onReturnToMenu: (() => Promise<void>) | null = null,
+  localSide: PieceSide | null = null,
 ): void {
   runtime.winner = winner;
   runtime.onRestart = onRestart;
   runtime.onCardSelected = onCardSelected;
   runtime.onReturnToMenu = onReturnToMenu;
   runtime.winnerHeading.textContent =
-    gameMode === "stage"
+    gameMode === "online"
+      ? localSide === null
+        ? "대국 종료"
+        : winner === localSide
+          ? "승리"
+          : "패배"
+      : gameMode === "stage"
       ? winner === "white"
         ? `승리! 스테이지 ${stageNumber} 클리어`
         : "패배"
@@ -232,13 +239,14 @@ export function showMatchResult(
     onCardSelected !== null;
   runtime.cardChoices.replaceChildren();
   runtime.cardChoices.hidden = !showsCards;
-  runtime.restartButton.hidden = showsCards;
+  runtime.restartButton.hidden =
+    showsCards || gameMode === "online";
   runtime.restartButton.disabled = false;
   runtime.restartButton.textContent = "다시 시작";
   runtime.menuButton.hidden =
     showsCards ||
-    gameMode !== "stage" ||
-    winner !== "black" ||
+    (gameMode === "stage" && winner !== "black") ||
+    (gameMode !== "stage" && gameMode !== "online") ||
     onReturnToMenu === null;
   runtime.menuButton.disabled = false;
   runtime.menuButton.textContent = "메뉴로";
@@ -289,7 +297,36 @@ export function showMatchResult(
   runtime.overlay.hidden = false;
   const firstCard =
     runtime.cardChoices.querySelector<HTMLButtonElement>("button");
-  (firstCard ?? runtime.restartButton).focus();
+  (
+    firstCard ??
+    (runtime.restartButton.hidden
+      ? runtime.menuButton
+      : runtime.restartButton)
+  ).focus();
+}
+
+/**
+ * 심판 없는 연결 단절은 승패를 만들지 않고 메뉴로만 이동 가능한 종료 화면으로 표시한다.
+ */
+export function showDisconnectedMatchEnd(
+  runtime: MatchRuntime,
+  onReturnToMenu: () => Promise<void>,
+): void {
+  runtime.winner = null;
+  runtime.restarting = false;
+  runtime.onCardSelected = null;
+  runtime.onReturnToMenu = onReturnToMenu;
+  runtime.winnerHeading.textContent =
+    "상대와 연결이 끊겨 대국이 종료되었습니다";
+  runtime.cardChoices.replaceChildren();
+  runtime.cardChoices.hidden = true;
+  runtime.restartButton.hidden = true;
+  runtime.restartButton.disabled = false;
+  runtime.menuButton.hidden = false;
+  runtime.menuButton.disabled = false;
+  runtime.menuButton.textContent = "메뉴로";
+  runtime.overlay.hidden = false;
+  runtime.menuButton.focus();
 }
 
 /**

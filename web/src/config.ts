@@ -59,6 +59,15 @@ export const AI_BASE_POWER_MIN = 0.35;
 // 흑 AI 거리 비례 세기가 올라갈 수 있는 기본 상한이다.
 export const AI_BASE_POWER_MAX = 1;
 
+// 연결 확인 패킷을 보내 상대 브라우저가 살아 있는지 검사하는 실제 시간 간격이다.
+export const NET_HEARTBEAT_INTERVAL_MS = 3_000;
+
+// 상대에게서 어떤 패킷도 받지 못했을 때 연결 끊김으로 판정하는 실제 시간이다.
+export const NET_TRAFFIC_TIMEOUT_MS = 10_000;
+
+// 후보 수집이 끝나지 않는 네트워크에서 수동 코드 생성을 무한히 기다리지 않는 상한이다.
+export const NET_ICE_GATHER_TIMEOUT_MS = 15_000;
+
 // 스테이지 흑 중량·힘·크기 단계값에 공통으로 곱하는 기본 난이도 배율이다.
 export const ENEMY_STAGE_BUFF_SCALE = 1;
 

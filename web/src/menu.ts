@@ -153,6 +153,18 @@ export function showMainMenu(runtime: MainMenuRuntime): void {
 }
 
 /**
+ * 모드 보드와 상대 준비가 모두 끝난 뒤 메뉴를 닫고 인게임 메뉴 버튼을 연다.
+ */
+export function hideMainMenuAfterModeStart(
+  runtime: MainMenuRuntime,
+): void {
+  runtime.busy = false;
+  runtime.visible = false;
+  runtime.overlay.hidden = true;
+  runtime.returnButton.hidden = false;
+}
+
+/**
  * 메뉴와 포기 확인 중에는 키보드·포인터 게임 입력을 모두 막아야 함을 반환한다.
  */
 export function isMenuBlocking(runtime: MainMenuRuntime): boolean {
@@ -205,6 +217,7 @@ export function createMainMenu(
       <div class="main-menu-modes" role="group" aria-label="대전 모드">
         <button type="button" data-game-mode="hotseat">2인 대전</button>
         <button type="button" data-game-mode="stage">스테이지 대전</button>
+        <button type="button" data-game-mode="online">온라인 대전</button>
       </div>
       <p class="main-menu-status" data-menu-status aria-live="polite"></p>
       <section class="permanent-upgrade-panel" aria-labelledby="upgrade-title">
@@ -280,7 +293,9 @@ export function createMainMenu(
       if (
         runtime.busy ||
         !runtime.ready ||
-        (mode !== "hotseat" && mode !== "stage")
+        (mode !== "hotseat" &&
+          mode !== "stage" &&
+          mode !== "online")
       ) {
         return;
       }
@@ -288,10 +303,7 @@ export function createMainMenu(
       renderMainMenu(runtime);
       void runtime.onStartMode(mode).then(
         () => {
-          runtime.busy = false;
-          runtime.visible = false;
-          runtime.overlay.hidden = true;
-          runtime.returnButton.hidden = false;
+          hideMainMenuAfterModeStart(runtime);
         },
         (error: unknown) => {
           const fullError =

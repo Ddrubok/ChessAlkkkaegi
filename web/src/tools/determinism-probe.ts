@@ -17,6 +17,10 @@ import { createPhysicsRuntime } from "../physics";
 import type { SceneRuntime } from "../scene";
 import type { RuntimeTuningSettings } from "../tuning";
 import {
+  capturePhysicsStateHash,
+  type RawPieceState,
+} from "../state-hash";
+import {
   applyPendingLaunchBeforeStep,
   createTurnRuntime,
   queueTurnLaunch,
@@ -33,14 +37,7 @@ export interface DeterminismProbeLaunch {
   applicationPoint: [number, number, number];
 }
 
-export interface DeterminismProbePieceCheckpoint {
-  // 두 런타임에서 같은 바디를 짝짓는 고유 id다.
-  pieceId: string;
-  // x, y, z를 각각 16자리 빅엔디언 Float64 비트로 직렬화한다.
-  positionBits: [string, string, string];
-  // x, y, z, w를 각각 16자리 빅엔디언 Float64 비트로 직렬화한다.
-  rotationBits: [string, string, string, string];
-}
+export type DeterminismProbePieceCheckpoint = RawPieceState;
 
 export interface DeterminismProbeCheckpoint {
   // 사람이 읽는 발사 번호는 1부터 시작한다.
@@ -173,94 +170,18 @@ function createProbeSceneRuntime(pieceIds: readonly string[]): SceneRuntime {
 }
 
 /**
- * Float64 하나를 네트워크 바이트 순서의 16자리 원시 비트 문자열로 바꾼다.
- */
-function encodeFloat64Bits(value: number): string {
-  const bytes = new Uint8Array(8);
-  new DataView(bytes.buffer).setFloat64(0, value, false);
-  return [...bytes]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-/**
- * SHA-256 구현을 브라우저와 Node가 함께 제공하는 Web Crypto 계약으로 제한한다.
- */
-async function computeSha256(bytes: Uint8Array): Promise<string> {
-  const subtle = globalThis.crypto?.subtle;
-  if (subtle === undefined) {
-    throw new Error("결정성 프로브에 필요한 Web Crypto SHA-256을 찾지 못했습니다.");
-  }
-  const digestInput = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(digestInput).set(bytes);
-  const digest = await subtle.digest("SHA-256", digestInput);
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-/**
  * 현재 32개 바디를 id 순서로 읽어 원시 비트와 동일 바이트열 해시를 만든다.
  */
 async function captureCheckpoint(
   launchIndex: number,
   runtime: Awaited<ReturnType<typeof createPhysicsRuntime>>,
 ): Promise<DeterminismProbeCheckpoint> {
-  const bindings = [...runtime.pieces.values()].sort((left, right) => {
-    if (left.instance.id < right.instance.id) {
-      return -1;
-    }
-    if (left.instance.id > right.instance.id) {
-      return 1;
-    }
-    return 0;
-  });
-  const byteStream = new Uint8Array(bindings.length * 7 * 8);
-  const view = new DataView(byteStream.buffer);
-  let byteOffset = 0;
-  const pieces = bindings.map(
-    (binding): DeterminismProbePieceCheckpoint => {
-      const translation = binding.body.translation();
-      const rotation = binding.body.rotation();
-      const values = [
-        translation.x,
-        translation.y,
-        translation.z,
-        rotation.x,
-        rotation.y,
-        rotation.z,
-        rotation.w,
-      ];
-      if (!values.every(Number.isFinite)) {
-        throw new Error(
-          `${launchIndex}번 발사 뒤 ${binding.instance.id} 상태에 NaN 또는 Infinity가 있습니다.`,
-        );
-      }
-      for (const value of values) {
-        view.setFloat64(byteOffset, value, false);
-        byteOffset += 8;
-      }
-      return {
-        pieceId: binding.instance.id,
-        positionBits: [
-          encodeFloat64Bits(translation.x),
-          encodeFloat64Bits(translation.y),
-          encodeFloat64Bits(translation.z),
-        ],
-        rotationBits: [
-          encodeFloat64Bits(rotation.x),
-          encodeFloat64Bits(rotation.y),
-          encodeFloat64Bits(rotation.z),
-          encodeFloat64Bits(rotation.w),
-        ],
-      };
-    },
-  );
+  const state = await capturePhysicsStateHash(runtime);
   return {
     launchIndex,
-    sha256: await computeSha256(byteStream),
-    pieceCount: bindings.length,
-    pieces,
+    sha256: state.sha256,
+    pieceCount: state.pieceCount,
+    pieces: state.pieces,
   };
 }
 

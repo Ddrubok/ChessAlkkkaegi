@@ -1,7 +1,7 @@
-export type GameMode = "hotseat" | "stage";
+export type GameMode = "hotseat" | "stage" | "online";
 
 export interface GameModeRuntime {
-  // 현재 판에 적용된 2인 또는 컴퓨터 상대 모드다.
+  // 현재 판에 적용된 2인·컴퓨터·온라인 상대 모드다.
   mode: GameMode;
   // 스테이지 런의 현재 단계이며 핫시트 전환과 패배 때 1로 돌아간다.
   stageNumber: number;

@@ -52,6 +52,15 @@ interface RuntimeMetrics {
   numericallyHealthy: boolean;
 }
 
+export interface OnlineLoopDebugStatus {
+  // 이 브라우저가 조작하는 온라인 진영이다.
+  mySide: "white" | "black";
+  // 실제 해시 불일치로 스냅샷 복구를 수행하거나 제공한 횟수다.
+  desyncCount: number;
+  // 연결·동기화의 마지막 가시적 사건이다.
+  lastEvent: string;
+}
+
 /**
  * 쿼터니언으로 회전한 local up과 world up의 사이각을 구해 흑 말의 yaw를 제외한다.
  */
@@ -215,6 +224,11 @@ export function startGameLoop(
   gameModeRuntime: GameModeRuntime,
   tuningRuntime: TuningRuntime,
   boardHalfExtent: number,
+  updateOnlineRuntime: (now: number) => void = () => {},
+  readOnlineDebugStatus: () =>
+    | OnlineLoopDebugStatus
+    | null = () => null,
+  stepSecondaryOnlineRuntime: () => void = () => {},
 ): void {
   const overlay = document.createElement("pre");
   overlay.className = "debug-overlay";
@@ -313,6 +327,7 @@ export function startGameLoop(
       );
       updateTurnCamera(turnRuntime, now);
       updateAiRuntime(aiRuntime, now);
+      updateOnlineRuntime(now);
       updateInputRuntime(inputRuntime, now);
       if (
         turnRuntime.phase !== "camera-rotating" &&
@@ -363,6 +378,8 @@ export function startGameLoop(
 
       // 낙하 제거가 정지 판정보다 먼저 일어나도록 턴 갱신을 물리 step 직후 호출한다.
       updateTurnAfterStep(turnRuntime, FIXED_STEP);
+      // 단일 페이지 온라인 셀프테스트에서만 씬 없는 상대 월드를 같은 fixed step으로 진행한다.
+      stepSecondaryOnlineRuntime();
       if (
         waitingForSettle &&
         [...physicsRuntime.pieces.values()].every((binding) =>
@@ -401,6 +418,7 @@ export function startGameLoop(
     );
     updateTurnCamera(turnRuntime, now);
     updateAiRuntime(aiRuntime, now);
+    updateOnlineRuntime(now);
     updateInputRuntime(inputRuntime, now);
     if (
       turnRuntime.phase !== "camera-rotating" &&
@@ -443,13 +461,20 @@ export function startGameLoop(
         turnRuntime.currentSide === "white" ? "백" : "흑";
       const modeLabel =
         inputRuntime.mode === "classic" ? "클래식" : "당구";
+      const onlineDebug = readOnlineDebugStatus();
       const matchLabel =
         gameModeRuntime.mode === "stage"
           ? `스테이지${gameModeRuntime.stageNumber}`
-          : "2인";
+          : gameModeRuntime.mode === "online"
+            ? `온라인·${onlineDebug?.mySide === "black" ? "흑" : "백"}`
+            : "2인";
       overlaySummaryText =
         `${matchLabel}·${turnLabel}·${modeLabel}·수면${metrics.sleepingCount}/${physicsRuntime.pieces.size}` +
-        `·OF${accumulatorOverflowCount}·상세`;
+        `·OF${accumulatorOverflowCount}` +
+        (onlineDebug === null
+          ? ""
+          : `·DSN${onlineDebug.desyncCount}`) +
+        "·상세";
       overlayFullText = [
         `FPS: ${fps.toFixed(1)}`,
         `대전 모드: ${gameModeRuntime.mode} / ${matchLabel}`,
@@ -475,6 +500,13 @@ export function startGameLoop(
         `판 밖 AABB: ${metrics.outsideBoardCount}`,
         `렌더 동기화 오차: ${metrics.maxRenderSyncError.toExponential(2)}`,
         `수치 건전성: ${metrics.numericallyHealthy ? "정상" : "오류"}`,
+        ...(onlineDebug === null
+          ? []
+          : [
+              `온라인 내 진영: ${onlineDebug.mySide}`,
+              `온라인 어긋남 복구: ${onlineDebug.desyncCount}회`,
+              `온라인 마지막 사건: ${onlineDebug.lastEvent}`,
+            ]),
         "",
         massText,
       ].join("\n");
