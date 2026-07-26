@@ -81,6 +81,8 @@ interface ColliderSample {
   // 샘플링 전 평탄화된 바닥의 모든 중복 제거 후보 수이며 볼록껍질 정점 수와 다르다.
   basePointCount: number;
   baseHullPointCount: number;
+  // 방위 구간마다 확보한 밑동 테두리 점 수로, 비어 있는 방위가 있었는지 확인하는 근거다.
+  baseRimPointCount: number;
 }
 
 interface FinalAlignment {
@@ -102,6 +104,8 @@ interface PieceConversion {
   basePointCount: number;
   baseFlattenEps: number;
   baseHullPointCount: number;
+  // 방위 구간마다 확보한 밑동 테두리 점 수다.
+  baseRimPointCount: number;
   finalAlignment: FinalAlignment;
   identity: boolean;
 }
@@ -154,7 +158,7 @@ const DEFAULT_BUDGETS: Readonly<Record<PieceType, number>> = {
 const EXPECTED_SOURCE_HASH =
   "EC72D21CF6ACE76BFBC6F40DB7EF8DA6DB7C5B24D0098ADA4CD9438449870CF0";
 
-// Rapier convexHull 입력 크기와 브라우저 메타 파일 크기를 제한하는 상한이다.
+// R26에서 밑동 테두리 우선 점이 최원점 표본을 최대 48개 밀어내 정적 형상 오차를 늘림을 측정했지만, 400점 쪽의 동적 전복 방위 일관성이 448점보다 좋아 이를 수용한다.
 const MAX_COLLIDER_POINTS = 400;
 
 // 얕은 원뿔형 바닥을 안정된 지지면으로 바꾸는 기본 높이 허용치다.
@@ -162,6 +166,13 @@ const BASE_FLATTEN_EPS = 0.004;
 
 // 점 하나나 좁은 선분으로 서는 콜라이더를 거부하기 위한 최소 지지 다각형 정점 수다.
 const MIN_BASE_HULL_POINTS = 12;
+
+// 평탄한 접촉면 바로 위에서 벌어지는 밑동 테두리가 말이 기울 때의 실제 회전축이다.
+// 최원점 샘플링에만 맡기면 방위별로 성기게 잡혀 같은 말이 방향에 따라 다른 각도에서 넘어진다.
+const BASE_RIM_AZIMUTH_BINS = 48;
+
+// 받침이 벌어지는 구간만 테두리 후보로 삼아, 몸통이나 머리 장식이 회전축으로 잘못 잡히지 않게 한다.
+const BASE_RIM_HEIGHT_RATIO = 0.2;
 
 // GLB 2.0 청크를 읽고 다시 조립할 때 사용하는 고정 식별자다.
 const GLB_MAGIC = 0x46546c67;
@@ -1446,6 +1457,46 @@ function computeBaseHullIndices(
 }
 
 /**
+ * 밑동 구간을 방위로 균등 분할해 각 구간에서 가장 바깥에 있는 점을 회전축 후보로 확보한다.
+ */
+function computeBaseRimIndices(
+  points: readonly Point3[],
+  minimumY: number,
+  pieceHeight: number,
+): number[] {
+  const heightLimit = minimumY + pieceHeight * BASE_RIM_HEIGHT_RATIO;
+  const bestIndices = new Int32Array(BASE_RIM_AZIMUTH_BINS).fill(-1);
+  const bestRadii = new Float64Array(BASE_RIM_AZIMUTH_BINS);
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index];
+    if (point[1] > heightLimit) {
+      continue;
+    }
+    const radius = Math.hypot(point[0], point[2]);
+    if (radius === 0) {
+      continue;
+    }
+    // atan2의 -π~π 결과를 0~2π로 옮겨 방위 구간 번호로 바꾼다.
+    const azimuth = Math.atan2(point[2], point[0]) + Math.PI;
+    const bin = Math.min(
+      BASE_RIM_AZIMUTH_BINS - 1,
+      Math.floor((azimuth / (Math.PI * 2)) * BASE_RIM_AZIMUTH_BINS),
+    );
+    if (bestIndices[bin] < 0 || radius > bestRadii[bin]) {
+      bestIndices[bin] = index;
+      bestRadii[bin] = radius;
+    }
+  }
+  const rimIndices: number[] = [];
+  for (const index of bestIndices) {
+    if (index >= 0) {
+      rimIndices.push(index);
+    }
+  }
+  return rimIndices;
+}
+
+/**
  * 콜라이더 복사본의 얕은 바닥 돌출만 평탄화한 뒤 지지 외곽선과 축 극점을 우선 보존한다.
  */
 function createColliderPoints(
@@ -1492,6 +1543,11 @@ function createColliderPoints(
   }
   const basePointCount = baseIndices.length;
   const baseHullIndices = computeBaseHullIndices(points, baseIndices);
+  const baseRimIndices = computeBaseRimIndices(
+    points,
+    minimumY,
+    geometryBounds.max.y - geometryBounds.min.y,
+  );
   if (baseHullIndices.length < MIN_BASE_HULL_POINTS) {
     throw new Error(
       `${type} 콜라이더 바닥의 2D 볼록껍질이 ${baseHullIndices.length}점뿐입니다. 최소 ${MIN_BASE_HULL_POINTS}점이 필요하므로 바닥 평탄화 ε를 조정하세요.`,
@@ -1523,7 +1579,11 @@ function createColliderPoints(
   const targetCount = Math.min(MAX_COLLIDER_POINTS, points.length);
   const selectedIndices: number[] = [];
   const selected = new Uint8Array(points.length);
-  for (const priorityIndex of [...baseHullIndices, ...extremeIndices]) {
+  for (const priorityIndex of [
+    ...baseHullIndices,
+    ...baseRimIndices,
+    ...extremeIndices,
+  ]) {
     if (selected[priorityIndex] === 0) {
       selected[priorityIndex] = 1;
       selectedIndices.push(priorityIndex);
@@ -1531,7 +1591,7 @@ function createColliderPoints(
   }
   if (selectedIndices.length > MAX_COLLIDER_POINTS) {
     throw new Error(
-      `${type} 콜라이더의 바닥 볼록껍질과 축 극점 ${selectedIndices.length}개가 ${MAX_COLLIDER_POINTS}점 상한을 초과합니다.`,
+      `${type} 콜라이더의 바닥 볼록껍질과 테두리, 축 극점 ${selectedIndices.length}개가 ${MAX_COLLIDER_POINTS}점 상한을 초과합니다.`,
     );
   }
 
@@ -1596,6 +1656,7 @@ function createColliderPoints(
     baseRadius,
     basePointCount,
     baseHullPointCount: baseHullIndices.length,
+    baseRimPointCount: baseRimIndices.length,
   };
 }
 
@@ -1944,6 +2005,7 @@ async function convertWorkspace(): Promise<void> {
         basePointCount: collider.basePointCount,
         baseFlattenEps,
         baseHullPointCount: collider.baseHullPointCount,
+        baseRimPointCount: collider.baseRimPointCount,
         finalAlignment,
         identity: true,
       });
@@ -2004,6 +2066,7 @@ async function convertWorkspace(): Promise<void> {
             basePointCount: piece.basePointCount,
             baseFlattenEps: roundNumber(piece.baseFlattenEps),
             baseHullPointCount: piece.baseHullPointCount,
+            baseRimPointCount: piece.baseRimPointCount,
             colliderPoints: piece.colliderPoints,
           },
         ]),
@@ -2076,7 +2139,7 @@ function renderReport(report: ConversionReport): void {
           <td>${piece.beforeTriangles.toLocaleString("ko-KR")} → ${piece.afterTriangles.toLocaleString("ko-KR")}</td>
           <td>minY ${piece.finalAlignment.minY.toExponential(6)} / center x ${piece.finalAlignment.centerX.toExponential(6)} / z ${piece.finalAlignment.centerZ.toExponential(6)}</td>
           <td>${piece.baseFlattenEps.toFixed(4)}</td>
-          <td>전체 후보 ${piece.basePointCount.toLocaleString("ko-KR")}점 / 볼록껍질 ${piece.baseHullPointCount.toLocaleString("ko-KR")}점</td>
+          <td>전체 후보 ${piece.basePointCount.toLocaleString("ko-KR")}점 / 볼록껍질 ${piece.baseHullPointCount.toLocaleString("ko-KR")}점 / 테두리 ${piece.baseRimPointCount.toLocaleString("ko-KR")}점</td>
           <td>${piece.baseRadius.toFixed(6)}</td>
           <td>${piece.colliderPoints.length.toLocaleString("ko-KR")} / ${MAX_COLLIDER_POINTS}</td>
           <td>${piece.colliderAabbMatches ? "일치" : "불일치"}</td>
