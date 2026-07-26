@@ -175,8 +175,11 @@ function validateMeta(value: unknown): ChessSetMeta {
 
 /**
  * GitHub Pages 하위 경로에서도 동작하도록 Vite 기준 경로로 최종 에셋을 불러온다.
+ * @param onProgress GLB 다운로드 진행 상태를 전달할 선택 콜백이다.
  */
-export async function loadChessAssets(): Promise<ChessAssets> {
+export async function loadChessAssets(
+  onProgress?: (event: ProgressEvent) => void,
+): Promise<ChessAssets> {
   const assetBaseUrl = `${import.meta.env.BASE_URL}assets/`;
   const metaUrl = `${assetBaseUrl}chess-set.meta.json`;
   const glbUrl = `${assetBaseUrl}chess-pieces.glb`;
@@ -184,7 +187,7 @@ export async function loadChessAssets(): Promise<ChessAssets> {
 
   const [metaResponse, gltf] = await Promise.all([
     fetch(metaUrl),
-    loader.loadAsync(glbUrl),
+    loader.loadAsync(glbUrl, onProgress),
   ]);
   if (!metaResponse.ok) {
     throw new Error(
