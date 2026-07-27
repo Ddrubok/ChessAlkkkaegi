@@ -297,6 +297,7 @@ async function createGuestMatch(
   const tuningRuntime = createTuningRuntime(
     document.createElement("div"),
     physicsRuntime,
+    null,
   );
   Object.assign(tuningRuntime.settings, options.tuningSettings);
   reapplyTuningPhysicsSettings(tuningRuntime);
@@ -330,6 +331,7 @@ function resetGuestMatch(
   const tuningRuntime = createTuningRuntime(
     document.createElement("div"),
     match.physicsRuntime,
+    null,
   );
   Object.assign(tuningRuntime.settings, options.tuningSettings);
   reapplyTuningPhysicsSettings(tuningRuntime);

@@ -46,6 +46,13 @@ class MemoryStorage {
   setItem(key, value) {
     this.values.set(key, value);
   }
+
+  /**
+   * 초기화가 저장된 전체 설정을 제거하는 동작을 재현한다.
+   */
+  removeItem(key) {
+    this.values.delete(key);
+  }
 }
 
 /**
@@ -199,6 +206,115 @@ try {
   );
   console.log(
     `[통과 a] roundTrip points=${loadedRuntime.state.points}, Pawn.force=${loadedRuntime.state.upgrades.Pawn.force}, King.weight=${loadedRuntime.state.upgrades.King.weight}; corrupted→points=0/allLevels=0, warnings=${warningCount}`,
+  );
+
+  const tuningStorage = new MemoryStorage();
+  const tuningDefaults =
+    tuningModule.createDefaultRuntimeTuningSettings();
+  const modifiedTuning = {
+    ...tuningDefaults,
+    timeScale: 2.25,
+    maxLaunchSpeed: 13.5,
+    friction: 0.65,
+    enemyStageBuffScale: 1.4,
+    cardEffectScale: 0.85,
+  };
+  const saveWarning = tuningModule.saveTuningSettings(
+    tuningStorage,
+    modifiedTuning,
+  );
+  const loadedTuning =
+    tuningModule.loadTuningSettings(tuningStorage);
+  assertCondition(
+    saveWarning === null &&
+      JSON.stringify(loadedTuning.settings) ===
+        JSON.stringify(modifiedTuning) &&
+      loadedTuning.warning === null,
+    `조절값 왕복 실패: warning=${saveWarning ?? loadedTuning.warning}, settings=${JSON.stringify(loadedTuning.settings)}`,
+  );
+
+  tuningStorage.setItem(
+    tuningModule.TUNING_SETTINGS_STORAGE_KEY,
+    JSON.stringify({
+      ...modifiedTuning,
+      timeScale: "broken",
+      friction: 99,
+      restitution: null,
+    }),
+  );
+  const partiallyCorrupted =
+    tuningModule.loadTuningSettings(tuningStorage);
+  assertCondition(
+    partiallyCorrupted.settings.timeScale ===
+      tuningDefaults.timeScale &&
+      partiallyCorrupted.settings.friction ===
+        tuningDefaults.friction &&
+      partiallyCorrupted.settings.restitution ===
+        tuningDefaults.restitution &&
+      partiallyCorrupted.settings.maxLaunchSpeed ===
+        modifiedTuning.maxLaunchSpeed &&
+      partiallyCorrupted.invalidKeys.join(",") ===
+        "timeScale,friction,restitution" &&
+      partiallyCorrupted.warning !== null,
+    `조절값 필드별 복구 실패: ${JSON.stringify(partiallyCorrupted)}`,
+  );
+
+  tuningStorage.setItem(
+    tuningModule.TUNING_SETTINGS_STORAGE_KEY,
+    "{broken",
+  );
+  const fullyCorrupted =
+    tuningModule.loadTuningSettings(tuningStorage);
+  assertCondition(
+    JSON.stringify(fullyCorrupted.settings) ===
+      JSON.stringify(tuningDefaults) &&
+      fullyCorrupted.invalidKeys.length ===
+        Object.keys(tuningDefaults).length &&
+      fullyCorrupted.warning !== null,
+    `조절값 손상 JSON 기본값 실패: ${JSON.stringify(fullyCorrupted)}`,
+  );
+
+  const boardCollider = {
+    setFriction() {},
+    setRestitution() {},
+  };
+  const tuningModeRuntime = {
+    physicsRuntime: {
+      boardCollider,
+      pieces: new Map(),
+    },
+    settings: { ...modifiedTuning },
+    localSettings: { ...modifiedTuning },
+    controls: new Map(),
+    panel: { querySelector: () => null },
+    onlineNotice: { hidden: true },
+    onlineDefaultsActive: false,
+    pendingPhysicsVerification: false,
+  };
+  tuningModule.setTuningGameMode(tuningModeRuntime, "online");
+  const onlineUsesDefaults =
+    JSON.stringify(tuningModeRuntime.settings) ===
+    JSON.stringify(tuningDefaults);
+  tuningModule.setTuningGameMode(tuningModeRuntime, "stage");
+  const localValuesRestored =
+    JSON.stringify(tuningModeRuntime.settings) ===
+    JSON.stringify(modifiedTuning);
+  assertCondition(
+    onlineUsesDefaults && localValuesRestored,
+    `온라인 기본값 예외 실패: online=${onlineUsesDefaults}, restored=${localValuesRestored}`,
+  );
+
+  const clearWarning =
+    tuningModule.clearTuningSettings(tuningStorage);
+  assertCondition(
+    clearWarning === null &&
+      tuningStorage.getItem(
+        tuningModule.TUNING_SETTINGS_STORAGE_KEY,
+      ) === null,
+    `조절값 저장 삭제 실패: ${clearWarning}`,
+  );
+  console.log(
+    `[통과 tuning-storage] roundTrip speed=${loadedTuning.settings.maxLaunchSpeed.toFixed(2)}, friction=${loadedTuning.settings.friction.toFixed(2)}, enemyScale=${loadedTuning.settings.enemyStageBuffScale.toFixed(2)}, cardScale=${loadedTuning.settings.cardEffectScale.toFixed(2)}; partialFallback=${partiallyCorrupted.invalidKeys.join(",")}; corruptFallback=${fullyCorrupted.invalidKeys.length}/${Object.keys(tuningDefaults).length}, warning=${fullyCorrupted.warning !== null}; onlineDefaults=${onlineUsesDefaults}, localRestored=${localValuesRestored}, cleared=${clearWarning === null}`,
   );
 
   const costs = Array.from({ length: 10 }, (_, level) =>

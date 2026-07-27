@@ -38,6 +38,28 @@ export interface RuntimeTuningSettings {
 
 export type TuningKey = keyof RuntimeTuningSettings;
 
+// 전체 조절값 객체를 한 번에 저장하는 기기별 브라우저 계약 키다.
+export const TUNING_SETTINGS_STORAGE_KEY =
+  "chessAlkkagi.tuning.settings";
+
+export interface TuningStorage {
+  // 저장된 전체 조절값 JSON 문자열을 읽는다.
+  getItem: (key: string) => string | null;
+  // 변경된 전체 조절값 JSON 문자열을 덮어쓴다.
+  setItem: (key: string, value: string) => void;
+  // config 기본값 복원 때 저장된 전체 조절값을 제거한다.
+  removeItem: (key: string) => void;
+}
+
+export interface TuningLoadResult {
+  // 필드별 검증을 통과하거나 해당 config 기본값으로 대체된 설정이다.
+  settings: RuntimeTuningSettings;
+  // 손상되어 해당 config 기본값으로 대체된 필드 이름들이다.
+  invalidKeys: TuningKey[];
+  // 저장 접근 또는 JSON 파싱이 실패했을 때 패널에 한 번 보여 줄 상세다.
+  warning: string | null;
+}
+
 type TuningAppliedValueKey =
   | "stage"
   | "enemyWeight"
@@ -98,6 +120,18 @@ export interface TuningRuntime {
   controls: Map<TuningKey, Set<HTMLElement>>;
   // 실제 보드 적용값만 갱신하는 읽기 전용 출력 요소들이다.
   appliedValueElements: Map<TuningAppliedValueKey, HTMLElement>;
+  // 로컬 모드에서 변경한 전체 설정을 보존하는 선택적 브라우저 저장 연결이다.
+  storage: TuningStorage | null;
+  // 온라인 기본값 사용 중에도 잃지 않고 로컬 복귀 때 복원할 기기 설정이다.
+  localSettings: RuntimeTuningSettings;
+  // 저장·복원 상태 또는 한 번의 손상 경고를 보여 주는 패널 문구다.
+  storageNotice: HTMLParagraphElement;
+  // 온라인에서 기기 설정이 일시 중지됐음을 별도로 보여 주는 패널 문구다.
+  onlineNotice: HTMLParagraphElement;
+  // 저장 오류가 반복돼도 패널과 콘솔에는 한 번만 경고하기 위한 상태다.
+  storageWarningShown: boolean;
+  // 현재 활성 설정이 저장값이 아니라 온라인 config 기본값인지 나타낸다.
+  onlineDefaultsActive: boolean;
   // Rapier가 다음 step에서 setter를 반영한 뒤 한 번 검증하도록 예약한다.
   pendingPhysicsVerification: boolean;
   // 조절판이 턴 상태를 직접 알지 않고 기존 전체 깨우기 동작을 호출한다.
@@ -125,6 +159,28 @@ const DEFAULT_SETTINGS: RuntimeTuningSettings = {
  */
 export function createDefaultRuntimeTuningSettings(): RuntimeTuningSettings {
   return { ...DEFAULT_SETTINGS };
+}
+
+/**
+ * 사생활 모드에서 localStorage getter 자체가 실패해도 부팅을 계속할 연결과 경고를 반환한다.
+ */
+function resolveBrowserTuningStorage(): {
+  storage: TuningStorage | null;
+  warning: string | null;
+} {
+  if (typeof window === "undefined") {
+    return { storage: null, warning: null };
+  }
+  try {
+    return { storage: window.localStorage, warning: null };
+  } catch (error: unknown) {
+    const detail =
+      error instanceof Error ? error.message : String(error);
+    return {
+      storage: null,
+      warning: `기기 저장소를 사용할 수 없어 이번 실행에서만 조절값을 사용합니다: ${detail}`,
+    };
+  }
 }
 
 // 화면 범위와 내부 단위 변환을 한 표로 고정해 세 UI 표현이 어긋나지 않게 한다.
@@ -236,6 +292,120 @@ function clampSetting(key: TuningKey, value: number): number {
 }
 
 /**
+ * 저장된 전체 객체를 필드별로 검사해 손상된 필드만 config 기본값으로 되돌린다.
+ */
+export function loadTuningSettings(
+  storage: TuningStorage | null,
+): TuningLoadResult {
+  const settings = createDefaultRuntimeTuningSettings();
+  if (storage === null) {
+    return { settings, invalidKeys: [], warning: null };
+  }
+  try {
+    const raw = storage.getItem(TUNING_SETTINGS_STORAGE_KEY);
+    if (raw === null) {
+      return { settings, invalidKeys: [], warning: null };
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    const source =
+      typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    const invalidKeys: TuningKey[] = [];
+    for (const key of Object.keys(DEFAULT_SETTINGS) as TuningKey[]) {
+      const value = source?.[key];
+      const definition = DEFINITIONS[key];
+      if (
+        typeof value === "number" &&
+        Number.isFinite(value) &&
+        value >= definition.min &&
+        value <= definition.max
+      ) {
+        settings[key] = value;
+      } else {
+        invalidKeys.push(key);
+      }
+    }
+    return {
+      settings,
+      invalidKeys,
+      warning:
+        invalidKeys.length === 0
+          ? null
+          : `저장된 조절값 중 ${invalidKeys.join(", ")} 필드를 config 기본값으로 복원했습니다.`,
+    };
+  } catch (error: unknown) {
+    const detail =
+      error instanceof Error ? error.message : String(error);
+    return {
+      settings,
+      invalidKeys: Object.keys(DEFAULT_SETTINGS) as TuningKey[],
+      warning: `저장된 조절값을 읽지 못해 config 기본값으로 시작합니다: ${detail}`,
+    };
+  }
+}
+
+/**
+ * 검증된 전체 조절값을 단일 JSON으로 저장하고 실패 상세만 반환한다.
+ */
+export function saveTuningSettings(
+  storage: TuningStorage | null,
+  settings: Readonly<RuntimeTuningSettings>,
+): string | null {
+  if (storage === null) {
+    return null;
+  }
+  try {
+    storage.setItem(
+      TUNING_SETTINGS_STORAGE_KEY,
+      JSON.stringify(settings),
+    );
+    return null;
+  } catch (error: unknown) {
+    const detail =
+      error instanceof Error ? error.message : String(error);
+    return `조절값을 기기에 저장하지 못했습니다: ${detail}`;
+  }
+}
+
+/**
+ * 초기화가 config 기본값으로 돌아가는 동시에 저장된 전체 세트를 제거한다.
+ */
+export function clearTuningSettings(
+  storage: TuningStorage | null,
+): string | null {
+  if (storage === null) {
+    return null;
+  }
+  try {
+    storage.removeItem(TUNING_SETTINGS_STORAGE_KEY);
+    return null;
+  } catch (error: unknown) {
+    const detail =
+      error instanceof Error ? error.message : String(error);
+    return `저장된 조절값을 삭제하지 못했습니다: ${detail}`;
+  }
+}
+
+/**
+ * 저장 오류나 손상 안내를 반복하지 않고 패널과 콘솔에 한 번만 남긴다.
+ */
+function showTuningStorageWarning(
+  runtime: TuningRuntime,
+  warning: string,
+): void {
+  if (runtime.storageWarningShown) {
+    return;
+  }
+  runtime.storageWarningShown = true;
+  runtime.storageNotice.textContent = warning;
+  runtime.storageNotice.classList.add("tuning-storage-warning");
+  console.warn(`[손맛 조절판] ${warning}`);
+}
+
+/**
  * 조절판 밑동 추와 스테이지·카드·영구 강화 추가 질량을 한 번에 적용한다.
  */
 export function applyComposedWeightToBinding(
@@ -308,6 +478,7 @@ export function setTuningValue(
   runtime: TuningRuntime,
   key: TuningKey,
   value: number,
+  persist = true,
 ): void {
   if (!Number.isFinite(value)) {
     return;
@@ -324,6 +495,56 @@ export function setTuningValue(
     }
   }
   applyPhysicsSetting(runtime, key);
+  if (!persist) {
+    return;
+  }
+  runtime.localSettings[key] = clamped;
+  const warning = saveTuningSettings(
+    runtime.storage,
+    runtime.localSettings,
+  );
+  if (warning !== null) {
+    runtime.storage = null;
+    showTuningStorageWarning(runtime, warning);
+  } else if (!runtime.storageWarningShown) {
+    runtime.storageNotice.textContent =
+      "변경한 조절값을 이 기기에 저장했습니다.";
+  }
+}
+
+/**
+ * 온라인에서는 config 기본값을 활성화하고 로컬 복귀 때 저장된 기기 설정을 되살린다.
+ */
+export function setTuningGameMode(
+  runtime: TuningRuntime,
+  gameMode: GameMode,
+): void {
+  const useOnlineDefaults = gameMode === "online";
+  if (runtime.onlineDefaultsActive === useOnlineDefaults) {
+    return;
+  }
+  runtime.onlineDefaultsActive = useOnlineDefaults;
+  const targetSettings = useOnlineDefaults
+    ? DEFAULT_SETTINGS
+    : runtime.localSettings;
+  for (const key of Object.keys(DEFAULT_SETTINGS) as TuningKey[]) {
+    setTuningValue(runtime, key, targetSettings[key], false);
+  }
+  for (const elements of runtime.controls.values()) {
+    for (const element of elements) {
+      if (element instanceof HTMLInputElement) {
+        element.disabled = useOnlineDefaults;
+      }
+    }
+  }
+  const resetButton =
+    runtime.panel.querySelector<HTMLButtonElement>(
+      "[data-tuning-reset]",
+    );
+  if (resetButton !== null) {
+    resetButton.disabled = useOnlineDefaults;
+  }
+  runtime.onlineNotice.hidden = !useOnlineDefaults;
 }
 
 /**
@@ -369,7 +590,7 @@ export function registerTuningControl(
       );
     });
   } else if (element instanceof HTMLOutputElement) {
-    setTuningValue(runtime, key, runtime.settings[key]);
+    setTuningValue(runtime, key, runtime.settings[key], false);
   }
 }
 
@@ -609,22 +830,50 @@ function appendAppliedValuesGroup(runtime: TuningRuntime): void {
 export function createTuningRuntime(
   container: HTMLElement,
   physicsRuntime: PhysicsRuntime,
+  storage?: TuningStorage | null,
 ): TuningRuntime {
+  const resolvedStorage =
+    storage === undefined
+      ? resolveBrowserTuningStorage()
+      : { storage, warning: null };
+  const loaded = loadTuningSettings(resolvedStorage.storage);
   const panel = document.createElement("aside");
   panel.className = "tuning-panel";
   panel.hidden =
     new URLSearchParams(window.location.search).get("tune") !== "1";
   panel.innerHTML = "<h2>손맛 조절판</h2>";
   container.append(panel);
+  const storageNotice = document.createElement("p");
+  storageNotice.className = "tuning-note tuning-storage-notice";
+  storageNotice.textContent =
+    resolvedStorage.storage === null
+      ? "이 조절판은 기기 저장을 사용하지 않습니다."
+      : "변경한 조절값은 이 기기에 자동 저장됩니다.";
+  const onlineNotice = document.createElement("p");
+  onlineNotice.className = "tuning-note tuning-online-notice";
+  onlineNotice.textContent =
+    "온라인 대전에서는 기기 저장값을 잠시 멈추고 config 기본값을 사용합니다.";
+  onlineNotice.hidden = true;
   const runtime: TuningRuntime = {
     physicsRuntime,
-    settings: createDefaultRuntimeTuningSettings(),
+    settings: loaded.settings,
     panel,
     controls: new Map(),
     appliedValueElements: new Map(),
+    storage: resolvedStorage.storage,
+    localSettings: { ...loaded.settings },
+    storageNotice,
+    onlineNotice,
+    storageWarningShown: false,
+    onlineDefaultsActive: false,
     pendingPhysicsVerification: false,
     wakeAllHandler: null,
   };
+  const initialWarning =
+    resolvedStorage.warning ?? loaded.warning;
+  if (initialWarning !== null) {
+    showTuningStorageWarning(runtime, initialWarning);
+  }
   appendAppliedValuesGroup(runtime);
   const groups: Array<{
     title: string;
@@ -671,14 +920,29 @@ export function createTuningRuntime(
   wakeButton.addEventListener("click", () => runtime.wakeAllHandler?.());
   const resetButton = document.createElement("button");
   resetButton.type = "button";
-  resetButton.textContent = "초기화";
+  resetButton.dataset.tuningReset = "";
+  resetButton.textContent = "기본값 복원 · 저장 삭제";
   resetButton.addEventListener("click", () => {
     for (const key of Object.keys(DEFAULT_SETTINGS) as TuningKey[]) {
-      setTuningValue(runtime, key, DEFAULT_SETTINGS[key]);
+      setTuningValue(runtime, key, DEFAULT_SETTINGS[key], false);
+      runtime.localSettings[key] = DEFAULT_SETTINGS[key];
+    }
+    const warning = clearTuningSettings(runtime.storage);
+    if (warning !== null) {
+      runtime.storage = null;
+      showTuningStorageWarning(runtime, warning);
+    } else if (!runtime.storageWarningShown) {
+      runtime.storageNotice.textContent =
+        "config 기본값으로 복원하고 기기 저장값을 삭제했습니다.";
     }
   });
   actions.append(wakeButton, resetButton);
-  panel.append(note, actions);
+  panel.append(
+    note,
+    storageNotice,
+    onlineNotice,
+    actions,
+  );
   window.addEventListener("keydown", (event) => {
     const target = event.target;
     if (

@@ -70,6 +70,7 @@ import {
 import {
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
+  setTuningGameMode,
   updateTuningAppliedValues,
 } from "./tuning";
 import type {
@@ -588,11 +589,13 @@ async function bootstrap(): Promise<void> {
     const previousCards = cloneRunCardState(runCardState);
     resetRunCardState(runCardState);
     setTurnGameMode(turnRuntime, mode);
+    setTuningGameMode(tuningRuntime, mode);
     try {
       await resetBoard({ gameMode: mode, stageNumber: 1 });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
       setTurnGameMode(turnRuntime, previousMode);
+      setTuningGameMode(tuningRuntime, previousMode);
       throw error;
     }
   });
