@@ -186,6 +186,30 @@ export interface GuideCurve {
 }
 
 /**
+ * 조준 geometry에 NaN을 쓰기 전에 어떤 벡터 입력이 깨졌는지 이름과 값으로 중단한다.
+ */
+function assertFiniteGuideVector(label: string, value: Vector3): void {
+  if (
+    !Number.isFinite(value.x) ||
+    !Number.isFinite(value.y) ||
+    !Number.isFinite(value.z)
+  ) {
+    throw new Error(
+      `${label}가 유한한 3차원 벡터가 아닙니다: (${value.x}, ${value.y}, ${value.z})`,
+    );
+  }
+}
+
+/**
+ * 조준 geometry 계산에 쓰는 단일 숫자가 NaN·Infinity로 전파되지 않게 한다.
+ */
+function assertFiniteGuideNumber(label: string, value: number): void {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label}가 유한한 숫자가 아닙니다: ${value}`);
+  }
+}
+
+/**
  * 수평 속도가 일정한 탄도에서 속력 적분의 원시함수를 계산한다.
  */
 function computeSpeedPrimitive(
@@ -270,6 +294,11 @@ export function computeGuideCurve(
   start: Vector3,
   direction: Vector3,
 ): GuideCurve {
+  assertFiniteGuideVector("안내 곡선 시작점", start);
+  assertFiniteGuideVector("안내 곡선 방향", direction);
+  if (direction.lengthSq() < 1e-12) {
+    throw new Error("안내 곡선 방향의 길이가 0입니다.");
+  }
   const normalizedDirection = direction.clone().normalize();
   let maximumTime = GUIDE_ARC_LENGTH / NOMINAL_GUIDE_SPEED;
   while (
@@ -435,7 +464,16 @@ function computePieceWorldBoundingSphere(mesh: Mesh): Sphere {
     throw new Error(`${mesh.name} 말의 실제 bounding sphere를 계산하지 못했습니다.`);
   }
   mesh.updateMatrixWorld(true);
-  return localSphere.clone().applyMatrix4(mesh.matrixWorld);
+  const worldSphere = localSphere.clone().applyMatrix4(mesh.matrixWorld);
+  assertFiniteGuideVector(
+    `${mesh.name} 말 bounding sphere 중심`,
+    worldSphere.center,
+  );
+  assertFiniteGuideNumber(
+    `${mesh.name} 말 bounding sphere 반지름`,
+    worldSphere.radius,
+  );
+  return worldSphere;
 }
 
 /**
@@ -619,6 +657,9 @@ function setGroundRibbonGeometry(
   end: Vector3,
   forward: Vector3,
 ): void {
+  assertFiniteGuideVector("바닥 띠 시작점", start);
+  assertFiniteGuideVector("바닥 띠 끝점", end);
+  assertFiniteGuideVector("바닥 띠 진행 방향", forward);
   const side = new Vector3(-forward.z, 0, forward.x);
   const position = geometry.getAttribute("position");
   const startHalfWidth = GROUND_RIBBON_NEAR_WIDTH / 2;
@@ -630,6 +671,7 @@ function setGroundRibbonGeometry(
     end.clone().addScaledVector(side, -endHalfWidth),
   ];
   vertices.forEach((vertex, index) => {
+    assertFiniteGuideVector(`바닥 띠 ${index}번 꼭짓점`, vertex);
     position.setXYZ(index, vertex.x, GUIDE_GROUND_Y, vertex.z);
   });
   position.needsUpdate = true;
@@ -644,6 +686,9 @@ export function computeBillboardCross(
   point: Vector3,
   camera: PerspectiveCamera,
 ): Vector3 {
+  assertFiniteGuideVector("공중 띠 접선", tangent);
+  assertFiniteGuideVector("공중 띠 표본점", point);
+  assertFiniteGuideVector("공중 띠 카메라 위치", camera.position);
   const view = camera.position.clone().sub(point).normalize();
   const cross = tangent.clone().cross(view);
   if (cross.lengthSq() < 1e-12) {
@@ -668,7 +713,9 @@ export function computeBillboardCross(
       -cross.dot(tangent),
     );
   }
-  return cross.normalize();
+  cross.normalize();
+  assertFiniteGuideVector("공중 띠 폭 방향", cross);
+  return cross;
 }
 
 /**
@@ -679,8 +726,12 @@ function setElevationRibbonGeometry(
   points: readonly GuideCurvePoint[],
   camera: PerspectiveCamera,
 ): void {
+  assertFiniteGuideVector("공중 띠 카메라 위치", camera.position);
   const position = geometry.getAttribute("position");
   points.forEach((point, index) => {
+    assertFiniteGuideNumber(`공중 띠 ${index}번 표본 시각`, point.time);
+    assertFiniteGuideVector(`공중 띠 ${index}번 표본점`, point.position);
+    assertFiniteGuideVector(`공중 띠 ${index}번 접선`, point.tangent);
     const halfWidth = computeBillboardCross(
       point.tangent,
       point.position,
@@ -688,6 +739,8 @@ function setElevationRibbonGeometry(
     ).multiplyScalar(ELEVATION_RIBBON_WIDTH / 2);
     const left = point.position.clone().add(halfWidth);
     const right = point.position.clone().sub(halfWidth);
+    assertFiniteGuideVector(`공중 띠 ${index}번 왼쪽 꼭짓점`, left);
+    assertFiniteGuideVector(`공중 띠 ${index}번 오른쪽 꼭짓점`, right);
     position.setXYZ(index * 2, left.x, left.y, left.z);
     position.setXYZ(index * 2 + 1, right.x, right.y, right.z);
   });
@@ -734,6 +787,9 @@ function setBowstringPoints(
   pullPoint: Vector3,
   secondAnchor: Vector3,
 ): void {
+  assertFiniteGuideVector("활줄 첫 고정점", firstAnchor);
+  assertFiniteGuideVector("활줄 당김점", pullPoint);
+  assertFiniteGuideVector("활줄 둘째 고정점", secondAnchor);
   line.geometry.setPositions([
     firstAnchor.x,
     firstAnchor.y,
@@ -1097,6 +1153,10 @@ export function beginDirectedAim(
   pieceId: string,
   direction: Vector3,
 ): void {
+  assertFiniteGuideVector("방향 조준 시작 방향", direction);
+  if (direction.lengthSq() < 1e-12) {
+    throw new Error("방향 조준 시작 방향의 길이가 0입니다.");
+  }
   const normalizedDirection = direction.clone().normalize();
   const right = normalizedDirection
     .clone()
@@ -1123,6 +1183,11 @@ export function updateDirectedAim(
   direction: Vector3,
   normalizedPower: number,
 ): void {
+  assertFiniteGuideVector("방향 조준 갱신 방향", direction);
+  if (direction.lengthSq() < 1e-12) {
+    throw new Error("방향 조준 갱신 방향의 길이가 0입니다.");
+  }
+  assertFiniteGuideNumber("방향 조준 세기", normalizedPower);
   const activeAim = runtime.activeAim;
   if (activeAim === null) {
     return;
@@ -1193,6 +1258,7 @@ export function setAimApplicationPoint(
   runtime: AimRuntime,
   applicationPoint: Vector3,
 ): void {
+  assertFiniteGuideVector("조준 적용점", applicationPoint);
   runtime.applicationPoint = applicationPoint.clone();
   if (runtime.activeAim !== null) {
     setAimGuidesVisible(runtime, true);

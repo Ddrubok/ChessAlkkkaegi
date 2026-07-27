@@ -18,13 +18,19 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ChessAssets } from "./assets";
-import { CAMERA_PITCH_DEG, SPAWN_GAP } from "./config";
+import { CAMERA_PITCH_DEG } from "./config";
 import type { PhysicsRuntime } from "./physics";
 import {
   getCellCenter,
   type PieceInstance,
   type PieceSide,
 } from "./layout";
+import {
+  computeStagePieceScale,
+  computeStageSpawnPose,
+  selectStageSpawnInstances,
+  type StageSpawnOptions,
+} from "./stage";
 
 export interface SceneRuntime {
   // 루프가 물리 자세를 개체별 렌더 메시로 복사하기 위한 연결표다.
@@ -39,9 +45,19 @@ export interface SceneRuntime {
   minimumCameraDistance: number;
   // 턴 회전이 현재 리사이즈 조건을 사용할 수 있도록 보드 반폭을 보존한다.
   boardHalfExtent: number;
+  // 재시작 때 새 백 메시가 기존 공유 재질을 그대로 사용하도록 보존한다.
+  whitePieceMaterial: MeshStandardMaterial;
+  // 재시작 때 새 흑 메시가 기존 공유 재질을 그대로 사용하도록 보존한다.
+  blackPieceMaterial: MeshStandardMaterial;
   // 리사이즈 뒤 현재 입력 모드의 거리·피치 계약을 다시 적용하는 선택적 연결점이다.
   onCameraFitChanged: (() => void) | null;
 }
+
+// 첫 화면과 핫시트 생성에서는 모든 렌더 메시를 원본 배율로 둔다.
+const DEFAULT_STAGE_SPAWN_OPTIONS: StageSpawnOptions = {
+  gameMode: "hotseat",
+  stageNumber: 1,
+};
 
 /**
  * 조준 가림 때문에 숨긴 렌더 메시만 원래 표시 상태로 되돌린다.
@@ -312,6 +328,52 @@ function choosePieceMaterial(
 }
 
 /**
+ * 공유 지오메트리·재질로 한 개체의 시작 메시를 만들고 씬 연결표에 등록한다.
+ */
+function addPieceMesh(
+  scene: Scene,
+  pieceMeshes: Map<string, Mesh>,
+  assets: ChessAssets,
+  instance: PieceInstance,
+  whiteMaterial: MeshStandardMaterial,
+  blackMaterial: MeshStandardMaterial,
+  stageOptions: StageSpawnOptions,
+): void {
+  const geometry = assets.geometries.get(instance.type);
+  if (geometry === undefined) {
+    throw new Error(`${instance.type} 공유 지오메트리를 찾지 못했습니다.`);
+  }
+  const mesh = new Mesh(
+    geometry,
+    choosePieceMaterial(instance.side, whiteMaterial, blackMaterial),
+  );
+  const pose = computeStageSpawnPose(
+    instance,
+    assets.meta,
+    stageOptions,
+  );
+  mesh.name = instance.id;
+  mesh.position.set(
+    pose.translation.x,
+    pose.translation.y,
+    pose.translation.z,
+  );
+  mesh.quaternion.set(
+    pose.rotation.x,
+    pose.rotation.y,
+    pose.rotation.z,
+    pose.rotation.w,
+  );
+  mesh.scale.setScalar(
+    computeStagePieceScale(instance, assets.meta, stageOptions),
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  pieceMeshes.set(instance.id, mesh);
+}
+
+/**
  * 카메라·조명·절차 보드와 개별 말 메시를 구성하고 리사이즈 동기화를 연결한다.
  */
 export function createSceneRuntime(
@@ -319,6 +381,7 @@ export function createSceneRuntime(
   assets: ChessAssets,
   instances: readonly PieceInstance[],
   boardHalfExtent: number,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): SceneRuntime {
   const scene = new Scene();
   scene.background = new Color(0x171410);
@@ -395,26 +458,20 @@ export function createSceneRuntime(
     metalness: 0.08,
   });
   const pieceMeshes = new Map<string, Mesh>();
-  for (const instance of instances) {
-    const geometry = assets.geometries.get(instance.type);
-    if (geometry === undefined) {
-      throw new Error(`${instance.type} 공유 지오메트리를 찾지 못했습니다.`);
-    }
-    const mesh = new Mesh(
-      geometry,
-      choosePieceMaterial(instance.side, whiteMaterial, blackMaterial),
+  const spawnInstances = selectStageSpawnInstances(
+    instances,
+    stageOptions,
+  );
+  for (const instance of spawnInstances) {
+    addPieceMesh(
+      scene,
+      pieceMeshes,
+      assets,
+      instance,
+      whiteMaterial,
+      blackMaterial,
+      stageOptions,
     );
-    const center = getCellCenter(
-      instance.startingSquare,
-      assets.meta.cellSize,
-    );
-    mesh.name = instance.id;
-    mesh.position.set(center.x, SPAWN_GAP, center.z);
-    mesh.rotation.y = instance.side === "black" ? Math.PI : 0;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
-    pieceMeshes.set(instance.id, mesh);
   }
 
   const runtime: SceneRuntime = {
@@ -428,6 +485,8 @@ export function createSceneRuntime(
       boardMesh.position.y + assets.meta.boardThickness / 2,
     minimumCameraDistance: 0,
     boardHalfExtent,
+    whitePieceMaterial: whiteMaterial,
+    blackPieceMaterial: blackMaterial,
     onCameraFitChanged: null,
   };
 
@@ -464,4 +523,48 @@ export function createSceneRuntime(
     );
   }
   return runtime;
+}
+
+/**
+ * 기존 말 메시 참조를 씬과 연결표에서 모두 제거하고 표준 32개 메시를 다시 등록한다.
+ */
+export function resetScenePieces(
+  runtime: SceneRuntime,
+  assets: ChessAssets,
+  instances: readonly PieceInstance[],
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const mesh of runtime.pieceMeshes.values()) {
+    runtime.scene.remove(mesh);
+  }
+  runtime.pieceMeshes.clear();
+  const spawnInstances = selectStageSpawnInstances(
+    instances,
+    stageOptions,
+  );
+  for (const instance of spawnInstances) {
+    addPieceMesh(
+      runtime.scene,
+      runtime.pieceMeshes,
+      assets,
+      instance,
+      runtime.whitePieceMaterial,
+      runtime.blackPieceMaterial,
+      stageOptions,
+    );
+  }
+  const pieceIds = new Set(
+    spawnInstances.map((instance) => instance.id),
+  );
+  const attachedPieceMeshCount = runtime.scene.children.filter((child) =>
+    pieceIds.has(child.name),
+  ).length;
+  if (
+    runtime.pieceMeshes.size !== spawnInstances.length ||
+    attachedPieceMeshCount !== spawnInstances.length
+  ) {
+    throw new Error(
+      `재시작 렌더 연결 누수 검사 실패: 연결표 ${runtime.pieceMeshes.size}/${spawnInstances.length}, 씬 ${attachedPieceMeshCount}/${spawnInstances.length}`,
+    );
+  }
 }

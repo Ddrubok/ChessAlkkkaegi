@@ -5,10 +5,113 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="ChessAlkkagi 웹 게임" />
     <title>ChessAlkkagi</title>
+    <!-- 2.25MB 모듈 번들이 도착하기 전 첫 프레임부터 보이도록 부트 로딩 화면 스타일을 인라인으로 둔다. -->
+    <style>
+      /* 외부 스타일을 기다리는 동안 흰 배경이 드러나지 않게 문서 전체를 게임 배경색으로 채운다. */
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        background: #100d0a;
+      }
+
+      /* 자바스크립트가 같은 노드를 이어받을 때까지 화면 전체를 덮는 부트 로딩 루트다. */
+      #boot-loading {
+        position: fixed;
+        z-index: 50;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        width: auto;
+        max-width: none;
+        box-sizing: border-box;
+        padding: 1.25rem;
+        border: 0;
+        border-radius: 0;
+        background:
+          radial-gradient(circle at 50% 20%, rgb(96 72 35 / 42%), transparent 42%),
+          #100d0a;
+        box-shadow: none;
+        color: #f4eee5;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        transform: none;
+      }
+
+      /* 기존 로딩 패널의 테두리·갈색 배경·그림자 언어를 그대로 따른다. */
+      .boot-loading-card {
+        width: min(24rem, 100%);
+        box-sizing: border-box;
+        padding: 1.5rem;
+        border: 1px solid rgb(255 255 255 / 14%);
+        border-radius: 0.7rem;
+        background: rgb(24 20 16 / 88%);
+        box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%);
+        text-align: center;
+      }
+
+      .boot-loading-card h1 {
+        margin: 0 0 0.6rem;
+        color: #ffe7a3;
+        font-size: clamp(1.8rem, 8vw, 2.7rem);
+      }
+
+      #boot-loading-phase {
+        min-height: 1.5em;
+        margin: 0;
+        color: #d8d0c4;
+        line-height: 1.5;
+      }
+
+      /* 실제 다운로드 비율을 알기 전에도 동작 중임을 알리는 CSS 전용 진행 막대다. */
+      .boot-loading-track {
+        position: relative;
+        height: 0.38rem;
+        margin-top: 1rem;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgb(255 255 255 / 10%);
+      }
+
+      .boot-loading-track::after {
+        position: absolute;
+        inset: 0 auto 0 -42%;
+        width: 42%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, transparent, #ffe7a3, transparent);
+        animation: boot-loading-slide 1.25s ease-in-out infinite;
+        content: "";
+      }
+
+      @keyframes boot-loading-slide {
+        to {
+          transform: translateX(340%);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-loading-track::after {
+          animation-duration: 2.5s;
+        }
+      }
+    </style>
   </head>
   <body>
-    <main id="app"></main>
+    <main id="app">
+      <!-- 큰 모듈을 실행하기 전에 브라우저가 즉시 그리며, bootstrap이 이 노드를 그대로 이어받는다. -->
+      <section
+        id="boot-loading"
+        class="loading-panel"
+        role="status"
+        aria-live="polite"
+      >
+        <div class="boot-loading-card">
+          <h1>체스알까기</h1>
+          <p id="boot-loading-phase">불러오는 중입니다</p>
+          <div class="boot-loading-track" aria-hidden="true"></div>
+        </div>
+      </section>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
-

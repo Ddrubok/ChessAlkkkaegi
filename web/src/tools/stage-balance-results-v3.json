@@ -1,0 +1,2748 @@
+{
+  "schemaVersion": 3,
+  "generatedBy": "stage-balance-sweep-v3.mjs",
+  "status": "no-qualifying-combination",
+  "configuration": {
+    "sweepRunsPerCombo": 12,
+    "sweepComboCount": 24,
+    "refinementComboCount": 6,
+    "maximumStage": 30,
+    "normalProfile": {
+      "id": "normal",
+      "label": "보통",
+      "jitterDegrees": 8
+    },
+    "seedOffset": 12
+  },
+  "target": {
+    "medianDeathStage": [
+      4.5,
+      6
+    ],
+    "minimumStageOneWinRate": 0.75,
+    "monotonicNoiseTolerance": 0.16666666666666666
+  },
+  "sweep": [
+    {
+      "id": "j5-p1-b1",
+      "difficulty": {
+        "id": "j5-p1-b1",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 1,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1.5,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          2,
+          3,
+          1,
+          3,
+          3,
+          1,
+          2,
+          2,
+          1,
+          1,
+          1
+        ],
+        "median": 1.5,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 3
+      },
+      "stageOneWinRate": 0.5,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 6,
+          "losses": 6,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 76.5,
+          "averageWhiteSelfOuts": 7.166666666666667,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 6,
+          "wins": 3,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 67.16666666666667,
+          "averageWhiteSelfOuts": 6.5,
+          "averageBlackSelfOuts": 2.8333333333333335,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 0,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 64,
+          "averageWhiteSelfOuts": 9.333333333333334,
+          "averageBlackSelfOuts": 3.3333333333333335,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 25921.01
+    },
+    {
+      "id": "j5-p1-b0.5",
+      "difficulty": {
+        "id": "j5-p1-b0.5",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1.5,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          2,
+          4,
+          1,
+          3,
+          2,
+          1,
+          3,
+          3,
+          1,
+          1,
+          1
+        ],
+        "median": 1.5,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5,
+      "maximumPositiveBump": 0.16666666666666663,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 6,
+          "losses": 6,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 76.5,
+          "averageWhiteSelfOuts": 7.166666666666667,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 6,
+          "wins": 4,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.6666666666666666,
+          "averageTurns": 74.16666666666667,
+          "averageWhiteSelfOuts": 7.166666666666667,
+          "averageBlackSelfOuts": 1.8333333333333333,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 4,
+          "wins": 1,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.25,
+          "averageTurns": 55.25,
+          "averageWhiteSelfOuts": 9,
+          "averageBlackSelfOuts": 3.25,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 66,
+          "averageWhiteSelfOuts": 7,
+          "averageBlackSelfOuts": 3,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 27982.29
+    },
+    {
+      "id": "j5-p1-b0.33",
+      "difficulty": {
+        "id": "j5-p1-b0.33",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1.5,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          3,
+          3,
+          1,
+          3,
+          2,
+          1,
+          3,
+          4,
+          1,
+          1,
+          1
+        ],
+        "median": 1.5,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5,
+      "maximumPositiveBump": 0.33333333333333337,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 6,
+          "losses": 6,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 76.5,
+          "averageWhiteSelfOuts": 7.166666666666667,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 6,
+          "wins": 5,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0.8333333333333334,
+          "averageTurns": 61.166666666666664,
+          "averageWhiteSelfOuts": 6.666666666666667,
+          "averageBlackSelfOuts": 4.333333333333333,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 5,
+          "wins": 1,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.2,
+          "averageTurns": 61.2,
+          "averageWhiteSelfOuts": 9.6,
+          "averageBlackSelfOuts": 3.2,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 55,
+          "averageWhiteSelfOuts": 12,
+          "averageBlackSelfOuts": 0,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 27538.61
+    },
+    {
+      "id": "j5-p0.85-b1",
+      "difficulty": {
+        "id": "j5-p0.85-b1",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 1,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          2,
+          2,
+          1,
+          3,
+          3,
+          1,
+          2,
+          2,
+          1,
+          2,
+          1
+        ],
+        "median": 2,
+        "modes": [
+          1,
+          2
+        ],
+        "minimum": 1,
+        "maximum": 3
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 77.16666666666667,
+          "averageWhiteSelfOuts": 7.25,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 2,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.2857142857142857,
+          "averageTurns": 69,
+          "averageWhiteSelfOuts": 6.428571428571429,
+          "averageBlackSelfOuts": 2.4285714285714284,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 2,
+          "wins": 0,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 71.5,
+          "averageWhiteSelfOuts": 7.5,
+          "averageBlackSelfOuts": 4.5,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 25916.98
+    },
+    {
+      "id": "j5-p0.85-b0.5",
+      "difficulty": {
+        "id": "j5-p0.85-b0.5",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          2,
+          5,
+          1,
+          3,
+          2,
+          1,
+          3,
+          3,
+          1,
+          2,
+          1
+        ],
+        "median": 2,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 5
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0.75,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 77.16666666666667,
+          "averageWhiteSelfOuts": 7.25,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 4,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.5714285714285714,
+          "averageTurns": 69,
+          "averageWhiteSelfOuts": 7,
+          "averageBlackSelfOuts": 1.7142857142857142,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 4,
+          "wins": 1,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.25,
+          "averageTurns": 55.75,
+          "averageWhiteSelfOuts": 9.5,
+          "averageBlackSelfOuts": 2.5,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "winRate": 1,
+          "averageTurns": 52,
+          "averageWhiteSelfOuts": 8,
+          "averageBlackSelfOuts": 6,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 5,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 51,
+          "averageWhiteSelfOuts": 11,
+          "averageBlackSelfOuts": 3,
+          "aiForceSteps": 2
+        }
+      ],
+      "wallTimeMs": 28927.85
+    },
+    {
+      "id": "j5-p0.85-b0.33",
+      "difficulty": {
+        "id": "j5-p0.85-b0.33",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          2,
+          2,
+          1,
+          3,
+          2,
+          1,
+          3,
+          4,
+          1,
+          2,
+          1
+        ],
+        "median": 2,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 77.16666666666667,
+          "averageWhiteSelfOuts": 7.25,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 3,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.42857142857142855,
+          "averageTurns": 64.14285714285714,
+          "averageWhiteSelfOuts": 6.285714285714286,
+          "averageBlackSelfOuts": 3.7142857142857144,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 1,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 61.333333333333336,
+          "averageWhiteSelfOuts": 11,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 55,
+          "averageWhiteSelfOuts": 12,
+          "averageBlackSelfOuts": 0,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 26708.1
+    },
+    {
+      "id": "j9-p1-b1",
+      "difficulty": {
+        "id": "j9-p1-b1",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 1,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          2,
+          3,
+          1,
+          1,
+          1,
+          2,
+          1,
+          3,
+          2,
+          2,
+          1,
+          3
+        ],
+        "median": 2,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 3
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 78.08333333333333,
+          "averageWhiteSelfOuts": 5.75,
+          "averageBlackSelfOuts": 2.4166666666666665,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 3,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.42857142857142855,
+          "averageTurns": 67.71428571428571,
+          "averageWhiteSelfOuts": 8.142857142857142,
+          "averageBlackSelfOuts": 2.5714285714285716,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 0,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 48.666666666666664,
+          "averageWhiteSelfOuts": 9,
+          "averageBlackSelfOuts": 4.333333333333333,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 23156.09
+    },
+    {
+      "id": "j9-p1-b0.5",
+      "difficulty": {
+        "id": "j9-p1-b0.5",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          2,
+          4,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          4,
+          5,
+          1,
+          2
+        ],
+        "median": 2,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 5
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0.5714285714285714,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 78.08333333333333,
+          "averageWhiteSelfOuts": 5.75,
+          "averageBlackSelfOuts": 2.4166666666666665,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 3,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.42857142857142855,
+          "averageTurns": 70.28571428571429,
+          "averageWhiteSelfOuts": 7.428571428571429,
+          "averageBlackSelfOuts": 3.5714285714285716,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 3,
+          "losses": 0,
+          "draws": 0,
+          "winRate": 1,
+          "averageTurns": 59.666666666666664,
+          "averageWhiteSelfOuts": 9.333333333333334,
+          "averageBlackSelfOuts": 4.666666666666667,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 3,
+          "wins": 1,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 45.333333333333336,
+          "averageWhiteSelfOuts": 9.333333333333334,
+          "averageBlackSelfOuts": 3,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 5,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 58,
+          "averageWhiteSelfOuts": 8,
+          "averageBlackSelfOuts": 4,
+          "aiForceSteps": 2
+        }
+      ],
+      "wallTimeMs": 26227.26
+    },
+    {
+      "id": "j9-p1-b0.33",
+      "difficulty": {
+        "id": "j9-p1-b0.33",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          2,
+          2,
+          1,
+          2
+        ],
+        "median": 2,
+        "modes": [
+          2
+        ],
+        "minimum": 1,
+        "maximum": 3
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 78.08333333333333,
+          "averageWhiteSelfOuts": 5.75,
+          "averageBlackSelfOuts": 2.4166666666666665,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 1,
+          "losses": 6,
+          "draws": 0,
+          "winRate": 0.14285714285714285,
+          "averageTurns": 66.14285714285714,
+          "averageWhiteSelfOuts": 7.571428571428571,
+          "averageBlackSelfOuts": 3.142857142857143,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 57,
+          "averageWhiteSelfOuts": 9,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 21316.99
+    },
+    {
+      "id": "j9-p0.85-b1",
+      "difficulty": {
+        "id": "j9-p0.85-b1",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 1,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          2,
+          3,
+          1,
+          1,
+          1,
+          2,
+          1,
+          3,
+          2,
+          2,
+          1,
+          4
+        ],
+        "median": 2,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 76.66666666666667,
+          "averageWhiteSelfOuts": 5.666666666666667,
+          "averageBlackSelfOuts": 2.5,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 3,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.42857142857142855,
+          "averageTurns": 66.42857142857143,
+          "averageWhiteSelfOuts": 8.142857142857142,
+          "averageBlackSelfOuts": 2.857142857142857,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 1,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 56,
+          "averageWhiteSelfOuts": 9,
+          "averageBlackSelfOuts": 5,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 71,
+          "averageWhiteSelfOuts": 11,
+          "averageBlackSelfOuts": 4,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 24267.38
+    },
+    {
+      "id": "j9-p0.85-b0.5",
+      "difficulty": {
+        "id": "j9-p0.85-b0.5",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          2,
+          3,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          4,
+          4,
+          1,
+          4
+        ],
+        "median": 2,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0.1785714285714286,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 76.66666666666667,
+          "averageWhiteSelfOuts": 5.666666666666667,
+          "averageBlackSelfOuts": 2.5,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 4,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.5714285714285714,
+          "averageTurns": 72.14285714285714,
+          "averageWhiteSelfOuts": 7.428571428571429,
+          "averageBlackSelfOuts": 3.4285714285714284,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 4,
+          "wins": 3,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0.75,
+          "averageTurns": 58,
+          "averageWhiteSelfOuts": 9.25,
+          "averageBlackSelfOuts": 4,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 3,
+          "wins": 0,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 52.666666666666664,
+          "averageWhiteSelfOuts": 10.666666666666666,
+          "averageBlackSelfOuts": 1,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 26745.25
+    },
+    {
+      "id": "j9-p0.85-b0.33",
+      "difficulty": {
+        "id": "j9-p0.85-b0.33",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          2,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          2,
+          2,
+          1,
+          2
+        ],
+        "median": 2,
+        "modes": [
+          2
+        ],
+        "minimum": 1,
+        "maximum": 3
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 76.66666666666667,
+          "averageWhiteSelfOuts": 5.666666666666667,
+          "averageBlackSelfOuts": 2.5,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 1,
+          "losses": 6,
+          "draws": 0,
+          "winRate": 0.14285714285714285,
+          "averageTurns": 69.28571428571429,
+          "averageWhiteSelfOuts": 7.857142857142857,
+          "averageBlackSelfOuts": 2.7142857142857144,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 72,
+          "averageWhiteSelfOuts": 5,
+          "averageBlackSelfOuts": 1,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 22238.13
+    },
+    {
+      "id": "j13-p1-b1",
+      "difficulty": {
+        "id": "j13-p1-b1",
+        "aiJitterDegrees": 13,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 1,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          4,
+          1,
+          1,
+          1,
+          1,
+          3,
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "median": 1,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.3333333333333333,
+      "maximumPositiveBump": 0.6666666666666667,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 4,
+          "losses": 8,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 75.5,
+          "averageWhiteSelfOuts": 8.833333333333334,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 4,
+          "wins": 4,
+          "losses": 0,
+          "draws": 0,
+          "winRate": 1,
+          "averageTurns": 70.5,
+          "averageWhiteSelfOuts": 6.75,
+          "averageBlackSelfOuts": 2.5,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 4,
+          "wins": 1,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.25,
+          "averageTurns": 56.5,
+          "averageWhiteSelfOuts": 8.5,
+          "averageBlackSelfOuts": 3.5,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 52,
+          "averageWhiteSelfOuts": 6,
+          "averageBlackSelfOuts": 1,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 22394.5
+    },
+    {
+      "id": "j13-p1-b0.5",
+      "difficulty": {
+        "id": "j13-p1-b0.5",
+        "aiJitterDegrees": 13,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1,
+      "deathStageDistribution": {
+        "values": [
+          2,
+          3,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2,
+          1,
+          1,
+          1
+        ],
+        "median": 1,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 3
+      },
+      "stageOneWinRate": 0.3333333333333333,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 4,
+          "losses": 8,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 75.5,
+          "averageWhiteSelfOuts": 8.833333333333334,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 4,
+          "wins": 1,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.25,
+          "averageTurns": 59.75,
+          "averageWhiteSelfOuts": 8.5,
+          "averageBlackSelfOuts": 3.25,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 57,
+          "averageWhiteSelfOuts": 10,
+          "averageBlackSelfOuts": 1,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 19538.28
+    },
+    {
+      "id": "j13-p1-b0.33",
+      "difficulty": {
+        "id": "j13-p1-b0.33",
+        "aiJitterDegrees": 13,
+        "aiPowerMaximum": 1,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          3,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "median": 1,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 3
+      },
+      "stageOneWinRate": 0.3333333333333333,
+      "maximumPositiveBump": 0.4166666666666667,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 4,
+          "losses": 8,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 75.5,
+          "averageWhiteSelfOuts": 8.833333333333334,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 4,
+          "wins": 3,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0.75,
+          "averageTurns": 66.75,
+          "averageWhiteSelfOuts": 6.5,
+          "averageBlackSelfOuts": 2.75,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 0,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 52.333333333333336,
+          "averageWhiteSelfOuts": 9.666666666666666,
+          "averageBlackSelfOuts": 4.333333333333333,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 20398.64
+    },
+    {
+      "id": "j13-p0.85-b1",
+      "difficulty": {
+        "id": "j13-p0.85-b1",
+        "aiJitterDegrees": 13,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 1,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          4,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          3,
+          2,
+          1,
+          1
+        ],
+        "median": 1,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.4166666666666667,
+      "maximumPositiveBump": 0.1833333333333333,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 5,
+          "losses": 7,
+          "draws": 0,
+          "winRate": 0.4166666666666667,
+          "averageTurns": 77,
+          "averageWhiteSelfOuts": 8.916666666666666,
+          "averageBlackSelfOuts": 1.8333333333333333,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 5,
+          "wins": 3,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.6,
+          "averageTurns": 69.6,
+          "averageWhiteSelfOuts": 7.4,
+          "averageBlackSelfOuts": 2.4,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 1,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 56.333333333333336,
+          "averageWhiteSelfOuts": 9.333333333333334,
+          "averageBlackSelfOuts": 2.6666666666666665,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 43,
+          "averageWhiteSelfOuts": 13,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 21786.27
+    },
+    {
+      "id": "j13-p0.85-b0.5",
+      "difficulty": {
+        "id": "j13-p0.85-b0.5",
+        "aiJitterDegrees": 13,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1,
+      "deathStageDistribution": {
+        "values": [
+          2,
+          4,
+          1,
+          1,
+          1,
+          1,
+          5,
+          1,
+          2,
+          2,
+          1,
+          1
+        ],
+        "median": 1,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 5
+      },
+      "stageOneWinRate": 0.4166666666666667,
+      "maximumPositiveBump": 0.6,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 5,
+          "losses": 7,
+          "draws": 0,
+          "winRate": 0.4166666666666667,
+          "averageTurns": 77,
+          "averageWhiteSelfOuts": 8.916666666666666,
+          "averageBlackSelfOuts": 1.8333333333333333,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 5,
+          "wins": 2,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.4,
+          "averageTurns": 68.6,
+          "averageWhiteSelfOuts": 8.2,
+          "averageBlackSelfOuts": 2.8,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 2,
+          "wins": 2,
+          "losses": 0,
+          "draws": 0,
+          "winRate": 1,
+          "averageTurns": 51,
+          "averageWhiteSelfOuts": 6,
+          "averageBlackSelfOuts": 3.5,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 46.5,
+          "averageWhiteSelfOuts": 9.5,
+          "averageBlackSelfOuts": 3.5,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 5,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 43,
+          "averageWhiteSelfOuts": 9,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 2
+        }
+      ],
+      "wallTimeMs": 23971.48
+    },
+    {
+      "id": "j13-p0.85-b0.33",
+      "difficulty": {
+        "id": "j13-p0.85-b0.33",
+        "aiJitterDegrees": 13,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          2,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          3,
+          2,
+          1,
+          1
+        ],
+        "median": 1,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 3
+      },
+      "stageOneWinRate": 0.4166666666666667,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 5,
+          "losses": 7,
+          "draws": 0,
+          "winRate": 0.4166666666666667,
+          "averageTurns": 77,
+          "averageWhiteSelfOuts": 8.916666666666666,
+          "averageBlackSelfOuts": 1.8333333333333333,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 5,
+          "wins": 2,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.4,
+          "averageTurns": 59.4,
+          "averageWhiteSelfOuts": 7.8,
+          "averageBlackSelfOuts": 2.8,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 2,
+          "wins": 0,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 50,
+          "averageWhiteSelfOuts": 10,
+          "averageBlackSelfOuts": 3,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 20160.34
+    },
+    {
+      "id": "ref-j5-p0.7-b0.5",
+      "difficulty": {
+        "id": "ref-j5-p0.7-b0.5",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 0.7,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1.5,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          2,
+          1,
+          2,
+          2,
+          4,
+          1,
+          2,
+          3,
+          1,
+          1,
+          1
+        ],
+        "median": 1.5,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5,
+      "maximumPositiveBump": 0.16666666666666669,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 6,
+          "losses": 6,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 80.16666666666667,
+          "averageWhiteSelfOuts": 7.166666666666667,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 6,
+          "wins": 2,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 71.83333333333333,
+          "averageWhiteSelfOuts": 7.166666666666667,
+          "averageBlackSelfOuts": 3,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 66.5,
+          "averageWhiteSelfOuts": 10,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 33,
+          "averageWhiteSelfOuts": 10,
+          "averageBlackSelfOuts": 1,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 26885.37
+    },
+    {
+      "id": "ref-j5-p0.7-b0.33",
+      "difficulty": {
+        "id": "ref-j5-p0.7-b0.33",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 0.7,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 1.5,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          2,
+          1,
+          2,
+          4,
+          2,
+          1,
+          4,
+          4,
+          1,
+          1,
+          1
+        ],
+        "median": 1.5,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5,
+      "maximumPositiveBump": 0.5,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 6,
+          "losses": 6,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 80.16666666666667,
+          "averageWhiteSelfOuts": 7.166666666666667,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 6,
+          "wins": 3,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 62.5,
+          "averageWhiteSelfOuts": 8.833333333333334,
+          "averageBlackSelfOuts": 4.333333333333333,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 3,
+          "losses": 0,
+          "draws": 0,
+          "winRate": 1,
+          "averageTurns": 56,
+          "averageWhiteSelfOuts": 7,
+          "averageBlackSelfOuts": 2.6666666666666665,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 3,
+          "wins": 0,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 47.333333333333336,
+          "averageWhiteSelfOuts": 11,
+          "averageBlackSelfOuts": 3.3333333333333335,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 26760.92
+    },
+    {
+      "id": "ref-j9-p0.7-b0.5",
+      "difficulty": {
+        "id": "ref-j9-p0.7-b0.5",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 0.7,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2.5,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          3,
+          1,
+          1,
+          3,
+          2,
+          1,
+          5,
+          3,
+          3,
+          1,
+          2
+        ],
+        "median": 2.5,
+        "modes": [
+          3
+        ],
+        "minimum": 1,
+        "maximum": 5
+      },
+      "stageOneWinRate": 0.6666666666666666,
+      "maximumPositiveBump": 0.8333333333333334,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 8,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.6666666666666666,
+          "averageTurns": 77.25,
+          "averageWhiteSelfOuts": 5.75,
+          "averageBlackSelfOuts": 2.4166666666666665,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 8,
+          "wins": 6,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.75,
+          "averageTurns": 67.75,
+          "averageWhiteSelfOuts": 7.875,
+          "averageBlackSelfOuts": 3.875,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 6,
+          "wins": 1,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.16666666666666666,
+          "averageTurns": 58.166666666666664,
+          "averageWhiteSelfOuts": 8.833333333333334,
+          "averageBlackSelfOuts": 2.8333333333333335,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "winRate": 1,
+          "averageTurns": 35,
+          "averageWhiteSelfOuts": 11,
+          "averageBlackSelfOuts": 6,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 5,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 60,
+          "averageWhiteSelfOuts": 8,
+          "averageBlackSelfOuts": 5,
+          "aiForceSteps": 2
+        }
+      ],
+      "wallTimeMs": 29498.65
+    },
+    {
+      "id": "ref-j9-p0.7-b0.33",
+      "difficulty": {
+        "id": "ref-j9-p0.7-b0.33",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 0.7,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          2,
+          1,
+          1,
+          2,
+          3,
+          1,
+          2,
+          2,
+          2,
+          1,
+          4
+        ],
+        "median": 2,
+        "modes": [
+          2
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.6666666666666666,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 8,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.6666666666666666,
+          "averageTurns": 77.25,
+          "averageWhiteSelfOuts": 5.75,
+          "averageBlackSelfOuts": 2.4166666666666665,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 8,
+          "wins": 3,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.375,
+          "averageTurns": 73.125,
+          "averageWhiteSelfOuts": 7.375,
+          "averageBlackSelfOuts": 3.125,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 1,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 58,
+          "averageWhiteSelfOuts": 7,
+          "averageBlackSelfOuts": 2.6666666666666665,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 53,
+          "averageWhiteSelfOuts": 9,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 26516.42
+    },
+    {
+      "id": "ref-j7-p0.7-b0.5",
+      "difficulty": {
+        "id": "ref-j7-p0.7-b0.5",
+        "aiJitterDegrees": 7,
+        "aiPowerMaximum": 0.7,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          2,
+          2,
+          1,
+          1,
+          3,
+          4,
+          1,
+          2,
+          2,
+          1,
+          1,
+          2
+        ],
+        "median": 2,
+        "modes": [
+          1,
+          2
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0.2142857142857143,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 70.25,
+          "averageWhiteSelfOuts": 8,
+          "averageBlackSelfOuts": 3.0833333333333335,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 2,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.2857142857142857,
+          "averageTurns": 67.85714285714286,
+          "averageWhiteSelfOuts": 7.571428571428571,
+          "averageBlackSelfOuts": 2.4285714285714284,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 66,
+          "averageWhiteSelfOuts": 7.5,
+          "averageBlackSelfOuts": 3,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 44,
+          "averageWhiteSelfOuts": 9,
+          "averageBlackSelfOuts": 3,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 23810.2
+    },
+    {
+      "id": "ref-j7-p0.65-b0.5",
+      "difficulty": {
+        "id": "ref-j7-p0.65-b0.5",
+        "aiJitterDegrees": 7,
+        "aiPowerMaximum": 0.65,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          4,
+          1,
+          1,
+          2,
+          5,
+          1,
+          3,
+          3,
+          1,
+          1,
+          2
+        ],
+        "median": 2,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 5
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0.13095238095238093,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 73,
+          "averageWhiteSelfOuts": 8.083333333333334,
+          "averageBlackSelfOuts": 3.1666666666666665,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 5,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.7142857142857143,
+          "averageTurns": 73.57142857142857,
+          "averageWhiteSelfOuts": 7.142857142857143,
+          "averageBlackSelfOuts": 2.7142857142857144,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 5,
+          "wins": 2,
+          "losses": 3,
+          "draws": 0,
+          "winRate": 0.4,
+          "averageTurns": 60.6,
+          "averageWhiteSelfOuts": 8.2,
+          "averageBlackSelfOuts": 3.2,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0.5,
+          "averageTurns": 51,
+          "averageWhiteSelfOuts": 8.5,
+          "averageBlackSelfOuts": 4.5,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 5,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 39,
+          "averageWhiteSelfOuts": 11,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 2
+        }
+      ],
+      "wallTimeMs": 29247.54
+    }
+  ],
+  "selection": null,
+  "closestThree": [
+    {
+      "id": "ref-j9-p0.7-b0.5",
+      "difficulty": {
+        "id": "ref-j9-p0.7-b0.5",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 0.7,
+        "buffStepScale": 0.5,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2.5,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          3,
+          1,
+          1,
+          3,
+          2,
+          1,
+          5,
+          3,
+          3,
+          1,
+          2
+        ],
+        "median": 2.5,
+        "modes": [
+          3
+        ],
+        "minimum": 1,
+        "maximum": 5
+      },
+      "stageOneWinRate": 0.6666666666666666,
+      "maximumPositiveBump": 0.8333333333333334,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": false,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 8,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.6666666666666666,
+          "averageTurns": 77.25,
+          "averageWhiteSelfOuts": 5.75,
+          "averageBlackSelfOuts": 2.4166666666666665,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 8,
+          "wins": 6,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.75,
+          "averageTurns": 67.75,
+          "averageWhiteSelfOuts": 7.875,
+          "averageBlackSelfOuts": 3.875,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 6,
+          "wins": 1,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.16666666666666666,
+          "averageTurns": 58.166666666666664,
+          "averageWhiteSelfOuts": 8.833333333333334,
+          "averageBlackSelfOuts": 2.8333333333333335,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "winRate": 1,
+          "averageTurns": 35,
+          "averageWhiteSelfOuts": 11,
+          "averageBlackSelfOuts": 6,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 5,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 60,
+          "averageWhiteSelfOuts": 8,
+          "averageBlackSelfOuts": 5,
+          "aiForceSteps": 2
+        }
+      ],
+      "wallTimeMs": 29498.65
+    },
+    {
+      "id": "ref-j9-p0.7-b0.33",
+      "difficulty": {
+        "id": "ref-j9-p0.7-b0.33",
+        "aiJitterDegrees": 9,
+        "aiPowerMaximum": 0.7,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          3,
+          2,
+          1,
+          1,
+          2,
+          3,
+          1,
+          2,
+          2,
+          2,
+          1,
+          4
+        ],
+        "median": 2,
+        "modes": [
+          2
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.6666666666666666,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 8,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.6666666666666666,
+          "averageTurns": 77.25,
+          "averageWhiteSelfOuts": 5.75,
+          "averageBlackSelfOuts": 2.4166666666666665,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 8,
+          "wins": 3,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.375,
+          "averageTurns": 73.125,
+          "averageWhiteSelfOuts": 7.375,
+          "averageBlackSelfOuts": 3.125,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 1,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 58,
+          "averageWhiteSelfOuts": 7,
+          "averageBlackSelfOuts": 2.6666666666666665,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 53,
+          "averageWhiteSelfOuts": 9,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 26516.42
+    },
+    {
+      "id": "j5-p0.85-b0.33",
+      "difficulty": {
+        "id": "j5-p0.85-b0.33",
+        "aiJitterDegrees": 5,
+        "aiPowerMaximum": 0.85,
+        "buffStepScale": 0.33,
+        "useRuntimeDefaults": false
+      },
+      "medianDeathStage": 2,
+      "deathStageDistribution": {
+        "values": [
+          1,
+          2,
+          2,
+          1,
+          3,
+          2,
+          1,
+          3,
+          4,
+          1,
+          2,
+          1
+        ],
+        "median": 2,
+        "modes": [
+          1
+        ],
+        "minimum": 1,
+        "maximum": 4
+      },
+      "stageOneWinRate": 0.5833333333333334,
+      "maximumPositiveBump": 0,
+      "medianInTarget": false,
+      "stageOnePass": false,
+      "monotonicWithinNoise": true,
+      "qualifies": false,
+      "drawTimeoutRuns": 0,
+      "stageCapRuns": 0,
+      "byStage": [
+        {
+          "stage": 1,
+          "attempts": 12,
+          "wins": 7,
+          "losses": 5,
+          "draws": 0,
+          "winRate": 0.5833333333333334,
+          "averageTurns": 77.16666666666667,
+          "averageWhiteSelfOuts": 7.25,
+          "averageBlackSelfOuts": 1.9166666666666667,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 2,
+          "attempts": 7,
+          "wins": 3,
+          "losses": 4,
+          "draws": 0,
+          "winRate": 0.42857142857142855,
+          "averageTurns": 64.14285714285714,
+          "averageWhiteSelfOuts": 6.285714285714286,
+          "averageBlackSelfOuts": 3.7142857142857144,
+          "aiForceSteps": 0
+        },
+        {
+          "stage": 3,
+          "attempts": 3,
+          "wins": 1,
+          "losses": 2,
+          "draws": 0,
+          "winRate": 0.3333333333333333,
+          "averageTurns": 61.333333333333336,
+          "averageWhiteSelfOuts": 11,
+          "averageBlackSelfOuts": 2,
+          "aiForceSteps": 1
+        },
+        {
+          "stage": 4,
+          "attempts": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "winRate": 0,
+          "averageTurns": 55,
+          "averageWhiteSelfOuts": 12,
+          "averageBlackSelfOuts": 0,
+          "aiForceSteps": 1
+        }
+      ],
+      "wallTimeMs": 26708.1
+    }
+  ],
+  "r35Baseline": {
+    "configuration": {
+      "runsPerProfile": 12,
+      "totalRuns": 36,
+      "maximumStage": 30,
+      "maximumTurnsPerMatch": 200,
+      "maximumSimulatedSecondsPerTurn": 120,
+      "cardPriority": [
+        "force",
+        "weight",
+        "size",
+        "giantPawn",
+        "proneStart"
+      ],
+      "permanentUpgrades": "none",
+      "whitePlayerPolicy": {
+        "target": "nearest-board-edge",
+        "shooter": "maximum-edge-alignment-above-0.3",
+        "fallback": "nearest-own-to-target",
+        "minimumPower": 0.55
+      },
+      "profiles": [
+        {
+          "id": "accurate",
+          "label": "정확",
+          "jitterDegrees": 2
+        },
+        {
+          "id": "normal",
+          "label": "보통",
+          "jitterDegrees": 8
+        },
+        {
+          "id": "unskilled",
+          "label": "서툼",
+          "jitterDegrees": 15
+        }
+      ]
+    },
+    "profiles": [
+      {
+        "profile": "accurate",
+        "profileLabel": "정확",
+        "jitterDegrees": 2,
+        "deathStageDistribution": {
+          "values": [
+            1,
+            4,
+            5,
+            1,
+            1,
+            5,
+            1,
+            3,
+            3,
+            1,
+            3,
+            2
+          ],
+          "median": 2.5,
+          "modes": [
+            1
+          ],
+          "minimum": 1,
+          "maximum": 5
+        },
+        "byStage": [
+          {
+            "stage": 1,
+            "attempts": 12,
+            "wins": 7,
+            "losses": 5,
+            "draws": 0,
+            "winRate": 0.5833333333333334,
+            "averageTurns": 71.83333333333333,
+            "averageWhiteSelfOuts": 7.166666666666667,
+            "averageBlackSelfOuts": 2.5833333333333335,
+            "aiForceSteps": 0
+          },
+          {
+            "stage": 2,
+            "attempts": 7,
+            "wins": 6,
+            "losses": 1,
+            "draws": 0,
+            "winRate": 0.8571428571428571,
+            "averageTurns": 76.85714285714286,
+            "averageWhiteSelfOuts": 5.714285714285714,
+            "averageBlackSelfOuts": 3,
+            "aiForceSteps": 0
+          },
+          {
+            "stage": 3,
+            "attempts": 6,
+            "wins": 3,
+            "losses": 3,
+            "draws": 0,
+            "winRate": 0.5,
+            "averageTurns": 49.833333333333336,
+            "averageWhiteSelfOuts": 8.666666666666666,
+            "averageBlackSelfOuts": 3.3333333333333335,
+            "aiForceSteps": 1
+          },
+          {
+            "stage": 4,
+            "attempts": 3,
+            "wins": 2,
+            "losses": 1,
+            "draws": 0,
+            "winRate": 0.6666666666666666,
+            "averageTurns": 51.333333333333336,
+            "averageWhiteSelfOuts": 9,
+            "averageBlackSelfOuts": 4.333333333333333,
+            "aiForceSteps": 1
+          },
+          {
+            "stage": 5,
+            "attempts": 2,
+            "wins": 0,
+            "losses": 2,
+            "draws": 0,
+            "winRate": 0,
+            "averageTurns": 53.5,
+            "averageWhiteSelfOuts": 11,
+            "averageBlackSelfOuts": 4,
+            "aiForceSteps": 2
+          }
+        ],
+        "drawTimeoutRuns": 0,
+        "stageCapRuns": 0
+      },
+      {
+        "profile": "normal",
+        "profileLabel": "보통",
+        "jitterDegrees": 8,
+        "deathStageDistribution": {
+          "values": [
+            1,
+            2,
+            3,
+            1,
+            3,
+            3,
+            1,
+            2,
+            2,
+            1,
+            1,
+            1
+          ],
+          "median": 1.5,
+          "modes": [
+            1
+          ],
+          "minimum": 1,
+          "maximum": 3
+        },
+        "byStage": [
+          {
+            "stage": 1,
+            "attempts": 12,
+            "wins": 6,
+            "losses": 6,
+            "draws": 0,
+            "winRate": 0.5,
+            "averageTurns": 76.5,
+            "averageWhiteSelfOuts": 7.166666666666667,
+            "averageBlackSelfOuts": 1.9166666666666667,
+            "aiForceSteps": 0
+          },
+          {
+            "stage": 2,
+            "attempts": 6,
+            "wins": 3,
+            "losses": 3,
+            "draws": 0,
+            "winRate": 0.5,
+            "averageTurns": 67.16666666666667,
+            "averageWhiteSelfOuts": 6.5,
+            "averageBlackSelfOuts": 2.8333333333333335,
+            "aiForceSteps": 0
+          },
+          {
+            "stage": 3,
+            "attempts": 3,
+            "wins": 0,
+            "losses": 3,
+            "draws": 0,
+            "winRate": 0,
+            "averageTurns": 64,
+            "averageWhiteSelfOuts": 9.333333333333334,
+            "averageBlackSelfOuts": 3.3333333333333335,
+            "aiForceSteps": 1
+          }
+        ],
+        "drawTimeoutRuns": 0,
+        "stageCapRuns": 0
+      },
+      {
+        "profile": "unskilled",
+        "profileLabel": "서툼",
+        "jitterDegrees": 15,
+        "deathStageDistribution": {
+          "values": [
+            1,
+            1,
+            1,
+            2,
+            1,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
+          ],
+          "median": 1,
+          "modes": [
+            1
+          ],
+          "minimum": 1,
+          "maximum": 2
+        },
+        "byStage": [
+          {
+            "stage": 1,
+            "attempts": 12,
+            "wins": 3,
+            "losses": 9,
+            "draws": 0,
+            "winRate": 0.25,
+            "averageTurns": 79.75,
+            "averageWhiteSelfOuts": 7.583333333333333,
+            "averageBlackSelfOuts": 3,
+            "aiForceSteps": 0
+          },
+          {
+            "stage": 2,
+            "attempts": 3,
+            "wins": 0,
+            "losses": 3,
+            "draws": 0,
+            "winRate": 0,
+            "averageTurns": 62,
+            "averageWhiteSelfOuts": 7.666666666666667,
+            "averageBlackSelfOuts": 2,
+            "aiForceSteps": 0
+          }
+        ],
+        "drawTimeoutRuns": 0,
+        "stageCapRuns": 0
+      }
+    ]
+  },
+  "sweepWallTimeMs": 162722.05
+}

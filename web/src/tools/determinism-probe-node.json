@@ -1,0 +1,4699 @@
+{
+  "schemaVersion": 1,
+  "initialFixedSteps": 900,
+  "fixedStepsPerLaunch": 900,
+  "launches": [
+    {
+      "pieceId": "white-pawn-d2",
+      "direction": [
+        0,
+        0,
+        1
+      ],
+      "power": 0.82,
+      "applicationPoint": [
+        0.2680015,
+        0.31,
+        -1.3400075
+      ]
+    },
+    {
+      "pieceId": "black-pawn-e7",
+      "direction": [
+        0,
+        0,
+        -1
+      ],
+      "power": 0.78,
+      "applicationPoint": [
+        -0.2680015,
+        0.19,
+        1.3400075
+      ]
+    },
+    {
+      "pieceId": "white-pawn-b2",
+      "direction": [
+        -0.31622776601683794,
+        0,
+        0.9486832980505138
+      ],
+      "power": 0.86,
+      "applicationPoint": [
+        1.3400075,
+        0.27,
+        -1.3400075
+      ]
+    },
+    {
+      "pieceId": "black-pawn-g7",
+      "direction": [
+        0.4472135954999579,
+        0,
+        -0.8944271909999159
+      ],
+      "power": 0.81,
+      "applicationPoint": [
+        -1.3400075,
+        0.22,
+        1.3400075
+      ]
+    },
+    {
+      "pieceId": "white-knight-b1",
+      "direction": [
+        -0.4472135954999579,
+        0,
+        0.8944271909999159
+      ],
+      "power": 0.76,
+      "applicationPoint": [
+        1.3400075,
+        0.43,
+        -1.8760105
+      ]
+    },
+    {
+      "pieceId": "black-bishop-f8",
+      "direction": [
+        0.6,
+        0,
+        -0.8
+      ],
+      "power": 0.74,
+      "applicationPoint": [
+        -0.8040045,
+        0.48,
+        1.8760105
+      ]
+    },
+    {
+      "pieceId": "white-rook-h1",
+      "direction": [
+        0.8,
+        0,
+        0.6
+      ],
+      "power": 0.79,
+      "applicationPoint": [
+        -1.8760105,
+        0.37,
+        -1.8760105
+      ]
+    },
+    {
+      "pieceId": "black-queen-d8",
+      "direction": [
+        -0.19611613513818404,
+        0,
+        -0.9805806756909202
+      ],
+      "power": 0.72,
+      "applicationPoint": [
+        0.2680015,
+        0.63,
+        1.8760105
+      ]
+    },
+    {
+      "pieceId": "white-bishop-c1",
+      "direction": [
+        0.24253562503633297,
+        0,
+        0.9701425001453319
+      ],
+      "power": 0.77,
+      "applicationPoint": [
+        0.8040045,
+        0.51,
+        -1.8760105
+      ]
+    },
+    {
+      "pieceId": "black-knight-b8",
+      "direction": [
+        -0.7071067811865476,
+        0,
+        -0.7071067811865476
+      ],
+      "power": 0.75,
+      "applicationPoint": [
+        1.3400075,
+        0.4,
+        1.8760105
+      ]
+    }
+  ],
+  "checkpoints": [
+    {
+      "launchIndex": 1,
+      "sha256": "09f615c595aa260537624b18bb494d2e280dfa550ae550bc9a922942c8ce80d0",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "bfe9b76e40000000",
+            "bf37290000000000",
+            "3ffe0b6dc0000000"
+          ],
+          "rotationBits": [
+            "bf6b404ea0000000",
+            "3fefffeaa0000000",
+            "3f690a8440000000",
+            "3f237ed500000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5710560000000",
+            "bf50a8c000000000",
+            "3ffe050ce0000000"
+          ],
+          "rotationBits": [
+            "3f47199080000000",
+            "3fefffff60000000",
+            "bf33d843e0000000",
+            "bf0aaa1b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe051de0000000",
+            "bf52e19000000000",
+            "3ff570e6c0000000"
+          ],
+          "rotationBits": [
+            "3f383641a0000000",
+            "3fefffffe0000000",
+            "3f1404de60000000",
+            "befa7d2180000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff570c920000000",
+            "bf52e35000000000",
+            "3ff570b340000000"
+          ],
+          "rotationBits": [
+            "3f3898e580000000",
+            "3fefffffe0000000",
+            "3f181c29e0000000",
+            "3ef8c95760000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3fea9550c0000000",
+            "bf52ab0000000000",
+            "3ff57ebc40000000"
+          ],
+          "rotationBits": [
+            "3f295f0b80000000",
+            "3feffe85a0000000",
+            "bf61bff060000000",
+            "bf93532de0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "3fc5355740000000",
+            "bf4f0b2000000000",
+            "3ff85d7f40000000"
+          ],
+          "rotationBits": [
+            "3f53e43260000000",
+            "3fef586960000000",
+            "bf1ebc0a00000000",
+            "bfc9c20a00000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd126cc40000000",
+            "bf52916000000000",
+            "3ff570a6a0000000"
+          ],
+          "rotationBits": [
+            "3f5f629be0000000",
+            "3fefffeac0000000",
+            "3f70b28b20000000",
+            "3f047dcb60000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bff5709ee0000000",
+            "bf5283a000000000",
+            "3ff570c220000000"
+          ],
+          "rotationBits": [
+            "3f354fc760000000",
+            "3feffff1c0000000",
+            "bf6e221040000000",
+            "3edf59cbc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "3fd1349c20000000",
+            "bf36f20000000000",
+            "3ffe1690e0000000"
+          ],
+          "rotationBits": [
+            "bee2a1aa00000000",
+            "3fefffede0000000",
+            "3f6ba48ea0000000",
+            "bf63f07b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3fe9b7bdc0000000",
+            "bf4dc08000000000",
+            "bffe0acce0000000"
+          ],
+          "rotationBits": [
+            "bf6754a320000000",
+            "3f14c20200000000",
+            "bf301e13c0000000",
+            "3feffff780000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd1271420000000",
+            "bf32e88000000000",
+            "bffe049620000000"
+          ],
+          "rotationBits": [
+            "bf5ef21ac0000000",
+            "3f327be540000000",
+            "3f7c9919a0000000",
+            "3fefffc940000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "3ff570b920000000",
+            "bf52c8e000000000",
+            "bffe0419c0000000"
+          ],
+          "rotationBits": [
+            "3f1d9074a0000000",
+            "befe7b6b40000000",
+            "3f35db48e0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3ff5709940000000",
+            "bf527fa000000000",
+            "bff570c360000000"
+          ],
+          "rotationBits": [
+            "3f64e75de0000000",
+            "beb06415c0000000",
+            "3f30299340000000",
+            "3feffff920000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe9ba6360000000",
+            "bf52e22000000000",
+            "bff5708e40000000"
+          ],
+          "rotationBits": [
+            "bf129267c0000000",
+            "bef049b400000000",
+            "3f38464f00000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fe101ef40000000",
+            "3fc3be8280000000",
+            "3ff88cea80000000"
+          ],
+          "rotationBits": [
+            "bfd7219560000000",
+            "3fe19eb5c0000000",
+            "bfe55a2f80000000",
+            "3fd6420820000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd12839a0000000",
+            "bf52d65000000000",
+            "bff570cd00000000"
+          ],
+          "rotationBits": [
+            "bf32a64b80000000",
+            "bf03a1d280000000",
+            "3f3e30a120000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfe9bc2f80000000",
+            "bf52e78000000000",
+            "bff57058e0000000"
+          ],
+          "rotationBits": [
+            "bf1e89e7a0000000",
+            "bedf35a180000000",
+            "3f39059560000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff571ec40000000",
+            "bf40fac000000000",
+            "bff5706460000000"
+          ],
+          "rotationBits": [
+            "3f747b4e80000000",
+            "bf14864da0000000",
+            "3f65eab140000000",
+            "3fefffde60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bffe041ca0000000",
+            "bf52c52000000000",
+            "bffe0408e0000000"
+          ],
+          "rotationBits": [
+            "3f3abbb900000000",
+            "bf0a1bc320000000",
+            "3f2375eda0000000",
+            "3fefffffe0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 2,
+      "sha256": "704bc3a6e27134db4f85e8c325dc02b9c4c26c508d98d1dc7b060c670e4e2a24",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "bfe9b76e40000000",
+            "bf37290000000000",
+            "3ffe0b6dc0000000"
+          ],
+          "rotationBits": [
+            "bf6b404ea0000000",
+            "3fefffeaa0000000",
+            "3f690a8440000000",
+            "3f237ed500000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5710560000000",
+            "bf50a8c000000000",
+            "3ffe050ce0000000"
+          ],
+          "rotationBits": [
+            "3f47199080000000",
+            "3fefffff60000000",
+            "bf33d843e0000000",
+            "bf0aaa1b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe051de0000000",
+            "bf52e19000000000",
+            "3ff570e6c0000000"
+          ],
+          "rotationBits": [
+            "3f383641a0000000",
+            "3fefffffe0000000",
+            "3f1404de60000000",
+            "befa7d2180000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff570c920000000",
+            "bf52e35000000000",
+            "3ff570b340000000"
+          ],
+          "rotationBits": [
+            "3f3898e580000000",
+            "3fefffffe0000000",
+            "3f181c29e0000000",
+            "3ef8c95760000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3fea9550c0000000",
+            "bf52ab0000000000",
+            "3ff57ebc40000000"
+          ],
+          "rotationBits": [
+            "3f295f0b80000000",
+            "3feffe85a0000000",
+            "bf61bff060000000",
+            "bf93532de0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "3fc5355740000000",
+            "bf4f0b2000000000",
+            "3ff85d7f40000000"
+          ],
+          "rotationBits": [
+            "3f53e43260000000",
+            "3fef586960000000",
+            "bf1ebc0a00000000",
+            "bfc9c20a00000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd3ce8720000000",
+            "3fc3ca8380000000",
+            "bfef2c0a80000000"
+          ],
+          "rotationBits": [
+            "bfd7acf060000000",
+            "3fe47a5720000000",
+            "bfe52a4820000000",
+            "bfc046f0e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bff5709ee0000000",
+            "bf5283a000000000",
+            "3ff570c220000000"
+          ],
+          "rotationBits": [
+            "3f354fc760000000",
+            "3feffff1c0000000",
+            "bf6e221040000000",
+            "3edf59cbc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "3fd1349c20000000",
+            "bf36f20000000000",
+            "3ffe1690e0000000"
+          ],
+          "rotationBits": [
+            "bee2a1aa00000000",
+            "3fefffede0000000",
+            "3f6ba48ea0000000",
+            "bf63f07b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3fe9b7bdc0000000",
+            "bf4dc08000000000",
+            "bffe0acce0000000"
+          ],
+          "rotationBits": [
+            "bf6754a320000000",
+            "3f14c20200000000",
+            "bf301e13c0000000",
+            "3feffff780000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "3ff570b920000000",
+            "bf52c8e000000000",
+            "bffe0419c0000000"
+          ],
+          "rotationBits": [
+            "3f1d9074a0000000",
+            "befe7b6b40000000",
+            "3f35db48e0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3ff5709940000000",
+            "bf527fa000000000",
+            "bff570c360000000"
+          ],
+          "rotationBits": [
+            "3f64e75de0000000",
+            "beb06415c0000000",
+            "3f30299340000000",
+            "3feffff920000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe9ba6360000000",
+            "bf52e22000000000",
+            "bff5708e40000000"
+          ],
+          "rotationBits": [
+            "bf129267c0000000",
+            "bef049b400000000",
+            "3f38464f00000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fe101ef40000000",
+            "3fc3be8280000000",
+            "3ff88cea80000000"
+          ],
+          "rotationBits": [
+            "bfd7219560000000",
+            "3fe19eb5c0000000",
+            "bfe55a2f80000000",
+            "3fd6420820000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd3cbf200000000",
+            "3fa720ce80000000",
+            "bff5a45780000000"
+          ],
+          "rotationBits": [
+            "bfc3ee4060000000",
+            "bfc6613f40000000",
+            "bfb5a705c0000000",
+            "3feefe1de0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea400e60000000",
+            "bf521dd000000000",
+            "bff58adc00000000"
+          ],
+          "rotationBits": [
+            "3f72983520000000",
+            "3f6f207120000000",
+            "3f3f948120000000",
+            "3fefffdb00000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff571ec40000000",
+            "bf40fac000000000",
+            "bff5706460000000"
+          ],
+          "rotationBits": [
+            "3f747b4e80000000",
+            "bf14864da0000000",
+            "3f65eab140000000",
+            "3fefffde60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bffe041ca0000000",
+            "bf52c52000000000",
+            "bffe0408e0000000"
+          ],
+          "rotationBits": [
+            "3f3abbb900000000",
+            "bf0a1bc320000000",
+            "3f2375eda0000000",
+            "3fefffffe0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 3,
+      "sha256": "7763a2e6e950293e3c03a7e06996a83f32dcd8250ae2d8042e1a11db944702c9",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "bfe9b76e40000000",
+            "bf37290000000000",
+            "3ffe0b6dc0000000"
+          ],
+          "rotationBits": [
+            "bf6b404ea0000000",
+            "3fefffeaa0000000",
+            "3f690a8440000000",
+            "3f237ed500000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5710560000000",
+            "bf50a8c000000000",
+            "3ffe050ce0000000"
+          ],
+          "rotationBits": [
+            "3f47199080000000",
+            "3fefffff60000000",
+            "bf33d843e0000000",
+            "bf0aaa1b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe051de0000000",
+            "bf52e19000000000",
+            "3ff570e6c0000000"
+          ],
+          "rotationBits": [
+            "3f383641a0000000",
+            "3fefffffe0000000",
+            "3f1404de60000000",
+            "befa7d2180000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff570c920000000",
+            "bf52e35000000000",
+            "3ff570b340000000"
+          ],
+          "rotationBits": [
+            "3f3898e580000000",
+            "3fefffffe0000000",
+            "3f181c29e0000000",
+            "3ef8c95760000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3feabfce20000000",
+            "bf52dfd000000000",
+            "3ff5855800000000"
+          ],
+          "rotationBits": [
+            "3f45a20e80000000",
+            "3feffe9800000000",
+            "3f468abb80000000",
+            "bf92f3aa60000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "3fc5355740000000",
+            "bf4f0b2000000000",
+            "3ff85d7f40000000"
+          ],
+          "rotationBits": [
+            "3f53e43260000000",
+            "3fef586960000000",
+            "bf1ebc0a00000000",
+            "bfc9c20a00000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd3ce8720000000",
+            "3fc3ca8380000000",
+            "bfef2c0a80000000"
+          ],
+          "rotationBits": [
+            "bfd7acf060000000",
+            "3fe47a5720000000",
+            "bfe52a4820000000",
+            "bfc046f0e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bff5709ee0000000",
+            "bf5283a000000000",
+            "3ff570c220000000"
+          ],
+          "rotationBits": [
+            "3f354fc760000000",
+            "3feffff1c0000000",
+            "bf6e221040000000",
+            "3edf59cbc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "3fd1119ac0000000",
+            "bf52130000000000",
+            "3ffe2d8f40000000"
+          ],
+          "rotationBits": [
+            "3f3097d4e0000000",
+            "3fefffeaa0000000",
+            "3f53512ae0000000",
+            "bf71d98d40000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3fe9b7bdc0000000",
+            "bf4dc08000000000",
+            "bffe0acce0000000"
+          ],
+          "rotationBits": [
+            "bf6754a320000000",
+            "3f14c20200000000",
+            "bf301e13c0000000",
+            "3feffff780000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "3ff570b920000000",
+            "bf52c8e000000000",
+            "bffe0419c0000000"
+          ],
+          "rotationBits": [
+            "3f1d9074a0000000",
+            "befe7b6b40000000",
+            "3f35db48e0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3fe5d0e580000000",
+            "3fc14be240000000",
+            "3fedc668e0000000"
+          ],
+          "rotationBits": [
+            "bfe2b31ac0000000",
+            "3f9bba64e0000000",
+            "bfb2be1a20000000",
+            "bfe9d8ea80000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe9ba6360000000",
+            "bf52e22000000000",
+            "bff5708e40000000"
+          ],
+          "rotationBits": [
+            "bf129267c0000000",
+            "bef049b400000000",
+            "3f38464f00000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fde034400000000",
+            "3fc3c9cfa0000000",
+            "3ffb468b20000000"
+          ],
+          "rotationBits": [
+            "bfd73ed280000000",
+            "3fe1443e20000000",
+            "bfe55829c0000000",
+            "3fd7413520000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd3cbf200000000",
+            "3fa720ce80000000",
+            "bff5a45780000000"
+          ],
+          "rotationBits": [
+            "bfc3ee4060000000",
+            "bfc6613f40000000",
+            "bfb5a705c0000000",
+            "3feefe1de0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea400e60000000",
+            "bf521dd000000000",
+            "bff58adc00000000"
+          ],
+          "rotationBits": [
+            "3f72983520000000",
+            "3f6f207120000000",
+            "3f3f948120000000",
+            "3fefffdb00000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff571ec40000000",
+            "bf40fac000000000",
+            "bff5706460000000"
+          ],
+          "rotationBits": [
+            "3f747b4e80000000",
+            "bf14864da0000000",
+            "3f65eab140000000",
+            "3fefffde60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bffe041ca0000000",
+            "bf52c52000000000",
+            "bffe0408e0000000"
+          ],
+          "rotationBits": [
+            "3f3abbb900000000",
+            "bf0a1bc320000000",
+            "3f2375eda0000000",
+            "3fefffffe0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 4,
+      "sha256": "d90bf1c4049324b34b6e59c79093d061acf84767f05fdec793b9d393310906bf",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "bfe9b76e40000000",
+            "bf37290000000000",
+            "3ffe0b6dc0000000"
+          ],
+          "rotationBits": [
+            "bf6b404ea0000000",
+            "3fefffeaa0000000",
+            "3f690a8440000000",
+            "3f237ed500000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5710560000000",
+            "bf50a8c000000000",
+            "3ffe050ce0000000"
+          ],
+          "rotationBits": [
+            "3f47199080000000",
+            "3fefffff60000000",
+            "bf33d843e0000000",
+            "bf0aaa1b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe051de0000000",
+            "bf52e19000000000",
+            "3ff570e6c0000000"
+          ],
+          "rotationBits": [
+            "3f383641a0000000",
+            "3fefffffe0000000",
+            "3f1404de60000000",
+            "befa7d2180000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff570c920000000",
+            "bf52e35000000000",
+            "3ff570b340000000"
+          ],
+          "rotationBits": [
+            "3f3898e580000000",
+            "3fefffffe0000000",
+            "3f181c29e0000000",
+            "3ef8c95760000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3feabfce20000000",
+            "bf52dfd000000000",
+            "3ff5855800000000"
+          ],
+          "rotationBits": [
+            "3f45a20e80000000",
+            "3feffe9800000000",
+            "3f468abb80000000",
+            "bf92f3aa60000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "3fc5355740000000",
+            "bf4f0b2000000000",
+            "3ff85d7f40000000"
+          ],
+          "rotationBits": [
+            "3f53e43260000000",
+            "3fef586960000000",
+            "bf1ebc0a00000000",
+            "bfc9c20a00000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd443e4c0000000",
+            "3fc3c81700000000",
+            "bfef5b51c0000000"
+          ],
+          "rotationBits": [
+            "bfd85fc540000000",
+            "3fe4901a60000000",
+            "bfe4f4ab20000000",
+            "bfbd64d840000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bfa25a0260000000",
+            "3fc3c69c80000000",
+            "bfe9cb7200000000"
+          ],
+          "rotationBits": [
+            "3fe2e93100000000",
+            "3fe166eda0000000",
+            "bfde988720000000",
+            "bfd6c2e900000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "3fd1119ac0000000",
+            "bf52130000000000",
+            "3ffe2d8f40000000"
+          ],
+          "rotationBits": [
+            "3f3097d4e0000000",
+            "3fefffeaa0000000",
+            "3f53512ae0000000",
+            "bf71d98d40000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3fe9b7bdc0000000",
+            "bf4dc08000000000",
+            "bffe0acce0000000"
+          ],
+          "rotationBits": [
+            "bf6754a320000000",
+            "3f14c20200000000",
+            "bf301e13c0000000",
+            "3feffff780000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "3ff570b920000000",
+            "bf52c8e000000000",
+            "bffe0419c0000000"
+          ],
+          "rotationBits": [
+            "3f1d9074a0000000",
+            "befe7b6b40000000",
+            "3f35db48e0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3fe5d0e580000000",
+            "3fc14be240000000",
+            "3fedc668e0000000"
+          ],
+          "rotationBits": [
+            "bfe2b31ac0000000",
+            "3f9bba64e0000000",
+            "bfb2be1a20000000",
+            "bfe9d8ea80000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe9ba6360000000",
+            "bf52e22000000000",
+            "bff5708e40000000"
+          ],
+          "rotationBits": [
+            "bf129267c0000000",
+            "bef049b400000000",
+            "3f38464f00000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fde034400000000",
+            "3fc3c9cfa0000000",
+            "3ffb468b20000000"
+          ],
+          "rotationBits": [
+            "bfd73ed280000000",
+            "3fe1443e20000000",
+            "bfe55829c0000000",
+            "3fd7413520000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd400ad20000000",
+            "3fa5a49d00000000",
+            "bff5c2ec80000000"
+          ],
+          "rotationBits": [
+            "bfc3d21480000000",
+            "bfc9583840000000",
+            "bfae80a920000000",
+            "3feee9f120000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea78e400000000",
+            "bf4f0dc000000000",
+            "bff5951bc0000000"
+          ],
+          "rotationBits": [
+            "bf550c4f20000000",
+            "3f8f83f420000000",
+            "3f5b013640000000",
+            "3fefff0340000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff571ec40000000",
+            "bf40fac000000000",
+            "bff5706460000000"
+          ],
+          "rotationBits": [
+            "3f747b4e80000000",
+            "bf14864da0000000",
+            "3f65eab140000000",
+            "3fefffde60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bffe041ca0000000",
+            "bf52c52000000000",
+            "bffe0408e0000000"
+          ],
+          "rotationBits": [
+            "3f3abbb900000000",
+            "bf0a1bc320000000",
+            "3f2375eda0000000",
+            "3fefffffe0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 5,
+      "sha256": "6a51a6ca81dfea0cb71663d162dc9e6dd0249d781c0dd87d4c414e6bc9143b4e",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "bfe9b76e40000000",
+            "bf37290000000000",
+            "3ffe0b6dc0000000"
+          ],
+          "rotationBits": [
+            "bf6b404ea0000000",
+            "3fefffeaa0000000",
+            "3f690a8440000000",
+            "3f237ed500000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5710560000000",
+            "bf50a8c000000000",
+            "3ffe050ce0000000"
+          ],
+          "rotationBits": [
+            "3f47199080000000",
+            "3fefffff60000000",
+            "bf33d843e0000000",
+            "bf0aaa1b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe051de0000000",
+            "bf52e19000000000",
+            "3ff570e6c0000000"
+          ],
+          "rotationBits": [
+            "3f383641a0000000",
+            "3fefffffe0000000",
+            "3f1404de60000000",
+            "befa7d2180000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff570c920000000",
+            "bf52e35000000000",
+            "3ff570b340000000"
+          ],
+          "rotationBits": [
+            "3f3898e580000000",
+            "3fefffffe0000000",
+            "3f181c29e0000000",
+            "3ef8c95760000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3fec1d1bc0000000",
+            "bf4c49e000000000",
+            "3ff64a2a00000000"
+          ],
+          "rotationBits": [
+            "3f601302a0000000",
+            "3fefca4b80000000",
+            "3f5378e500000000",
+            "bfbd426cc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "3fc5108280000000",
+            "bf46044000000000",
+            "3ff87786a0000000"
+          ],
+          "rotationBits": [
+            "3f617e13c0000000",
+            "3fef5224a0000000",
+            "bf4da3e9a0000000",
+            "bfca3a9ee0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd467c140000000",
+            "3fc3c9d6c0000000",
+            "bfef4bea40000000"
+          ],
+          "rotationBits": [
+            "bfd8a26ca0000000",
+            "3fe4995b60000000",
+            "bfe4e0c500000000",
+            "bfbbcc47c0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bfc6d8e980000000",
+            "3fc3c3eb80000000",
+            "bfea6270e0000000"
+          ],
+          "rotationBits": [
+            "3fda855920000000",
+            "3fe48f4220000000",
+            "bfe4506740000000",
+            "bfbc9f9bc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "3fd1080c00000000",
+            "bf52738000000000",
+            "3ffe339320000000"
+          ],
+          "rotationBits": [
+            "bf167235e0000000",
+            "3fefffef20000000",
+            "3f370ceb80000000",
+            "bf706d10e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3fe9b7bdc0000000",
+            "bf4dc08000000000",
+            "bffe0acce0000000"
+          ],
+          "rotationBits": [
+            "bf6754a320000000",
+            "3f14c20200000000",
+            "bf301e13c0000000",
+            "3feffff780000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "3ed3dc0000000000",
+            "3fcb401c20000000",
+            "3ff50ed980000000"
+          ],
+          "rotationBits": [
+            "bfc03073c0000000",
+            "bfe3e14fa0000000",
+            "3fe8bddec0000000",
+            "3f8ff56d20000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3fe80ec360000000",
+            "3fc1eb8b20000000",
+            "3fef8f03c0000000"
+          ],
+          "rotationBits": [
+            "bfe3b4e3c0000000",
+            "3fc9a26980000000",
+            "bf43d3bc40000000",
+            "bfe8624dc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe2c5c660000000",
+            "3fc3c5e8e0000000",
+            "bff345dae0000000"
+          ],
+          "rotationBits": [
+            "3fdb2bfc00000000",
+            "bfcb456820000000",
+            "3fe41fb5c0000000",
+            "3fe3b26d60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fddff8d40000000",
+            "3fc3c81180000000",
+            "3ffb4c6c20000000"
+          ],
+          "rotationBits": [
+            "bfd7517a80000000",
+            "3fe144ce00000000",
+            "bfe5511e00000000",
+            "3fd746b560000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd40c8fa0000000",
+            "3fa4b7b780000000",
+            "bff5c0c560000000"
+          ],
+          "rotationBits": [
+            "bfc2dc6b00000000",
+            "bfc9a30e20000000",
+            "bfb02862c0000000",
+            "3feeedd900000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea7d28e0000000",
+            "bf4ec86000000000",
+            "bff59538c0000000"
+          ],
+          "rotationBits": [
+            "bf72c058e0000000",
+            "3f8f3f3f80000000",
+            "3f6566a480000000",
+            "3feffeeec0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff571ec40000000",
+            "bf40fac000000000",
+            "bff5706460000000"
+          ],
+          "rotationBits": [
+            "3f747b4e80000000",
+            "bf14864da0000000",
+            "3f65eab140000000",
+            "3fefffde60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bffe041ca0000000",
+            "bf52c52000000000",
+            "bffe0408e0000000"
+          ],
+          "rotationBits": [
+            "3f3abbb900000000",
+            "bf0a1bc320000000",
+            "3f2375eda0000000",
+            "3fefffffe0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 6,
+      "sha256": "239ed13a1e3528e82900c15663beac7d8b7de708727970b8fb2e8fb634f750d1",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "3ff6cf9940000000",
+            "3fc800a8c0000000",
+            "bfb0feb740000000"
+          ],
+          "rotationBits": [
+            "bfe81151c0000000",
+            "3fe4ffe040000000",
+            "3f9c08d4a0000000",
+            "bfabb7ad60000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5710560000000",
+            "bf50a8c000000000",
+            "3ffe050ce0000000"
+          ],
+          "rotationBits": [
+            "3f47199080000000",
+            "3fefffff60000000",
+            "bf33d843e0000000",
+            "bf0aaa1b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe051de0000000",
+            "bf52e19000000000",
+            "3ff570e6c0000000"
+          ],
+          "rotationBits": [
+            "3f383641a0000000",
+            "3fefffffe0000000",
+            "3f1404de60000000",
+            "befa7d2180000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff570c920000000",
+            "bf52e35000000000",
+            "3ff570b340000000"
+          ],
+          "rotationBits": [
+            "3f3898e580000000",
+            "3fefffffe0000000",
+            "3f181c29e0000000",
+            "3ef8c95760000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3fec1d1bc0000000",
+            "bf4c49e000000000",
+            "3ff64a2a00000000"
+          ],
+          "rotationBits": [
+            "3f601302a0000000",
+            "3fefca4b80000000",
+            "3f5378e500000000",
+            "bfbd426cc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "3fc5108280000000",
+            "bf46044000000000",
+            "3ff87786a0000000"
+          ],
+          "rotationBits": [
+            "3f617e13c0000000",
+            "3fef5224a0000000",
+            "bf4da3e9a0000000",
+            "bfca3a9ee0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd467c140000000",
+            "3fc3c9d6c0000000",
+            "bfef4bea40000000"
+          ],
+          "rotationBits": [
+            "bfd8a26ca0000000",
+            "3fe4995b60000000",
+            "bfe4e0c500000000",
+            "bfbbcc47c0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bfc6d8e980000000",
+            "3fc3c3eb80000000",
+            "bfea6270e0000000"
+          ],
+          "rotationBits": [
+            "3fda855920000000",
+            "3fe48f4220000000",
+            "bfe4506740000000",
+            "bfbc9f9bc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "3fd1080c00000000",
+            "bf52738000000000",
+            "3ffe339320000000"
+          ],
+          "rotationBits": [
+            "bf167235e0000000",
+            "3fefffef20000000",
+            "3f370ceb80000000",
+            "bf706d10e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3fe9b7bdc0000000",
+            "bf4dc08000000000",
+            "bffe0acce0000000"
+          ],
+          "rotationBits": [
+            "bf6754a320000000",
+            "3f14c20200000000",
+            "bf301e13c0000000",
+            "3feffff780000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "3f90c74840000000",
+            "3fcb42aea0000000",
+            "3ff4414800000000"
+          ],
+          "rotationBits": [
+            "bfc03ba020000000",
+            "bfe3e05920000000",
+            "3fe8be2240000000",
+            "3f904d20c0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3fe80ec360000000",
+            "3fc1eb8b20000000",
+            "3fef8f03c0000000"
+          ],
+          "rotationBits": [
+            "bfe3b4e3c0000000",
+            "3fc9a26980000000",
+            "bf43d3bc40000000",
+            "bfe8624dc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe2c5c660000000",
+            "3fc3c5e8e0000000",
+            "bff345dae0000000"
+          ],
+          "rotationBits": [
+            "3fdb2bfc00000000",
+            "bfcb456820000000",
+            "3fe41fb5c0000000",
+            "3fe3b26d60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fddff8d40000000",
+            "3fc3c81180000000",
+            "3ffb4c6c20000000"
+          ],
+          "rotationBits": [
+            "bfd7517a80000000",
+            "3fe144ce00000000",
+            "bfe5511e00000000",
+            "3fd746b560000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd40c8fa0000000",
+            "3fa4b7b780000000",
+            "bff5c0c560000000"
+          ],
+          "rotationBits": [
+            "bfc2dc6b00000000",
+            "bfc9a30e20000000",
+            "bfb02862c0000000",
+            "3feeedd900000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea7d28e0000000",
+            "bf4ec86000000000",
+            "bff59538c0000000"
+          ],
+          "rotationBits": [
+            "bf72c058e0000000",
+            "3f8f3f3f80000000",
+            "3f6566a480000000",
+            "3feffeeec0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff571ec40000000",
+            "bf40fac000000000",
+            "bff5706460000000"
+          ],
+          "rotationBits": [
+            "3f747b4e80000000",
+            "bf14864da0000000",
+            "3f65eab140000000",
+            "3fefffde60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bffe041ca0000000",
+            "bf52c52000000000",
+            "bffe0408e0000000"
+          ],
+          "rotationBits": [
+            "3f3abbb900000000",
+            "bf0a1bc320000000",
+            "3f2375eda0000000",
+            "3fefffffe0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 7,
+      "sha256": "1cd19e9796beb4c1b711141dc51019ef19ca76043eb4fa951d82e70fcd122458",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "3ff6cf9940000000",
+            "3fc800a8c0000000",
+            "bfb0feb740000000"
+          ],
+          "rotationBits": [
+            "bfe81151c0000000",
+            "3fe4ffe040000000",
+            "3f9c08d4a0000000",
+            "bfabb7ad60000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5710560000000",
+            "bf50a8c000000000",
+            "3ffe050ce0000000"
+          ],
+          "rotationBits": [
+            "3f47199080000000",
+            "3fefffff60000000",
+            "bf33d843e0000000",
+            "bf0aaa1b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe051de0000000",
+            "bf52e19000000000",
+            "3ff570e6c0000000"
+          ],
+          "rotationBits": [
+            "3f383641a0000000",
+            "3fefffffe0000000",
+            "3f1404de60000000",
+            "befa7d2180000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff570c920000000",
+            "bf52e35000000000",
+            "3ff570b340000000"
+          ],
+          "rotationBits": [
+            "3f3898e580000000",
+            "3fefffffe0000000",
+            "3f181c29e0000000",
+            "3ef8c95760000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3fec1d1bc0000000",
+            "bf4c49e000000000",
+            "3ff64a2a00000000"
+          ],
+          "rotationBits": [
+            "3f601302a0000000",
+            "3fefca4b80000000",
+            "3f5378e500000000",
+            "bfbd426cc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "3fc5108280000000",
+            "bf46044000000000",
+            "3ff87786a0000000"
+          ],
+          "rotationBits": [
+            "3f617e13c0000000",
+            "3fef5224a0000000",
+            "bf4da3e9a0000000",
+            "bfca3a9ee0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd467c140000000",
+            "3fc3c9d6c0000000",
+            "bfef4bea40000000"
+          ],
+          "rotationBits": [
+            "bfd8a26ca0000000",
+            "3fe4995b60000000",
+            "bfe4e0c500000000",
+            "bfbbcc47c0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bfc6d8e980000000",
+            "3fc3c3eb80000000",
+            "bfea6270e0000000"
+          ],
+          "rotationBits": [
+            "3fda855920000000",
+            "3fe48f4220000000",
+            "bfe4506740000000",
+            "bfbc9f9bc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "3fd1080c00000000",
+            "bf52738000000000",
+            "3ffe339320000000"
+          ],
+          "rotationBits": [
+            "bf167235e0000000",
+            "3fefffef20000000",
+            "3f370ceb80000000",
+            "bf706d10e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3fe9b7bdc0000000",
+            "bf4dc08000000000",
+            "bffe0acce0000000"
+          ],
+          "rotationBits": [
+            "bf6754a320000000",
+            "3f14c20200000000",
+            "bf301e13c0000000",
+            "3feffff780000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "3f90c74840000000",
+            "3fcb42aea0000000",
+            "3ff4414800000000"
+          ],
+          "rotationBits": [
+            "bfc03ba020000000",
+            "bfe3e05920000000",
+            "3fe8be2240000000",
+            "3f904d20c0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3fe80ec360000000",
+            "3fc1eb8b20000000",
+            "3fef8f03c0000000"
+          ],
+          "rotationBits": [
+            "bfe3b4e3c0000000",
+            "3fc9a26980000000",
+            "bf43d3bc40000000",
+            "bfe8624dc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe2c5c660000000",
+            "3fc3c5e8e0000000",
+            "bff345dae0000000"
+          ],
+          "rotationBits": [
+            "3fdb2bfc00000000",
+            "bfcb456820000000",
+            "3fe41fb5c0000000",
+            "3fe3b26d60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fddff8d40000000",
+            "3fc3c81180000000",
+            "3ffb4c6c20000000"
+          ],
+          "rotationBits": [
+            "bfd7517a80000000",
+            "3fe144ce00000000",
+            "bfe5511e00000000",
+            "3fd746b560000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd40c8fa0000000",
+            "3fa4b7b780000000",
+            "bff5c0c560000000"
+          ],
+          "rotationBits": [
+            "bfc2dc6b00000000",
+            "bfc9a30e20000000",
+            "bfb02862c0000000",
+            "3feeedd900000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea7d28e0000000",
+            "bf4ec86000000000",
+            "bff59538c0000000"
+          ],
+          "rotationBits": [
+            "bf72c058e0000000",
+            "3f8f3f3f80000000",
+            "3f6566a480000000",
+            "3feffeeec0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff626f420000000",
+            "3fc3ccf060000000",
+            "bfe9f30760000000"
+          ],
+          "rotationBits": [
+            "3fe3e997a0000000",
+            "3fd42963c0000000",
+            "bfdbf080c0000000",
+            "3fe22f8500000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bfadb8c280000000",
+            "3fc5365920000000",
+            "bfde6e6720000000"
+          ],
+          "rotationBits": [
+            "bfa46f4ae0000000",
+            "bfb38fc820000000",
+            "3fe787a5c0000000",
+            "bfe582e2e0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 8,
+      "sha256": "beb0d6ac02f9405a6049be6bc06396f8a333f154efff363d7b087a9c3a587294",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "3ff6cf9940000000",
+            "3fc800a8c0000000",
+            "bfb0feb740000000"
+          ],
+          "rotationBits": [
+            "bfe81151c0000000",
+            "3fe4ffe040000000",
+            "3f9c08d4a0000000",
+            "bfabb7ad60000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5710560000000",
+            "bf50a8c000000000",
+            "3ffe050ce0000000"
+          ],
+          "rotationBits": [
+            "3f47199080000000",
+            "3fefffff60000000",
+            "bf33d843e0000000",
+            "bf0aaa1b40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe051de0000000",
+            "bf52e19000000000",
+            "3ff570e6c0000000"
+          ],
+          "rotationBits": [
+            "3f383641a0000000",
+            "3fefffffe0000000",
+            "3f1404de60000000",
+            "befa7d2180000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff570c920000000",
+            "bf52e35000000000",
+            "3ff570b340000000"
+          ],
+          "rotationBits": [
+            "3f3898e580000000",
+            "3fefffffe0000000",
+            "3f181c29e0000000",
+            "3ef8c95760000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3fec643080000000",
+            "bf52203000000000",
+            "3ff64c5d60000000"
+          ],
+          "rotationBits": [
+            "3f505a4b20000000",
+            "3fefd6fc40000000",
+            "3f5223ee40000000",
+            "bfb9950660000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "bfe2cd8640000000",
+            "3fc3cc65c0000000",
+            "3ff12dbc80000000"
+          ],
+          "rotationBits": [
+            "3fd96b63e0000000",
+            "bfe2cf4900000000",
+            "3fe4bc9ec0000000",
+            "3fd1bc7220000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd467c140000000",
+            "3fc3c9d6c0000000",
+            "bfef4bea40000000"
+          ],
+          "rotationBits": [
+            "bfd8a26ca0000000",
+            "3fe4995b60000000",
+            "bfe4e0c500000000",
+            "bfbbcc47c0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bfc6d8e980000000",
+            "3fc3c3eb80000000",
+            "bfea6270e0000000"
+          ],
+          "rotationBits": [
+            "3fda855920000000",
+            "3fe48f4220000000",
+            "bfe4506740000000",
+            "bfbc9f9bc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "bfd6843680000000",
+            "3fcaae7700000000",
+            "bfbd002180000000"
+          ],
+          "rotationBits": [
+            "3fd2334de0000000",
+            "bfe49b6760000000",
+            "3fe5fba0a0000000",
+            "3fc713fb20000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3fe9b7bdc0000000",
+            "bf4dc08000000000",
+            "bffe0acce0000000"
+          ],
+          "rotationBits": [
+            "bf6754a320000000",
+            "3f14c20200000000",
+            "bf301e13c0000000",
+            "3feffff780000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "bfabd97880000000",
+            "3fcb401d60000000",
+            "3fe5ea46c0000000"
+          ],
+          "rotationBits": [
+            "bfc0259360000000",
+            "bfe3e14180000000",
+            "3fe8be5060000000",
+            "3f9040ba40000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3fe7f0f9a0000000",
+            "3fc3ccf140000000",
+            "3fef9dfdc0000000"
+          ],
+          "rotationBits": [
+            "bfe822fd40000000",
+            "3fc2f225c0000000",
+            "bfb81b8260000000",
+            "bfe43f02a0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe2c5c660000000",
+            "3fc3c5e8e0000000",
+            "bff345dae0000000"
+          ],
+          "rotationBits": [
+            "3fdb2bfc00000000",
+            "bfcb456820000000",
+            "3fe41fb5c0000000",
+            "3fe3b26d60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fd1848740000000",
+            "3fc3bceb40000000",
+            "3ff78d8f60000000"
+          ],
+          "rotationBits": [
+            "bfe1044240000000",
+            "3fcc66f6a0000000",
+            "bfe1484ba0000000",
+            "3fe3a14460000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd40c8fa0000000",
+            "3fa4b7b780000000",
+            "bff5c0c560000000"
+          ],
+          "rotationBits": [
+            "bfc2dc6b00000000",
+            "bfc9a30e20000000",
+            "bfb02862c0000000",
+            "3feeedd900000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea7d28e0000000",
+            "bf4ec86000000000",
+            "bff59538c0000000"
+          ],
+          "rotationBits": [
+            "bf72c058e0000000",
+            "3f8f3f3f80000000",
+            "3f6566a480000000",
+            "3feffeeec0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff626f420000000",
+            "3fc3ccf060000000",
+            "bfe9f30760000000"
+          ],
+          "rotationBits": [
+            "3fe3e997a0000000",
+            "3fd42963c0000000",
+            "bfdbf080c0000000",
+            "3fe22f8500000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bfadb8c280000000",
+            "3fc5365920000000",
+            "bfde6e6720000000"
+          ],
+          "rotationBits": [
+            "bfa46f4ae0000000",
+            "bfb38fc820000000",
+            "3fe787a5c0000000",
+            "bfe582e2e0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 9,
+      "sha256": "d305753bdaf0fb5b14231bc0edb4096cd6ec444ba95495894a221c1f48c70815",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "3ff6cf9940000000",
+            "3fc800a8c0000000",
+            "bfb0feb740000000"
+          ],
+          "rotationBits": [
+            "bfe81151c0000000",
+            "3fe4ffe040000000",
+            "3f9c08d4a0000000",
+            "bfabb7ad60000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "3ff5891a80000000",
+            "bf53772000000000",
+            "3ffe284600000000"
+          ],
+          "rotationBits": [
+            "bf58a73f40000000",
+            "3feffd9300000000",
+            "bf6c0360a0000000",
+            "3f989f84c0000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe1820c0000000",
+            "bf5204d000000000",
+            "3ff59a14e0000000"
+          ],
+          "rotationBits": [
+            "bf098e4c40000000",
+            "3fefde8080000000",
+            "bf6df2ac40000000",
+            "bfb71bc1e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff3122fe0000000",
+            "bf4ff16000000000",
+            "3ff84ea100000000"
+          ],
+          "rotationBits": [
+            "3f52456900000000",
+            "3fe913caa0000000",
+            "bf3dd55aa0000000",
+            "bfe3e0b7e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3fec643080000000",
+            "bf52203000000000",
+            "3ff64c5d60000000"
+          ],
+          "rotationBits": [
+            "3f505a4b20000000",
+            "3fefd6fc40000000",
+            "3f5223ee40000000",
+            "bfb9950660000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "bfe2cd8640000000",
+            "3fc3cc65c0000000",
+            "3ff12dbc80000000"
+          ],
+          "rotationBits": [
+            "3fd96b63e0000000",
+            "bfe2cf4900000000",
+            "3fe4bc9ec0000000",
+            "3fd1bc7220000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd467c140000000",
+            "3fc3c9d6c0000000",
+            "bfef4bea40000000"
+          ],
+          "rotationBits": [
+            "bfd8a26ca0000000",
+            "3fe4995b60000000",
+            "bfe4e0c500000000",
+            "bfbbcc47c0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bfc6d8e980000000",
+            "3fc3c3eb80000000",
+            "bfea6270e0000000"
+          ],
+          "rotationBits": [
+            "3fda855920000000",
+            "3fe48f4220000000",
+            "bfe4506740000000",
+            "bfbc9f9bc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "bfd6843680000000",
+            "3fcaae7700000000",
+            "bfbd002180000000"
+          ],
+          "rotationBits": [
+            "3fd2334de0000000",
+            "bfe49b6760000000",
+            "3fe5fba0a0000000",
+            "3fc713fb20000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3ffaa95f80000000",
+            "3fc76f1a20000000",
+            "3ff982dbe0000000"
+          ],
+          "rotationBits": [
+            "bfe7db0de0000000",
+            "3fdd927a80000000",
+            "bfb4f2e640000000",
+            "3fde4b15c0000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "bfabd97880000000",
+            "3fcb401d60000000",
+            "3fe5ea46c0000000"
+          ],
+          "rotationBits": [
+            "bfc0259360000000",
+            "bfe3e14180000000",
+            "3fe8be5060000000",
+            "3f9040ba40000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3fe7f0f9a0000000",
+            "3fc3ccf140000000",
+            "3fef9dfdc0000000"
+          ],
+          "rotationBits": [
+            "bfe822fd40000000",
+            "3fc2f225c0000000",
+            "bfb81b8260000000",
+            "bfe43f02a0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe2c5c660000000",
+            "3fc3c5e8e0000000",
+            "bff345dae0000000"
+          ],
+          "rotationBits": [
+            "3fdb2bfc00000000",
+            "bfcb456820000000",
+            "3fe41fb5c0000000",
+            "3fe3b26d60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fd1848740000000",
+            "3fc3bceb40000000",
+            "3ff78d8f60000000"
+          ],
+          "rotationBits": [
+            "bfe1044240000000",
+            "3fcc66f6a0000000",
+            "bfe1484ba0000000",
+            "3fe3a14460000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd40c8fa0000000",
+            "3fa4b7b780000000",
+            "bff5c0c560000000"
+          ],
+          "rotationBits": [
+            "bfc2dc6b00000000",
+            "bfc9a30e20000000",
+            "bfb02862c0000000",
+            "3feeedd900000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea7d28e0000000",
+            "bf4ec86000000000",
+            "bff59538c0000000"
+          ],
+          "rotationBits": [
+            "bf72c058e0000000",
+            "3f8f3f3f80000000",
+            "3f6566a480000000",
+            "3feffeeec0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff626f420000000",
+            "3fc3ccf060000000",
+            "bfe9f30760000000"
+          ],
+          "rotationBits": [
+            "3fe3e997a0000000",
+            "3fd42963c0000000",
+            "bfdbf080c0000000",
+            "3fe22f8500000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bfadb8c280000000",
+            "3fc5365920000000",
+            "bfde6e6720000000"
+          ],
+          "rotationBits": [
+            "bfa46f4ae0000000",
+            "bfb38fc820000000",
+            "3fe787a5c0000000",
+            "bfe582e2e0000000"
+          ]
+        }
+      ]
+    },
+    {
+      "launchIndex": 10,
+      "sha256": "5f309367d1c3f045dbd5a5f062ff579ca4336a332bbd855f93d2323fc3229218",
+      "pieceCount": 32,
+      "pieces": [
+        {
+          "pieceId": "black-bishop-c8",
+          "positionBits": [
+            "3fe9bb9880000000",
+            "bf4b8d0000000000",
+            "3ffe096b00000000"
+          ],
+          "rotationBits": [
+            "3f2ce5b820000000",
+            "3feffffa20000000",
+            "3f63579e40000000",
+            "bf0b666880000000"
+          ]
+        },
+        {
+          "pieceId": "black-bishop-f8",
+          "positionBits": [
+            "3ff6cf9940000000",
+            "3fc800a8c0000000",
+            "bfb0feb740000000"
+          ],
+          "rotationBits": [
+            "bfe81151c0000000",
+            "3fe4ffe040000000",
+            "3f9c08d4a0000000",
+            "bfabb7ad60000000"
+          ]
+        },
+        {
+          "pieceId": "black-king-e8",
+          "positionBits": [
+            "bfd127e380000000",
+            "bf309e0000000000",
+            "3ffe044e80000000"
+          ],
+          "rotationBits": [
+            "bf5fd45840000000",
+            "3fefffeb40000000",
+            "bf70656c40000000",
+            "3f196c4560000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-b8",
+          "positionBits": [
+            "bfeac5e420000000",
+            "3fcb42db40000000",
+            "3fd1abe600000000"
+          ],
+          "rotationBits": [
+            "3fe91706c0000000",
+            "bfbb7d39a0000000",
+            "bfbb17bd80000000",
+            "bfe3445c40000000"
+          ]
+        },
+        {
+          "pieceId": "black-knight-g8",
+          "positionBits": [
+            "bff570b780000000",
+            "bf5327a000000000",
+            "3ffe042120000000"
+          ],
+          "rotationBits": [
+            "bf52e38840000000",
+            "3feffff880000000",
+            "bf63d48000000000",
+            "3f0a269000000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-a7",
+          "positionBits": [
+            "3ffe196e40000000",
+            "bf51f6e000000000",
+            "3ff5994660000000"
+          ],
+          "rotationBits": [
+            "3efbfe3ca0000000",
+            "3fefde77c0000000",
+            "bf701ac840000000",
+            "bfb71e01c0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-b7",
+          "positionBits": [
+            "3ff1e48840000000",
+            "3fc3bce820000000",
+            "3fccc061e0000000"
+          ],
+          "rotationBits": [
+            "3fddabf780000000",
+            "bfe27f3440000000",
+            "bfe32fe3a0000000",
+            "3fd359ef60000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-c7",
+          "positionBits": [
+            "3ff039f820000000",
+            "3fc3bc7440000000",
+            "3ff404be20000000"
+          ],
+          "rotationBits": [
+            "3fe519d100000000",
+            "3fd4238720000000",
+            "bfd7ee1840000000",
+            "bfe247f840000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-d7",
+          "positionBits": [
+            "bfe2cd8640000000",
+            "3fc3cc65c0000000",
+            "3ff12dbc80000000"
+          ],
+          "rotationBits": [
+            "3fd96b63e0000000",
+            "bfe2cf4900000000",
+            "3fe4bc9ec0000000",
+            "3fd1bc7220000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-e7",
+          "positionBits": [
+            "bfd467c140000000",
+            "3fc3c9d6c0000000",
+            "bfef4bea40000000"
+          ],
+          "rotationBits": [
+            "bfd8a26ca0000000",
+            "3fe4995b60000000",
+            "bfe4e0c500000000",
+            "bfbbcc47c0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-f7",
+          "positionBits": [
+            "bfe9ba5fe0000000",
+            "bf52e24000000000",
+            "3ff5709480000000"
+          ],
+          "rotationBits": [
+            "3f385cabc0000000",
+            "3fefffffe0000000",
+            "3f157b7740000000",
+            "3eea256da0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-g7",
+          "positionBits": [
+            "bfc6d8e980000000",
+            "3fc3c3eb80000000",
+            "bfea6270e0000000"
+          ],
+          "rotationBits": [
+            "3fda855920000000",
+            "3fe48f4220000000",
+            "bfe4506740000000",
+            "bfbc9f9bc0000000"
+          ]
+        },
+        {
+          "pieceId": "black-pawn-h7",
+          "positionBits": [
+            "bffe041860000000",
+            "bf5280b000000000",
+            "3ff570bcc0000000"
+          ],
+          "rotationBits": [
+            "3f30338d40000000",
+            "3feffff920000000",
+            "bf64dd0fe0000000",
+            "3ee9e0e400000000"
+          ]
+        },
+        {
+          "pieceId": "black-queen-d8",
+          "positionBits": [
+            "bfd7210580000000",
+            "3fcaba3b80000000",
+            "bfc2db9700000000"
+          ],
+          "rotationBits": [
+            "3fd202a040000000",
+            "bfe49077a0000000",
+            "3fe60899e0000000",
+            "3fc781d740000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-a8",
+          "positionBits": [
+            "3ffe041ce0000000",
+            "bf52c32000000000",
+            "3ffe042220000000"
+          ],
+          "rotationBits": [
+            "3f3866b280000000",
+            "3fefffffe0000000",
+            "3f119b4600000000",
+            "3efc8f26e0000000"
+          ]
+        },
+        {
+          "pieceId": "black-rook-h8",
+          "positionBits": [
+            "bffe042b40000000",
+            "bf52cd0000000000",
+            "3ffe041cc0000000"
+          ],
+          "rotationBits": [
+            "bf241d5520000000",
+            "3feffff360000000",
+            "bf6c659160000000",
+            "3efa3df340000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-c1",
+          "positionBits": [
+            "3ffa9ec180000000",
+            "3fc7690480000000",
+            "3ff988c400000000"
+          ],
+          "rotationBits": [
+            "bfe7d5c7a0000000",
+            "3fdd411ec0000000",
+            "bfb5c85200000000",
+            "3fdea0ce40000000"
+          ]
+        },
+        {
+          "pieceId": "white-bishop-f1",
+          "positionBits": [
+            "bfe9bbee60000000",
+            "bf43b0c000000000",
+            "bffe09b820000000"
+          ],
+          "rotationBits": [
+            "bf51828220000000",
+            "3efedf4180000000",
+            "3f6e58b020000000",
+            "3feffff080000000"
+          ]
+        },
+        {
+          "pieceId": "white-king-e1",
+          "positionBits": [
+            "bfd127a120000000",
+            "bf0bb80000000000",
+            "bffe04b2a0000000"
+          ],
+          "rotationBits": [
+            "3f72b46b20000000",
+            "3f3a623c20000000",
+            "bf695029a0000000",
+            "3fefffdfe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-b1",
+          "positionBits": [
+            "bfab076c20000000",
+            "3fcb4b45e0000000",
+            "3fe5fc4220000000"
+          ],
+          "rotationBits": [
+            "bfc04687a0000000",
+            "bfe3e3d480000000",
+            "3fe8bac560000000",
+            "3f90fda880000000"
+          ]
+        },
+        {
+          "pieceId": "white-knight-g1",
+          "positionBits": [
+            "bff5710c60000000",
+            "bf50696000000000",
+            "bffe050120000000"
+          ],
+          "rotationBits": [
+            "3f384c68c0000000",
+            "3efcae8a80000000",
+            "3f470a8500000000",
+            "3fefffff60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-a2",
+          "positionBits": [
+            "3ffe0419c0000000",
+            "bf5287a000000000",
+            "bff570baa0000000"
+          ],
+          "rotationBits": [
+            "3f64518560000000",
+            "3eb12ece20000000",
+            "3f30040420000000",
+            "3feffff980000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-b2",
+          "positionBits": [
+            "3fe61241e0000000",
+            "3fc3cd3b00000000",
+            "3fee1e9000000000"
+          ],
+          "rotationBits": [
+            "bfe76e2b00000000",
+            "3f9950dbe0000000",
+            "bfc96bcb60000000",
+            "bfe4d52f80000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-c2",
+          "positionBits": [
+            "3fe2c5c660000000",
+            "3fc3c5e8e0000000",
+            "bff345dae0000000"
+          ],
+          "rotationBits": [
+            "3fdb2bfc00000000",
+            "bfcb456820000000",
+            "3fe41fb5c0000000",
+            "3fe3b26d60000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-d2",
+          "positionBits": [
+            "3fd090bdc0000000",
+            "3fc3cbb1c0000000",
+            "3ff776a3e0000000"
+          ],
+          "rotationBits": [
+            "bfe2b5a520000000",
+            "3fc85c1d40000000",
+            "bfdeee8400000000",
+            "3fe3f11540000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-e2",
+          "positionBits": [
+            "bfd40c8fa0000000",
+            "3fa4b7b780000000",
+            "bff5c0c560000000"
+          ],
+          "rotationBits": [
+            "bfc2dc6b00000000",
+            "bfc9a30e20000000",
+            "bfb02862c0000000",
+            "3feeedd900000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-f2",
+          "positionBits": [
+            "bfea7d28e0000000",
+            "bf4ec86000000000",
+            "bff59538c0000000"
+          ],
+          "rotationBits": [
+            "bf72c058e0000000",
+            "3f8f3f3f80000000",
+            "3f6566a480000000",
+            "3feffeeec0000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-g2",
+          "positionBits": [
+            "bff626f420000000",
+            "3fc3ccf060000000",
+            "bfe9f30760000000"
+          ],
+          "rotationBits": [
+            "3fe3e997a0000000",
+            "3fd42963c0000000",
+            "bfdbf080c0000000",
+            "3fe22f8500000000"
+          ]
+        },
+        {
+          "pieceId": "white-pawn-h2",
+          "positionBits": [
+            "bffe051120000000",
+            "bf52e24000000000",
+            "bff570f1c0000000"
+          ],
+          "rotationBits": [
+            "bf12fed800000000",
+            "bed9f74a60000000",
+            "3f384cf4a0000000",
+            "3fefffffe0000000"
+          ]
+        },
+        {
+          "pieceId": "white-queen-d1",
+          "positionBits": [
+            "3fd126f0a0000000",
+            "bf4484c000000000",
+            "bffe03dd40000000"
+          ],
+          "rotationBits": [
+            "bf53060200000000",
+            "3f193167a0000000",
+            "bf5b2d21c0000000",
+            "3feffffbc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-a1",
+          "positionBits": [
+            "3ffe042580000000",
+            "bf52bfe000000000",
+            "bffe041600000000"
+          ],
+          "rotationBits": [
+            "3f3dd81940000000",
+            "bf03d65ba0000000",
+            "3f21c43420000000",
+            "3fefffffc0000000"
+          ]
+        },
+        {
+          "pieceId": "white-rook-h1",
+          "positionBits": [
+            "bfadb8c280000000",
+            "3fc5365920000000",
+            "bfde6e6720000000"
+          ],
+          "rotationBits": [
+            "bfa46f4ae0000000",
+            "bfb38fc820000000",
+            "3fe787a5c0000000",
+            "bfe582e2e0000000"
+          ]
+        }
+      ]
+    }
+  ]
+}
