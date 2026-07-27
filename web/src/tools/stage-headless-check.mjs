@@ -2,8 +2,10 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   Box3,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
+  Quaternion,
   Scene,
   Vector3,
 } from "three";
@@ -97,6 +99,73 @@ function measureWorldHeight(mesh) {
 }
 
 /**
+ * 선택 전후 전체 메시 transform 불변과 실제 배율 AABB 안의 공전 중심을 함께 검증한다.
+ */
+function verifySelectionPreservesMeshes(
+  inputModule,
+  physicsRuntime,
+  sceneRuntime,
+  pieceId,
+) {
+  const before = new Map(
+    [...sceneRuntime.pieceMeshes].map(([id, mesh]) => [
+      id,
+      {
+        position: mesh.position.toArray(),
+        quaternion: mesh.quaternion.toArray(),
+        scale: mesh.scale.toArray(),
+        matrixWorld: mesh.matrixWorld.elements.slice(),
+      },
+    ]),
+  );
+  const runtime = {
+    aimRuntime: { selectedPieceId: pieceId },
+    physicsRuntime,
+    sceneRuntime,
+  };
+  const center = inputModule.getSelectedTarget(runtime);
+  const binding = physicsRuntime.pieces.get(pieceId);
+  const mesh = sceneRuntime.pieceMeshes.get(pieceId);
+  assertCondition(
+    binding !== undefined && mesh !== undefined,
+    `${pieceId} 선택 검사용 바디 또는 메시가 없습니다.`,
+  );
+  const translation = binding.body.translation();
+  const rotation = binding.body.rotation();
+  const matrix = new Matrix4().compose(
+    new Vector3(translation.x, translation.y, translation.z),
+    new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w),
+    mesh.scale,
+  );
+  const bounds = mesh.geometry.boundingBox
+    .clone()
+    .applyMatrix4(matrix);
+  assertCondition(
+    [center.x, center.y, center.z].every(Number.isFinite) &&
+      bounds.containsPoint(center),
+    `${pieceId} 공전 중심이 유한한 실제 world AABB 내부가 아닙니다: center=${center.toArray()}, bounds=${bounds.min.toArray()}..${bounds.max.toArray()}`,
+  );
+  for (const [id, candidate] of sceneRuntime.pieceMeshes) {
+    const snapshot = before.get(id);
+    const current = {
+      position: candidate.position.toArray(),
+      quaternion: candidate.quaternion.toArray(),
+      scale: candidate.scale.toArray(),
+      matrixWorld: candidate.matrixWorld.elements.slice(),
+    };
+    assertCondition(
+      JSON.stringify(current) === JSON.stringify(snapshot),
+      `${pieceId} 선택이 ${id} 메시 transform을 변경했습니다: before=${JSON.stringify(snapshot)}, after=${JSON.stringify(current)}`,
+    );
+  }
+  return {
+    scaleBefore: before.get(pieceId).scale[0],
+    scaleAfter: mesh.scale.x,
+    center,
+  };
+}
+
+/**
  * 사전 안정화 뒤 각 말이 의도된 스폰 중심에서 움직인 최대 수평 거리를 측정한다.
  */
 function settleAndMeasureSpawn(physicsModule, runtime) {
@@ -134,6 +203,7 @@ try {
   const [
     aiModule,
     configModule,
+    inputModule,
     layoutModule,
     physicsModule,
     stageModule,
@@ -142,6 +212,7 @@ try {
   ] = await Promise.all([
     vite.ssrLoadModule("/src/ai.ts"),
     vite.ssrLoadModule("/src/config.ts"),
+    vite.ssrLoadModule("/src/input.ts"),
     vite.ssrLoadModule("/src/layout.ts"),
     vite.ssrLoadModule("/src/physics.ts"),
     vite.ssrLoadModule("/src/stage.ts"),
@@ -301,6 +372,29 @@ try {
   );
   console.log(
     `[통과 b] stage10: pawnHeight=${pawnHeight.toFixed(6)}, kingHeight=${kingHeight.toFixed(6)}, |Δ|=${heightDifference.toExponential(3)}, maxMassError=${(maximumMassRelativeError * 100).toFixed(6)}%, tuningComposeError=${(composedRelativeError * 100).toFixed(6)}%`,
+  );
+
+  const stage6Runtime = await physicsModule.createPhysicsRuntime(
+    meta,
+    layoutModule.PIECE_INSTANCES,
+    boardHalfExtent,
+    { gameMode: "stage", stageNumber: 6 },
+  );
+  const stage6Scene = createPieceMeshes(stage6Runtime, geometries);
+  const nonPawnSelection = verifySelectionPreservesMeshes(
+    inputModule,
+    stage6Runtime,
+    stage6Scene,
+    "black-rook-a8",
+  );
+  const pawnSelection = verifySelectionPreservesMeshes(
+    inputModule,
+    stage10Runtime,
+    stage10Scene,
+    "black-pawn-a7",
+  );
+  console.log(
+    `[통과 selection-scale] stage6 black-rook-a8 scale=${nonPawnSelection.scaleBefore.toFixed(6)}→${nonPawnSelection.scaleAfter.toFixed(6)}, center=(${nonPawnSelection.center.toArray().map((value) => value.toFixed(6)).join(",")}); stage10 black-pawn-a7 scale=${pawnSelection.scaleBefore.toFixed(6)}→${pawnSelection.scaleAfter.toFixed(6)}, center=(${pawnSelection.center.toArray().map((value) => value.toFixed(6)).join(",")}); 모든 메시 transform 유지, 공전 중심 actual-scale AABB 내부`,
   );
 
   const stage5Options = {
