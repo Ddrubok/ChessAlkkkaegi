@@ -7,23 +7,23 @@ export const WORLD_LENGTH_UNIT = 1;
 // 헤드리스 검증과 같은 적분 간격을 사용해 접지 안정성을 재현한다.
 export const FIXED_STEP = 1 / 120;
 
-// 물리 상수는 유지하면서 작은 실물 체스말처럼 빠르게 보이게 하는 시간 배율이다.
-export const TIME_SCALE = Math.sqrt(10);
+// 2026-07-27 개발자 지시로 √10 배속을 버리고 실제 시간과 같은 속도로 굴린다.
+export const TIME_SCALE = 1;
 
 // 종류별 볼록껍질 부피에서 현실적인 말 질량을 계산하기 위한 공통 밀도다.
 export const PIECE_DENSITY = 1.2;
 
-// 말끼리와 말·보드 사이의 미끄러짐을 동일하게 맞추는 마찰값이다.
-export const PIECE_FRICTION = 0.4;
+// 말끼리와 말·보드 사이의 미끄러짐을 동일하게 맞추는 마찰값이다. 2026-07-27 기획자 요청값.
+export const PIECE_FRICTION = 0.05;
 
-// 충돌 감각을 남기면서도 모든 말이 수면 상태에 도달하게 하는 반발값이다.
-export const PIECE_RESTITUTION = 0.1;
+// 충돌 감각을 남기면서도 모든 말이 수면 상태에 도달하게 하는 반발값이다. 2026-07-27 기획자 요청값.
+export const PIECE_RESTITUTION = 0.6;
 
-// 접촉 후 남는 병진 흔들림을 실측 시간 안에 줄이는 감쇠값이다.
-export const PIECE_LINEAR_DAMPING = 2.0;
+// 접촉 후 남는 병진 흔들림을 줄이는 감쇠값이다. 2026-07-27 기획자 요청으로 감쇠를 끈다.
+export const PIECE_LINEAR_DAMPING = 0;
 
-// 넘어질 수 있는 회전은 허용하면서 접지 지터를 가라앉히는 감쇠값이다.
-export const PIECE_ANGULAR_DAMPING = 2.0;
+// 넘어질 수 있는 회전은 허용하면서 접지 지터를 가라앉히는 감쇠값이다. 2026-07-27 기획자 요청으로 감쇠를 끈다.
+export const PIECE_ANGULAR_DAMPING = 0;
 
 // 평탄화된 콜라이더 바닥이 보드 상면에 정확히 닿은 상태로 시작하게 한다.
 export const SPAWN_GAP = 0;
@@ -123,7 +123,8 @@ export const GROUND_LANE_LENGTH = 1.6;
 export const BOWSTRING_MAX_PULL = 0.55;
 
 // 무게중심에서 시각적 중심을 향한 타격 위치를 정해 0은 발사 순간 타격 토크가 없고 1은 시각 중심에 닿게 한다.
-export const STRIKE_HEIGHT_RATIO = 1.0;
+// 2026-07-27 기획자 요청으로 타격 토크 없이 무게중심을 때리는 0을 기본값으로 쓴다.
+export const STRIKE_HEIGHT_RATIO = 0;
 
 // 접지 미세 진동을 정지로 인정하되 눈에 보이는 이동은 계속 기다리는 선속도 한계다.
 export const REST_LINEAR_EPS = 0.05;
