@@ -49,9 +49,9 @@ export interface StageSpawnOptions {
   runCards?: Readonly<RunCardState>;
   // 플레이어 백 말 종류별 중량에 매 리셋마다 합성할 영구 강화 상태다.
   permanentUpgrades?: Readonly<PermanentUpgrades>;
-  // 측정 하네스만 흑 중량·힘·크기 단계값에 공통 적용하며 생략하면 config 기본값을 쓴다.
+  // 런타임 조절판과 측정 하네스가 흑 중량·힘·크기 단계값에 공통 적용하며 생략하면 config 기본값을 쓴다.
   enemyBuffStepScale?: number;
-  // 측정 하네스만 백 크기·중량·힘 카드의 1회 효과에 공통 적용한다.
+  // 런타임 조절판과 측정 하네스가 백 크기·중량·힘 카드의 1회 효과에 공통 적용한다.
   cardEffectScale?: number;
 }
 
