@@ -1,14 +1,22 @@
 import {
-  PERMANENT_UPGRADE_MAX_LEVEL,
+  PERMANENT_PLAYER_SIZE_COST,
+  PERMANENT_PLAYER_SIZE_STEP,
   PERMANENT_UPGRADE_STEP,
-  PIECE_TYPES,
+  PERMANENT_UPGRADE_TIER_MAX_LEVEL,
   type PieceType,
 } from "./config";
 import type { GameMode } from "./game-mode";
 import {
+  computePermanentUpgradeSpentPoints,
   computePermanentUpgradeCost,
+  getPermanentTierUpgradeLevel,
+  isPermanentSizeUpgradeUnlocked,
+  isPermanentUpgradeUnlocked,
   purchasePermanentUpgrade,
+  purchasePermanentSizeUpgrade,
+  resetPermanentUpgrades,
   type MetaRuntime,
+  type PermanentUpgradeTier,
   type PermanentUpgradeTrack,
 } from "./meta";
 
@@ -51,8 +59,136 @@ const TRACK_LABELS: Readonly<
   weight: "중량",
 };
 
+const TIER_LABELS: Readonly<
+  Record<PermanentUpgradeTier, string>
+> = {
+  basic: "기초",
+  advanced: "심화",
+};
+
+const TREE_PIECE_ORDER = [
+  "Pawn",
+  "Knight",
+  "King",
+  "Rook",
+  "Bishop",
+  "Queen",
+] as const satisfies readonly PieceType[];
+
 /**
- * 메인 메뉴의 포인트·12개 강화 행·버튼 활성 상태를 현재 메타에서 다시 그린다.
+ * 기초·심화 힘·중량 구매 행 하나를 현재 선행 조건과 비용으로 만든다.
+ */
+function appendUpgradeRow(
+  runtime: MainMenuRuntime,
+  rows: HTMLElement,
+  status: HTMLElement,
+  tier: PermanentUpgradeTier,
+  type: PieceType,
+  track: PermanentUpgradeTrack,
+): void {
+  const level = getPermanentTierUpgradeLevel(
+    runtime.metaRuntime.state.upgrades,
+    tier,
+    type,
+    track,
+  );
+  const unlocked = isPermanentUpgradeUnlocked(
+    runtime.metaRuntime.state.upgrades,
+    tier,
+    type,
+  );
+  const atMaximum =
+    level >= PERMANENT_UPGRADE_TIER_MAX_LEVEL;
+  const cost = atMaximum
+    ? null
+    : computePermanentUpgradeCost(tier, type, level);
+  const row = document.createElement("div");
+  row.className = "permanent-upgrade-row";
+  row.dataset.locked = String(!unlocked);
+  row.innerHTML = `
+    <strong>${TIER_LABELS[tier]} · ${PIECE_LABELS[type]} · ${TRACK_LABELS[track]}</strong>
+    <span>${level}/3</span>
+    <span>+${(level * PERMANENT_UPGRADE_STEP * 100).toFixed(0)}%</span>
+    <span>${unlocked ? (cost === null ? "최대" : `${cost} P`) : "잠김"}</span>
+  `;
+  const purchaseButton = document.createElement("button");
+  purchaseButton.type = "button";
+  purchaseButton.textContent = atMaximum ? "최대" : "구매";
+  purchaseButton.disabled =
+    runtime.busy ||
+    !unlocked ||
+    atMaximum ||
+    (cost !== null && runtime.metaRuntime.state.points < cost);
+  purchaseButton.addEventListener("click", () => {
+    if (runtime.busy) {
+      return;
+    }
+    const result = purchasePermanentUpgrade(
+      runtime.metaRuntime,
+      tier,
+      type,
+      track,
+    );
+    renderMainMenu(runtime);
+    status.textContent =
+      result.purchased
+        ? `${TIER_LABELS[tier]} ${PIECE_LABELS[type]} ${TRACK_LABELS[track]} 강화를 구매했습니다.`
+        : (result.reason ?? "");
+  });
+  row.append(purchaseButton);
+  rows.append(row);
+}
+
+/**
+ * 중앙 전체 크기 0/1 관문을 현재 기초 완료 상태로 만든다.
+ */
+function appendSizeUpgradeRow(
+  runtime: MainMenuRuntime,
+  rows: HTMLElement,
+  status: HTMLElement,
+): void {
+  const level = runtime.metaRuntime.state.upgrades.playerSizeLevel;
+  const unlocked = isPermanentSizeUpgradeUnlocked(
+    runtime.metaRuntime.state.upgrades,
+  );
+  const row = document.createElement("div");
+  row.className =
+    "permanent-upgrade-row permanent-upgrade-size-row";
+  row.dataset.locked = String(!unlocked);
+  row.innerHTML = `
+    <strong>중앙 · 전체 말 크기</strong>
+    <span>${level}/1</span>
+    <span>백 전체 +${(PERMANENT_PLAYER_SIZE_STEP * 100).toFixed(0)}%</span>
+    <span>${unlocked ? (level === 1 ? "구매 완료" : `${PERMANENT_PLAYER_SIZE_COST} P`) : "기초 전체 완료 필요"}</span>
+  `;
+  const purchaseButton = document.createElement("button");
+  purchaseButton.type = "button";
+  purchaseButton.textContent = level === 1 ? "구매 완료" : "구매";
+  purchaseButton.disabled =
+    runtime.busy ||
+    !unlocked ||
+    level === 1 ||
+    runtime.metaRuntime.state.points <
+      PERMANENT_PLAYER_SIZE_COST;
+  purchaseButton.addEventListener("click", () => {
+    if (runtime.busy) {
+      return;
+    }
+    const result = purchasePermanentSizeUpgrade(
+      runtime.metaRuntime,
+    );
+    renderMainMenu(runtime);
+    status.textContent =
+      result.purchased
+        ? "플레이어 전체 말 크기 +3% 강화를 구매했습니다."
+        : (result.reason ?? "");
+  });
+  row.append(purchaseButton);
+  rows.append(row);
+}
+
+/**
+ * 메인 메뉴의 포인트·25개 구매 노드·선행 잠금·초기화 상태를 다시 그린다.
  */
 export function renderMainMenu(runtime: MainMenuRuntime): void {
   const points =
@@ -61,7 +197,16 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     runtime.overlay.querySelector<HTMLElement>("[data-upgrade-rows]");
   const status =
     runtime.overlay.querySelector<HTMLElement>("[data-menu-status]");
-  if (points === null || rows === null || status === null) {
+  const resetButton =
+    runtime.overlay.querySelector<HTMLButtonElement>(
+      "[data-upgrade-reset]",
+    );
+  if (
+    points === null ||
+    rows === null ||
+    status === null ||
+    resetButton === null
+  ) {
     throw new Error("메인 메뉴의 갱신 대상 요소를 찾지 못했습니다.");
   }
   points.textContent = `${runtime.metaRuntime.state.points} P`;
@@ -74,50 +219,35 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   }
   rows.replaceChildren();
 
-  for (const type of PIECE_TYPES) {
-    for (const track of ["force", "weight"] as const) {
-      const level = runtime.metaRuntime.state.upgrades[type][track];
-      const atMaximum =
-        level >= PERMANENT_UPGRADE_MAX_LEVEL;
-      const cost = atMaximum
-        ? null
-        : computePermanentUpgradeCost(level);
-      const row = document.createElement("div");
-      row.className = "permanent-upgrade-row";
-      row.innerHTML = `
-        <strong>${PIECE_LABELS[type]} · ${TRACK_LABELS[track]}</strong>
-        <span>현재 레벨 ${level}</span>
-        <span>효과 +${(level * PERMANENT_UPGRADE_STEP * 100).toFixed(0)}%</span>
-        <span>비용 ${cost === null ? "최대" : `${cost} P`}</span>
-      `;
-      const purchaseButton = document.createElement("button");
-      purchaseButton.type = "button";
-      purchaseButton.textContent = atMaximum ? "최대" : "구매";
-      purchaseButton.disabled =
-        runtime.busy ||
-        atMaximum ||
-        (cost !== null &&
-          runtime.metaRuntime.state.points < cost);
-      purchaseButton.addEventListener("click", () => {
-        if (runtime.busy) {
-          return;
-        }
-        const result = purchasePermanentUpgrade(
-          runtime.metaRuntime,
+  for (const tier of ["basic", "advanced"] as const) {
+    const heading = document.createElement("h3");
+    heading.className = "permanent-upgrade-tier-title";
+    heading.textContent =
+      tier === "basic"
+        ? "기초 강화 · 폰·나이트→킹 / 룩·비숍→퀸"
+        : "심화 강화 · 폰·나이트→킹 / 룩·비숍→퀸";
+    if (tier === "advanced") {
+      appendSizeUpgradeRow(runtime, rows, status);
+    }
+    rows.append(heading);
+    for (const type of TREE_PIECE_ORDER) {
+      for (const track of ["force", "weight"] as const) {
+        appendUpgradeRow(
+          runtime,
+          rows,
+          status,
+          tier,
           type,
           track,
         );
-        renderMainMenu(runtime);
-        if (!result.purchased && result.reason !== null) {
-          status.textContent = result.reason;
-        } else {
-          status.textContent = `${PIECE_LABELS[type]} ${TRACK_LABELS[track]} 강화를 구매했습니다.`;
-        }
-      });
-      row.append(purchaseButton);
-      rows.append(row);
+      }
     }
   }
+  resetButton.disabled =
+    runtime.busy ||
+    computePermanentUpgradeSpentPoints(
+      runtime.metaRuntime.state.upgrades,
+    ) === 0;
 
   for (const button of runtime.overlay.querySelectorAll<HTMLButtonElement>(
     "[data-game-mode]",
@@ -230,6 +360,9 @@ export function createMainMenu(
           <span>구매</span>
         </div>
         <div data-upgrade-rows></div>
+        <button type="button" class="permanent-upgrade-reset" data-upgrade-reset>
+          전체 초기화 · 사용 포인트 100% 반환
+        </button>
       </section>
     </div>
   `;
@@ -284,6 +417,28 @@ export function createMainMenu(
     onStartMode,
     onReturnToMenu,
   };
+  const resetButton =
+    overlay.querySelector<HTMLButtonElement>(
+      "[data-upgrade-reset]",
+    );
+  if (resetButton === null) {
+    throw new Error("영구 강화 전체 초기화 버튼을 만들지 못했습니다.");
+  }
+  resetButton.addEventListener("click", () => {
+    if (runtime.busy) {
+      return;
+    }
+    const refunded = resetPermanentUpgrades(runtime.metaRuntime);
+    renderMainMenu(runtime);
+    const status =
+      runtime.overlay.querySelector<HTMLElement>(
+        "[data-menu-status]",
+      );
+    if (status !== null) {
+      status.textContent =
+        `영구 강화를 전체 초기화하고 ${refunded} P를 반환했습니다.`;
+    }
+  });
 
   for (const button of overlay.querySelectorAll<HTMLButtonElement>(
     "[data-game-mode]",

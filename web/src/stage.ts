@@ -20,6 +20,7 @@ import {
   type PieceInstance,
 } from "./layout";
 import {
+  computePermanentSizeFraction,
   computePermanentWeightFraction,
   type PermanentUpgrades,
 } from "./meta";
@@ -167,11 +168,18 @@ export function computeStagePieceScale(
   }
   if (instance.side === "white") {
     const runCards = getRunCards(options);
+    const permanentSizeFraction =
+      options.permanentUpgrades === undefined
+        ? 0
+        : computePermanentSizeFraction(
+            options.permanentUpgrades,
+          );
     const generalScale =
       1 +
       CARD_SIZE_STEP *
         getCardEffectScale(options) *
-        runCards.sizePicks;
+        runCards.sizePicks +
+      permanentSizeFraction;
     const tierScale =
       instance.type === "Pawn" && runCards.giantPawn
         ? meta.pieces.King.bounds.y / meta.pieces.Pawn.bounds.y

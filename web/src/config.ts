@@ -104,11 +104,29 @@ export const STAGE_CLEAR_POINTS = 100;
 // 영구 힘·중량 강화 한 레벨이 원래 속도·hull 질량에 더하는 비율이다.
 export const PERMANENT_UPGRADE_STEP = 0.01;
 
-// 말 종류별 힘·중량 트랙에서 구매할 수 있는 최대 레벨이다.
-export const PERMANENT_UPGRADE_MAX_LEVEL = 10;
+// 기초·심화 힘·중량 노드 하나에서 구매할 수 있는 최대 레벨이다.
+export const PERMANENT_UPGRADE_TIER_MAX_LEVEL = 3;
 
-// 현재 레벨 N에서 다음 레벨을 살 때 (N + 1)에 곱하는 선형 비용 단위다.
-export const PERMANENT_UPGRADE_COST_UNIT = 100;
+// 중앙 전체 크기 노드가 플레이어의 모든 말 종류에 더하는 비율이다.
+export const PERMANENT_PLAYER_SIZE_STEP = 0.03;
+
+// 기초 일반 말 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
+export const PERMANENT_BASIC_REGULAR_COSTS = [1, 3, 5] as const;
+
+// 기초 킹·퀸 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
+export const PERMANENT_BASIC_ROYAL_COSTS = [2, 4, 6] as const;
+
+// 중앙 전체 크기 0→1 노드의 단일 구매 비용이다.
+export const PERMANENT_PLAYER_SIZE_COST = 10;
+
+// 심화 일반 말 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
+export const PERMANENT_ADVANCED_REGULAR_COSTS = [3, 5, 7] as const;
+
+// 심화 킹·퀸 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
+export const PERMANENT_ADVANCED_ROYAL_COSTS = [4, 6, 8] as const;
+
+// 힘·중량 24개와 중앙 크기 1개를 합친 전체 구매 노드 수다.
+export const PERMANENT_UPGRADE_NODE_COUNT = 25;
 
 // 세기와 무관한 짧은 경로 모양만 만들도록 실제 발사 속도와 분리한 안내용 기준 속도다.
 export const NOMINAL_GUIDE_SPEED = 3.5;
