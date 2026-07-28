@@ -17,7 +17,11 @@ import {
   restoreRunCardState,
   type CardId,
 } from "./cards";
-import { deriveBoardHalfExtent } from "./config";
+import {
+  deriveBoardHalfExtent,
+  PIECE_TYPES,
+  PLAYER_MAX_SIZE_SCALE,
+} from "./config";
 import {
   createGameModeRuntime,
   setStageNumber,
@@ -66,6 +70,8 @@ import {
 import {
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
+  setTuningGameMode,
+  updateTuningAppliedValues,
 } from "./tuning";
 import type {
   ReplayDevelopmentRuntime,
@@ -77,6 +83,10 @@ import type {
 } from "./online";
 import type { OnlineSelfTestRuntime } from "./tools/online-selftest";
 import {
+  computeEnemyStageStepValues,
+  computeStageBuffs,
+  computeStagePieceScale,
+  computeUpgradeWeightFraction,
   selectStageSpawnInstances,
   type StageSpawnOptions,
 } from "./stage";
@@ -237,6 +247,21 @@ async function bootstrap(): Promise<void> {
   let onlineRuntime: OnlineRuntime | null = null;
   let onlineSelfTestRuntime: OnlineSelfTestRuntime | null =
     null;
+  let appliedEnemyBuffStepScale =
+    tuningRuntime.settings.enemyStageBuffScale;
+  let appliedCardEffectScale =
+    tuningRuntime.settings.cardEffectScale;
+  const playerReadoutInstances = PIECE_TYPES.map((type) => {
+    const instance = PIECE_INSTANCES.find(
+      (candidate) =>
+        candidate.side === "white" &&
+        candidate.type === type,
+    );
+    if (instance === undefined) {
+      throw new Error(`백 ${type} 적용값 기준 말을 찾지 못했습니다.`);
+    }
+    return instance;
+  });
   let onlineConnectionBlocked = false;
   const disconnectOverlay = document.createElement("section");
   disconnectOverlay.className = "match-result-overlay";
@@ -367,6 +392,7 @@ async function bootstrap(): Promise<void> {
             gameMode,
             runCardState,
             permanentForceBonus,
+            appliedCardEffectScale,
           ),
         };
         return gameMode === "online" &&
@@ -393,6 +419,8 @@ async function bootstrap(): Promise<void> {
     () => gameModeRuntime?.mode ?? "hotseat",
     () => gameModeRuntime?.stageNumber ?? 1,
     aimRuntime,
+    () => undefined,
+    () => appliedEnemyBuffStepScale,
   );
   readsAiTelegraphActive = () =>
     isAiTelegraphActive(aiRuntime);
@@ -412,6 +440,14 @@ async function bootstrap(): Promise<void> {
       permanentUpgrades:
         baseOptions.gameMode === "stage"
           ? metaRuntime.state.upgrades
+          : undefined,
+      enemyBuffStepScale:
+        baseOptions.gameMode === "stage"
+          ? tuningRuntime.settings.enemyStageBuffScale
+          : undefined,
+      cardEffectScale:
+        baseOptions.gameMode === "stage"
+          ? tuningRuntime.settings.cardEffectScale
           : undefined,
     };
     const spawnInstances = selectStageSpawnInstances(
@@ -464,6 +500,86 @@ async function bootstrap(): Promise<void> {
         `재시작 보드 검증 실패: 물리 ${physicsRuntime.pieces.size}/${expectedPieceCount}, 렌더 ${sceneRuntime.pieceMeshes.size}/${expectedPieceCount}, 수면 ${sleepingCount}/${expectedPieceCount}`,
       );
     }
+    appliedEnemyBuffStepScale =
+      stageOptions.enemyBuffStepScale ??
+      tuningRuntime.settings.enemyStageBuffScale;
+    appliedCardEffectScale =
+      stageOptions.cardEffectScale ??
+      tuningRuntime.settings.cardEffectScale;
+    if (stageOptions.gameMode !== "stage") {
+      updateTuningAppliedValues(tuningRuntime, {
+        gameMode: stageOptions.gameMode,
+        stageNumber: stageOptions.stageNumber,
+        enemyWeightFraction: 0,
+        enemyWeightSteps: 0,
+        enemyForceFraction: 0,
+        enemyForceSteps: 0,
+        enemySizeFraction: 0,
+        enemySizeSteps: 0,
+        enemyPawnTier: "none",
+        playerWeightFractions: [],
+        playerForceFractions: [],
+        playerSizeFraction: 0,
+        playerSizeAtCap: false,
+      });
+    } else {
+      const stageBuffs = computeStageBuffs(
+        stageOptions.stageNumber,
+      );
+      const enemyStepValues = computeEnemyStageStepValues(
+        stageOptions.enemyBuffStepScale,
+      );
+      const playerSizeInstance =
+        playerReadoutInstances.find(
+          (instance) => instance.type !== "Pawn",
+        );
+      if (playerSizeInstance === undefined) {
+        throw new Error("백 일반 크기 적용값 기준 말을 찾지 못했습니다.");
+      }
+      const playerSizeScale = computeStagePieceScale(
+        playerSizeInstance,
+        assets.meta,
+        stageOptions,
+      );
+      updateTuningAppliedValues(tuningRuntime, {
+        gameMode: "stage",
+        stageNumber: stageOptions.stageNumber,
+        enemyWeightFraction:
+          enemyStepValues.weightStep * stageBuffs.weightSteps,
+        enemyWeightSteps: stageBuffs.weightSteps,
+        enemyForceFraction:
+          enemyStepValues.forceStep * stageBuffs.forceSteps,
+        enemyForceSteps: stageBuffs.forceSteps,
+        enemySizeFraction:
+          enemyStepValues.sizeStep * stageBuffs.sizeSteps,
+        enemySizeSteps: stageBuffs.sizeSteps,
+        enemyPawnTier: stageBuffs.pawnTier,
+        playerWeightFractions: playerReadoutInstances.map(
+          (instance) =>
+            computeUpgradeWeightFraction(
+              instance,
+              stageOptions,
+            ),
+        ),
+        playerForceFractions: playerReadoutInstances.map(
+          (instance) =>
+            computePlayerLaunchSpeedMultiplier(
+              "stage",
+              runCardState,
+              computePermanentForceBonus(
+                metaRuntime.state.upgrades,
+                instance.type,
+              ),
+              stageOptions.cardEffectScale,
+            ) - 1,
+        ),
+        playerSizeFraction: playerSizeScale - 1,
+        playerSizeAtCap:
+          Math.abs(
+            playerSizeScale - PLAYER_MAX_SIZE_SCALE,
+          ) < 1e-9,
+      });
+    }
     console.info(
       `[대국] 다시 시작 완료: 백 선공, 물리 ${physicsRuntime.pieces.size}/${expectedPieceCount}, 렌더 ${sceneRuntime.pieceMeshes.size}/${expectedPieceCount}, 수면 ${sleepingCount}/${expectedPieceCount}`,
     );
@@ -473,11 +589,13 @@ async function bootstrap(): Promise<void> {
     const previousCards = cloneRunCardState(runCardState);
     resetRunCardState(runCardState);
     setTurnGameMode(turnRuntime, mode);
+    setTuningGameMode(tuningRuntime, mode);
     try {
       await resetBoard({ gameMode: mode, stageNumber: 1 });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
       setTurnGameMode(turnRuntime, previousMode);
+      setTuningGameMode(tuningRuntime, previousMode);
       throw error;
     }
   });
@@ -635,7 +753,11 @@ async function bootstrap(): Promise<void> {
     };
     const upgradeCards =
       gameMode === "stage" && winner === "white"
-        ? drawUpgradeCards(completedStage, runCardState)
+        ? drawUpgradeCards(
+            completedStage,
+            runCardState,
+            tuningRuntime.settings.cardEffectScale,
+          )
         : [];
     if (gameMode === "stage" && winner === "white") {
       awardStageClearPoints(metaRuntime);
@@ -647,7 +769,11 @@ async function bootstrap(): Promise<void> {
             const previousStage =
               gameModeRuntime?.stageNumber ?? completedStage;
             const previousCards = cloneRunCardState(runCardState);
-            applyCardPick(runCardState, cardId);
+            applyCardPick(
+              runCardState,
+              cardId,
+              tuningRuntime.settings.cardEffectScale,
+            );
             const nextStage = completedStage + 1;
             if (gameModeRuntime !== null) {
               setStageNumber(gameModeRuntime, nextStage);
@@ -710,10 +836,11 @@ async function bootstrap(): Promise<void> {
       boardHalfExtent,
       (now) => {
         onlineRuntime?.update(now);
-        onlineSelfTestRuntime?.updateGuest(now);
+        onlineSelfTestRuntime?.updatePeers(now);
       },
       () => onlineRuntime?.getDebugStatus() ?? null,
-      () => onlineSelfTestRuntime?.stepGuest(),
+      () => onlineRuntime?.shouldStepPhysics() ?? true,
+      () => onlineSelfTestRuntime?.stepPeers(),
     );
     gameLoopStarted = true;
   };
@@ -896,30 +1023,21 @@ async function bootstrap(): Promise<void> {
     );
     onlineSelfTestRuntime = createOnlineSelfTestRuntime({
       assets,
-      hostTurnRuntime: turnRuntime,
-      hostAimRuntime: aimRuntime,
-      tuningSettings: tuningRuntime.settings,
-      async prepareHostBoard(
-        preserveOnlineRuntime: boolean,
-      ): Promise<void> {
+      boardHalfExtent,
+      async preparePageForSelfTest(): Promise<void> {
         if (gameModeRuntime === null) {
           throw new Error(
             "온라인 셀프테스트 대전 모드가 준비되지 않았습니다.",
           );
         }
-        // 최초 시작만 이전 런타임을 닫고, 재대결 준비는 현재 P2P 링크를 그대로 사용한다.
-        if (!preserveOnlineRuntime) {
-          onlineRuntime?.close();
-          onlineRuntime = null;
-        }
+        // 화면 보드는 fixed-step 시계만 제공하며 실제 셀프테스트 물리에는 참여하지 않는다.
+        onlineRuntime?.close();
+        onlineRuntime = null;
         await switchGameMode(
           gameModeRuntime,
           "online",
           true,
         );
-      },
-      setHostOnlineRuntime(runtime): void {
-        onlineRuntime = runtime;
       },
       ensureGameLoopStarted,
       finishMenuStart(): void {

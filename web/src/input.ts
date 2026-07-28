@@ -1,8 +1,10 @@
 import {
   BufferGeometry,
+  Matrix4,
   MathUtils,
   Mesh,
   PerspectiveCamera,
+  Quaternion,
   Raycaster,
   Spherical,
   Vector2,
@@ -330,7 +332,7 @@ function raycastNearestPiece(
 /**
  * 현재 선택 말의 몸 원점이 아닌 월드 AABB 중심을 당구식 공전 중심으로 구한다.
  */
-function getSelectedTarget(runtime: InputRuntime): Vector3 {
+export function getSelectedTarget(runtime: InputRuntime): Vector3 {
   const pieceId = runtime.aimRuntime.selectedPieceId;
   if (pieceId === null) {
     return new Vector3();
@@ -342,10 +344,6 @@ function getSelectedTarget(runtime: InputRuntime): Vector3 {
   }
   const translation = binding.body.translation();
   const rotation = binding.body.rotation();
-  mesh.position.set(translation.x, translation.y, translation.z);
-  mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
-  mesh.scale.setScalar(1);
-  mesh.updateMatrixWorld(true);
   if (mesh.geometry.boundingBox === null) {
     mesh.geometry.computeBoundingBox();
   }
@@ -353,7 +351,13 @@ function getSelectedTarget(runtime: InputRuntime): Vector3 {
   if (bounds === null) {
     throw new Error(`${pieceId} 공전 중심용 AABB가 없습니다.`);
   }
-  return bounds.clone().applyMatrix4(mesh.matrixWorld).getCenter(new Vector3());
+  // 실제 렌더 배율을 포함한 임시 행렬만 사용해 선택이 공유 메시 상태를 바꾸지 않게 한다.
+  const matrix = new Matrix4().compose(
+    new Vector3(translation.x, translation.y, translation.z),
+    new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w),
+    mesh.scale,
+  );
+  return bounds.clone().applyMatrix4(matrix).getCenter(new Vector3());
 }
 
 /**

@@ -7,23 +7,23 @@ export const WORLD_LENGTH_UNIT = 1;
 // 헤드리스 검증과 같은 적분 간격을 사용해 접지 안정성을 재현한다.
 export const FIXED_STEP = 1 / 120;
 
-// 물리 상수는 유지하면서 작은 실물 체스말처럼 빠르게 보이게 하는 시간 배율이다.
-export const TIME_SCALE = Math.sqrt(10);
+// 2026-07-27 개발자 지시로 √10 배속을 버리고 실제 시간과 같은 속도로 굴린다.
+export const TIME_SCALE = 1;
 
 // 종류별 볼록껍질 부피에서 현실적인 말 질량을 계산하기 위한 공통 밀도다.
 export const PIECE_DENSITY = 1.2;
 
-// 말끼리와 말·보드 사이의 미끄러짐을 동일하게 맞추는 마찰값이다.
-export const PIECE_FRICTION = 0.4;
+// 말끼리와 말·보드 사이의 미끄러짐을 동일하게 맞추는 마찰값이다. 2026-07-27 기획자 요청값.
+export const PIECE_FRICTION = 0.05;
 
-// 충돌 감각을 남기면서도 모든 말이 수면 상태에 도달하게 하는 반발값이다.
-export const PIECE_RESTITUTION = 0.1;
+// 충돌 감각을 남기면서도 모든 말이 수면 상태에 도달하게 하는 반발값이다. 2026-07-27 기획자 요청값.
+export const PIECE_RESTITUTION = 0.6;
 
-// 접촉 후 남는 병진 흔들림을 실측 시간 안에 줄이는 감쇠값이다.
-export const PIECE_LINEAR_DAMPING = 2.0;
+// 접촉 후 남는 병진 흔들림을 줄이는 감쇠값이다. 2026-07-27 기획자 요청으로 감쇠를 끈다.
+export const PIECE_LINEAR_DAMPING = 0;
 
-// 넘어질 수 있는 회전은 허용하면서 접지 지터를 가라앉히는 감쇠값이다.
-export const PIECE_ANGULAR_DAMPING = 2.0;
+// 넘어질 수 있는 회전은 허용하면서 접지 지터를 가라앉히는 감쇠값이다. 2026-07-27 기획자 요청으로 감쇠를 끈다.
+export const PIECE_ANGULAR_DAMPING = 0;
 
 // 평탄화된 콜라이더 바닥이 보드 상면에 정확히 닿은 상태로 시작하게 한다.
 export const SPAWN_GAP = 0;
@@ -83,16 +83,16 @@ export const STAGE_SIZE_STEP = 0.03;
 // 보드 격자에 물리적으로 들어가는 총 배율 상한이다. 초고스테이지에서 지그재그로도 안 들어가는 것을 막되 중량·힘 버프는 계속 누적한다.
 export const STAGE_MAX_PIECE_SCALE = 2.2;
 
-// 크기 카드를 한 번 고를 때 백 말의 총 배율에 더하는 값이다.
-export const CARD_SIZE_STEP = 0.03;
+// 일반·중급·상급·최상급·레전드 강화 카드가 기존 수치를 교체할 최종 효과 비율표다.
+export const CARD_GRADE_EFFECTS = [
+  0.01,
+  0.03,
+  0.05,
+  0.07,
+  0.1,
+] as const;
 
-// 중량 카드를 한 번 고를 때 백 말의 원래 hull 질량에 더하는 비율이다.
-export const CARD_WEIGHT_STEP = 0.1;
-
-// 힘 카드를 한 번 고를 때 플레이어 목표 발사 속도에 더하는 비율이다.
-export const CARD_FORCE_STEP = 0.05;
-
-// 크기·중량·힘 카드의 1회 효과에 공통으로 곱하는 로그라이트 성장 배율이다.
+// 크기·중량·힘 카드의 현재 등급 최종 효과에 공통으로 곱하는 로그라이트 성장 배율이다.
 export const CARD_EFFECT_SCALE = 1;
 
 // 뒷줄 최악 인접쌍(퀸+킹) 받침 합 0.429 × s가 칸 간격 0.536 − 0.02 이하가 되는 실측 상한이다. 카드로 그 이상 쌓아도 백 일반 말은 여기서 멈춘다.
@@ -104,11 +104,29 @@ export const STAGE_CLEAR_POINTS = 100;
 // 영구 힘·중량 강화 한 레벨이 원래 속도·hull 질량에 더하는 비율이다.
 export const PERMANENT_UPGRADE_STEP = 0.01;
 
-// 말 종류별 힘·중량 트랙에서 구매할 수 있는 최대 레벨이다.
-export const PERMANENT_UPGRADE_MAX_LEVEL = 10;
+// 기초·심화 힘·중량 노드 하나에서 구매할 수 있는 최대 레벨이다.
+export const PERMANENT_UPGRADE_TIER_MAX_LEVEL = 3;
 
-// 현재 레벨 N에서 다음 레벨을 살 때 (N + 1)에 곱하는 선형 비용 단위다.
-export const PERMANENT_UPGRADE_COST_UNIT = 100;
+// 중앙 전체 크기 노드가 플레이어의 모든 말 종류에 더하는 비율이다.
+export const PERMANENT_PLAYER_SIZE_STEP = 0.03;
+
+// 기초 일반 말 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
+export const PERMANENT_BASIC_REGULAR_COSTS = [1, 3, 5] as const;
+
+// 기초 킹·퀸 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
+export const PERMANENT_BASIC_ROYAL_COSTS = [2, 4, 6] as const;
+
+// 중앙 전체 크기 0→1 노드의 단일 구매 비용이다.
+export const PERMANENT_PLAYER_SIZE_COST = 10;
+
+// 심화 일반 말 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
+export const PERMANENT_ADVANCED_REGULAR_COSTS = [3, 5, 7] as const;
+
+// 심화 킹·퀸 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
+export const PERMANENT_ADVANCED_ROYAL_COSTS = [4, 6, 8] as const;
+
+// 힘·중량 24개와 중앙 크기 1개를 합친 전체 구매 노드 수다.
+export const PERMANENT_UPGRADE_NODE_COUNT = 25;
 
 // 세기와 무관한 짧은 경로 모양만 만들도록 실제 발사 속도와 분리한 안내용 기준 속도다.
 export const NOMINAL_GUIDE_SPEED = 3.5;
@@ -123,7 +141,8 @@ export const GROUND_LANE_LENGTH = 1.6;
 export const BOWSTRING_MAX_PULL = 0.55;
 
 // 무게중심에서 시각적 중심을 향한 타격 위치를 정해 0은 발사 순간 타격 토크가 없고 1은 시각 중심에 닿게 한다.
-export const STRIKE_HEIGHT_RATIO = 1.0;
+// 2026-07-27 기획자 요청으로 타격 토크 없이 무게중심을 때리는 0을 기본값으로 쓴다.
+export const STRIKE_HEIGHT_RATIO = 0;
 
 // 접지 미세 진동을 정지로 인정하되 눈에 보이는 이동은 계속 기다리는 선속도 한계다.
 export const REST_LINEAR_EPS = 0.05;

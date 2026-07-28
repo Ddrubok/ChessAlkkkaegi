@@ -104,7 +104,7 @@ export interface AiRuntime {
   getStageNumber: () => number;
   // 측정 하네스만 순수 AI 결정 상수를 덮어쓰고 게임은 config 기본값을 읽는 함수다.
   getDecisionOverrides: () => AiDecisionOverrides | undefined;
-  // 측정 하네스만 세 종류 적 버프의 공통 배율을 덮어쓰는 함수다.
+  // 현재 보드 설정과 측정 하네스가 세 종류 적 버프의 공통 배율을 제공하는 함수다.
   getEnemyBuffStepScale: () => number | undefined;
   // 브라우저에서는 플레이어와 같은 조준 표시를 구동하고 헤드리스에서는 null이다.
   aimRuntime: AimRuntime | null;

@@ -3,6 +3,8 @@ import type { ChessSetMeta } from "../assets";
 import {
   CAM_INITIAL_AIM_PITCH_DEG,
   CAM_KEY_DEG_PER_SEC,
+  CARD_EFFECT_SCALE,
+  ENEMY_STAGE_BUFF_SCALE,
   MAX_LAUNCH_SPEED,
   PIECE_ANGULAR_DAMPING,
   PIECE_FRICTION,
@@ -152,6 +154,10 @@ function createProbeTuningSettings(): RuntimeTuningSettings {
     initialAimPitch: CAM_INITIAL_AIM_PITCH_DEG,
     cameraKeyDegreesPerSecond: CAM_KEY_DEG_PER_SEC,
     strikeHeightRatio: STRIKE_HEIGHT_RATIO,
+    // 프로브는 다음 보드 성장 배율도 제품의 config 기본값과 동일하게 고정한다.
+    enemyStageBuffScale: ENEMY_STAGE_BUFF_SCALE,
+    // 프로브는 카드 효과 배율도 제품의 config 기본값과 동일하게 고정한다.
+    cardEffectScale: CARD_EFFECT_SCALE,
   };
 }
 

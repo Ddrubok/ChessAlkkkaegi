@@ -151,14 +151,74 @@ try {
   const drawState = cardsModule.createRunCardState();
   const firstDraw = cardsModule.drawUpgradeCards(1, drawState);
   const repeatedDraw = cardsModule.drawUpgradeCards(1, drawState);
+  const gradeEffects = [1, 2, 3, 4, 5].map((grade) =>
+    cardsModule.computeCardGradeEffect(grade),
+  );
+  const replacementState = cardsModule.createRunCardState();
+  const replacementEffects = [];
+  for (let grade = 1; grade <= 5; grade += 1) {
+    cardsModule.applyCardPick(replacementState, "weight");
+    replacementEffects.push(
+      cardsModule.computeGeneralCardEffect(
+        replacementState,
+        "weight",
+      ),
+    );
+  }
+  let legendBlocked = false;
+  try {
+    cardsModule.applyCardPick(replacementState, "weight");
+  } catch {
+    legendBlocked = true;
+  }
   assertCondition(
     JSON.stringify(firstDraw.map((card) => card.id)) ===
       JSON.stringify(repeatedDraw.map((card) => card.id)) &&
       new Set(firstDraw.map((card) => card.id)).size ===
         firstDraw.length &&
-      firstDraw.length === 3,
-    `카드 추첨 결정성·중복 검사 실패: ${firstDraw.map((card) => card.id).join(",")}`,
+      firstDraw.length === 3 &&
+      firstDraw[0].category === "general" &&
+      firstDraw[1].category === "general" &&
+      JSON.stringify(gradeEffects) ===
+        JSON.stringify([0.01, 0.03, 0.05, 0.07, 0.1]) &&
+      JSON.stringify(replacementEffects) ===
+        JSON.stringify(gradeEffects) &&
+      replacementState.weightGrade === 5 &&
+      legendBlocked,
+    `등급 교체·레전드 상한·추첨 결정성 실패: draw=${firstDraw.map((card) => `${card.id}:${card.category}`).join(",")}, grades=${gradeEffects.join(",")}, replacements=${replacementEffects.join(",")}, blocked=${legendBlocked}`,
   );
+
+  let thirdGeneral = 0;
+  let thirdSpecial = 0;
+  let distributionDeterministic = true;
+  const distributionDraws = 1000;
+  for (let stage = 1; stage <= distributionDraws; stage += 1) {
+    const state = cardsModule.createRunCardState();
+    const first = cardsModule.drawUpgradeCards(stage, state);
+    const second = cardsModule.drawUpgradeCards(stage, state);
+    distributionDeterministic &&=
+      JSON.stringify(first.map((card) => card.id)) ===
+      JSON.stringify(second.map((card) => card.id));
+    assertCondition(
+      first.length === 3 &&
+        first[0].category === "general" &&
+        first[1].category === "general",
+      `${stage} 스테이지가 일반 카드 두 장을 보장하지 못했습니다: ${first.map((card) => `${card.id}:${card.category}`).join(",")}`,
+    );
+    if (first[2].category === "general") {
+      thirdGeneral += 1;
+    } else {
+      thirdSpecial += 1;
+    }
+  }
+  const observedGeneralRatio =
+    thirdGeneral / distributionDraws;
+  assertCondition(
+    distributionDeterministic &&
+      Math.abs(observedGeneralRatio - 0.7) <= 0.04,
+    `세 번째 슬롯 70/30 결정 분포 실패: general=${thirdGeneral}, special=${thirdSpecial}, deterministic=${distributionDeterministic}`,
+  );
+
   cardsModule.applyCardPick(drawState, "size");
   cardsModule.applyCardPick(drawState, "size");
   cardsModule.applyCardPick(drawState, "weight");
@@ -168,32 +228,97 @@ try {
   cardsModule.applyCardPick(drawState, "proneStart");
   const remainingPool = cardsModule.getRemainingCardPool(drawState);
   assertCondition(
-    drawState.sizePicks === 2 &&
-      drawState.weightPicks === 1 &&
-      drawState.forcePicks === 2 &&
+    drawState.sizeGrade === 2 &&
+      drawState.weightGrade === 1 &&
+      drawState.forceGrade === 2 &&
       drawState.picksSoFar === 7 &&
       remainingPool.length === 3 &&
       remainingPool.every((card) => !card.oneShot),
-    `카드 누적·풀 축소 실패: state=${JSON.stringify(drawState)}, pool=${remainingPool.map((card) => card.id).join(",")}`,
+    `카드 등급·특수 풀 축소 실패: state=${JSON.stringify(drawState)}, pool=${remainingPool.map((card) => card.id).join(",")}`,
   );
+
+  const shortPoolState = cardsModule.createRunCardState();
+  for (const cardId of ["size", "weight"]) {
+    for (let grade = 0; grade < 5; grade += 1) {
+      cardsModule.applyCardPick(shortPoolState, cardId);
+    }
+  }
+  for (let grade = 0; grade < 4; grade += 1) {
+    cardsModule.applyCardPick(shortPoolState, "force");
+  }
+  cardsModule.applyCardPick(shortPoolState, "giantPawn");
+  cardsModule.applyCardPick(shortPoolState, "proneStart");
+  const shortDraw = cardsModule.drawUpgradeCards(
+    20,
+    shortPoolState,
+  );
+  assertCondition(
+    shortDraw.length === 1 &&
+      shortDraw[0].id === "force",
+    `짧은 풀이 남은 카드만 표시하지 않았습니다: ${shortDraw.map((card) => card.id).join(",")}`,
+  );
+
+  const whiteKingInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "white-king-e1",
+  );
+  assertCondition(
+    whiteKingInstance !== undefined,
+    "크기 상한 검사용 백 킹 인스턴스를 찾지 못했습니다.",
+  );
+  const defaultLegendState = cardsModule.createRunCardState();
+  for (let grade = 0; grade < 5; grade += 1) {
+    cardsModule.applyCardPick(defaultLegendState, "size");
+  }
+  const defaultLegendScale =
+    stageModule.computeStagePieceScale(
+      whiteKingInstance,
+      meta,
+      {
+        gameMode: "stage",
+        stageNumber: 1,
+        runCards: defaultLegendState,
+      },
+    );
   const cappedPoolState = cardsModule.createRunCardState();
   cardsModule.applyCardPick(cappedPoolState, "giantPawn");
   cardsModule.applyCardPick(cappedPoolState, "proneStart");
-  for (let pickIndex = 0; pickIndex < 7; pickIndex += 1) {
-    cardsModule.applyCardPick(cappedPoolState, "size");
+  const capTestEffectScale = 3;
+  for (let grade = 0; grade < 4; grade += 1) {
+    cardsModule.applyCardPick(
+      cappedPoolState,
+      "size",
+      capTestEffectScale,
+    );
   }
   const cappedPool = cardsModule.getRemainingCardPool(
     cappedPoolState,
+    capTestEffectScale,
   );
-  const cappedDraw = cardsModule.drawUpgradeCards(20, cappedPoolState);
+  const cappedDraw = cardsModule.drawUpgradeCards(
+    20,
+    cappedPoolState,
+    capTestEffectScale,
+  );
+  const cappedScale = stageModule.computeStagePieceScale(
+    whiteKingInstance,
+    meta,
+    {
+      gameMode: "stage",
+      stageNumber: 1,
+      runCards: cappedPoolState,
+      cardEffectScale: capTestEffectScale,
+    },
+  );
   assertCondition(
+    defaultLegendScale === 1.1 &&
+      cappedScale === configModule.PLAYER_MAX_SIZE_SCALE &&
     JSON.stringify(cappedPool.map((card) => card.id)) ===
       JSON.stringify(["weight", "force"]) &&
       cappedDraw.length === 2,
-    `크기 상한 풀 제거 실패: pool=${cappedPool.map((card) => card.id).join(",")}, draw=${cappedDraw.map((card) => card.id).join(",")}`,
+    `크기 상한 풀 제거 실패: defaultLegend=${defaultLegendScale}, tunedCap=${cappedScale}, pool=${cappedPool.map((card) => card.id).join(",")}, draw=${cappedDraw.map((card) => card.id).join(",")}`,
   );
   console.log(
-    `[통과 a] draw=${firstDraw.map((card) => card.id).join(",")}, distinct=3, remaining=${remainingPool.map((card) => card.id).join(",")}, cappedPool=${cappedPool.map((card) => card.id).join(",")}, cappedDraw=${cappedDraw.length}, stacks=size:${drawState.sizePicks}/weight:${drawState.weightPicks}/force:${drawState.forcePicks}`,
+    `[통과 a] grades=${gradeEffects.map((effect) => `${Math.round(effect * 100)}%`).join("/")}, replacement=true, legendBlocked=${legendBlocked}; draw=${firstDraw.map((card) => card.id).join(",")}, firstTwo=general/general; third(${distributionDraws})=general:${thirdGeneral}/special:${thirdSpecial}; shortPool=${shortDraw.map((card) => card.id).join(",")}; defaultLegendScale=${defaultLegendScale.toFixed(2)}, tunedCapScale=${cappedScale.toFixed(2)}, cappedPool=${cappedPool.map((card) => card.id).join(",")}`,
   );
 
   const giantState = cardsModule.createRunCardState();
@@ -264,8 +389,12 @@ try {
 
   const stackedGiantState = cardsModule.createRunCardState();
   cardsModule.applyCardPick(stackedGiantState, "giantPawn");
-  for (let pickIndex = 0; pickIndex < 7; pickIndex += 1) {
-    cardsModule.applyCardPick(stackedGiantState, "size");
+  for (let grade = 0; grade < 4; grade += 1) {
+    cardsModule.applyCardPick(
+      stackedGiantState,
+      "size",
+      capTestEffectScale,
+    );
   }
   const stackedGiantRuntime =
     await physicsModule.createPhysicsRuntime(
@@ -276,6 +405,7 @@ try {
         gameMode: "stage",
         stageNumber: 1,
         runCards: stackedGiantState,
+        cardEffectScale: capTestEffectScale,
       },
     );
   let stackedGiantSettle = null;
@@ -314,7 +444,7 @@ try {
       )
       .map((binding) => binding.instance.id);
     console.error(
-      `[실패 b-상한] giantPawn+size7: sleeping=${sleeping}/28, awake=${awakeIds.join(",")}, fallen=${fallenIds.join(",") || "none"}, maxDrift=${drift.maximumDrift.toFixed(6)} (${drift.maximumPieceId}), worst=${JSON.stringify(worstDrifts)}`,
+      `[실패 b-상한] giantPawn+sizeGrade4×3: sleeping=${sleeping}/28, awake=${awakeIds.join(",")}, fallen=${fallenIds.join(",") || "none"}, maxDrift=${drift.maximumDrift.toFixed(6)} (${drift.maximumPieceId}), worst=${JSON.stringify(worstDrifts)}`,
     );
     throw error;
   }
@@ -352,7 +482,7 @@ try {
     `거대 폰+크기 상한 보드 안전 실패: pawnScale=${stackedGiantScale}, regularScale=${stackedWhiteKingScale}, flare=${stackedGiantFlare}, sleeping=${stackedGiantSleeping}/28, maxDrift=${stackedGiantDrift.maximumDrift}, fallen=${stackedGiantFallen.length}`,
   );
   console.log(
-    `[통과 b-상한] giantPawn+size7: pawnScale=${stackedGiantScale.toFixed(6)}, regularScale=${stackedWhiteKingScale.toFixed(6)}, flare+margin=${(stackedGiantFlare + 0.02).toFixed(6)}<twoCells=${(meta.cellSize * 2).toFixed(6)}, preSettle=${stackedGiantSettle.steps}, sleeping=${stackedGiantSleeping}/28, fallen=0, maxDrift=${stackedGiantDrift.maximumDrift.toFixed(6)} (${stackedGiantDrift.maximumPieceId})`,
+    `[통과 b-상한] giantPawn+sizeGrade4×3: pawnScale=${stackedGiantScale.toFixed(6)}, regularScale=${stackedWhiteKingScale.toFixed(6)}, flare+margin=${(stackedGiantFlare + 0.02).toFixed(6)}<twoCells=${(meta.cellSize * 2).toFixed(6)}, preSettle=${stackedGiantSettle.steps}, sleeping=${stackedGiantSleeping}/28, fallen=0, maxDrift=${stackedGiantDrift.maximumDrift.toFixed(6)} (${stackedGiantDrift.maximumPieceId})`,
   );
 
   const proneState = cardsModule.createRunCardState();

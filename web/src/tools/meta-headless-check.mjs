@@ -46,6 +46,13 @@ class MemoryStorage {
   setItem(key, value) {
     this.values.set(key, value);
   }
+
+  /**
+   * 초기화가 저장된 전체 설정을 제거하는 동작을 재현한다.
+   */
+  removeItem(key) {
+    this.values.delete(key);
+  }
 }
 
 /**
@@ -140,6 +147,7 @@ try {
     layoutModule,
     metaModule,
     physicsModule,
+    stageModule,
     tuningModule,
     turnModule,
   ] = await Promise.all([
@@ -148,6 +156,7 @@ try {
     vite.ssrLoadModule("/src/layout.ts"),
     vite.ssrLoadModule("/src/meta.ts"),
     vite.ssrLoadModule("/src/physics.ts"),
+    vite.ssrLoadModule("/src/stage.ts"),
     vite.ssrLoadModule("/src/tuning.ts"),
     vite.ssrLoadModule("/src/turn.ts"),
   ]);
@@ -167,14 +176,15 @@ try {
   const storage = new MemoryStorage();
   const savedRuntime = metaModule.createMetaRuntime(storage);
   savedRuntime.state.points = 2345;
-  savedRuntime.state.upgrades.Pawn.force = 3;
-  savedRuntime.state.upgrades.King.weight = 7;
+  savedRuntime.state.upgrades.pieces.Pawn.basic.force = 2;
+  savedRuntime.state.upgrades.pieces.Rook.basic.weight = 3;
   metaModule.saveMetaState(savedRuntime);
   const loadedRuntime = metaModule.createMetaRuntime(storage);
   assertCondition(
     loadedRuntime.state.points === 2345 &&
-      loadedRuntime.state.upgrades.Pawn.force === 3 &&
-      loadedRuntime.state.upgrades.King.weight === 7,
+      loadedRuntime.state.upgrades.schemaVersion === 2 &&
+      loadedRuntime.state.upgrades.pieces.Pawn.basic.force === 2 &&
+      loadedRuntime.state.upgrades.pieces.Rook.basic.weight === 3,
     `메타 왕복 실패: ${JSON.stringify(loadedRuntime.state)}`,
   );
 
@@ -183,27 +193,164 @@ try {
   console.warn = () => {
     warningCount += 1;
   };
-  storage.setItem(metaModule.META_POINTS_STORAGE_KEY, "{broken");
-  storage.setItem(metaModule.META_UPGRADES_STORAGE_KEY, "[broken");
-  const corruptedRuntime = metaModule.createMetaRuntime(storage);
+  const oldStorage = new MemoryStorage();
+  oldStorage.setItem(metaModule.META_POINTS_STORAGE_KEY, "987");
+  oldStorage.setItem(
+    metaModule.META_UPGRADES_STORAGE_KEY,
+    JSON.stringify(
+      Object.fromEntries(
+        configModule.PIECE_TYPES.map((type) => [
+          type,
+          { force: 1, weight: 1 },
+        ]),
+      ),
+    ),
+  );
+  const oldFormatRuntime = metaModule.createMetaRuntime(oldStorage);
+  const corruptStorage = new MemoryStorage();
+  corruptStorage.setItem(
+    metaModule.META_POINTS_STORAGE_KEY,
+    "{broken",
+  );
+  corruptStorage.setItem(
+    metaModule.META_UPGRADES_STORAGE_KEY,
+    "[broken",
+  );
+  const corruptedRuntime =
+    metaModule.createMetaRuntime(corruptStorage);
   console.warn = originalWarn;
+  const isFreshTree = (upgrades) =>
+    upgrades.schemaVersion === 2 &&
+    upgrades.playerSizeLevel === 0 &&
+    configModule.PIECE_TYPES.every(
+      (type) =>
+        ["basic", "advanced"].every(
+          (tier) =>
+            upgrades.pieces[type][tier].force === 0 &&
+            upgrades.pieces[type][tier].weight === 0,
+        ),
+    );
   assertCondition(
-    corruptedRuntime.state.points === 0 &&
-      configModule.PIECE_TYPES.every(
-        (type) =>
-          corruptedRuntime.state.upgrades[type].force === 0 &&
-          corruptedRuntime.state.upgrades[type].weight === 0,
-      ) &&
+    oldFormatRuntime.state.points === 0 &&
+      isFreshTree(oldFormatRuntime.state.upgrades) &&
+      corruptedRuntime.state.points === 0 &&
+      isFreshTree(corruptedRuntime.state.upgrades) &&
       warningCount === 1,
-    `손상 JSON 기본값 실패: state=${JSON.stringify(corruptedRuntime.state)}, warnings=${warningCount}`,
+    `구형·손상 저장 기본값 실패: old=${JSON.stringify(oldFormatRuntime.state)}, corrupt=${JSON.stringify(corruptedRuntime.state)}, warnings=${warningCount}`,
   );
   console.log(
-    `[통과 a] roundTrip points=${loadedRuntime.state.points}, Pawn.force=${loadedRuntime.state.upgrades.Pawn.force}, King.weight=${loadedRuntime.state.upgrades.King.weight}; corrupted→points=0/allLevels=0, warnings=${warningCount}`,
+    `[통과 a] schema2 roundTrip points=${loadedRuntime.state.points}, Pawn.basic.force=${loadedRuntime.state.upgrades.pieces.Pawn.basic.force}, Rook.basic.weight=${loadedRuntime.state.upgrades.pieces.Rook.basic.weight}; old/corrupt→fresh, warnings=${warningCount}`,
   );
 
-  const costs = Array.from({ length: 10 }, (_, level) =>
-    metaModule.computePermanentUpgradeCost(level),
+  const tuningStorage = new MemoryStorage();
+  const tuningDefaults =
+    tuningModule.createDefaultRuntimeTuningSettings();
+  const modifiedTuning = {
+    ...tuningDefaults,
+    timeScale: 2.25,
+    maxLaunchSpeed: 13.5,
+    friction: 0.65,
+    enemyStageBuffScale: 1.4,
+    cardEffectScale: 0.85,
+  };
+  const saveWarning = tuningModule.saveTuningSettings(
+    tuningStorage,
+    modifiedTuning,
   );
+  const loadedTuning =
+    tuningModule.loadTuningSettings(tuningStorage);
+  assertCondition(
+    saveWarning === null &&
+      JSON.stringify(loadedTuning.settings) ===
+        JSON.stringify(modifiedTuning) &&
+      loadedTuning.warning === null,
+    `조절값 왕복 실패: warning=${saveWarning ?? loadedTuning.warning}, settings=${JSON.stringify(loadedTuning.settings)}`,
+  );
+
+  tuningStorage.setItem(
+    tuningModule.TUNING_SETTINGS_STORAGE_KEY,
+    JSON.stringify({
+      ...modifiedTuning,
+      timeScale: "broken",
+      friction: 99,
+      restitution: null,
+    }),
+  );
+  const partiallyCorrupted =
+    tuningModule.loadTuningSettings(tuningStorage);
+  assertCondition(
+    partiallyCorrupted.settings.timeScale ===
+      tuningDefaults.timeScale &&
+      partiallyCorrupted.settings.friction ===
+        tuningDefaults.friction &&
+      partiallyCorrupted.settings.restitution ===
+        tuningDefaults.restitution &&
+      partiallyCorrupted.settings.maxLaunchSpeed ===
+        modifiedTuning.maxLaunchSpeed &&
+      partiallyCorrupted.invalidKeys.join(",") ===
+        "timeScale,friction,restitution" &&
+      partiallyCorrupted.warning !== null,
+    `조절값 필드별 복구 실패: ${JSON.stringify(partiallyCorrupted)}`,
+  );
+
+  tuningStorage.setItem(
+    tuningModule.TUNING_SETTINGS_STORAGE_KEY,
+    "{broken",
+  );
+  const fullyCorrupted =
+    tuningModule.loadTuningSettings(tuningStorage);
+  assertCondition(
+    JSON.stringify(fullyCorrupted.settings) ===
+      JSON.stringify(tuningDefaults) &&
+      fullyCorrupted.invalidKeys.length ===
+        Object.keys(tuningDefaults).length &&
+      fullyCorrupted.warning !== null,
+    `조절값 손상 JSON 기본값 실패: ${JSON.stringify(fullyCorrupted)}`,
+  );
+
+  const boardCollider = {
+    setFriction() {},
+    setRestitution() {},
+  };
+  const tuningModeRuntime = {
+    physicsRuntime: {
+      boardCollider,
+      pieces: new Map(),
+    },
+    settings: { ...modifiedTuning },
+    localSettings: { ...modifiedTuning },
+    controls: new Map(),
+    panel: { querySelector: () => null },
+    onlineNotice: { hidden: true },
+    onlineDefaultsActive: false,
+    pendingPhysicsVerification: false,
+  };
+  tuningModule.setTuningGameMode(tuningModeRuntime, "online");
+  const onlineUsesDefaults =
+    JSON.stringify(tuningModeRuntime.settings) ===
+    JSON.stringify(tuningDefaults);
+  tuningModule.setTuningGameMode(tuningModeRuntime, "stage");
+  const localValuesRestored =
+    JSON.stringify(tuningModeRuntime.settings) ===
+    JSON.stringify(modifiedTuning);
+  assertCondition(
+    onlineUsesDefaults && localValuesRestored,
+    `온라인 기본값 예외 실패: online=${onlineUsesDefaults}, restored=${localValuesRestored}`,
+  );
+
+  const clearWarning =
+    tuningModule.clearTuningSettings(tuningStorage);
+  assertCondition(
+    clearWarning === null &&
+      tuningStorage.getItem(
+        tuningModule.TUNING_SETTINGS_STORAGE_KEY,
+      ) === null,
+    `조절값 저장 삭제 실패: ${clearWarning}`,
+  );
+  console.log(
+    `[통과 tuning-storage] roundTrip speed=${loadedTuning.settings.maxLaunchSpeed.toFixed(2)}, friction=${loadedTuning.settings.friction.toFixed(2)}, enemyScale=${loadedTuning.settings.enemyStageBuffScale.toFixed(2)}, cardScale=${loadedTuning.settings.cardEffectScale.toFixed(2)}; partialFallback=${partiallyCorrupted.invalidKeys.join(",")}; corruptFallback=${fullyCorrupted.invalidKeys.length}/${Object.keys(tuningDefaults).length}, warning=${fullyCorrupted.warning !== null}; onlineDefaults=${onlineUsesDefaults}, localRestored=${localValuesRestored}, cleared=${clearWarning === null}`,
+  );
+
   const rewardStorage = new MemoryStorage();
   const rewardRuntime = metaModule.createMetaRuntime(rewardStorage);
   metaModule.awardStageClearPoints(rewardRuntime);
@@ -212,61 +359,281 @@ try {
       JSON.parse(
         rewardStorage.getItem(
           metaModule.META_POINTS_STORAGE_KEY,
-        ),
+    ),
       ) === 100,
     "스테이지 클리어 100포인트가 즉시 저장되지 않았습니다.",
   );
+
+  const costs = {
+    basicRegular: [0, 1, 2].map((level) =>
+      metaModule.computePermanentUpgradeCost(
+        "basic",
+        "Pawn",
+        level,
+      ),
+    ),
+    basicRoyal: [0, 1, 2].map((level) =>
+      metaModule.computePermanentUpgradeCost(
+        "basic",
+        "King",
+        level,
+      ),
+    ),
+    size: configModule.PERMANENT_PLAYER_SIZE_COST,
+    advancedRegular: [0, 1, 2].map((level) =>
+      metaModule.computePermanentUpgradeCost(
+        "advanced",
+        "Pawn",
+        level,
+      ),
+    ),
+    advancedRoyal: [0, 1, 2].map((level) =>
+      metaModule.computePermanentUpgradeCost(
+        "advanced",
+        "King",
+        level,
+      ),
+    ),
+  };
+  assertCondition(
+    JSON.stringify(costs) ===
+      JSON.stringify({
+        basicRegular: [1, 3, 5],
+        basicRoyal: [2, 4, 6],
+        size: 10,
+        advancedRegular: [3, 5, 7],
+        advancedRoyal: [4, 6, 8],
+      }) &&
+      metaModule.computePermanentUpgradeTreeTotalCost() === 322 &&
+      configModule.PERMANENT_UPGRADE_NODE_COUNT === 25,
+    `비용표·총합 실패: costs=${JSON.stringify(costs)}, total=${metaModule.computePermanentUpgradeTreeTotalCost()}, nodes=${configModule.PERMANENT_UPGRADE_NODE_COUNT}`,
+  );
+
   const purchaseStorage = new MemoryStorage();
   const purchaseRuntime =
     metaModule.createMetaRuntime(purchaseStorage);
-  purchaseRuntime.state.points = 2000;
-  const purchased = metaModule.purchasePermanentUpgrade(
-    purchaseRuntime,
-    "Pawn",
-    "force",
-  );
-  purchaseRuntime.state.points = 0;
+  purchaseRuntime.state.points = 322;
+  const blockedBasicKing =
+    metaModule.purchasePermanentUpgrade(
+      purchaseRuntime,
+      "basic",
+      "King",
+      "force",
+    );
+  const blockedSize =
+    metaModule.purchasePermanentSizeUpgrade(purchaseRuntime);
+  const blockedAdvanced =
+    metaModule.purchasePermanentUpgrade(
+      purchaseRuntime,
+      "advanced",
+      "Pawn",
+      "force",
+    );
+
+  const insufficientRuntime =
+    metaModule.createMetaRuntime(new MemoryStorage());
   const insufficient = metaModule.purchasePermanentUpgrade(
-    purchaseRuntime,
+    insufficientRuntime,
+    "basic",
     "Rook",
     "weight",
   );
-  purchaseRuntime.state.upgrades.King.weight =
-    configModule.PERMANENT_UPGRADE_MAX_LEVEL;
+
+  const purchaseTrackToMaximum = (
+    tier,
+    type,
+    track,
+  ) => {
+    for (
+      let level = 0;
+      level < configModule.PERMANENT_UPGRADE_TIER_MAX_LEVEL;
+      level += 1
+    ) {
+      const result = metaModule.purchasePermanentUpgrade(
+        purchaseRuntime,
+        tier,
+        type,
+        track,
+      );
+      assertCondition(
+        result.purchased,
+        `${tier}.${type}.${track} ${level}→${level + 1} 구매 실패: ${JSON.stringify(result)}`,
+      );
+    }
+  };
+  const purchasePieceToMaximum = (tier, type) => {
+    purchaseTrackToMaximum(tier, type, "force");
+    purchaseTrackToMaximum(tier, type, "weight");
+  };
+
+  purchasePieceToMaximum("basic", "Pawn");
+  const kingStillBlockedAfterPawn =
+    metaModule.isPermanentUpgradeUnlocked(
+      purchaseRuntime.state.upgrades,
+      "basic",
+      "King",
+    );
+  purchasePieceToMaximum("basic", "Knight");
+  const kingUnlocked =
+    metaModule.isPermanentUpgradeUnlocked(
+      purchaseRuntime.state.upgrades,
+      "basic",
+      "King",
+    );
+  purchasePieceToMaximum("basic", "King");
+  purchasePieceToMaximum("basic", "Rook");
+  const queenStillBlockedAfterRook =
+    metaModule.isPermanentUpgradeUnlocked(
+      purchaseRuntime.state.upgrades,
+      "basic",
+      "Queen",
+    );
+  purchasePieceToMaximum("basic", "Bishop");
+  purchasePieceToMaximum("basic", "Queen");
+  const sizeUnlocked =
+    metaModule.isPermanentSizeUpgradeUnlocked(
+      purchaseRuntime.state.upgrades,
+    );
+  const purchasedSize =
+    metaModule.purchasePermanentSizeUpgrade(purchaseRuntime);
+  const repeatedSize =
+    metaModule.purchasePermanentSizeUpgrade(purchaseRuntime);
+
+  purchasePieceToMaximum("advanced", "Pawn");
+  const advancedKingStillBlocked =
+    metaModule.isPermanentUpgradeUnlocked(
+      purchaseRuntime.state.upgrades,
+      "advanced",
+      "King",
+    );
+  purchasePieceToMaximum("advanced", "Knight");
+  purchasePieceToMaximum("advanced", "King");
+  purchasePieceToMaximum("advanced", "Rook");
+  const advancedQueenStillBlocked =
+    metaModule.isPermanentUpgradeUnlocked(
+      purchaseRuntime.state.upgrades,
+      "advanced",
+      "Queen",
+    );
+  purchasePieceToMaximum("advanced", "Bishop");
+  purchasePieceToMaximum("advanced", "Queen");
+
   const maximum = metaModule.purchasePermanentUpgrade(
     purchaseRuntime,
-    "King",
+    "advanced",
+    "Queen",
     "weight",
   );
+  const completedUpgrades =
+    metaModule.clonePermanentUpgrades(
+      purchaseRuntime.state.upgrades,
+    );
+  const capsAreSixPercent = configModule.PIECE_TYPES.every(
+    (type) =>
+      metaModule.computePermanentForceBonus(
+        completedUpgrades,
+        type,
+      ) === 0.06 &&
+      metaModule.computePermanentWeightFraction(
+        completedUpgrades,
+        type,
+      ) === 0.06,
+  );
   assertCondition(
-    JSON.stringify(costs) ===
-      JSON.stringify([
-        100, 200, 300, 400, 500,
-        600, 700, 800, 900, 1000,
-      ]) &&
-      purchased.purchased &&
-      purchaseRuntime.state.upgrades.Pawn.force === 1 &&
+    !blockedBasicKing.purchased &&
+      !blockedSize.purchased &&
+      !blockedAdvanced.purchased &&
       insufficient.purchased === false &&
-      purchaseRuntime.state.upgrades.Rook.weight === 0 &&
+      kingStillBlockedAfterPawn === false &&
+      kingUnlocked &&
+      queenStillBlockedAfterRook === false &&
+      sizeUnlocked &&
+      purchasedSize.purchased &&
+      !repeatedSize.purchased &&
+      advancedKingStillBlocked === false &&
+      advancedQueenStillBlocked === false &&
       maximum.purchased === false &&
-      purchaseRuntime.state.upgrades.King.weight === 10,
-    `비용·구매 경계 실패: costs=${costs.join(",")}, state=${JSON.stringify(purchaseRuntime.state)}, purchased=${JSON.stringify(purchased)}, insufficient=${JSON.stringify(insufficient)}, maximum=${JSON.stringify(maximum)}`,
+      purchaseRuntime.state.points === 0 &&
+      metaModule.computePermanentUpgradeSpentPoints(
+        purchaseRuntime.state.upgrades,
+      ) === 322 &&
+      capsAreSixPercent &&
+      metaModule.computePermanentSizeFraction(
+        completedUpgrades,
+      ) === 0.03,
+    `트리 구매·선행·상한 실패: state=${JSON.stringify(purchaseRuntime.state)}, blocked=${JSON.stringify({ blockedBasicKing, blockedSize, blockedAdvanced })}, size=${JSON.stringify({ purchasedSize, repeatedSize })}, max=${JSON.stringify(maximum)}`,
   );
   const persistedAfterPurchase = JSON.parse(
     purchaseStorage.getItem(metaModule.META_UPGRADES_STORAGE_KEY),
   );
   assertCondition(
-    persistedAfterPurchase.Pawn.force === 1,
+    persistedAfterPurchase.schemaVersion === 2 &&
+      persistedAfterPurchase.playerSizeLevel === 1 &&
+      persistedAfterPurchase.pieces.Queen.advanced.weight === 3,
     "구매 직후 강화 저장이 반영되지 않았습니다.",
   );
+  const refunded =
+    metaModule.resetPermanentUpgrades(purchaseRuntime);
+  const persistedAfterReset = JSON.parse(
+    purchaseStorage.getItem(metaModule.META_UPGRADES_STORAGE_KEY),
+  );
+  assertCondition(
+    refunded === 322 &&
+      purchaseRuntime.state.points === 322 &&
+      metaModule.computePermanentUpgradeSpentPoints(
+        purchaseRuntime.state.upgrades,
+      ) === 0 &&
+      isFreshTree(purchaseRuntime.state.upgrades) &&
+      persistedAfterReset.playerSizeLevel === 0,
+    `전체 초기화 실패: refund=${refunded}, state=${JSON.stringify(purchaseRuntime.state)}, persisted=${JSON.stringify(persistedAfterReset)}`,
+  );
   console.log(
-    `[통과 b] stageClear=+100(saved); costs=${costs.join(",")}; purchase 2000→1900, Pawn.force 0→1; insufficient=blocked; maxLevel10=blocked`,
+    `[통과 b] nodes=25, costs=${JSON.stringify(costs)}, total=322; prerequisites=blocked→unlocked; size=0/1(+3%, repeat blocked); caps=force/weight +6%; reset=free/refund ${refunded}/322; stageClear=+100(saved)`,
   );
 
   const permanentUpgrades =
     metaModule.createDefaultPermanentUpgrades();
-  permanentUpgrades.Pawn.force = 5;
+  for (const type of configModule.PIECE_TYPES) {
+    permanentUpgrades.pieces[type].basic.force = 3;
+    permanentUpgrades.pieces[type].basic.weight = 3;
+  }
+  permanentUpgrades.playerSizeLevel = 1;
+  permanentUpgrades.pieces.Pawn.advanced.force = 2;
   const emptyCards = cardsModule.createRunCardState();
+  const whiteRookInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "white-rook-a1",
+  );
+  const blackRookInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "black-rook-a8",
+  );
+  assertCondition(
+    whiteRookInstance !== undefined &&
+      blackRookInstance !== undefined,
+    "전체 크기 진영 검사용 백·흑 룩을 찾지 못했습니다.",
+  );
+  const sizeOptions = {
+    gameMode: "stage",
+    stageNumber: 1,
+    runCards: emptyCards,
+    permanentUpgrades: completedUpgrades,
+  };
+  const whitePermanentScale =
+    stageModule.computeStagePieceScale(
+      whiteRookInstance,
+      meta,
+      sizeOptions,
+    );
+  const blackPermanentScale =
+    stageModule.computeStagePieceScale(
+      blackRookInstance,
+      meta,
+      sizeOptions,
+    );
+  assertCondition(
+    whitePermanentScale === 1.03 &&
+      blackPermanentScale === 1,
+    `전체 크기 적용 진영 실패: white=${whitePermanentScale}, black=${blackPermanentScale}`,
+  );
   const forceRuntime = await physicsModule.createPhysicsRuntime(
     meta,
     layoutModule.PIECE_INSTANCES,
@@ -331,25 +698,30 @@ try {
   const pawnExpected =
     power * configModule.MAX_LAUNCH_SPEED * 1.05;
   const rookExpected =
-    power * configModule.MAX_LAUNCH_SPEED;
+    power * configModule.MAX_LAUNCH_SPEED * 1.03;
   const pawnError =
     Math.abs(pawnDeltaVelocity - pawnExpected) / pawnExpected;
   const rookError =
     Math.abs(rookDeltaVelocity - rookExpected) / rookExpected;
   assertCondition(
     pawnMultiplier === 1.05 &&
-      rookMultiplier === 1 &&
+      rookMultiplier === 1.03 &&
       pawnError < 0.01 &&
       rookError < 0.01,
     `종류별 힘 실패: pawn=${pawnDeltaVelocity}/${pawnExpected}, rook=${rookDeltaVelocity}/${rookExpected}`,
   );
   console.log(
-    `[통과 c] Pawn level=5 multiplier=${pawnMultiplier.toFixed(6)}, Δv=${pawnDeltaVelocity.toFixed(6)}/${pawnExpected.toFixed(6)}, error=${(pawnError * 100).toFixed(6)}%; Rook multiplier=${rookMultiplier.toFixed(6)}, Δv=${rookDeltaVelocity.toFixed(6)}/${rookExpected.toFixed(6)}, error=${(rookError * 100).toFixed(6)}%`,
+    `[통과 c] size white/black=${whitePermanentScale.toFixed(2)}/${blackPermanentScale.toFixed(2)}; Pawn level=5 multiplier=${pawnMultiplier.toFixed(6)}, Δv=${pawnDeltaVelocity.toFixed(6)}/${pawnExpected.toFixed(6)}, error=${(pawnError * 100).toFixed(6)}%; Rook level=3 multiplier=${rookMultiplier.toFixed(6)}, Δv=${rookDeltaVelocity.toFixed(6)}/${rookExpected.toFixed(6)}, error=${(rookError * 100).toFixed(6)}%`,
   );
 
   const weightUpgrades =
     metaModule.createDefaultPermanentUpgrades();
-  weightUpgrades.Pawn.weight = 4;
+  for (const type of configModule.PIECE_TYPES) {
+    weightUpgrades.pieces[type].basic.force = 3;
+    weightUpgrades.pieces[type].basic.weight = 3;
+  }
+  weightUpgrades.playerSizeLevel = 1;
+  weightUpgrades.pieces.Pawn.advanced.weight = 1;
   const weightCards = cardsModule.createRunCardState();
   cardsModule.applyCardPick(weightCards, "weight");
   cardsModule.applyCardPick(weightCards, "weight");
@@ -376,7 +748,7 @@ try {
     baseWeightMultiplier,
   );
   weightRuntime.world.step();
-  const expectedUpgradeFraction = 0.2 + 0.04;
+  const expectedUpgradeFraction = 0.03 + 0.04;
   const expectedMass =
     weightedPawn.originalHullMass *
     (1 + baseWeightMultiplier + expectedUpgradeFraction);
@@ -393,7 +765,7 @@ try {
     `합성 중량 실패: upgrade=${measuredUpgradeFraction}, mass=${actualMass}/${expectedMass}`,
   );
   console.log(
-    `[통과 d] tuning=${baseWeightMultiplier.toFixed(2)} + card=0.20 + permanent(Pawn level4)=0.04, upgradeFraction=${measuredUpgradeFraction.toFixed(6)}, mass=${actualMass.toFixed(6)}/${expectedMass.toFixed(6)}, error=${(massError * 100).toFixed(6)}%`,
+    `[통과 d] tuning=${baseWeightMultiplier.toFixed(2)} + cardGrade2=0.03 + permanent(Pawn level4)=0.04, upgradeFraction=${measuredUpgradeFraction.toFixed(6)}, mass=${actualMass.toFixed(6)}/${expectedMass.toFixed(6)}, error=${(massError * 100).toFixed(6)}%`,
   );
 } finally {
   await vite.close();

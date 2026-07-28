@@ -242,6 +242,28 @@ body {
   background: rgb(0 0 0 / 28%);
 }
 
+.tuning-readout {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.tuning-readout > div {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+}
+
+.tuning-readout dt {
+  color: #d1cbc2;
+}
+
+.tuning-readout dd {
+  margin: 0;
+  color: #fff4cf;
+  font-variant-numeric: tabular-nums;
+}
+
 .strike-feedback {
   margin: 0;
   color: #ffe7a3;
@@ -254,6 +276,14 @@ body {
   color: #d1cbc2;
   font-size: 0.7rem;
   line-height: 1.4;
+}
+
+.tuning-storage-warning {
+  color: #ffb4a8;
+}
+
+.tuning-online-notice {
+  color: #ffe7a3;
 }
 
 .aim-error {
@@ -539,7 +569,8 @@ body {
 
 .main-menu-modes button,
 .online-lobby-card button,
-.permanent-upgrade-row button {
+.permanent-upgrade-row button,
+.permanent-upgrade-reset {
   padding: 0.6rem 0.75rem;
   border: 1px solid #ffd54a;
   border-radius: 0.5rem;
@@ -552,7 +583,8 @@ body {
 
 .main-menu-modes button:disabled,
 .online-lobby-card button:disabled,
-.permanent-upgrade-row button:disabled {
+.permanent-upgrade-row button:disabled,
+.permanent-upgrade-reset:disabled {
   border-color: rgb(255 255 255 / 14%);
   color: #8f887f;
   background: rgb(255 255 255 / 5%);
@@ -598,6 +630,23 @@ body {
   font-size: 0.76rem;
 }
 
+.permanent-upgrade-row[data-locked="true"] {
+  border-color: rgb(255 255 255 / 5%);
+  opacity: 0.58;
+}
+
+.permanent-upgrade-tier-title {
+  margin: 0.75rem 0 0.2rem;
+  color: #ffd978;
+  font-size: 0.82rem;
+}
+
+.permanent-upgrade-size-row {
+  margin-block: 0.8rem;
+  border-color: rgb(255 213 74 / 38%);
+  background: rgb(255 213 74 / 7%);
+}
+
 .permanent-upgrade-row strong {
   color: #f4e7c5;
 }
@@ -605,6 +654,11 @@ body {
 .permanent-upgrade-row button {
   padding: 0.35rem 0.45rem;
   font-size: 0.74rem;
+}
+
+.permanent-upgrade-reset {
+  width: 100%;
+  margin-top: 0.85rem;
 }
 
 .menu-confirm-overlay {

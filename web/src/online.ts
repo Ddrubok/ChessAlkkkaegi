@@ -289,6 +289,8 @@ export interface OnlineRuntime {
   waitUntilReady(): Promise<void>;
   // 매 렌더 프레임 상대 조준과 준비 재전송을 진행한다.
   update(now: number): void;
+  // 정착 중이거나 발사 예약이 생긴 온라인 월드만 다음 물리 step을 허용한다.
+  shouldStepPhysics(): boolean;
   // 기존 입력 선택 정책에서 온라인 소유권을 함께 검사한다.
   canSelectLocalPiece(pieceId: string): boolean;
   // 기존 queueTurnLaunch를 그대로 사용하면서 로컬 진영 소유권을 검사한다.
@@ -1029,6 +1031,13 @@ export function createOnlineRuntime(
       });
     },
 
+    shouldStepPhysics(): boolean {
+      return (
+        turnRuntime.pendingLaunch !== null ||
+        turnRuntime.phase === "settling"
+      );
+    },
+
     update(now: number): void {
       if (
         !sessionEnded &&
@@ -1741,6 +1750,13 @@ export function createOnlineRuntime(
             message.turnIndex,
             message.hash,
           );
+          if (
+            awaitingResumeSnapshot &&
+            resumeTargetTurnIndex === message.turnIndex
+          ) {
+            // 기록 재생 실패 뒤 도착한 정규화 해시를 스냅샷 검증 기준으로 교체한다.
+            resumeTargetHash = message.hash;
+          }
           compareGuestHash(message.turnIndex);
           return;
         }
@@ -1757,9 +1773,35 @@ export function createOnlineRuntime(
           runtime.desyncCount += 1;
           // 양쪽 런타임이 같은 위치 덮어쓰기·수면 절차를 거치게 해 Rapier 내부 상태도 정규화한다.
           applyOnlineStateSnapshot(turnRuntime, snapshot);
-          currentTransport.send(snapshot);
-          runtime.lastEvent =
-            `${message.turnIndex}번 권위 스냅샷 전송`;
+          // setRotation의 quaternion 정규화까지 반영된 방장 상태를 새 권위 기준으로 보낸다.
+          // 적용 전 해시와 적용 후 pose를 섞으면 양쪽 월드가 같아도 복구 검증이 실패한다.
+          const canonicalSnapshot = createOnlineStateSnapshot(
+            turnRuntime,
+            message.turnIndex,
+          );
+          const canonicalStatePromise = capturePhysicsStateHash(
+            turnRuntime.physicsRuntime,
+          );
+          pendingWork = pendingWork.then(async () => {
+            const canonicalState = await canonicalStatePromise;
+            localHashes.set(
+              message.turnIndex,
+              canonicalState.sha256,
+            );
+            hostSnapshots.set(
+              message.turnIndex,
+              canonicalSnapshot,
+            );
+            const correctedHash: OnlineTurnHashMessage = {
+              kind: "turnHash",
+              turnIndex: message.turnIndex,
+              hash: canonicalState.sha256,
+            };
+            currentTransport.send(correctedHash);
+            currentTransport.send(canonicalSnapshot);
+            runtime.lastEvent =
+              `${message.turnIndex}번 정규화 권위 스냅샷 전송`;
+          });
           return;
         }
         case "stateSnapshot": {
@@ -1793,6 +1835,7 @@ export function createOnlineRuntime(
                 }
               }
               awaitingResumeSnapshot = false;
+              requestedSnapshots.delete(message.turnIndex);
               runtime.nextTurnIndex = message.turnIndex;
               turnRuntime.currentSide =
                 sideForOnlineTurnIndex(message.turnIndex);
@@ -1884,14 +1927,15 @@ export function createOnlineRuntime(
               turnRuntime,
               runtime.nextTurnIndex,
             );
+            // 기록 재생이 실패한 경우에만 참가자가 요청하도록 권위 스냅샷을 보관한다.
+            // 성공한 재생에 pose 덮어쓰기를 섞지 않아 Rapier 내부 이력을 그대로 유지한다.
+            hostSnapshots.set(runtime.nextTurnIndex, snapshot);
             currentTransport.send(tail);
-            currentTransport.send(snapshot);
             runtime.lastResumeTransferBytes =
-              new TextEncoder().encode(JSON.stringify(tail)).byteLength +
-              new TextEncoder().encode(JSON.stringify(snapshot)).byteLength;
+              new TextEncoder().encode(JSON.stringify(tail)).byteLength;
             turnRuntime.currentSide =
               sideForOnlineTurnIndex(runtime.nextTurnIndex);
-            activateRuntime("방장 기록 꼬리·상태 전송");
+            activateRuntime("방장 기록 꼬리 전송");
           });
           return;
         }
@@ -1918,9 +1962,26 @@ export function createOnlineRuntime(
               await replayResumeTurns(message);
             runtime.lastResumeReplayMatched =
               resumeReplayMatched;
-            runtime.lastEvent = resumeReplayMatched
-              ? `${message.fromTurnIndex}번부터 전체 기록 재생 완료`
-              : `${message.fromTurnIndex}번부터 기록 재생 불일치·스냅샷 대기`;
+            if (resumeReplayMatched) {
+              awaitingResumeSnapshot = false;
+              turnRuntime.currentSide =
+                sideForOnlineTurnIndex(message.targetTurnIndex);
+              activateRuntime(
+                `${message.fromTurnIndex}번부터 전체 기록 재생으로 재개`,
+              );
+              resumeReplayMatched = false;
+              resumeTargetTurnIndex = null;
+              resumeTargetHash = null;
+            } else {
+              requestedSnapshots.add(message.targetTurnIndex);
+              const request: OnlineStateRequestMessage = {
+                kind: "stateRequest",
+                turnIndex: message.targetTurnIndex,
+              };
+              currentTransport.send(request);
+              runtime.lastEvent =
+                `${message.fromTurnIndex}번부터 기록 재생 불일치·권위 스냅샷 요청`;
+            }
           });
           runtime.lastEvent =
             `${message.fromTurnIndex}번부터 기록 꼬리 수신`;
