@@ -2,6 +2,7 @@ import { Mesh, Scene, Vector3 } from "three";
 import type { ChessSetMeta } from "./assets";
 import {
   UPGRADE_CARDS,
+  applyCardPick,
   createRunCardState,
   type CardId,
   type RunCardState,
@@ -48,7 +49,7 @@ export type ReplayGameMode = GameMode | "online";
 export interface ReplayStageHeader {
   // 실제 스폰 버프와 폰 등급을 재구성할 현재 스테이지다.
   stageNumber: number;
-  // 누적 카드 횟수를 보존하기 위해 중복을 허용하는 활성 카드 id 목록이다.
+  // 일반 카드 등급을 동일 id 반복으로 보존하고 특수 카드는 한 번만 담는 활성 카드 목록이다.
   activeCardIds: CardId[];
   // 여섯 말 종류의 힘·중량 영구 레벨 전체다.
   permanentUpgrades: PermanentUpgrades;
@@ -180,46 +181,29 @@ const CARD_IDS = new Set<CardId>(
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 
 /**
- * 런 카드 상태를 스폰 효과 횟수가 보존되는 활성 id 목록으로 바꾼다.
+ * 런 카드 상태를 일반 카드 등급과 특수 카드 선택이 보존되는 활성 id 목록으로 바꾼다.
  */
 export function collectActiveCardIds(
   state: Readonly<RunCardState>,
 ): CardId[] {
   return [
-    ...Array<CardId>(state.sizePicks).fill("size"),
-    ...Array<CardId>(state.weightPicks).fill("weight"),
-    ...Array<CardId>(state.forcePicks).fill("force"),
+    ...Array<CardId>(state.sizeGrade).fill("size"),
+    ...Array<CardId>(state.weightGrade).fill("weight"),
+    ...Array<CardId>(state.forceGrade).fill("force"),
     ...(state.giantPawn ? (["giantPawn"] as const) : []),
     ...(state.proneStart ? (["proneStart"] as const) : []),
   ];
 }
 
 /**
- * 헤더의 중복 카드 id를 기존 스폰 경로가 읽는 런 상태로 복원한다.
+ * 헤더의 중복 일반 카드 id를 등급으로 승급하고 특수 카드 중복은 거절한다.
  */
 export function restoreRunCards(
   activeCardIds: readonly CardId[],
 ): RunCardState {
   const state = createRunCardState();
   for (const cardId of activeCardIds) {
-    if (cardId === "size") {
-      state.sizePicks += 1;
-    } else if (cardId === "weight") {
-      state.weightPicks += 1;
-    } else if (cardId === "force") {
-      state.forcePicks += 1;
-    } else if (cardId === "giantPawn") {
-      if (state.giantPawn) {
-        throw new Error("리플레이 헤더에 거대 폰 카드가 중복됐습니다.");
-      }
-      state.giantPawn = true;
-    } else {
-      if (state.proneStart) {
-        throw new Error("리플레이 헤더에 포복 개시 카드가 중복됐습니다.");
-      }
-      state.proneStart = true;
-    }
-    state.picksSoFar += 1;
+    applyCardPick(state, cardId);
   }
   return state;
 }

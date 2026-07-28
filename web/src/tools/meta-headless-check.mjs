@@ -748,7 +748,7 @@ try {
     baseWeightMultiplier,
   );
   weightRuntime.world.step();
-  const expectedUpgradeFraction = 0.2 + 0.04;
+  const expectedUpgradeFraction = 0.03 + 0.04;
   const expectedMass =
     weightedPawn.originalHullMass *
     (1 + baseWeightMultiplier + expectedUpgradeFraction);
@@ -765,7 +765,7 @@ try {
     `합성 중량 실패: upgrade=${measuredUpgradeFraction}, mass=${actualMass}/${expectedMass}`,
   );
   console.log(
-    `[통과 d] tuning=${baseWeightMultiplier.toFixed(2)} + card=0.20 + permanent(Pawn level4)=0.04, upgradeFraction=${measuredUpgradeFraction.toFixed(6)}, mass=${actualMass.toFixed(6)}/${expectedMass.toFixed(6)}, error=${(massError * 100).toFixed(6)}%`,
+    `[통과 d] tuning=${baseWeightMultiplier.toFixed(2)} + cardGrade2=0.03 + permanent(Pawn level4)=0.04, upgradeFraction=${measuredUpgradeFraction.toFixed(6)}, mass=${actualMass.toFixed(6)}/${expectedMass.toFixed(6)}, error=${(massError * 100).toFixed(6)}%`,
   );
 } finally {
   await vite.close();

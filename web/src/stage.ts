@@ -1,8 +1,9 @@
 import type { ChessSetMeta } from "./assets";
-import type { RunCardState } from "./cards";
 import {
-  CARD_SIZE_STEP,
-  CARD_WEIGHT_STEP,
+  computeGeneralCardEffect,
+  type RunCardState,
+} from "./cards";
+import {
   CARD_EFFECT_SCALE,
   deriveBoardHalfExtent,
   ENEMY_STAGE_BUFF_SCALE,
@@ -46,13 +47,13 @@ export interface StageSpawnOptions {
   gameMode: GameMode;
   // 스테이지 모드에서 생성할 1 이상의 현재 단계다.
   stageNumber: number;
-  // 플레이어 백 말에 매 리셋마다 다시 적용할 현재 런 카드 누적 상태다.
+  // 플레이어 백 말에 매 리셋마다 다시 적용할 현재 일반 카드 등급과 특수 카드 상태다.
   runCards?: Readonly<RunCardState>;
   // 플레이어 백 말 종류별 중량에 매 리셋마다 합성할 영구 강화 상태다.
   permanentUpgrades?: Readonly<PermanentUpgrades>;
   // 런타임 조절판과 측정 하네스가 흑 중량·힘·크기 단계값에 공통 적용하며 생략하면 config 기본값을 쓴다.
   enemyBuffStepScale?: number;
-  // 런타임 조절판과 측정 하네스가 백 크기·중량·힘 카드의 1회 효과에 공통 적용한다.
+  // 런타임 조절판과 측정 하네스가 백 크기·중량·힘 카드의 현재 등급 최종 효과에 공통 적용한다.
   cardEffectScale?: number;
 }
 
@@ -83,9 +84,9 @@ export interface PieceSpawnPose {
 
 // 카드 상태가 없는 핫시트와 기존 회귀 호출이 공유하는 불변 기본값이다.
 const EMPTY_RUN_CARDS: Readonly<RunCardState> = {
-  sizePicks: 0,
-  weightPicks: 0,
-  forcePicks: 0,
+  sizeGrade: 0,
+  weightGrade: 0,
+  forceGrade: 0,
   giantPawn: false,
   proneStart: false,
   picksSoFar: 0,
@@ -176,9 +177,12 @@ export function computeStagePieceScale(
           );
     const generalScale =
       1 +
-      CARD_SIZE_STEP *
-        getCardEffectScale(options) *
-        runCards.sizePicks +
+      // 카드 크기는 등급 최종값으로 교체되고, 영구 강화 크기는 그 위에 더해진다.
+      computeGeneralCardEffect(
+        runCards,
+        "size",
+        getCardEffectScale(options),
+      ) +
       permanentSizeFraction;
     const tierScale =
       instance.type === "Pawn" && runCards.giantPawn
@@ -386,9 +390,11 @@ export function computeUpgradeWeightFraction(
   }
   if (instance.side === "white") {
     const cardFraction =
-      CARD_WEIGHT_STEP *
-      getCardEffectScale(options) *
-      getRunCards(options).weightPicks;
+      computeGeneralCardEffect(
+        getRunCards(options),
+        "weight",
+        getCardEffectScale(options),
+      );
     const permanentFraction =
       options.permanentUpgrades === undefined
         ? 0
