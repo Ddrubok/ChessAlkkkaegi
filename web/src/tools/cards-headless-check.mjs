@@ -316,6 +316,117 @@ try {
     cardTuningModule.createDefaultCardTuningSettings(
       giantPawnSizeMultiplier,
     );
+  const storedCardTuningValues = new Map();
+  const auditedStorage = {
+    getItem: (key) => storedCardTuningValues.get(key) ?? null,
+    setItem: (key, value) => {
+      storedCardTuningValues.set(key, value);
+    },
+    removeItem: (key) => {
+      storedCardTuningValues.delete(key);
+    },
+  };
+  const defaultSaveWarning =
+    cardTuningModule.saveCardTuningSettings(
+      auditedStorage,
+      defaultPanelSettings,
+    );
+  const storedDefaults = JSON.parse(
+    auditedStorage.getItem(
+      cardTuningModule.CARD_TUNING_STORAGE_KEY,
+    ),
+  );
+  const gradeChangedSettings = {
+    ...defaultPanelSettings,
+    debugForceGrade: 2,
+  };
+  const gradeSaveWarning =
+    cardTuningModule.saveCardTuningSettings(
+      auditedStorage,
+      gradeChangedSettings,
+    );
+  const gradeChangedLoad =
+    cardTuningModule.loadCardTuningSettings(
+      auditedStorage,
+      giantPawnSizeMultiplier,
+    );
+  const storageMultipliersStayedDefault =
+    storedDefaults.weightEffectMultiplier === 1 &&
+    storedDefaults.forceEffectMultiplier === 1 &&
+    storedDefaults.sizeEffectMultiplier === 1 &&
+    gradeChangedLoad.settings.debugForceGrade === 2 &&
+    gradeChangedLoad.settings.weightEffectMultiplier === 1 &&
+    gradeChangedLoad.settings.forceEffectMultiplier === 1 &&
+    gradeChangedLoad.settings.sizeEffectMultiplier === 1;
+
+  const relayoutSettings = {
+    ...defaultPanelSettings,
+    debugWeightGrade: 3,
+    debugSizeGrade: 5,
+    giantPawnEnabled: true,
+    proneStartEnabled: true,
+  };
+  const relayoutRunCards = cardsModule.createRunCardState();
+  cardsModule.applyCardPick(relayoutRunCards, "force");
+  const relayoutSnapshot = {
+    gameMode: "stage",
+    stageNumber: 4,
+    runCardsSignature: JSON.stringify(relayoutRunCards),
+    permanentUpgradesSignature: JSON.stringify({
+      preserved: true,
+    }),
+    points: 123,
+  };
+  let relayoutApplied = null;
+  await cardTuningModule.relayoutCurrentCardTuningBoard(
+    () => ({ ...relayoutSnapshot }),
+    async (gameMode, stageNumber) => {
+      const cardTuning =
+        cardTuningModule.createCardEffectTuning(
+          relayoutSettings,
+        );
+      const options = {
+        gameMode,
+        stageNumber,
+        runCards: relayoutRunCards,
+        cardTuning,
+      };
+      relayoutApplied = {
+        gameMode,
+        stageNumber,
+        weight: cardsModule.computeTunedGeneralCardEffect(
+          gameMode,
+          relayoutRunCards,
+          "weight",
+          1,
+          cardTuning,
+        ),
+        size: stageModule.computeStagePieceScale(
+          whiteKingInstance,
+          meta,
+          options,
+        ),
+        pieces: stageModule.selectStageSpawnInstances(
+          layoutModule.PIECE_INSTANCES,
+          options,
+        ).length,
+        proneRotationX: stageModule.computeStageSpawnPose(
+          whiteKingInstance,
+          meta,
+          options,
+        ).rotation.x,
+      };
+    },
+  );
+  const relayoutPreservedState =
+    relayoutApplied !== null &&
+    relayoutApplied.gameMode === relayoutSnapshot.gameMode &&
+    relayoutApplied.stageNumber === relayoutSnapshot.stageNumber &&
+    relayoutSnapshot.runCardsSignature ===
+      JSON.stringify(relayoutRunCards) &&
+    relayoutSnapshot.permanentUpgradesSignature ===
+      JSON.stringify({ preserved: true }) &&
+    relayoutSnapshot.points === 123;
   assertCondition(
     Math.abs(playGradeEffect - panelGradeEffect) < 1e-12 &&
       Math.abs(multipliedWeightEffect - playGradeEffect * 1.5) <
@@ -335,11 +446,21 @@ try {
       customGiantScale === 1.5 &&
       JSON.stringify(corruptLoad.settings) ===
         JSON.stringify(defaultPanelSettings) &&
-      corruptLoad.warning !== null,
-    `카드 조절판 합성·핫시트 적용·온라인 차단·저장 복구 실패: play=${playGradeEffect}, panel=${panelGradeEffect}, multiplied=${multipliedWeightEffect}, composedGrade=${composedGrade}, hotseat=${hotseatWhiteScale}/${hotseatBlackScale}/${hotseatWhiteWeight}/${hotseatBlackWeight}/${hotseatSpawnCount}/${hotseatPronePose.rotation.x}, customGiant=${customGiantScale}, online=${onlineScale}/${onlineWeight}/${onlineForce}/${onlineSpawnCount}, corruptWarning=${corruptLoad.warning}`,
+      corruptLoad.warning !== null &&
+      defaultSaveWarning === null &&
+      gradeSaveWarning === null &&
+      storageMultipliersStayedDefault &&
+      relayoutPreservedState &&
+      Math.abs(relayoutApplied.weight - 0.05) < 1e-12 &&
+      Math.abs(relayoutApplied.size - 1.1) < 1e-12 &&
+      relayoutApplied.pieces === 28 &&
+      Math.abs(
+        relayoutApplied.proneRotationX - Math.SQRT1_2,
+      ) < 1e-12,
+    `카드 조절판 합성·핫시트 적용·온라인 차단·저장·다시 깔기 실패: play=${playGradeEffect}, panel=${panelGradeEffect}, multiplied=${multipliedWeightEffect}, composedGrade=${composedGrade}, hotseat=${hotseatWhiteScale}/${hotseatBlackScale}/${hotseatWhiteWeight}/${hotseatBlackWeight}/${hotseatSpawnCount}/${hotseatPronePose.rotation.x}, customGiant=${customGiantScale}, online=${onlineScale}/${onlineWeight}/${onlineForce}/${onlineSpawnCount}, corruptWarning=${corruptLoad.warning}, stored=${JSON.stringify(gradeChangedLoad.settings)}, relayout=${JSON.stringify(relayoutApplied)}, snapshot=${JSON.stringify(relayoutSnapshot)}`,
   );
   console.log(
-    `[통과 0] panelGrade4=${panelGradeEffect.toFixed(6)}=playGrade4, weight×1.5=${multipliedWeightEffect.toFixed(6)}, stageMaxGrade=${composedGrade}, hotseat(whiteSize/blackSize/whiteWeight/blackWeight/pieces/prone)=${hotseatWhiteScale.toFixed(2)}/${hotseatBlackScale.toFixed(2)}/${hotseatWhiteWeight.toFixed(3)}/${hotseatBlackWeight.toFixed(2)}/${hotseatSpawnCount}/true, customGiant=${customGiantScale.toFixed(2)}, online(size/weight/force/pieces)=${onlineScale.toFixed(2)}/${onlineWeight.toFixed(2)}/${onlineForce.toFixed(2)}/${onlineSpawnCount}, corruptFallback=true`,
+    `[통과 0] panelGrade4=${panelGradeEffect.toFixed(6)}=playGrade4, weight×1.5=${multipliedWeightEffect.toFixed(6)}, stageMaxGrade=${composedGrade}, hotseat(whiteSize/blackSize/whiteWeight/blackWeight/pieces/prone)=${hotseatWhiteScale.toFixed(2)}/${hotseatBlackScale.toFixed(2)}/${hotseatWhiteWeight.toFixed(3)}/${hotseatBlackWeight.toFixed(2)}/${hotseatSpawnCount}/true, customGiant=${customGiantScale.toFixed(2)}, online(size/weight/force/pieces)=${onlineScale.toFixed(2)}/${onlineWeight.toFixed(2)}/${onlineForce.toFixed(2)}/${onlineSpawnCount}, corruptFallback=true, storageMultipliers=1/1/1, relayout(stage/weight/size/pieces/prone/points)=${relayoutApplied.stageNumber}/${relayoutApplied.weight.toFixed(2)}/${relayoutApplied.size.toFixed(2)}/${relayoutApplied.pieces}/true/${relayoutSnapshot.points}`,
   );
 
   const drawState = cardsModule.createRunCardState();

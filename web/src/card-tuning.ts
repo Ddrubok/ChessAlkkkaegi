@@ -96,6 +96,19 @@ export interface CardTuningAppliedValues {
   proneStartActive: boolean;
 }
 
+export interface CardTuningRelayoutSnapshot {
+  // 다시 깔기 전후에 같아야 하는 현재 대전 모드다.
+  gameMode: GameMode;
+  // 다시 깔기 전후에 같아야 하는 현재 스테이지 번호다.
+  stageNumber: number;
+  // 런 카드 전체가 바뀌지 않았음을 값 비교할 직렬화 서명이다.
+  runCardsSignature: string;
+  // 영구 강화 전체가 바뀌지 않았음을 값 비교할 직렬화 서명이다.
+  permanentUpgradesSignature: string;
+  // 다시 깔기가 보상이나 구매를 일으키지 않았음을 비교할 메타 포인트다.
+  points: number;
+}
+
 type CardTuningAppliedKey =
   | "grades"
   | "weight"
@@ -122,8 +135,10 @@ export interface CardTuningRuntime {
   panel: HTMLElement;
   // 같은 숫자를 보여 주는 슬라이더·출력·숫자 입력을 함께 갱신한다.
   controls: Map<CardTuningKey, Set<HTMLElement>>;
-  // 실제 보드 적용값만 갱신하는 읽기 전용 출력 요소들이다.
-  appliedValueElements: Map<CardTuningAppliedKey, HTMLElement>;
+  // 현재 보드에 실제 적용된 값만 갱신하는 읽기 전용 출력 요소들이다.
+  currentValueElements: Map<CardTuningAppliedKey, HTMLElement>;
+  // 현재 슬라이더가 다음 보드에 만들 값을 갱신하는 읽기 전용 출력 요소들이다.
+  nextValueElements: Map<CardTuningAppliedKey, HTMLElement>;
   // 변경한 전체 카드 설정을 보존하는 선택적 브라우저 저장 연결이다.
   storage: CardTuningStorage | null;
   // 에셋에서 유도한 거대 폰 배수까지 포함한 이번 실행의 코드 기본값이다.
@@ -138,6 +153,8 @@ export interface CardTuningRuntime {
   onlineDisabled: boolean;
   // 힘처럼 다음 보드 없이 적용할 값의 읽기 전용 출력을 외부가 갱신하는 연결점이다.
   settingsChangedHandler: (() => void) | null;
+  // 현재 모드·스테이지·런 상태를 보존한 기존 보드 리셋을 외부가 실행하는 연결점이다.
+  relayoutHandler: (() => Promise<void>) | null;
 }
 
 const NUMERIC_DEFINITIONS: Record<
@@ -145,7 +162,7 @@ const NUMERIC_DEFINITIONS: Record<
   NumericDefinition
 > = {
   debugWeightGrade: {
-    label: "현재 중량 카드 등급",
+    label: "현재 중량 카드 등급 · 다음 보드",
     min: 0,
     max: 5,
     step: 1,
@@ -154,7 +171,7 @@ const NUMERIC_DEFINITIONS: Record<
     integer: true,
   },
   debugForceGrade: {
-    label: "현재 힘 카드 등급",
+    label: "현재 힘 카드 등급 · 즉시",
     min: 0,
     max: 5,
     step: 1,
@@ -163,7 +180,7 @@ const NUMERIC_DEFINITIONS: Record<
     integer: true,
   },
   debugSizeGrade: {
-    label: "현재 크기 카드 등급",
+    label: "현재 크기 카드 등급 · 다음 보드",
     min: 0,
     max: 5,
     step: 1,
@@ -172,7 +189,7 @@ const NUMERIC_DEFINITIONS: Record<
     integer: true,
   },
   gradeEffect1: {
-    label: "일반 등급 효과",
+    label: "일반 등급 효과 · 즉시·다음 보드 공통",
     min: 0,
     max: 1,
     step: 0.001,
@@ -180,7 +197,7 @@ const NUMERIC_DEFINITIONS: Record<
     suffix: "%",
   },
   gradeEffect2: {
-    label: "중급 등급 효과",
+    label: "중급 등급 효과 · 즉시·다음 보드 공통",
     min: 0,
     max: 1,
     step: 0.001,
@@ -188,7 +205,7 @@ const NUMERIC_DEFINITIONS: Record<
     suffix: "%",
   },
   gradeEffect3: {
-    label: "상급 등급 효과",
+    label: "상급 등급 효과 · 즉시·다음 보드 공통",
     min: 0,
     max: 1,
     step: 0.001,
@@ -196,7 +213,7 @@ const NUMERIC_DEFINITIONS: Record<
     suffix: "%",
   },
   gradeEffect4: {
-    label: "최상급 등급 효과",
+    label: "최상급 등급 효과 · 즉시·다음 보드 공통",
     min: 0,
     max: 1,
     step: 0.001,
@@ -204,7 +221,7 @@ const NUMERIC_DEFINITIONS: Record<
     suffix: "%",
   },
   gradeEffect5: {
-    label: "레전드 등급 효과",
+    label: "레전드 등급 효과 · 즉시·다음 보드 공통",
     min: 0,
     max: 1,
     step: 0.001,
@@ -212,7 +229,7 @@ const NUMERIC_DEFINITIONS: Record<
     suffix: "%",
   },
   weightEffectMultiplier: {
-    label: "중량 카드 배수",
+    label: "중량 카드 배수 · 다음 보드",
     min: 0,
     max: 5,
     step: 0.01,
@@ -220,7 +237,7 @@ const NUMERIC_DEFINITIONS: Record<
     suffix: "×",
   },
   forceEffectMultiplier: {
-    label: "힘 카드 배수",
+    label: "힘 카드 배수 · 즉시",
     min: 0,
     max: 5,
     step: 0.01,
@@ -228,7 +245,7 @@ const NUMERIC_DEFINITIONS: Record<
     suffix: "×",
   },
   sizeEffectMultiplier: {
-    label: "크기 카드 배수",
+    label: "크기 카드 배수 · 다음 보드",
     min: 0,
     max: 5,
     step: 0.01,
@@ -439,6 +456,38 @@ export function clearCardTuningSettings(
 }
 
 /**
+ * 기존 보드 리셋을 실행하고 모드·스테이지·런 카드·영구 강화·포인트 보존을 검증한다.
+ */
+export async function relayoutCurrentCardTuningBoard(
+  readSnapshot: () => CardTuningRelayoutSnapshot,
+  resetBoard: (
+    gameMode: GameMode,
+    stageNumber: number,
+  ) => Promise<void>,
+): Promise<void> {
+  const before = readSnapshot();
+  if (before.gameMode === "online") {
+    throw new Error(
+      "온라인 대전에서는 카드 조절값으로 현재 판을 다시 깔 수 없습니다.",
+    );
+  }
+  await resetBoard(before.gameMode, before.stageNumber);
+  const after = readSnapshot();
+  if (
+    after.gameMode !== before.gameMode ||
+    after.stageNumber !== before.stageNumber ||
+    after.runCardsSignature !== before.runCardsSignature ||
+    after.permanentUpgradesSignature !==
+      before.permanentUpgradesSignature ||
+    after.points !== before.points
+  ) {
+    throw new Error(
+      `현재 판 다시 깔기가 런 상태를 바꿨습니다: before=${JSON.stringify(before)}, after=${JSON.stringify(after)}`,
+    );
+  }
+}
+
+/**
  * 저장 오류나 손상 안내를 반복하지 않고 패널과 콘솔에 한 번만 남긴다.
  */
 function showCardTuningStorageWarning(
@@ -548,12 +597,10 @@ export function setCardTuningGameMode(
       }
     }
   }
-  const resetButton =
-    runtime.panel.querySelector<HTMLButtonElement>(
-      "[data-card-tuning-reset]",
-    );
-  if (resetButton !== null) {
-    resetButton.disabled = disabled;
+  for (const button of runtime.panel.querySelectorAll<HTMLButtonElement>(
+    "[data-card-tuning-reset], [data-card-tuning-relayout]",
+  )) {
+    button.disabled = disabled;
   }
   runtime.onlineNotice.hidden = !disabled;
 }
@@ -646,54 +693,73 @@ function formatPercent(fraction: number): string {
 }
 
 /**
- * 성공한 보드 설정과 현재 힘 계산의 실측값만 읽기 전용 그룹에 반영한다.
+ * 한 읽기 전용 항목을 현재 보드와 다음 보드가 공유하는 문구로 변환한다.
  */
-export function updateCardTuningAppliedValues(
-  runtime: CardTuningRuntime,
+function formatCardTuningAppliedValue(
+  key: CardTuningAppliedKey,
   values: CardTuningAppliedValues,
-): void {
-  const setText = (
-    key: CardTuningAppliedKey,
-    text: string,
-  ): void => {
-    const element = runtime.appliedValueElements.get(key);
-    if (element === undefined) {
-      throw new Error(`카드 현재 적용값 출력 ${key}를 찾지 못했습니다.`);
-    }
-    element.textContent = text;
-  };
+): string {
   if (values.gameMode === "online") {
-    for (const key of runtime.appliedValueElements.keys()) {
-      setText(key, "온라인 비활성");
-    }
-    return;
+    return "온라인 비활성";
   }
-  setText(
-    "grades",
-    `중량 ${values.weightGrade} / 힘 ${values.forceGrade} / 크기 ${values.sizeGrade}`,
-  );
-  setText("weight", formatPercent(values.boardWeightFraction));
-  setText("force", `${formatPercent(values.liveForceFraction)} (즉시)`);
-  setText(
-    "size",
-    `${values.boardRegularSizeScale.toFixed(3)}×${values.boardRegularSizeScale >= PLAYER_MAX_SIZE_SCALE ? " (상한 도달)" : ""}`,
-  );
-  setText(
-    "giantPawn",
-    values.boardGiantPawnScale === null
+  if (key === "grades") {
+    return `중량 ${values.weightGrade} / 힘 ${values.forceGrade} / 크기 ${values.sizeGrade}`;
+  }
+  if (key === "weight") {
+    return formatPercent(values.boardWeightFraction);
+  }
+  if (key === "force") {
+    return `${formatPercent(values.liveForceFraction)} (즉시)`;
+  }
+  if (key === "size") {
+    return `${values.boardRegularSizeScale.toFixed(3)}×${values.boardRegularSizeScale >= PLAYER_MAX_SIZE_SCALE ? " (상한 도달)" : ""}`;
+  }
+  if (key === "giantPawn") {
+    return values.boardGiantPawnScale === null
       ? `꺼짐 · 말 ${values.spawnedPieceCount}개`
-      : `${values.boardGiantPawnScale.toFixed(3)}× · 말 ${values.spawnedPieceCount}개`,
-  );
-  setText("proneStart", values.proneStartActive ? "켜짐" : "꺼짐");
+      : `${values.boardGiantPawnScale.toFixed(3)}× · 말 ${values.spawnedPieceCount}개`;
+  }
+  return values.proneStartActive ? "켜짐" : "꺼짐";
 }
 
 /**
- * 현재 보드 카드 적용값을 표시할 읽기 전용 그룹을 만든다.
+ * 현재 실제값과 다음 보드 예상값을 분리하고 예상 그룹에는 변화 방향을 함께 표시한다.
  */
-function appendAppliedValuesGroup(runtime: CardTuningRuntime): void {
+export function updateCardTuningAppliedValues(
+  runtime: CardTuningRuntime,
+  currentValues: CardTuningAppliedValues,
+  nextValues: CardTuningAppliedValues,
+): void {
+  for (const key of runtime.currentValueElements.keys()) {
+    const currentElement = runtime.currentValueElements.get(key);
+    const nextElement = runtime.nextValueElements.get(key);
+    if (currentElement === undefined || nextElement === undefined) {
+      throw new Error(`카드 적용 시점 출력 ${key}를 찾지 못했습니다.`);
+    }
+    const currentText = formatCardTuningAppliedValue(
+      key,
+      currentValues,
+    );
+    const nextText = formatCardTuningAppliedValue(key, nextValues);
+    currentElement.textContent = currentText;
+    nextElement.textContent =
+      nextValues.gameMode === "online"
+        ? nextText
+        : `${currentText} → ${nextText}`;
+  }
+}
+
+/**
+ * 현재 보드 또는 다음 보드 카드 값을 표시할 읽기 전용 그룹을 만든다.
+ */
+function appendAppliedValuesGroup(
+  runtime: CardTuningRuntime,
+  title: string,
+  elements: Map<CardTuningAppliedKey, HTMLElement>,
+): void {
   const fieldset = document.createElement("fieldset");
   const legend = document.createElement("legend");
-  legend.textContent = "현재 실제 적용값";
+  legend.textContent = title;
   const list = document.createElement("dl");
   list.className = "tuning-readout";
   const definitions: ReadonlyArray<{
@@ -701,11 +767,11 @@ function appendAppliedValuesGroup(runtime: CardTuningRuntime): void {
     label: string;
   }> = [
     { key: "grades", label: "합성 카드 등급" },
-    { key: "weight", label: "보드 중량 카드 효과" },
-    { key: "force", label: "현재 힘 카드 효과" },
-    { key: "size", label: "보드 일반 크기" },
-    { key: "giantPawn", label: "보드 거대 폰" },
-    { key: "proneStart", label: "보드 포복 개시" },
+    { key: "weight", label: "중량 카드 효과" },
+    { key: "force", label: "힘 카드 효과 · 즉시" },
+    { key: "size", label: "일반 크기" },
+    { key: "giantPawn", label: "거대 폰" },
+    { key: "proneStart", label: "포복 개시" },
   ];
   for (const definition of definitions) {
     const row = document.createElement("div");
@@ -715,7 +781,7 @@ function appendAppliedValuesGroup(runtime: CardTuningRuntime): void {
     value.textContent = "해당 없음";
     row.append(term, value);
     list.append(row);
-    runtime.appliedValueElements.set(definition.key, value);
+    elements.set(definition.key, value);
   }
   fieldset.append(legend, list);
   runtime.panel.append(fieldset);
@@ -762,7 +828,8 @@ export function createCardTuningRuntime(
     settings: loaded.settings,
     panel,
     controls: new Map(),
-    appliedValueElements: new Map(),
+    currentValueElements: new Map(),
+    nextValueElements: new Map(),
     storage: resolvedStorage.storage,
     defaultSettings,
     storageNotice,
@@ -770,19 +837,29 @@ export function createCardTuningRuntime(
     storageWarningShown: false,
     onlineDisabled: false,
     settingsChangedHandler: null,
+    relayoutHandler: null,
   };
   const initialWarning =
     resolvedStorage.warning ?? loaded.warning;
   if (initialWarning !== null) {
     showCardTuningStorageWarning(runtime, initialWarning);
   }
-  appendAppliedValuesGroup(runtime);
+  appendAppliedValuesGroup(
+    runtime,
+    "현재 보드 적용값 · 실제",
+    runtime.currentValueElements,
+  );
+  appendAppliedValuesGroup(
+    runtime,
+    "다음 보드 예상값 · 현재 조절값",
+    runtime.nextValueElements,
+  );
   const groups: ReadonlyArray<{
     title: string;
     keys: readonly NumericCardTuningKey[];
   }> = [
     {
-      title: "현재 디버그 카드 등급 · 0은 미적용",
+      title: "현재 디버그 카드 등급 · 적용 시점은 항목별 표시",
       keys: [
         "debugWeightGrade",
         "debugForceGrade",
@@ -790,7 +867,7 @@ export function createCardTuningRuntime(
       ],
     },
     {
-      title: "등급별 교체 효과 수치",
+      title: "등급별 교체 효과 수치 · 즉시·다음 보드 공통",
       keys: [
         "gradeEffect1",
         "gradeEffect2",
@@ -800,7 +877,7 @@ export function createCardTuningRuntime(
       ],
     },
     {
-      title: "카드 종류별 최종 배수",
+      title: "카드 종류별 최종 배수 · 적용 시점은 항목별 표시",
       keys: [
         "weightEffectMultiplier",
         "forceEffectMultiplier",
@@ -843,9 +920,45 @@ export function createCardTuningRuntime(
   const compositionNote = document.createElement("p");
   compositionNote.className = "tuning-note";
   compositionNote.textContent =
-    "핫시트와 스테이지의 백 말에 적용됩니다. 스테이지에서는 실제 런 카드와 디버그 카드 중 높은 등급이 이 곡선·종류별 배수를 사용합니다. 중량·크기·특수 카드는 다음 스테이지, 다시 시작 또는 모드 전환 때 적용되고 힘은 즉시 적용됩니다.";
+    "핫시트와 스테이지의 백 말에 적용됩니다. 힘은 즉시, 중량·크기·특수 카드는 다음 보드 설정부터 적용됩니다. 스테이지에서는 실제 런 카드와 디버그 카드 중 높은 등급이 이 곡선·종류별 배수를 사용합니다.";
   const actions = document.createElement("div");
   actions.className = "tuning-actions";
+  const relayoutButton = document.createElement("button");
+  relayoutButton.type = "button";
+  relayoutButton.dataset.cardTuningRelayout = "";
+  relayoutButton.textContent = "현재 판 다시 깔기 · 런 상태 유지";
+  const actionNotice = document.createElement("p");
+  actionNotice.className = "tuning-note";
+  actionNotice.setAttribute("aria-live", "polite");
+  actionNotice.hidden = true;
+  relayoutButton.addEventListener("click", () => {
+    if (
+      runtime.onlineDisabled ||
+      runtime.relayoutHandler === null
+    ) {
+      return;
+    }
+    relayoutButton.disabled = true;
+    actionNotice.hidden = false;
+    actionNotice.textContent =
+      "현재 모드와 런 상태를 유지한 채 보드를 다시 까는 중입니다.";
+    void runtime
+      .relayoutHandler()
+      .then(() => {
+        actionNotice.textContent =
+          "현재 조절값으로 보드를 다시 깔았습니다. 스테이지와 런 상태는 유지됐습니다.";
+      })
+      .catch((error: unknown) => {
+        const detail =
+          error instanceof Error ? error.message : String(error);
+        actionNotice.textContent =
+          `현재 판을 다시 깔지 못했습니다: ${detail}`;
+        console.error(error);
+      })
+      .finally(() => {
+        relayoutButton.disabled = runtime.onlineDisabled;
+      });
+  });
   const resetButton = document.createElement("button");
   resetButton.type = "button";
   resetButton.dataset.cardTuningReset = "";
@@ -881,11 +994,12 @@ export function createCardTuningRuntime(
     }
     runtime.settingsChangedHandler?.();
   });
-  actions.append(resetButton);
+  actions.append(relayoutButton, resetButton);
   panel.append(
     compositionNote,
     storageNotice,
     onlineNotice,
+    actionNotice,
     actions,
   );
   window.addEventListener("keydown", (event) => {

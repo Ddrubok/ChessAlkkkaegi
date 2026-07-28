@@ -24,6 +24,7 @@ import {
 import {
   createCardEffectTuning,
   createCardTuningRuntime,
+  relayoutCurrentCardTuningBoard,
   setCardTuningGameMode,
   updateCardTuningAppliedValues,
   type CardTuningAppliedValues,
@@ -282,9 +283,13 @@ async function bootstrap(): Promise<void> {
     spawnedPieceCount: physicsRuntime.pieces.size,
     proneStartActive: false,
   };
+  let pendingCardTuningValues: CardTuningAppliedValues = {
+    ...appliedCardTuningValues,
+  };
   updateCardTuningAppliedValues(
     cardTuningRuntime,
     appliedCardTuningValues,
+    pendingCardTuningValues,
   );
   const playerReadoutInstances = PIECE_TYPES.map((type) => {
     const instance = PIECE_INSTANCES.find(
@@ -297,6 +302,20 @@ async function bootstrap(): Promise<void> {
     }
     return instance;
   });
+  const regularCardReadoutInstance =
+    playerReadoutInstances.find(
+      (instance) => instance.type !== "Pawn",
+    );
+  const pawnCardReadoutInstance =
+    playerReadoutInstances.find(
+      (instance) => instance.type === "Pawn",
+    );
+  if (
+    regularCardReadoutInstance === undefined ||
+    pawnCardReadoutInstance === undefined
+  ) {
+    throw new Error("카드 적용값 기준 백 일반 말과 폰을 찾지 못했습니다.");
+  }
   let onlineConnectionBlocked = false;
   const disconnectOverlay = document.createElement("section");
   disconnectOverlay.className = "match-result-overlay";
@@ -462,8 +481,100 @@ async function bootstrap(): Promise<void> {
   );
   readsAiTelegraphActive = () =>
     isAiTelegraphActive(aiRuntime);
+  const computePendingCardTuningValues = (
+    gameMode: GameMode,
+    stageNumber: number,
+  ): CardTuningAppliedValues => {
+    const cardTuning = createCardEffectTuning(
+      cardTuningRuntime.settings,
+    );
+    const cardEffectScale =
+      gameMode === "stage"
+        ? tuningRuntime.settings.cardEffectScale
+        : CARD_EFFECT_SCALE;
+    const stageOptions: StageSpawnOptions = {
+      gameMode,
+      stageNumber,
+      runCards:
+        gameMode === "stage" ? runCardState : undefined,
+      permanentUpgrades:
+        gameMode === "stage"
+          ? metaRuntime.state.upgrades
+          : undefined,
+      enemyBuffStepScale:
+        gameMode === "stage"
+          ? tuningRuntime.settings.enemyStageBuffScale
+          : undefined,
+      cardEffectScale:
+        gameMode === "stage" ? cardEffectScale : undefined,
+      cardTuning,
+    };
+    const giantPawnActive = isGiantPawnCardActive(
+      gameMode,
+      runCardState,
+      cardTuning,
+    );
+    return {
+      gameMode,
+      weightGrade: computeEffectiveGeneralCardGrade(
+        gameMode,
+        runCardState,
+        "weight",
+        cardTuning,
+      ),
+      forceGrade: computeEffectiveGeneralCardGrade(
+        gameMode,
+        runCardState,
+        "force",
+        cardTuning,
+      ),
+      sizeGrade: computeEffectiveGeneralCardGrade(
+        gameMode,
+        runCardState,
+        "size",
+        cardTuning,
+      ),
+      boardWeightFraction: computeTunedGeneralCardEffect(
+        gameMode,
+        runCardState,
+        "weight",
+        cardEffectScale,
+        cardTuning,
+      ),
+      liveForceFraction: computeTunedGeneralCardEffect(
+        gameMode,
+        runCardState,
+        "force",
+        cardEffectScale,
+        cardTuning,
+      ),
+      boardRegularSizeScale: computeStagePieceScale(
+        regularCardReadoutInstance,
+        assets.meta,
+        stageOptions,
+      ),
+      boardGiantPawnScale: giantPawnActive
+        ? computeStagePieceScale(
+            pawnCardReadoutInstance,
+            assets.meta,
+            stageOptions,
+          )
+        : null,
+      spawnedPieceCount: selectStageSpawnInstances(
+        PIECE_INSTANCES,
+        stageOptions,
+      ).length,
+      proneStartActive: isProneStartCardActive(
+        gameMode,
+        runCardState,
+        cardTuning,
+      ),
+    };
+  };
   const refreshCardTuningLiveValues = (): void => {
-    const gameMode = gameModeRuntime?.mode ?? "hotseat";
+    const gameMode = appliedCardTuningValues.gameMode;
+    const stageNumber =
+      gameModeRuntime?.stageNumber ?? 1;
     const cardTuning = createCardEffectTuning(
       cardTuningRuntime.settings,
     );
@@ -484,9 +595,12 @@ async function bootstrap(): Promise<void> {
         cardTuning,
       ),
     };
+    pendingCardTuningValues =
+      computePendingCardTuningValues(gameMode, stageNumber);
     updateCardTuningAppliedValues(
       cardTuningRuntime,
       appliedCardTuningValues,
+      pendingCardTuningValues,
     );
   };
   cardTuningRuntime.settingsChangedHandler =
@@ -582,13 +696,6 @@ async function bootstrap(): Promise<void> {
     if (appliedCardTuning === undefined) {
       throw new Error("보드에 적용할 카드 조절값이 없습니다.");
     }
-    const regularSizeInstance =
-      playerReadoutInstances.find(
-        (instance) => instance.type !== "Pawn",
-      );
-    if (regularSizeInstance === undefined) {
-      throw new Error("카드 크기 적용값 기준 백 말을 찾지 못했습니다.");
-    }
     const giantPawnActive = isGiantPawnCardActive(
       stageOptions.gameMode,
       runCardState,
@@ -636,7 +743,7 @@ async function bootstrap(): Promise<void> {
         appliedCardTuning,
       ),
       boardRegularSizeScale: computeStagePieceScale(
-        regularSizeInstance,
+        regularCardReadoutInstance,
         assets.meta,
         stageOptions,
       ),
@@ -649,9 +756,15 @@ async function bootstrap(): Promise<void> {
         appliedCardTuning,
       ),
     };
+    pendingCardTuningValues =
+      computePendingCardTuningValues(
+        stageOptions.gameMode,
+        stageOptions.stageNumber,
+      );
     updateCardTuningAppliedValues(
       cardTuningRuntime,
       appliedCardTuningValues,
+      pendingCardTuningValues,
     );
     if (stageOptions.gameMode !== "stage") {
       updateTuningAppliedValues(tuningRuntime, {
@@ -729,6 +842,30 @@ async function bootstrap(): Promise<void> {
     }
     console.info(
       `[대국] 다시 시작 완료: 백 선공, 물리 ${physicsRuntime.pieces.size}/${expectedPieceCount}, 렌더 ${sceneRuntime.pieceMeshes.size}/${expectedPieceCount}, 수면 ${sleepingCount}/${expectedPieceCount}`,
+    );
+  };
+  cardTuningRuntime.relayoutHandler = async (): Promise<void> => {
+    if (gameModeRuntime === null) {
+      throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+    }
+    if (gameModeRuntime.switching) {
+      throw new Error(
+        "대전 모드 전환 중에는 현재 판을 다시 깔 수 없습니다.",
+      );
+    }
+    await relayoutCurrentCardTuningBoard(
+      () => ({
+        gameMode: gameModeRuntime?.mode ?? "hotseat",
+        stageNumber: gameModeRuntime?.stageNumber ?? 1,
+        runCardsSignature: JSON.stringify(runCardState),
+        permanentUpgradesSignature: JSON.stringify(
+          metaRuntime.state.upgrades,
+        ),
+        points: metaRuntime.state.points,
+      }),
+      async (gameMode, stageNumber) => {
+        await resetBoard({ gameMode, stageNumber });
+      },
     );
   };
   gameModeRuntime = createGameModeRuntime(async (mode) => {
