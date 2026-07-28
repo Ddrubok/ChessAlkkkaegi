@@ -50,8 +50,33 @@ export const AI_AIM_PREVIEW_DELAY = 0.25;
 // AI의 실제 세기를 0에서 최종값까지 기존 조준 색·활시위로 충전하는 실시간 초다.
 export const AI_AIM_CHARGE_SECONDS = 0.9;
 
-// 흑 AI 샷 카운터 해시가 방향에 더하는 기본 좌우 오차 상한 각도다.
-export const AI_BASE_JITTER_DEGREES = 5;
+// 스테이지 구간별 판단 방식과 좌우 조준 오차 상한을 기획서의 10/7/3/0도로 고정하는 표다.
+export const AI_STAGE_DECISION_BANDS = [
+  {
+    minimumStage: 1,
+    maximumStage: 3,
+    judgement: "random",
+    maximumAimErrorDegrees: 10,
+  },
+  {
+    minimumStage: 4,
+    maximumStage: 6,
+    judgement: "edge",
+    maximumAimErrorDegrees: 7,
+  },
+  {
+    minimumStage: 7,
+    maximumStage: 9,
+    judgement: "chain",
+    maximumAimErrorDegrees: 3,
+  },
+  {
+    minimumStage: 10,
+    maximumStage: 10,
+    judgement: "optimal",
+    maximumAimErrorDegrees: 0,
+  },
+] as const;
 
 // 흑 AI 거리 비례 세기가 내려갈 수 있는 기본 하한이다.
 export const AI_BASE_POWER_MIN = 0.35;
