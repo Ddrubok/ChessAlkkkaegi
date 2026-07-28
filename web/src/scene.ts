@@ -1,5 +1,4 @@
 import {
-  BoxGeometry,
   CanvasTexture,
   Color,
   DirectionalLight,
@@ -18,6 +17,10 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ChessAssets } from "./assets";
+import {
+  computeBoardSurfaceLayout,
+  createBoardGeometry,
+} from "./board";
 import { CAMERA_PITCH_DEG } from "./config";
 import type { PhysicsRuntime } from "./physics";
 import {
@@ -149,14 +152,8 @@ export function synchronizePieceMeshes(
   return maxSyncError;
 }
 
-// 여백과 8개 셀이 실제 0.25:1 비율로 그려지는 캔버스 해상도다.
-const BOARD_CANVAS_SIZE = 544;
-
-// 한 셀을 정수 픽셀로 그려 경계가 흐려지지 않게 하는 크기다.
+// 기본 판과 확대 여백 모두 한 셀에 같은 밀도의 텍셀을 배정하는 목표 해상도다.
 const BOARD_CELL_PIXELS = 64;
-
-// 물리 여백 0.25셀과 같은 비율을 만드는 캔버스 테두리 두께다.
-const BOARD_BORDER_PIXELS = 16;
 
 // 화면 가장자리에서 보드가 잘리지 않도록 투영 계산에 소량의 여백을 더한다.
 const CAMERA_FIT_MARGIN = 1.06;
@@ -248,28 +245,77 @@ export function fitCameraToBoard(runtime: SceneRuntime): void {
 }
 
 /**
- * 보드 여백과 8×8 무늬를 한 캔버스에 그려 시각 셀과 물리 셀의 크기를 일치시킨다.
+ * 새 외곽 목재 테두리 안쪽 전체에 기존 셀 크기와 위상이 이어지는 체크무늬를 그린다.
  */
-function createBoardTexture(): CanvasTexture {
+function createBoardTexture(
+  boardHalfExtent: number,
+  cellSize: number,
+): CanvasTexture {
+  const layout = computeBoardSurfaceLayout(
+    cellSize,
+    boardHalfExtent,
+  );
+  const canvasSize = Math.ceil(
+    (boardHalfExtent * 2 * BOARD_CELL_PIXELS) / cellSize,
+  );
   const canvas = document.createElement("canvas");
-  canvas.width = BOARD_CANVAS_SIZE;
-  canvas.height = BOARD_CANVAS_SIZE;
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
   const context = canvas.getContext("2d");
   if (context === null) {
     throw new Error("체스판 텍스처를 그릴 2D 캔버스를 만들지 못했습니다.");
   }
+  context.imageSmoothingEnabled = false;
 
   context.fillStyle = "#4b3023";
-  context.fillRect(0, 0, BOARD_CANVAS_SIZE, BOARD_CANVAS_SIZE);
-  for (let rank = 0; rank < 8; rank += 1) {
-    for (let file = 0; file < 8; file += 1) {
-      // 파일 x축을 뒤집은 텍스처 대응에서 a1은 홀수 패리티의 어두운 칸, h1은 밝은 칸이어야 한다.
-      context.fillStyle = (file + rank) % 2 === 1 ? "#7b4d35" : "#e3d2b2";
+  context.fillRect(0, 0, canvasSize, canvasSize);
+  const pixelsPerWorldUnit =
+    canvasSize / (boardHalfExtent * 2);
+  const firstCellIndex = Math.floor(
+    -layout.checkerHalfExtent / cellSize,
+  );
+  const lastCellIndex = Math.ceil(
+    layout.checkerHalfExtent / cellSize,
+  );
+  for (
+    let rankIndex = firstCellIndex;
+    rankIndex < lastCellIndex;
+    rankIndex += 1
+  ) {
+    for (
+      let fileIndex = firstCellIndex;
+      fileIndex < lastCellIndex;
+      fileIndex += 1
+    ) {
+      const minimumX = Math.max(
+        fileIndex * cellSize,
+        -layout.checkerHalfExtent,
+      );
+      const maximumX = Math.min(
+        (fileIndex + 1) * cellSize,
+        layout.checkerHalfExtent,
+      );
+      const minimumZ = Math.max(
+        rankIndex * cellSize,
+        -layout.checkerHalfExtent,
+      );
+      const maximumZ = Math.min(
+        (rankIndex + 1) * cellSize,
+        layout.checkerHalfExtent,
+      );
+      if (minimumX >= maximumX || minimumZ >= maximumZ) {
+        continue;
+      }
+      // 원점을 기준으로 이어지는 셀 인덱스를 써 기존 8×8 경계에도 위상 이음새를 만들지 않는다.
+      context.fillStyle =
+        ((fileIndex + rankIndex) & 1) === 1
+          ? "#7b4d35"
+          : "#e3d2b2";
       context.fillRect(
-        BOARD_BORDER_PIXELS + file * BOARD_CELL_PIXELS,
-        BOARD_BORDER_PIXELS + rank * BOARD_CELL_PIXELS,
-        BOARD_CELL_PIXELS,
-        BOARD_CELL_PIXELS,
+        (minimumX + boardHalfExtent) * pixelsPerWorldUnit,
+        (minimumZ + boardHalfExtent) * pixelsPerWorldUnit,
+        (maximumX - minimumX) * pixelsPerWorldUnit,
+        (maximumZ - minimumZ) * pixelsPerWorldUnit,
       );
     }
   }
@@ -287,18 +333,18 @@ function createBoardTexture(): CanvasTexture {
 function createBoardMesh(
   boardHalfExtent: number,
   boardThickness: number,
+  cellSize: number,
 ): Mesh {
-  const geometry = new BoxGeometry(
-    boardHalfExtent * 2,
+  const geometry = createBoardGeometry(
+    boardHalfExtent,
     boardThickness,
-    boardHalfExtent * 2,
   );
   const sideMaterial = new MeshStandardMaterial({
     color: 0x36251f,
     roughness: 0.84,
   });
   const topMaterial = new MeshStandardMaterial({
-    map: createBoardTexture(),
+    map: createBoardTexture(boardHalfExtent, cellSize),
     roughness: 0.72,
   });
   const materials = [
@@ -444,6 +490,7 @@ export function createSceneRuntime(
   const boardMesh = createBoardMesh(
     boardHalfExtent,
     assets.meta.boardThickness,
+    assets.meta.cellSize,
   );
   scene.add(boardMesh);
 
@@ -523,6 +570,42 @@ export function createSceneRuntime(
     );
   }
   return runtime;
+}
+
+/**
+ * 말 메시와 카메라 객체는 유지한 채 판 메시만 새 반폭으로 교체하고 현재 화면 맞춤값을 갱신한다.
+ */
+export function rebuildSceneBoard(
+  runtime: SceneRuntime,
+  assets: ChessAssets,
+  boardHalfExtent: number,
+): void {
+  if (runtime.boardHalfExtent === boardHalfExtent) {
+    return;
+  }
+  const previousBoard = runtime.boardMesh;
+  const nextBoard = createBoardMesh(
+    boardHalfExtent,
+    assets.meta.boardThickness,
+    assets.meta.cellSize,
+  );
+  runtime.scene.remove(previousBoard);
+  runtime.scene.add(nextBoard);
+  previousBoard.geometry.dispose();
+  const previousMaterials = Array.isArray(previousBoard.material)
+    ? previousBoard.material
+    : [previousBoard.material];
+  for (const material of new Set(previousMaterials)) {
+    if (material instanceof MeshStandardMaterial) {
+      material.map?.dispose();
+    }
+    material.dispose();
+  }
+  runtime.boardMesh = nextBoard;
+  runtime.boardTop =
+    nextBoard.position.y + assets.meta.boardThickness / 2;
+  runtime.boardHalfExtent = boardHalfExtent;
+  fitCameraToBoard(runtime);
 }
 
 /**

@@ -223,7 +223,6 @@ export function startGameLoop(
   aiRuntime: AiRuntime,
   gameModeRuntime: GameModeRuntime,
   tuningRuntime: TuningRuntime,
-  boardHalfExtent: number,
   updateOnlineRuntime: (now: number) => void = () => {},
   readOnlineDebugStatus: () =>
     | OnlineLoopDebugStatus
@@ -347,7 +346,7 @@ export function startGameLoop(
         sceneRuntime,
         physicsRuntime,
         turnRuntime,
-        boardHalfExtent,
+        sceneRuntime.boardHalfExtent,
         maxRenderSyncError,
       );
       sceneRuntime.renderer.render(
@@ -444,7 +443,7 @@ export function startGameLoop(
       sceneRuntime,
       physicsRuntime,
       turnRuntime,
-      boardHalfExtent,
+      sceneRuntime.boardHalfExtent,
       maxRenderSyncError,
     );
     sceneRuntime.renderer.render(

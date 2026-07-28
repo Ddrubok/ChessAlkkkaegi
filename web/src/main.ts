@@ -31,7 +31,6 @@ import {
 } from "./card-tuning";
 import {
   CARD_EFFECT_SCALE,
-  deriveBoardHalfExtent,
   PIECE_TYPES,
   PLAYER_MAX_SIZE_SCALE,
   STAGE_RUN_LENGTH,
@@ -79,10 +78,12 @@ import {
 import {
   createPhysicsRuntime,
   preSettlePhysics,
+  rebuildPhysicsBoard,
   resetPhysicsPieces,
 } from "./physics";
 import {
   createSceneRuntime,
+  rebuildSceneBoard,
   resetScenePieces,
   synchronizePieceMeshes,
 } from "./scene";
@@ -104,6 +105,7 @@ import type { OnlineSelfTestRuntime } from "./tools/online-selftest";
 import {
   computeEnemyStageStepValues,
   computeStageBuffs,
+  computeStageBoardHalfExtent,
   computeStagePieceScale,
   computeUpgradeWeightFraction,
   selectStageSpawnInstances,
@@ -132,15 +134,21 @@ const app: HTMLElement = appElement;
 /**
  * 렌더 보드와 물리 보드의 상면이 같은 y=0 계약을 지키는지 시작 전에 확인한다.
  */
-function assertBoardTops(renderTop: number, physicsTop: number): void {
+function assertBoardAgreement(
+  renderTop: number,
+  physicsTop: number,
+  renderHalfExtent: number,
+  physicsHalfExtent: number,
+): void {
   const tolerance = 1e-6;
   if (
     Math.abs(renderTop) > tolerance ||
     Math.abs(physicsTop) > tolerance ||
-    Math.abs(renderTop - physicsTop) > tolerance
+    Math.abs(renderTop - physicsTop) > tolerance ||
+    Math.abs(renderHalfExtent - physicsHalfExtent) > tolerance
   ) {
     throw new Error(
-      `보드 상면 불일치: 렌더 y=${renderTop}, 물리 y=${physicsTop}`,
+      `보드 렌더·물리 불일치: 렌더 y=${renderTop}, 물리 y=${physicsTop}, 렌더 반폭=${renderHalfExtent}, 물리 반폭=${physicsHalfExtent}`,
     );
   }
 }
@@ -234,7 +242,11 @@ async function bootstrap(): Promise<void> {
   if (PIECE_INSTANCES.length !== 32) {
     throw new Error(`시작 말 개수가 32개가 아니라 ${PIECE_INSTANCES.length}개입니다.`);
   }
-  const boardHalfExtent = deriveBoardHalfExtent(assets.meta.cellSize);
+  const boardHalfExtent = computeStageBoardHalfExtent(
+    assets.meta.cellSize,
+    "hotseat",
+    1,
+  );
   const sceneRuntime = createSceneRuntime(
     app,
     assets,
@@ -248,7 +260,12 @@ async function bootstrap(): Promise<void> {
     PIECE_INSTANCES,
     boardHalfExtent,
   );
-  assertBoardTops(sceneRuntime.boardTop, physicsRuntime.boardTop);
+  assertBoardAgreement(
+    sceneRuntime.boardTop,
+    physicsRuntime.boardTop,
+    sceneRuntime.boardHalfExtent,
+    physicsRuntime.boardHalfExtent,
+  );
   loadingPhase.textContent =
     "말의 시작 자세를 안정시키는 중입니다";
   preSettlePhysics(physicsRuntime);
@@ -655,6 +672,27 @@ async function bootstrap(): Promise<void> {
     const expectedPieceCount = spawnInstances.length;
     resetAiMatch(aiRuntime);
     lockInputForMatchOver(inputRuntime);
+    const nextBoardHalfExtent = computeStageBoardHalfExtent(
+      assets.meta.cellSize,
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    );
+    rebuildPhysicsBoard(
+      physicsRuntime,
+      assets.meta,
+      nextBoardHalfExtent,
+    );
+    rebuildSceneBoard(
+      sceneRuntime,
+      assets,
+      nextBoardHalfExtent,
+    );
+    assertBoardAgreement(
+      sceneRuntime.boardTop,
+      physicsRuntime.boardTop,
+      sceneRuntime.boardHalfExtent,
+      physicsRuntime.boardHalfExtent,
+    );
     resetPhysicsPieces(
       physicsRuntime,
       assets.meta,
@@ -1162,7 +1200,6 @@ async function bootstrap(): Promise<void> {
       aiRuntime,
       gameModeRuntime,
       tuningRuntime,
-      boardHalfExtent,
       (now) => {
         onlineRuntime?.update(now);
         onlineSelfTestRuntime?.updatePeers(now);

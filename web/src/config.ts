@@ -38,6 +38,12 @@ export const MAX_FRAME_DELTA = 0.25;
 // 말이 미끄러져 나갈 수 있는 평평한 여백을 셀 비율로 정의한다.
 export const BOARD_BORDER_CELLS = 0.25;
 
+// 공식 맵 디자인 문서의 2~10스테이지 판 전체 30% 확대를 렌더·물리 공통 배율로 고정한다.
+export const STAGE_BOARD_SCALE = 1.3;
+
+// 기획 해석을 되돌릴 때 한 상수로 셀 간격까지 확대할 수 있게 두되, 확정된 여백식 배치는 false다.
+export const STAGE_BOARD_EXPANSION_SCALES_CELLS = false;
+
 // 마우스와 한 손가락 모두 화면 크기에 과도하게 의존하지 않는 최대 세기 드래그 거리다.
 export const MAX_DRAG_PIXELS = 180;
 

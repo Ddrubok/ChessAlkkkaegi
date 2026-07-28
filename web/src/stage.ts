@@ -12,6 +12,8 @@ import {
   ENEMY_STAGE_BUFF_SCALE,
   PLAYER_MAX_SIZE_SCALE,
   SPAWN_GAP,
+  STAGE_BOARD_EXPANSION_SCALES_CELLS,
+  STAGE_BOARD_SCALE,
   STAGE_FORCE_STEP,
   STAGE_MAX_PIECE_SCALE,
   STAGE_SIZE_STEP,
@@ -85,6 +87,55 @@ export interface PieceSpawnPose {
     z: number;
     w: number;
   };
+}
+
+/**
+ * 현재 모드·스테이지에서 렌더 보드와 물리 바닥이 함께 사용할 판 확대 배율을 계산한다.
+ */
+export function computeStageBoardScale(
+  gameMode: GameMode,
+  stageNumber: number,
+): number {
+  if (!Number.isInteger(stageNumber) || stageNumber < 1) {
+    throw new Error(
+      `판 배율 스테이지 번호 ${stageNumber}가 1 이상의 정수가 아닙니다.`,
+    );
+  }
+  return gameMode === "stage" && stageNumber >= 2
+    ? STAGE_BOARD_SCALE
+    : 1;
+}
+
+/**
+ * 메타 셀 크기에서 파생한 기본 반폭에 현재 스테이지 판 배율을 적용한다.
+ */
+export function computeStageBoardHalfExtent(
+  cellSize: number,
+  gameMode: GameMode,
+  stageNumber: number,
+): number {
+  if (!Number.isFinite(cellSize) || cellSize <= 0) {
+    throw new Error(
+      `판 반폭을 계산할 cellSize ${cellSize}가 유한한 양수가 아닙니다.`,
+    );
+  }
+  return (
+    deriveBoardHalfExtent(cellSize) *
+    computeStageBoardScale(gameMode, stageNumber)
+  );
+}
+
+/**
+ * 확정된 여백식에서는 1을 반환하고, 역전 스위치를 켜면 판 배율만큼 셀 배치를 넓힌다.
+ */
+export function computeStageBoardCellScale(
+  gameMode: GameMode,
+  stageNumber: number,
+  scalesCells: boolean = STAGE_BOARD_EXPANSION_SCALES_CELLS,
+): number {
+  return scalesCells
+    ? computeStageBoardScale(gameMode, stageNumber)
+    : 1;
 }
 
 // 카드 상태가 없는 핫시트와 기존 회귀 호출이 공유하는 불변 기본값이다.
@@ -298,10 +349,16 @@ export function computeStageSpawnCenter(
   instance: PieceInstance,
   meta: ChessSetMeta,
   options: StageSpawnOptions,
+  scalesCells: boolean = STAGE_BOARD_EXPANSION_SCALES_CELLS,
 ): CellCenter {
   const center = getCellCenter(
     instance.startingSquare,
     meta.cellSize,
+  );
+  const cellScale = computeStageBoardCellScale(
+    options.gameMode,
+    options.stageNumber,
+    scalesCells,
   );
   const fileIndex =
     instance.startingSquare.file.charCodeAt(0) -
@@ -309,16 +366,32 @@ export function computeStageSpawnCenter(
   const isEvenNumberedPawn = fileIndex % 2 === 1;
   if (
     !isEvenNumberedPawn ||
-    !shouldUsePawnZigzag(instance, meta, meta.cellSize, options)
+    !shouldUsePawnZigzag(
+      instance,
+      meta,
+      meta.cellSize * cellScale,
+      options,
+    )
   ) {
-    return center;
+    return cellScale === 1
+      ? center
+      : {
+          x: center.x * cellScale,
+          z: center.z * cellScale,
+        };
   }
-  return {
+  const zigzagCenter = {
     x: center.x,
     z:
       center.z +
       (instance.side === "black" ? -meta.cellSize : meta.cellSize),
   };
+  return cellScale === 1
+    ? zigzagCenter
+    : {
+        x: zigzagCenter.x * cellScale,
+        z: zigzagCenter.z * cellScale,
+      };
 }
 
 /**
@@ -398,7 +471,12 @@ export function computeStageSpawnPose(
     translation: {
       x: center.x,
       y: SPAWN_GAP - minimumRotatedY * uniformScale,
-      z: -deriveBoardHalfExtent(meta.cellSize),
+      z:
+        -deriveBoardHalfExtent(meta.cellSize) *
+        computeStageBoardCellScale(
+          options.gameMode,
+          options.stageNumber,
+        ),
     },
     rotation: { x: halfSqrt, y: 0, z: 0, w: halfSqrt },
   };

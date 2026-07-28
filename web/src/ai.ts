@@ -14,13 +14,15 @@ import {
   AI_BASE_POWER_MAX,
   AI_BASE_POWER_MIN,
   AI_STAGE_DECISION_BANDS,
-  deriveBoardHalfExtent,
 } from "./config";
 import type { GameMode } from "./game-mode";
 import type { PieceSide } from "./layout";
 import type { PhysicsRuntime } from "./physics";
 import type { SceneRuntime } from "./scene";
-import { computeStageAiSpeedMultiplier } from "./stage";
+import {
+  computeStageAiSpeedMultiplier,
+  computeStageBoardHalfExtent,
+} from "./stage";
 import {
   countRemainingPieces,
   queueTurnLaunch,
@@ -258,8 +260,8 @@ function collectAiShotCandidates(
   blackPieces: readonly AiPiecePosition[],
   whitePieces: readonly AiPiecePosition[],
   cellSize: number,
+  boardHalfExtent: number,
 ): AiShotCandidate[] {
-  const boardHalfExtent = deriveBoardHalfExtent(cellSize);
   const candidates: AiShotCandidate[] = [];
   for (const black of blackPieces) {
     for (const white of whitePieces) {
@@ -387,11 +389,18 @@ export function decideAiShot(
       left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
     );
   const band = getAiStageDecisionBand(stageNumber);
+  // 장외 우선 판단은 실제로 말이 떨어지는 물리 외곽을 써 확대 여백 위 말을 가장자리 말로 오판하지 않는다.
+  const boardHalfExtent = computeStageBoardHalfExtent(
+    cellSize,
+    "stage",
+    stageNumber,
+  );
   const selected = selectAiShotCandidate(
     collectAiShotCandidates(
       blackPieces,
       whitePieces,
       cellSize,
+      boardHalfExtent,
     ),
     band.judgement,
     stageNumber,

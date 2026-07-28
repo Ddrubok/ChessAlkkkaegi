@@ -18,6 +18,7 @@ import {
 } from "./config";
 import type { PieceInstance } from "./layout";
 import {
+  computeStageBoardHalfExtent,
   computeStagePieceScale,
   computeStageSpawnPose,
   computeUpgradeWeightFraction,
@@ -78,6 +79,8 @@ export interface PhysicsRuntime {
   boardBody: RAPIER.RigidBody;
   boardCollider: RAPIER.Collider;
   boardTop: number;
+  // 렌더 판과 매 리셋마다 일치 여부를 검사하는 현재 물리 바닥 반폭이다.
+  boardHalfExtent: number;
   pieces: Map<string, PieceBodyBinding>;
   // 같은 종류가 여러 개여도 디버그 표시와 로그는 한 번만 기록한다.
   massProperties: Map<PieceType, PieceMassProperties>;
@@ -99,11 +102,54 @@ interface BodyCreationState {
   angularVelocity: SpawnTranslation;
 }
 
+interface PhysicsBoardBinding {
+  // 새 판 바닥을 소유하는 고정 강체다.
+  body: RAPIER.RigidBody;
+  // 고정 강체에 붙어 실제 접촉 범위를 만드는 직육면체 콜라이더다.
+  collider: RAPIER.Collider;
+  // 렌더 판의 y=0 상면과 비교할 물리 바닥 상면이다.
+  top: number;
+}
+
 // 첫 로딩과 핫시트 재시작에서는 스테이지 버프를 전혀 적용하지 않는다.
 const DEFAULT_STAGE_SPAWN_OPTIONS: StageSpawnOptions = {
   gameMode: "hotseat",
   stageNumber: 1,
 };
+
+/**
+ * 현재 월드에 지정 반폭의 고정 보드 바디와 콜라이더를 만든다.
+ */
+function createPhysicsBoard(
+  world: RAPIER.World,
+  meta: ChessSetMeta,
+  boardHalfExtent: number,
+): PhysicsBoardBinding {
+  if (!Number.isFinite(boardHalfExtent) || boardHalfExtent <= 0) {
+    throw new Error(
+      `물리 보드 반폭 ${boardHalfExtent}가 유한한 양수가 아닙니다.`,
+    );
+  }
+  const boardCenterY = -meta.boardThickness / 2;
+  const body = world.createRigidBody(
+    RAPIER.RigidBodyDesc.fixed().setTranslation(0, boardCenterY, 0),
+  );
+  const collider = world.createCollider(
+    RAPIER.ColliderDesc.cuboid(
+      boardHalfExtent,
+      meta.boardThickness / 2,
+      boardHalfExtent,
+    )
+      .setFriction(PIECE_FRICTION)
+      .setRestitution(PIECE_RESTITUTION),
+    body,
+  );
+  return {
+    body,
+    collider,
+    top: boardCenterY + meta.boardThickness / 2,
+  };
+}
 
 /**
  * Rapier가 계산한 질량·무게중심·주관성 모멘트가 물리 계산에 쓸 수 있는지 검증한다.
@@ -502,7 +548,7 @@ export function replacePieceBody(
 export async function createPhysicsRuntime(
   meta: ChessSetMeta,
   instances: readonly PieceInstance[],
-  boardHalfExtent: number,
+  requestedBoardHalfExtent: number,
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): Promise<PhysicsRuntime> {
   await RAPIER.init();
@@ -510,25 +556,26 @@ export async function createPhysicsRuntime(
   world.timestep = FIXED_STEP;
   world.lengthUnit = WORLD_LENGTH_UNIT;
 
-  const boardCenterY = -meta.boardThickness / 2;
-  const boardBody = world.createRigidBody(
-    RAPIER.RigidBodyDesc.fixed().setTranslation(0, boardCenterY, 0),
-  );
-  const boardCollider = world.createCollider(
-    RAPIER.ColliderDesc.cuboid(
-      boardHalfExtent,
-      meta.boardThickness / 2,
-      boardHalfExtent,
-    )
-      .setFriction(PIECE_FRICTION)
-      .setRestitution(PIECE_RESTITUTION),
-    boardBody,
+  // 스테이지 기록·측정 호출자가 이전 기본 반폭을 넘겨도 헤더의 모드·단계가 실제 물리 외곽의 단일 원본이다.
+  const boardHalfExtent =
+    stageOptions.gameMode === "stage"
+      ? computeStageBoardHalfExtent(
+          meta.cellSize,
+          stageOptions.gameMode,
+          stageOptions.stageNumber,
+        )
+      : requestedBoardHalfExtent;
+  const board = createPhysicsBoard(
+    world,
+    meta,
+    boardHalfExtent,
   );
   const runtime: PhysicsRuntime = {
     world,
-    boardBody,
-    boardCollider,
-    boardTop: boardCenterY + meta.boardThickness / 2,
+    boardBody: board.body,
+    boardCollider: board.collider,
+    boardTop: board.top,
+    boardHalfExtent,
     pieces: new Map(),
     massProperties: new Map(),
   };
@@ -542,6 +589,83 @@ export async function createPhysicsRuntime(
   }
   validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
   return runtime;
+}
+
+/**
+ * 말 바디를 한 step도 진행하지 않고 고정 바닥만 새 반폭으로 교체한다.
+ */
+export function rebuildPhysicsBoard(
+  runtime: PhysicsRuntime,
+  meta: ChessSetMeta,
+  boardHalfExtent: number,
+): void {
+  if (runtime.boardHalfExtent === boardHalfExtent) {
+    return;
+  }
+  const piecePoses = new Map(
+    [...runtime.pieces].map(([pieceId, binding]) => {
+      const translation = binding.body.translation();
+      const rotation = binding.body.rotation();
+      return [
+        pieceId,
+        {
+          translation: {
+            x: translation.x,
+            y: translation.y,
+            z: translation.z,
+          },
+          rotation: {
+            x: rotation.x,
+            y: rotation.y,
+            z: rotation.z,
+            w: rotation.w,
+          },
+        },
+      ];
+    }),
+  );
+  runtime.world.removeRigidBody(runtime.boardBody);
+  const board = createPhysicsBoard(
+    runtime.world,
+    meta,
+    boardHalfExtent,
+  );
+  runtime.boardBody = board.body;
+  runtime.boardCollider = board.collider;
+  runtime.boardTop = board.top;
+  runtime.boardHalfExtent = boardHalfExtent;
+  for (const [pieceId, pose] of piecePoses) {
+    const binding = runtime.pieces.get(pieceId);
+    if (binding === undefined) {
+      throw new Error(
+        `물리 보드 재구축 중 ${pieceId} 말 바디가 사라졌습니다.`,
+      );
+    }
+    const translation = binding.body.translation();
+    const rotation = binding.body.rotation();
+    if (
+      translation.x !== pose.translation.x ||
+      translation.y !== pose.translation.y ||
+      translation.z !== pose.translation.z ||
+      rotation.x !== pose.rotation.x ||
+      rotation.y !== pose.rotation.y ||
+      rotation.z !== pose.rotation.z ||
+      rotation.w !== pose.rotation.w
+    ) {
+      throw new Error(
+        `물리 보드 재구축이 ${pieceId} 말 자세를 변경했습니다.`,
+      );
+    }
+  }
+  const expectedWorldCount = runtime.pieces.size + 1;
+  if (
+    runtime.world.bodies.len() !== expectedWorldCount ||
+    runtime.world.colliders.len() !== expectedWorldCount
+  ) {
+    throw new Error(
+      `물리 보드 재구축 누수 검사 실패: 바디 ${runtime.world.bodies.len()}/${expectedWorldCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedWorldCount}`,
+    );
+  }
 }
 
 /**

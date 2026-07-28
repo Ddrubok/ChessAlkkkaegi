@@ -202,6 +202,7 @@ function settleAndMeasureSpawn(physicsModule, runtime) {
 try {
   const [
     aiModule,
+    boardModule,
     configModule,
     inputModule,
     layoutModule,
@@ -211,6 +212,7 @@ try {
     turnModule,
   ] = await Promise.all([
     vite.ssrLoadModule("/src/ai.ts"),
+    vite.ssrLoadModule("/src/board.ts"),
     vite.ssrLoadModule("/src/config.ts"),
     vite.ssrLoadModule("/src/input.ts"),
     vite.ssrLoadModule("/src/layout.ts"),
@@ -228,8 +230,197 @@ try {
   const boardHalfExtent = configModule.deriveBoardHalfExtent(
     meta.cellSize,
   );
+  const stageBoardHalfExtent = (gameMode, stageNumber) =>
+    stageModule.computeStageBoardHalfExtent(
+      meta.cellSize,
+      gameMode,
+      stageNumber,
+    );
   const geometries = await loadPieceGeometries(
     configModule.PIECE_TYPES,
+  );
+
+  const boardMeasurements = [
+    ["stage1", "stage", 1],
+    ["stage2", "stage", 2],
+    ["stage10", "stage", 10],
+    ["hotseat", "hotseat", 10],
+    ["online", "online", 10],
+  ].map(([label, gameMode, stageNumber]) => ({
+    label,
+    halfExtent: stageBoardHalfExtent(gameMode, stageNumber),
+  }));
+  const measurementMap = new Map(
+    boardMeasurements.map(({ label, halfExtent }) => [
+      label,
+      halfExtent,
+    ]),
+  );
+  assertCondition(
+    measurementMap.get("stage1") === boardHalfExtent &&
+      measurementMap.get("stage2") ===
+        boardHalfExtent * configModule.STAGE_BOARD_SCALE &&
+      measurementMap.get("stage10") ===
+        boardHalfExtent * configModule.STAGE_BOARD_SCALE &&
+      measurementMap.get("hotseat") === boardHalfExtent &&
+      measurementMap.get("online") === boardHalfExtent,
+    `모드·스테이지 판 반폭이 확정 배율과 다릅니다: ${JSON.stringify(boardMeasurements)}`,
+  );
+  const stage2Layout = boardModule.computeBoardSurfaceLayout(
+    meta.cellSize,
+    measurementMap.get("stage2"),
+  );
+  const baseCheckerHalfExtent =
+    boardHalfExtent -
+    configModule.BOARD_BORDER_CELLS * meta.cellSize;
+  const marginSurfaceKind = boardModule.classifyBoardSurface(
+    baseCheckerHalfExtent + meta.cellSize * 0.5,
+    meta.cellSize * 0.25,
+    stage2Layout,
+  );
+  const newRimSurfaceKind = boardModule.classifyBoardSurface(
+    stage2Layout.outerHalfExtent - stage2Layout.rimWidth * 0.5,
+    0,
+    stage2Layout,
+  );
+  const stage2Geometry = boardModule.createBoardGeometry(
+    stage2Layout.outerHalfExtent,
+    meta.boardThickness,
+  );
+  stage2Geometry.computeBoundingBox();
+  const stage2GeometryBounds = stage2Geometry.boundingBox;
+  assertCondition(
+    stage2GeometryBounds !== null &&
+      Math.abs(
+        stage2GeometryBounds.min.x +
+          stage2Layout.outerHalfExtent,
+      ) < 1e-6 &&
+      Math.abs(
+        stage2GeometryBounds.max.x -
+          stage2Layout.outerHalfExtent,
+      ) < 1e-6 &&
+      Math.abs(
+        stage2GeometryBounds.min.z +
+          stage2Layout.outerHalfExtent,
+      ) < 1e-6 &&
+      Math.abs(
+        stage2GeometryBounds.max.z -
+          stage2Layout.outerHalfExtent,
+      ) < 1e-6 &&
+      marginSurfaceKind !== "wood" &&
+      newRimSurfaceKind === "wood",
+    `확대 보드 렌더 표면 구성 실패: bounds=${JSON.stringify(stage2GeometryBounds)}, margin=${marginSurfaceKind}, rim=${newRimSurfaceKind}`,
+  );
+  stage2Geometry.dispose();
+  console.log(
+    `[통과 board] half=${boardMeasurements.map(({ label, halfExtent }) => `${label}:${halfExtent.toFixed(6)}`).join(",")}, margin=${marginSurfaceKind}, newRim=${newRimSurfaceKind}, checkerHalf=${stage2Layout.checkerHalfExtent.toFixed(6)}`,
+  );
+
+  let verifiedSpawnCount = 0;
+  for (let stageNumber = 1; stageNumber <= 10; stageNumber += 1) {
+    const options = { gameMode: "stage", stageNumber };
+    for (const instance of stageModule.selectStageSpawnInstances(
+      layoutModule.PIECE_INSTANCES,
+      options,
+    )) {
+      const expected = layoutModule.getCellCenter(
+        instance.startingSquare,
+        meta.cellSize,
+      );
+      const fileIndex =
+        instance.startingSquare.file.charCodeAt(0) -
+        "a".charCodeAt(0);
+      if (
+        fileIndex % 2 === 1 &&
+        stageModule.shouldUsePawnZigzag(
+          instance,
+          meta,
+          meta.cellSize,
+          options,
+        )
+      ) {
+        expected.z +=
+          instance.side === "black"
+            ? -meta.cellSize
+            : meta.cellSize;
+      }
+      const actual = stageModule.computeStageSpawnCenter(
+        instance,
+        meta,
+        options,
+      );
+      assertCondition(
+        Object.is(actual.x, expected.x) &&
+          Object.is(actual.z, expected.z),
+        `${instance.id} 스테이지 ${stageNumber} 여백식 스폰 좌표가 기존 값과 달라졌습니다: expected=${JSON.stringify(expected)}, actual=${JSON.stringify(actual)}`,
+      );
+      verifiedSpawnCount += 1;
+    }
+  }
+  const whitePawnA = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "white-pawn-a2",
+  );
+  const whitePawnB = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "white-pawn-b2",
+  );
+  assertCondition(
+    whitePawnA !== undefined && whitePawnB !== undefined,
+    "셀 확대 역전 검사용 백 폰을 찾지 못했습니다.",
+  );
+  const scaledCenterA = stageModule.computeStageSpawnCenter(
+    whitePawnA,
+    meta,
+    { gameMode: "stage", stageNumber: 2 },
+    true,
+  );
+  const scaledCenterB = stageModule.computeStageSpawnCenter(
+    whitePawnB,
+    meta,
+    { gameMode: "stage", stageNumber: 2 },
+    true,
+  );
+  const scaledSpacing = Math.hypot(
+    scaledCenterA.x - scaledCenterB.x,
+    scaledCenterA.z - scaledCenterB.z,
+  );
+  assertCondition(
+    configModule.STAGE_BOARD_EXPANSION_SCALES_CELLS === false &&
+      Math.abs(
+        scaledSpacing -
+          meta.cellSize * configModule.STAGE_BOARD_SCALE,
+      ) < 1e-12,
+    `셀 확대 역전 경로 간격 실패: ${scaledSpacing}`,
+  );
+  console.log(
+    `[통과 spawn-margin] baselineBitExact=${verifiedSpawnCount}, reversalSpacing=${scaledSpacing.toFixed(6)}, defaultSwitch=${configModule.STAGE_BOARD_EXPANSION_SCALES_CELLS}`,
+  );
+
+  const aiEdgeProbeBoard = [
+    { id: "black-a-chain", side: "black", x: -1, z: 0 },
+    { id: "black-z-edge", side: "black", x: 2, z: 2 },
+    { id: "white-a-central", side: "white", x: 0, z: 0 },
+    { id: "white-b-central-back", side: "white", x: 1, z: 0 },
+    { id: "white-y-edge-inner", side: "white", x: 3, z: 2 },
+    { id: "white-z-edge-outer", side: "white", x: 4, z: 2 },
+  ];
+  const aiEdgeDecision = aiModule.decideAiShot(
+    aiEdgeProbeBoard,
+    1,
+    0,
+    4,
+  );
+  const oldAiEdgeDistance =
+    configModule.deriveBoardHalfExtent(1) - 4;
+  const enlargedAiEdgeDistance =
+    stageModule.computeStageBoardHalfExtent(1, "stage", 4) - 4;
+  assertCondition(
+    aiEdgeDecision?.pieceId === "black-z-edge" &&
+      aiEdgeDecision.targetPieceId === "white-z-edge-outer" &&
+      enlargedAiEdgeDistance > oldAiEdgeDistance,
+    `확대 외곽 AI 거리 기준 실패: decision=${JSON.stringify(aiEdgeDecision)}, old=${oldAiEdgeDistance}, enlarged=${enlargedAiEdgeDistance}`,
+  );
+  console.log(
+    `[통과 ai-edge] preChoice=black-z-edge→white-z-edge-outer, postChoice=${aiEdgeDecision.pieceId}→${aiEdgeDecision.targetPieceId}, targetEdgeDistance=${oldAiEdgeDistance.toFixed(6)}→${enlargedAiEdgeDistance.toFixed(6)} (현재 상대순위는 동일)`,
   );
 
   const buffTable = [];
@@ -255,6 +446,129 @@ try {
   }
   console.log(`[통과 a] N=1..12 버프 표: ${JSON.stringify(buffTable)}`);
 
+  const stageSettleMeasurements = [];
+  for (let stageNumber = 1; stageNumber <= 10; stageNumber += 1) {
+    const options = { gameMode: "stage", stageNumber };
+    const runtime = await physicsModule.createPhysicsRuntime(
+      meta,
+      layoutModule.PIECE_INSTANCES,
+      stageBoardHalfExtent("stage", stageNumber),
+      options,
+    );
+    const settle = physicsModule.preSettlePhysics(runtime);
+    const expectedPieceCount =
+      stageModule.selectStageSpawnInstances(
+        layoutModule.PIECE_INSTANCES,
+        options,
+      ).length;
+    const sleepingCount = [...runtime.pieces.values()].filter(
+      (binding) => binding.body.isSleeping(),
+    ).length;
+    assertCondition(
+      sleepingCount === expectedPieceCount,
+      `스테이지 ${stageNumber} 확대 보드 정착 실패: ${sleepingCount}/${expectedPieceCount}`,
+    );
+    stageSettleMeasurements.push({
+      stageNumber,
+      halfExtent: runtime.boardHalfExtent,
+      sleepingCount,
+      steps: settle.steps,
+    });
+  }
+  console.log(
+    `[통과 board-settle] ${stageSettleMeasurements.map((entry) => `S${entry.stageNumber}:${entry.sleepingCount}@${entry.steps}`).join(",")}`,
+  );
+
+  const rebuildProbeRuntime =
+    await physicsModule.createPhysicsRuntime(
+      meta,
+      [whitePawnA],
+      boardHalfExtent,
+      { gameMode: "hotseat", stageNumber: 1 },
+    );
+  const rebuildProbeBinding =
+    rebuildProbeRuntime.pieces.get(whitePawnA.id);
+  const rebuildPoseBefore = {
+    translation: { ...rebuildProbeBinding.body.translation() },
+    rotation: { ...rebuildProbeBinding.body.rotation() },
+  };
+  physicsModule.rebuildPhysicsBoard(
+    rebuildProbeRuntime,
+    meta,
+    stageBoardHalfExtent("stage", 2),
+  );
+  const rebuildPoseAfter = {
+    translation: { ...rebuildProbeBinding.body.translation() },
+    rotation: { ...rebuildProbeBinding.body.rotation() },
+  };
+  const rebuiltHalfExtents =
+    rebuildProbeRuntime.boardCollider.halfExtents();
+  assertCondition(
+    JSON.stringify(rebuildPoseAfter) ===
+      JSON.stringify(rebuildPoseBefore) &&
+      rebuildProbeRuntime.boardHalfExtent ===
+        stage2Layout.outerHalfExtent &&
+      Math.abs(
+        rebuiltHalfExtents.x - stage2Layout.outerHalfExtent,
+      ) < 1e-6 &&
+      Math.abs(
+        rebuiltHalfExtents.z - stage2Layout.outerHalfExtent,
+      ) < 1e-6,
+    `고정 바닥 재구축이 말 자세 또는 물리 반폭을 바꿨습니다: before=${JSON.stringify(rebuildPoseBefore)}, after=${JSON.stringify(rebuildPoseAfter)}, collider=${JSON.stringify(rebuiltHalfExtents)}`,
+  );
+
+  const runEdgeProbe = async (centerX) => {
+    const runtime = await physicsModule.createPhysicsRuntime(
+      meta,
+      [whitePawnA],
+      stage2Layout.outerHalfExtent,
+      { gameMode: "stage", stageNumber: 2 },
+    );
+    const binding = runtime.pieces.get(whitePawnA.id);
+    const start = binding.body.translation();
+    binding.body.setTranslation(
+      { x: centerX, y: start.y, z: 0 },
+      true,
+    );
+    binding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    binding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    let steps = 0;
+    while (
+      steps < configModule.PRE_SETTLE_MAX_STEPS &&
+      binding.body.translation().y >= configModule.FALL_OUT_Y
+    ) {
+      runtime.world.step();
+      steps += 1;
+    }
+    return {
+      y: binding.body.translation().y,
+      steps,
+      sleeping: binding.body.isSleeping(),
+    };
+  };
+  const pawnHorizontalRadius = Math.max(
+    ...meta.pieces.Pawn.colliderPoints.map(([x, , z]) =>
+      Math.hypot(x, z),
+    ),
+  );
+  const oldEdgeProbe = await runEdgeProbe(
+    boardHalfExtent + meta.cellSize * 0.1,
+  );
+  const newEdgeProbe = await runEdgeProbe(
+    stage2Layout.outerHalfExtent +
+      pawnHorizontalRadius +
+      meta.cellSize * 0.02,
+  );
+  assertCondition(
+    oldEdgeProbe.y >= configModule.FALL_OUT_Y &&
+      oldEdgeProbe.sleeping &&
+      newEdgeProbe.y < configModule.FALL_OUT_Y,
+    `확대 여백 장외 프로브 실패: old=${JSON.stringify(oldEdgeProbe)}, new=${JSON.stringify(newEdgeProbe)}`,
+  );
+  console.log(
+    `[통과 edge] oldEdge+0.1cell y=${oldEdgeProbe.y.toFixed(6)} sleeping=${oldEdgeProbe.sleeping}, newEdge+radius y=${newEdgeProbe.y.toFixed(6)} fallStep=${newEdgeProbe.steps}, renderHalf=physicsHalf=${stage2Layout.outerHalfExtent.toFixed(6)}`,
+  );
+
   const baselineRuntime = await physicsModule.createPhysicsRuntime(
     meta,
     layoutModule.PIECE_INSTANCES,
@@ -277,7 +591,7 @@ try {
   const stage10Runtime = await physicsModule.createPhysicsRuntime(
     meta,
     layoutModule.PIECE_INSTANCES,
-    boardHalfExtent,
+    stageBoardHalfExtent("stage", 10),
     stage10Options,
   );
   const stage10Scene = createPieceMeshes(
@@ -377,7 +691,7 @@ try {
   const stage6Runtime = await physicsModule.createPhysicsRuntime(
     meta,
     layoutModule.PIECE_INSTANCES,
-    boardHalfExtent,
+    stageBoardHalfExtent("stage", 6),
     { gameMode: "stage", stageNumber: 6 },
   );
   const stage6Scene = createPieceMeshes(stage6Runtime, geometries);
@@ -404,7 +718,7 @@ try {
   const stage5Runtime = await physicsModule.createPhysicsRuntime(
     meta,
     layoutModule.PIECE_INSTANCES,
-    boardHalfExtent,
+    stageBoardHalfExtent("stage", 5),
     stage5Options,
   );
   const stage5BlackPawns = [...stage5Runtime.pieces.values()].filter(
@@ -502,7 +816,7 @@ try {
   const stage12Runtime = await physicsModule.createPhysicsRuntime(
     meta,
     layoutModule.PIECE_INSTANCES,
-    boardHalfExtent,
+    stageBoardHalfExtent("stage", 12),
     stage12Options,
   );
   const stage12PawnScale = stage12Runtime.pieces.get(
@@ -573,7 +887,7 @@ try {
   const stage30Runtime = await physicsModule.createPhysicsRuntime(
     meta,
     layoutModule.PIECE_INSTANCES,
-    boardHalfExtent,
+    stageBoardHalfExtent("stage", 30),
     stage30Options,
   );
   const stage30PawnScale = stage30Runtime.pieces.get(
