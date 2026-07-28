@@ -83,16 +83,16 @@ export const STAGE_SIZE_STEP = 0.03;
 // 보드 격자에 물리적으로 들어가는 총 배율 상한이다. 초고스테이지에서 지그재그로도 안 들어가는 것을 막되 중량·힘 버프는 계속 누적한다.
 export const STAGE_MAX_PIECE_SCALE = 2.2;
 
-// 크기 카드를 한 번 고를 때 백 말의 총 배율에 더하는 값이다.
-export const CARD_SIZE_STEP = 0.03;
+// 일반·중급·상급·최상급·레전드 강화 카드가 기존 수치를 교체할 최종 효과 비율표다.
+export const CARD_GRADE_EFFECTS = [
+  0.01,
+  0.03,
+  0.05,
+  0.07,
+  0.1,
+] as const;
 
-// 중량 카드를 한 번 고를 때 백 말의 원래 hull 질량에 더하는 비율이다.
-export const CARD_WEIGHT_STEP = 0.1;
-
-// 힘 카드를 한 번 고를 때 플레이어 목표 발사 속도에 더하는 비율이다.
-export const CARD_FORCE_STEP = 0.05;
-
-// 크기·중량·힘 카드의 1회 효과에 공통으로 곱하는 로그라이트 성장 배율이다.
+// 크기·중량·힘 카드의 현재 등급 최종 효과에 공통으로 곱하는 로그라이트 성장 배율이다.
 export const CARD_EFFECT_SCALE = 1;
 
 // 뒷줄 최악 인접쌍(퀸+킹) 받침 합 0.429 × s가 칸 간격 0.536 − 0.02 이하가 되는 실측 상한이다. 카드로 그 이상 쌓아도 백 일반 말은 여기서 멈춘다.
