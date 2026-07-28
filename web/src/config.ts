@@ -98,8 +98,11 @@ export const CARD_EFFECT_SCALE = 1;
 // 뒷줄 최악 인접쌍(퀸+킹) 받침 합 0.429 × s가 칸 간격 0.536 − 0.02 이하가 되는 실측 상한이다. 카드로 그 이상 쌓아도 백 일반 말은 여기서 멈춘다.
 export const PLAYER_MAX_SIZE_SCALE = 1.2;
 
-// 스테이지 하나를 클리어할 때 즉시 지급하고 저장하는 영구 메타 포인트다.
-export const STAGE_CLEAR_POINTS = 100;
+// 한 런이 완주로 끝나는 마지막 스테이지 번호다.
+export const STAGE_RUN_LENGTH = 10;
+
+// 스테이지 N 클리어가 런 종료 정산액에 더하는 N배 포인트의 기본 단위다.
+export const STAGE_POINT_CONTRIBUTION_UNIT = 1;
 
 // 영구 힘·중량 강화 한 레벨이 원래 속도·hull 질량에 더하는 비율이다.
 export const PERMANENT_UPGRADE_STEP = 0.01;

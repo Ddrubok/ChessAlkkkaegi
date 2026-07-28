@@ -41,6 +41,8 @@ export interface MainMenuRuntime {
   onStartMode: (mode: GameMode) => Promise<void>;
   // 런 상태를 지우고 안전한 보드로 되돌리는 연결점이다.
   onReturnToMenu: () => Promise<void>;
+  // 포기 확인 뒤 현재 모드에 맞는 런 종료 또는 즉시 메뉴 복귀를 수행하는 연결점이다.
+  onConfirmAbandon: () => Promise<void>;
 }
 
 const PIECE_LABELS: Readonly<Record<PieceType, string>> = {
@@ -333,6 +335,7 @@ export function createMainMenu(
   metaRuntime: MetaRuntime,
   onStartMode: (mode: GameMode) => Promise<void>,
   onReturnToMenu: () => Promise<void>,
+  onConfirmAbandon: () => Promise<void>,
 ): MainMenuRuntime {
   const overlay = document.createElement("section");
   overlay.className = "main-menu-overlay";
@@ -416,6 +419,7 @@ export function createMainMenu(
     confirming: false,
     onStartMode,
     onReturnToMenu,
+    onConfirmAbandon,
   };
   const resetButton =
     overlay.querySelector<HTMLButtonElement>(
@@ -537,8 +541,10 @@ export function createMainMenu(
     }
     confirmButton.disabled = true;
     cancelButton.disabled = true;
-    void returnToMainMenu(runtime).then(
+    void runtime.onConfirmAbandon().then(
       () => {
+        runtime.confirming = false;
+        runtime.confirmOverlay.hidden = true;
         confirmButton.disabled = false;
         cancelButton.disabled = false;
       },
