@@ -836,10 +836,10 @@ async function bootstrap(): Promise<void> {
       boardHalfExtent,
       (now) => {
         onlineRuntime?.update(now);
-        onlineSelfTestRuntime?.updateGuest(now);
+        onlineSelfTestRuntime?.updatePeers(now);
       },
       () => onlineRuntime?.getDebugStatus() ?? null,
-      () => onlineSelfTestRuntime?.stepGuest(),
+      () => onlineSelfTestRuntime?.stepPeers(),
     );
     gameLoopStarted = true;
   };
@@ -1022,30 +1022,21 @@ async function bootstrap(): Promise<void> {
     );
     onlineSelfTestRuntime = createOnlineSelfTestRuntime({
       assets,
-      hostTurnRuntime: turnRuntime,
-      hostAimRuntime: aimRuntime,
-      tuningSettings: tuningRuntime.settings,
-      async prepareHostBoard(
-        preserveOnlineRuntime: boolean,
-      ): Promise<void> {
+      boardHalfExtent,
+      async preparePageForSelfTest(): Promise<void> {
         if (gameModeRuntime === null) {
           throw new Error(
             "온라인 셀프테스트 대전 모드가 준비되지 않았습니다.",
           );
         }
-        // 최초 시작만 이전 런타임을 닫고, 재대결 준비는 현재 P2P 링크를 그대로 사용한다.
-        if (!preserveOnlineRuntime) {
-          onlineRuntime?.close();
-          onlineRuntime = null;
-        }
+        // 화면 보드는 fixed-step 시계만 제공하며 실제 셀프테스트 물리에는 참여하지 않는다.
+        onlineRuntime?.close();
+        onlineRuntime = null;
         await switchGameMode(
           gameModeRuntime,
           "online",
           true,
         );
-      },
-      setHostOnlineRuntime(runtime): void {
-        onlineRuntime = runtime;
       },
       ensureGameLoopStarted,
       finishMenuStart(): void {
