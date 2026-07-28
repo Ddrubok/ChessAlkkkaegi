@@ -228,6 +228,7 @@ export function startGameLoop(
   readOnlineDebugStatus: () =>
     | OnlineLoopDebugStatus
     | null = () => null,
+  shouldStepPhysics: () => boolean = () => true,
   stepSecondaryOnlineRuntime: () => void = () => {},
 ): void {
   const overlay = document.createElement("pre");
@@ -294,6 +295,12 @@ export function startGameLoop(
       event.repeat ||
       turnRuntime.phase !== "ready"
     ) {
+      return;
+    }
+    if (!shouldStepPhysics()) {
+      console.info(
+        "[물리] 온라인 발사 대기 중에는 solver 이력을 보존하므로 R 기상 계측을 실행하지 않습니다.",
+      );
       return;
     }
     wakeAllTurnPieces(turnRuntime);
@@ -369,18 +376,24 @@ export function startGameLoop(
       accumulator >= FIXED_STEP &&
       stepCount < MAX_STEPS_PER_FRAME
     ) {
-      applyPendingLaunchBeforeStep(turnRuntime);
-      physicsRuntime.world.step();
-      verifyTuningAfterStep(tuningRuntime);
+      const stepsPrimaryPhysics = shouldStepPhysics();
+      if (stepsPrimaryPhysics) {
+        applyPendingLaunchBeforeStep(turnRuntime);
+        physicsRuntime.world.step();
+        verifyTuningAfterStep(tuningRuntime);
+      }
       accumulator -= FIXED_STEP;
       elapsedSimulatedSeconds += FIXED_STEP;
       stepCount += 1;
 
-      // 낙하 제거가 정지 판정보다 먼저 일어나도록 턴 갱신을 물리 step 직후 호출한다.
-      updateTurnAfterStep(turnRuntime, FIXED_STEP);
-      // 단일 페이지 온라인 셀프테스트에서만 씬 없는 상대 월드를 같은 fixed step으로 진행한다.
+      if (stepsPrimaryPhysics) {
+        // 낙하 제거가 정지 판정보다 먼저 일어나도록 턴 갱신을 실제 물리 step 직후에만 호출한다.
+        updateTurnAfterStep(turnRuntime, FIXED_STEP);
+      }
+      // 단일 페이지 온라인 셀프테스트에서만 씬 없는 두 피어의 개별 step 허용 여부를 갱신한다.
       stepSecondaryOnlineRuntime();
       if (
+        stepsPrimaryPhysics &&
         waitingForSettle &&
         [...physicsRuntime.pieces.values()].every((binding) =>
           binding.body.isSleeping(),

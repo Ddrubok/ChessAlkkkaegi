@@ -125,6 +125,10 @@ export interface OnlineSelfTestDiagnostics {
   hostLaunchAppliedAtTurnStep: number | null;
   guestLaunchAppliedAtTurnStep: number | null;
   launchOrdinalMatched: boolean | null;
+  hostFrozenTickCount: number;
+  guestFrozenTickCount: number;
+  hostWorldStepCount: number;
+  guestWorldStepCount: number;
   hostLaunch: OnlineSelfTestLaunchDiagnostic | null;
   guestLaunch: OnlineSelfTestLaunchDiagnostic | null;
   preLaunchDifference: OnlineSelfTestBodyDifference | null;
@@ -249,7 +253,7 @@ export interface OnlineSelfTestApi {
 export interface OnlineSelfTestRuntime {
   // 브라우저 콘솔에 노출할 온라인 셀프테스트 API다.
   api: OnlineSelfTestApi;
-  // 화면 루프의 한 fixed step마다 숨은 방장·참가자 월드를 같은 ordinal로 각각 한 번 진행한다.
+  // 화면 루프의 한 fixed step마다 발사 대기 중이 아닌 숨은 피어의 월드만 진행한다.
   stepPeers(): void;
   // 각 렌더 프레임에 숨은 두 피어의 ready 재전송과 수신 발사를 함께 진행한다.
   updatePeers(now: number): void;
@@ -312,6 +316,10 @@ interface ActiveTurnDiagnostics {
   guestStartStep: number;
   hostLaunchAppliedAtPhysicsStep: number | null;
   guestLaunchAppliedAtPhysicsStep: number | null;
+  hostFrozenTickCount: number;
+  guestFrozenTickCount: number;
+  hostWorldStepCount: number;
+  guestWorldStepCount: number;
   hostLaunch: OnlineSelfTestLaunchDiagnostic | null;
   guestLaunch: OnlineSelfTestLaunchDiagnostic | null;
   preLaunchDifference: OnlineSelfTestBodyDifference | null;
@@ -1288,6 +1296,10 @@ export function createOnlineSelfTestRuntime(
       guestStartStep,
       hostLaunchAppliedAtPhysicsStep: null,
       guestLaunchAppliedAtPhysicsStep: null,
+      hostFrozenTickCount: 0,
+      guestFrozenTickCount: 0,
+      hostWorldStepCount: 0,
+      guestWorldStepCount: 0,
       hostLaunch:
         origin === "host"
           ? cloneLaunchDiagnostic(
@@ -1412,6 +1424,14 @@ export function createOnlineSelfTestRuntime(
               turnDiagnostics.hostStartStep ===
             turnDiagnostics.guestLaunchAppliedAtPhysicsStep -
               turnDiagnostics.guestStartStep,
+      hostFrozenTickCount:
+        turnDiagnostics?.hostFrozenTickCount ?? 0,
+      guestFrozenTickCount:
+        turnDiagnostics?.guestFrozenTickCount ?? 0,
+      hostWorldStepCount:
+        turnDiagnostics?.hostWorldStepCount ?? 0,
+      guestWorldStepCount:
+        turnDiagnostics?.guestWorldStepCount ?? 0,
       hostLaunch: turnDiagnostics?.hostLaunch ?? null,
       guestLaunch: turnDiagnostics?.guestLaunch ?? null,
       preLaunchDifference:
@@ -1818,6 +1838,10 @@ export function createOnlineSelfTestRuntime(
         return;
       }
       const diagnostics = turnDiagnostics;
+      const shouldStepHost =
+        active.hostOnline.shouldStepPhysics();
+      const shouldStepGuest =
+        active.guestOnline?.shouldStepPhysics() ?? false;
       const hostPendingLaunch =
         hostMatch.turnRuntime.pendingLaunch;
       const guestPendingLaunch =
@@ -1825,7 +1849,8 @@ export function createOnlineSelfTestRuntime(
       if (
         diagnostics !== null &&
         diagnostics.hostLaunchAppliedAtPhysicsStep === null &&
-        hostPendingLaunch !== null
+        hostPendingLaunch !== null &&
+        shouldStepHost
       ) {
         diagnostics.hostLaunchAppliedAtPhysicsStep =
           hostMatch.turnRuntime.physicsStepNumber + 1;
@@ -1838,7 +1863,8 @@ export function createOnlineSelfTestRuntime(
       if (
         diagnostics !== null &&
         diagnostics.guestLaunchAppliedAtPhysicsStep === null &&
-        guestPendingLaunch !== null
+        guestPendingLaunch !== null &&
+        shouldStepGuest
       ) {
         diagnostics.guestLaunchAppliedAtPhysicsStep =
           guestMatch.turnRuntime.physicsStepNumber + 1;
@@ -1849,15 +1875,29 @@ export function createOnlineSelfTestRuntime(
           );
       }
 
-      applyPendingLaunchBeforeStep(hostMatch.turnRuntime);
-      applyPendingLaunchBeforeStep(guestMatch.turnRuntime);
-      hostMatch.physicsRuntime.world.step();
-      guestMatch.physicsRuntime.world.step();
-      updateTurnAfterStep(hostMatch.turnRuntime, FIXED_STEP);
-      updateTurnAfterStep(
-        guestMatch.turnRuntime,
-        FIXED_STEP,
-      );
+      if (shouldStepHost) {
+        applyPendingLaunchBeforeStep(hostMatch.turnRuntime);
+        hostMatch.physicsRuntime.world.step();
+        updateTurnAfterStep(hostMatch.turnRuntime, FIXED_STEP);
+        if (diagnostics !== null) {
+          diagnostics.hostWorldStepCount += 1;
+        }
+      } else if (diagnostics !== null) {
+        diagnostics.hostFrozenTickCount += 1;
+      }
+      if (shouldStepGuest) {
+        applyPendingLaunchBeforeStep(guestMatch.turnRuntime);
+        guestMatch.physicsRuntime.world.step();
+        updateTurnAfterStep(
+          guestMatch.turnRuntime,
+          FIXED_STEP,
+        );
+        if (diagnostics !== null) {
+          diagnostics.guestWorldStepCount += 1;
+        }
+      } else if (diagnostics !== null) {
+        diagnostics.guestFrozenTickCount += 1;
+      }
       if (
         diagnostics === null ||
         diagnostics.hostLaunchAppliedAtPhysicsStep === null
@@ -1868,34 +1908,40 @@ export function createOnlineSelfTestRuntime(
         hostMatch.turnRuntime.physicsStepNumber;
       const guestPhysicsStep =
         guestMatch.turnRuntime.physicsStepNumber;
-      const hostStates = captureBodyDiagnosticStates(
-        hostMatch.physicsRuntime,
-      );
-      const guestStates = captureBodyDiagnosticStates(
-        guestMatch.physicsRuntime,
-      );
-      const hostPostLaunchStep =
-        hostPhysicsStep -
-        diagnostics.hostLaunchAppliedAtPhysicsStep +
-        1;
-      diagnostics.hostPostLaunchStates.set(
-        hostPostLaunchStep,
-        hostStates,
-      );
-      if (diagnostics.firstPairedDifference === null) {
-        diagnostics.firstPairedDifference =
-          findFirstBodyDifference(
-            hostStates,
-            guestStates,
-            hostPhysicsStep,
-            guestPhysicsStep,
-            null,
+      if (shouldStepHost) {
+        const hostStates = captureBodyDiagnosticStates(
+          hostMatch.physicsRuntime,
+        );
+        const hostPostLaunchStep =
+          hostPhysicsStep -
+          diagnostics.hostLaunchAppliedAtPhysicsStep +
+          1;
+        diagnostics.hostPostLaunchStates.set(
+          hostPostLaunchStep,
+          hostStates,
+        );
+        if (diagnostics.firstPairedDifference === null) {
+          const guestStates = captureBodyDiagnosticStates(
+            guestMatch.physicsRuntime,
           );
+          diagnostics.firstPairedDifference =
+            findFirstBodyDifference(
+              hostStates,
+              guestStates,
+              hostPhysicsStep,
+              guestPhysicsStep,
+              null,
+            );
+        }
       }
       if (
         diagnostics.firstAlignedDifference === null &&
-        diagnostics.guestLaunchAppliedAtPhysicsStep !== null
+        diagnostics.guestLaunchAppliedAtPhysicsStep !== null &&
+        shouldStepGuest
       ) {
+        const guestStates = captureBodyDiagnosticStates(
+          guestMatch.physicsRuntime,
+        );
         const guestPostLaunchStep =
           guestPhysicsStep -
           diagnostics.guestLaunchAppliedAtPhysicsStep +

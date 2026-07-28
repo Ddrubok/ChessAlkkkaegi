@@ -289,6 +289,8 @@ export interface OnlineRuntime {
   waitUntilReady(): Promise<void>;
   // 매 렌더 프레임 상대 조준과 준비 재전송을 진행한다.
   update(now: number): void;
+  // 정착 중이거나 발사 예약이 생긴 온라인 월드만 다음 물리 step을 허용한다.
+  shouldStepPhysics(): boolean;
   // 기존 입력 선택 정책에서 온라인 소유권을 함께 검사한다.
   canSelectLocalPiece(pieceId: string): boolean;
   // 기존 queueTurnLaunch를 그대로 사용하면서 로컬 진영 소유권을 검사한다.
@@ -1027,6 +1029,13 @@ export function createOnlineRuntime(
         readyResolver = resolve;
         readyRejecter = reject;
       });
+    },
+
+    shouldStepPhysics(): boolean {
+      return (
+        turnRuntime.pendingLaunch !== null ||
+        turnRuntime.phase === "settling"
+      );
     },
 
     update(now: number): void {

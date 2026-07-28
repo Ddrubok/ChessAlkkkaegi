@@ -839,6 +839,7 @@ async function bootstrap(): Promise<void> {
         onlineSelfTestRuntime?.updatePeers(now);
       },
       () => onlineRuntime?.getDebugStatus() ?? null,
+      () => onlineRuntime?.shouldStepPhysics() ?? true,
       () => onlineSelfTestRuntime?.stepPeers(),
     );
     gameLoopStarted = true;
