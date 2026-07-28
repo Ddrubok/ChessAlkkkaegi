@@ -60,6 +60,22 @@ export const BREAKABLE_WALL_OVERLAP_CELLS = 0.75;
 export const POCKET_WALL_EXIT_WIDTH_KING_DIAMETER_MULTIPLIER =
   1.2;
 
+// 핀볼 맵 도면의 좌우 대칭 여섯 점을 셀 단위로 보존해 기획 수정 시 이 표만 바꾸게 한다.
+export const PINBALL_OBSTACLE_CELLS = [
+  { file: "c", rank: 6 },
+  { file: "f", rank: 6 },
+  { file: "a", rank: 4 },
+  { file: "h", rank: 4 },
+  { file: "c", rank: 3 },
+  { file: "e", rank: 3 },
+] as const;
+
+// 핀볼 도면의 작은 원형 점을 재현하면서 말이 사이로 지날 여유를 남기는 셀 대비 원기둥 지름이다.
+export const PINBALL_OBSTACLE_DIAMETER_CELLS = 0.35;
+
+// 일반 발사는 막되 공중에 뜬 말은 넘을 수 있도록 벽 단차보다 높게 둔 고정 원기둥 높이다.
+export const PINBALL_OBSTACLE_HEIGHT = 0.24;
+
 // 마우스와 한 손가락 모두 화면 크기에 과도하게 의존하지 않는 최대 세기 드래그 거리다.
 export const MAX_DRAG_PIXELS = 180;
 

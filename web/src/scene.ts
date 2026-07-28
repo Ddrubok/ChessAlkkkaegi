@@ -2,6 +2,7 @@ import {
   BoxGeometry,
   CanvasTexture,
   Color,
+  CylinderGeometry,
   DirectionalLight,
   HemisphereLight,
   MathUtils,
@@ -43,6 +44,11 @@ import {
   type StageSpawnOptions,
 } from "./stage";
 import {
+  computePinballObstacleDefinitions,
+  hasPinballObstacles,
+  type PinballObstacleDefinition,
+} from "./obstacles";
+import {
   computeBreakableWallSegments,
   computePocketKingBaseRadius,
   computePocketWallSegments,
@@ -60,11 +66,20 @@ export interface BreakableWallMeshBinding {
   shownHitCount: number;
 }
 
+export interface PinballObstacleMeshBinding {
+  // 물리 원기둥과 같은 셀·위치·치수를 제공하는 고정 배치 정의다.
+  definition: PinballObstacleDefinition;
+  // 공식 예시안의 작은 파란 원기둥을 그리는 실제 메시다.
+  mesh: Mesh;
+}
+
 export interface SceneRuntime {
   // 루프가 물리 자세를 개체별 렌더 메시로 복사하기 위한 연결표다.
   pieceMeshes: Map<string, Mesh>;
   // 파괴 벽과 포켓 불파괴 벽을 같은 정의·메시 생성 경로로 동기화하는 연결표다.
   breakableWallMeshes: Map<string, BreakableWallMeshBinding>;
+  // 스테이지 9의 고정 파란 원기둥을 리셋 때 함께 교체하는 연결표다.
+  pinballObstacleMeshes: Map<string, PinballObstacleMeshBinding>;
   scene: Scene;
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
@@ -564,6 +579,58 @@ function disposeBreakableWallMesh(
 }
 
 /**
+ * 한 핀볼 정의를 물리 원기둥과 같은 치수의 파란 메시로 만들어 등록한다.
+ */
+function addPinballObstacleMesh(
+  scene: Scene,
+  obstacleMeshes: Map<string, PinballObstacleMeshBinding>,
+  definition: PinballObstacleDefinition,
+): void {
+  const geometry = new CylinderGeometry(
+    definition.radius,
+    definition.radius,
+    definition.halfHeight * 2,
+    32,
+  );
+  const material = new MeshStandardMaterial({
+    color: 0x176d94,
+    roughness: 0.58,
+    metalness: 0.04,
+  });
+  const mesh = new Mesh(geometry, material);
+  mesh.name = definition.id;
+  mesh.position.set(
+    definition.center.x,
+    definition.center.y,
+    definition.center.z,
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  obstacleMeshes.set(definition.id, {
+    definition,
+    mesh,
+  });
+}
+
+/**
+ * 핀볼 메시가 소유한 지오메트리와 재질을 씬에서 함께 해제한다.
+ */
+function disposePinballObstacleMesh(
+  scene: Scene,
+  binding: PinballObstacleMeshBinding,
+): void {
+  scene.remove(binding.mesh);
+  binding.mesh.geometry.dispose();
+  const materials = Array.isArray(binding.mesh.material)
+    ? binding.mesh.material
+    : [binding.mesh.material];
+  for (const material of materials) {
+    material.dispose();
+  }
+}
+
+/**
  * 진영별 공유 재질을 선택해 32개 개별 메시가 지오메트리와 재질만 공유하게 한다.
  */
 function choosePieceMaterial(
@@ -736,6 +803,27 @@ export function createSceneRuntime(
       );
     }
   }
+  const pinballObstacleMeshes = new Map<
+    string,
+    PinballObstacleMeshBinding
+  >();
+  if (
+    hasPinballObstacles(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    for (const definition of computePinballObstacleDefinitions(
+      assets.meta.cellSize,
+      boardTop,
+    )) {
+      addPinballObstacleMesh(
+        scene,
+        pinballObstacleMeshes,
+        definition,
+      );
+    }
+  }
 
   const whiteMaterial = new MeshStandardMaterial({
     color: 0xf1eadc,
@@ -767,6 +855,7 @@ export function createSceneRuntime(
   const runtime: SceneRuntime = {
     pieceMeshes,
     breakableWallMeshes,
+    pinballObstacleMeshes,
     scene,
     camera,
     renderer,
@@ -915,6 +1004,38 @@ export function resetSceneBreakableWalls(
 }
 
 /**
+ * 이전 핀볼 메시를 모두 버리고 스테이지 9에서만 설정표의 여섯 원기둥을 다시 만든다.
+ */
+export function resetScenePinballObstacles(
+  runtime: SceneRuntime,
+  assets: ChessAssets,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of runtime.pinballObstacleMeshes.values()) {
+    disposePinballObstacleMesh(runtime.scene, binding);
+  }
+  runtime.pinballObstacleMeshes.clear();
+  if (
+    !hasPinballObstacles(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    return;
+  }
+  for (const definition of computePinballObstacleDefinitions(
+    assets.meta.cellSize,
+    runtime.boardTop,
+  )) {
+    addPinballObstacleMesh(
+      runtime.scene,
+      runtime.pinballObstacleMeshes,
+      definition,
+    );
+  }
+}
+
+/**
  * 첫 타격에는 결정적 균열을 붙이고 물리에서 제거된 조각은 같은 fixed-step 경계에 숨긴다.
  */
 export function synchronizeBreakableWallMeshes(
@@ -977,6 +1098,7 @@ export function resetScenePieces(
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): void {
   resetSceneBreakableWalls(runtime, assets, stageOptions);
+  resetScenePinballObstacles(runtime, assets, stageOptions);
   for (const mesh of runtime.pieceMeshes.values()) {
     runtime.scene.remove(mesh);
   }

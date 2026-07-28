@@ -452,6 +452,69 @@ async function recordStageSevenPocketExit(
 }
 
 /**
+ * 백 Pawn이 a4 고정 원기둥에 정면 반사되는 스테이지 9 기록을 만든다.
+ */
+async function recordStageNinePinballReflection(
+  modules,
+  meta,
+  source,
+) {
+  const runtime = await createRecordingRuntime(
+    modules,
+    meta,
+    source,
+  );
+  const pieceId = "white-pawn-a2";
+  const obstacleId = "pinball-obstacle-2";
+  let maximumZ = Number.NEGATIVE_INFINITY;
+  const settleSteps = await recordDirectedTurn(
+    modules,
+    runtime,
+    pieceId,
+    new Vector3(0, 0, 1),
+    0.18,
+    () => {
+      const binding =
+        runtime.physicsRuntime.pieces.get(pieceId);
+      if (binding !== undefined) {
+        maximumZ = Math.max(
+          maximumZ,
+          binding.body.translation().z,
+        );
+      }
+    },
+  );
+  const finalZ =
+    runtime.physicsRuntime.pieces
+      .get(pieceId)
+      ?.body.translation().z ??
+    Number.NEGATIVE_INFINITY;
+  assertCondition(
+    runtime.physicsRuntime.pinballObstacles.has(obstacleId) &&
+      runtime.physicsRuntime.pieces.has(pieceId) &&
+      maximumZ > -0.6 &&
+      finalZ < maximumZ - 0.03,
+    `${pieceId}의 스테이지 9 원기둥 반사가 확인되지 않았습니다: obstacle=${runtime.physicsRuntime.pinballObstacles.has(obstacleId)}, maxZ=${maximumZ}, finalZ=${finalZ}`,
+  );
+  const recording =
+    await modules.replay.readReplayRecording(
+      runtime.recorder,
+    );
+  assertCondition(
+    recording.turns.length === 1,
+    `핀볼 반사 기록이 1턴이 아니라 ${recording.turns.length}턴입니다.`,
+  );
+  return {
+    recording,
+    settleSteps,
+    pieceId,
+    obstacleId,
+    maximumZ,
+    finalZ,
+  };
+}
+
+/**
  * 지정한 헤더 원본으로 10턴을 실제 recorder에 기록한다.
  */
 async function recordTenTurns(modules, meta, source) {
@@ -656,6 +719,33 @@ try {
   );
   console.log(
     `[통과 pocket] stage7 ${pocketRecording.reflectedPieceId} 중앙 반사(minZ=${pocketRecording.reflectedMinimumZ.toFixed(6)}→finalZ=${pocketRecording.reflectedFinalZ.toFixed(6)})→${pocketRecording.exitedPieceId} 모서리 장외 2턴 기록→재생: hashes=2/2, settleSteps=${pocketRecording.settleSteps.join(",")}`,
+  );
+
+  const stageNineSource = {
+    gameMode: "stage",
+    initialSide: "white",
+    stageNumber: 9,
+    runCards: cards.createRunCardState(),
+    permanentUpgrades:
+      metaModule.createDefaultPermanentUpgrades(),
+  };
+  const pinballRecording =
+    await recordStageNinePinballReflection(
+      modules,
+      meta,
+      stageNineSource,
+    );
+  const pinballReplay = await replay.replayRecording(
+    meta,
+    pinballRecording.recording,
+  );
+  assertCondition(
+    pinballReplay.matched &&
+      pinballReplay.turns.length === 1,
+    `스테이지 9 원기둥 반사 재생 불일치: ${JSON.stringify(pinballReplay)}`,
+  );
+  console.log(
+    `[통과 pinball] stage9 ${pinballRecording.pieceId}→${pinballRecording.obstacleId} 반사(maxZ=${pinballRecording.maximumZ.toFixed(6)}→finalZ=${pinballRecording.finalZ.toFixed(6)}) 1턴 기록→재생: hashes=1/1, settleSteps=${pinballRecording.settleSteps}`,
   );
 
   const tampered = replay.deserializeRecording(

@@ -33,6 +33,11 @@ import {
   type StageSpawnOptions,
 } from "./stage";
 import {
+  computePinballObstacleDefinitions,
+  hasPinballObstacles,
+  type PinballObstacleDefinition,
+} from "./obstacles";
+import {
   computeBreakableWallSegments,
   computePocketKingBaseRadius,
   computePocketWallSegments,
@@ -113,6 +118,15 @@ export interface BreakableWallHit {
   hitCount: number;
 }
 
+export interface PinballObstaclePhysicsBinding {
+  // 물리·렌더가 같은 셀·위치·치수를 참조하는 고정 원기둥 정의다.
+  definition: PinballObstacleDefinition;
+  // 발사나 충돌에도 움직이지 않는 고정 강체다.
+  body: RAPIER.RigidBody;
+  // 추가 힘 없이 실제 접촉 반사만 만드는 원기둥 콜라이더다.
+  collider: RAPIER.Collider;
+}
+
 export interface PhysicsRuntime {
   world: RAPIER.World;
   boardBody: RAPIER.RigidBody;
@@ -134,6 +148,8 @@ export interface PhysicsRuntime {
   breakableWalls: Map<string, BreakableWallPhysicsBinding>;
   // 다음 step 경계에서 제거된 조각을 렌더와 검증이 확인하는 id 집합이다.
   destroyedBreakableWallIds: Set<string>;
+  // 스테이지 9에서만 존재하며 내구 상태 없이 순수 접촉만 만드는 고정 원기둥 연결표다.
+  pinballObstacles: Map<string, PinballObstaclePhysicsBinding>;
   // 같은 종류가 여러 개여도 디버그 표시와 로그는 한 번만 기록한다.
   massProperties: Map<PieceType, PieceMassProperties>;
 }
@@ -318,6 +334,55 @@ export function resetPhysicsBreakableWalls(
       definition.id,
       createBreakableWallBody(runtime, definition),
     );
+  }
+}
+
+/**
+ * 기존 핀볼 원기둥을 모두 버리고 스테이지 9에서만 같은 설정표로 여섯 개를 다시 만든다.
+ */
+export function resetPhysicsPinballObstacles(
+  runtime: PhysicsRuntime,
+  meta: ChessSetMeta,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of runtime.pinballObstacles.values()) {
+    runtime.world.removeRigidBody(binding.body);
+  }
+  runtime.pinballObstacles.clear();
+  if (
+    !hasPinballObstacles(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    return;
+  }
+  const definitions = computePinballObstacleDefinitions(
+    meta.cellSize,
+    runtime.boardTop,
+  );
+  for (const definition of definitions) {
+    const body = runtime.world.createRigidBody(
+      RAPIER.RigidBodyDesc.fixed().setTranslation(
+        definition.center.x,
+        definition.center.y,
+        definition.center.z,
+      ),
+    );
+    const collider = runtime.world.createCollider(
+      RAPIER.ColliderDesc.cylinder(
+        definition.halfHeight,
+        definition.radius,
+      )
+        .setFriction(PIECE_FRICTION)
+        .setRestitution(PIECE_RESTITUTION),
+      body,
+    );
+    runtime.pinballObstacles.set(definition.id, {
+      definition,
+      body,
+      collider,
+    });
   }
 }
 
@@ -846,9 +911,11 @@ export async function createPhysicsRuntime(
     pieces: new Map(),
     breakableWalls: new Map(),
     destroyedBreakableWallIds: new Set(),
+    pinballObstacles: new Map(),
     massProperties: new Map(),
   };
   resetPhysicsBreakableWalls(runtime, meta, stageOptions);
+  resetPhysicsPinballObstacles(runtime, meta, stageOptions);
 
   const spawnInstances = selectStageSpawnInstances(
     instances,
@@ -947,10 +1014,14 @@ export function rebuildPhysicsBoard(
     }
   }
   const expectedBodyCount =
-    runtime.pieces.size + runtime.breakableWalls.size + 1;
+    runtime.pieces.size +
+    runtime.breakableWalls.size +
+    runtime.pinballObstacles.size +
+    1;
   const expectedColliderCount =
     runtime.pieces.size +
     runtime.breakableWalls.size +
+    runtime.pinballObstacles.size +
     runtime.boardColliders.length;
   if (
     runtime.world.bodies.len() !== expectedBodyCount ||
@@ -1009,6 +1080,7 @@ export function resetPhysicsPieces(
   runtime.pieces.clear();
   runtime.massProperties.clear();
   resetPhysicsBreakableWalls(runtime, meta, stageOptions);
+  resetPhysicsPinballObstacles(runtime, meta, stageOptions);
   const spawnInstances = selectStageSpawnInstances(
     instances,
     stageOptions,
@@ -1018,10 +1090,14 @@ export function resetPhysicsPieces(
   }
   validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
   const expectedBodyCount =
-    spawnInstances.length + runtime.breakableWalls.size + 1;
+    spawnInstances.length +
+    runtime.breakableWalls.size +
+    runtime.pinballObstacles.size +
+    1;
   const expectedColliderCount =
     spawnInstances.length +
     runtime.breakableWalls.size +
+    runtime.pinballObstacles.size +
     runtime.boardColliders.length;
   if (
     runtime.pieces.size !== spawnInstances.length ||
