@@ -318,8 +318,8 @@ try {
   cards.applyCardPick(runCards, "force");
   const permanentUpgrades =
     metaModule.createDefaultPermanentUpgrades();
-  permanentUpgrades.Pawn.force = 2;
-  permanentUpgrades.Pawn.weight = 1;
+  permanentUpgrades.pieces.Pawn.basic.force = 2;
+  permanentUpgrades.pieces.Pawn.basic.weight = 1;
   const stageSource = {
     gameMode: "stage",
     initialSide: "white",
@@ -337,9 +337,9 @@ try {
       ",",
     ) === "force" &&
       stageRecording.recording.header.stage
-        .permanentUpgrades.Pawn.force === 2 &&
+        .permanentUpgrades.pieces.Pawn.basic.force === 2 &&
       stageRecording.recording.header.stage
-        .permanentUpgrades.Pawn.weight === 1,
+        .permanentUpgrades.pieces.Pawn.basic.weight === 1,
     `스테이지 헤더 강화 복원이 올바르지 않습니다: ${JSON.stringify(stageRecording.recording.header)}`,
   );
   const stageReplay = await replay.replayRecording(
@@ -352,7 +352,7 @@ try {
     `스테이지 재생 불일치: ${JSON.stringify(stageReplay)}`,
   );
   console.log(
-    `[통과 b] stage3 force 카드+Pawn 영구 강화 10턴: hashes=10/10, activeCards=${stageRecording.recording.header.stage.activeCardIds.join(",")}, Pawn=${JSON.stringify(stageRecording.recording.header.stage.permanentUpgrades.Pawn)}`,
+    `[통과 b] stage3 force 카드+Pawn 영구 강화 10턴: hashes=10/10, activeCards=${stageRecording.recording.header.stage.activeCardIds.join(",")}, Pawn=${JSON.stringify(stageRecording.recording.header.stage.permanentUpgrades.pieces.Pawn)}`,
   );
 
   const tampered = replay.deserializeRecording(

@@ -9,8 +9,6 @@ import {
 import {
   FIXED_STEP,
   MAX_SETTLE_SECONDS,
-  PERMANENT_UPGRADE_MAX_LEVEL,
-  PIECE_TYPES,
   deriveBoardHalfExtent,
 } from "./config";
 import type { GameMode } from "./game-mode";
@@ -19,7 +17,8 @@ import {
   type PieceSide,
 } from "./layout";
 import {
-  createDefaultPermanentUpgrades,
+  clonePermanentUpgrades,
+  parsePermanentUpgrades,
   type PermanentUpgrades,
 } from "./meta";
 import {
@@ -181,23 +180,6 @@ const CARD_IDS = new Set<CardId>(
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 
 /**
- * 중첩 영구 강화 표를 기록과 런타임이 서로 수정하지 않도록 값 복사한다.
- */
-function clonePermanentUpgrades(
-  upgrades: Readonly<PermanentUpgrades>,
-): PermanentUpgrades {
-  return Object.fromEntries(
-    PIECE_TYPES.map((type) => [
-      type,
-      {
-        force: upgrades[type].force,
-        weight: upgrades[type].weight,
-      },
-    ]),
-  ) as PermanentUpgrades;
-}
-
-/**
  * 런 카드 상태를 스폰 효과 횟수가 보존되는 활성 id 목록으로 바꾼다.
  */
 export function collectActiveCardIds(
@@ -329,39 +311,6 @@ function parseVector(value: unknown, label: string): ReplayVector3 {
     throw new Error(`${label} 좌표에 유한하지 않은 값이 있습니다.`);
   }
   return { x: source.x, y: source.y, z: source.z };
-}
-
-/**
- * JSON 영구 강화 표를 여섯 종류·두 트랙의 유효 레벨로 엄격히 읽는다.
- */
-function parsePermanentUpgrades(value: unknown): PermanentUpgrades {
-  if (typeof value !== "object" || value === null) {
-    throw new Error("리플레이 영구 강화 표가 객체가 아닙니다.");
-  }
-  const source = value as Record<string, unknown>;
-  const upgrades = createDefaultPermanentUpgrades();
-  for (const type of PIECE_TYPES) {
-    const piece = source[type];
-    if (typeof piece !== "object" || piece === null) {
-      throw new Error(`리플레이 영구 강화에 ${type} 항목이 없습니다.`);
-    }
-    const tracks = piece as Record<string, unknown>;
-    for (const track of ["force", "weight"] as const) {
-      const level = tracks[track];
-      if (
-        typeof level !== "number" ||
-        !Number.isInteger(level) ||
-        level < 0 ||
-        level > PERMANENT_UPGRADE_MAX_LEVEL
-      ) {
-        throw new Error(
-          `${type}.${track} 리플레이 강화 레벨 ${String(level)}가 유효하지 않습니다.`,
-        );
-      }
-      upgrades[type][track] = level;
-    }
-  }
-  return upgrades;
 }
 
 /**
