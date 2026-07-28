@@ -10,14 +10,26 @@ import { loadChessAssets } from "./assets";
 import {
   applyCardPick,
   cloneRunCardState,
+  computeEffectiveGeneralCardGrade,
   computePlayerLaunchSpeedMultiplier,
+  computeTunedGeneralCardEffect,
   createRunCardState,
   drawUpgradeCards,
+  isGiantPawnCardActive,
+  isProneStartCardActive,
   resetRunCardState,
   restoreRunCardState,
   type CardId,
 } from "./cards";
 import {
+  createCardEffectTuning,
+  createCardTuningRuntime,
+  setCardTuningGameMode,
+  updateCardTuningAppliedValues,
+  type CardTuningAppliedValues,
+} from "./card-tuning";
+import {
+  CARD_EFFECT_SCALE,
   deriveBoardHalfExtent,
   PIECE_TYPES,
   PLAYER_MAX_SIZE_SCALE,
@@ -229,6 +241,13 @@ async function bootstrap(): Promise<void> {
   synchronizePieceMeshes(sceneRuntime, physicsRuntime);
   loadingPanel.remove();
   const tuningRuntime = createTuningRuntime(app, physicsRuntime);
+  const defaultGiantPawnSizeMultiplier =
+    assets.meta.pieces.King.bounds.y /
+    assets.meta.pieces.Pawn.bounds.y;
+  const cardTuningRuntime = createCardTuningRuntime(
+    app,
+    defaultGiantPawnSizeMultiplier,
+  );
   const aimRuntime = createAimRuntime(sceneRuntime);
   const aimParametersRuntime = createAimParametersRuntime(
     app,
@@ -251,6 +270,22 @@ async function bootstrap(): Promise<void> {
     tuningRuntime.settings.enemyStageBuffScale;
   let appliedCardEffectScale =
     tuningRuntime.settings.cardEffectScale;
+  let appliedCardTuningValues: CardTuningAppliedValues = {
+    gameMode: "hotseat",
+    weightGrade: 0,
+    forceGrade: 0,
+    sizeGrade: 0,
+    boardWeightFraction: 0,
+    liveForceFraction: 0,
+    boardRegularSizeScale: 1,
+    boardGiantPawnScale: null,
+    spawnedPieceCount: physicsRuntime.pieces.size,
+    proneStartActive: false,
+  };
+  updateCardTuningAppliedValues(
+    cardTuningRuntime,
+    appliedCardTuningValues,
+  );
   const playerReadoutInstances = PIECE_TYPES.map((type) => {
     const instance = PIECE_INSTANCES.find(
       (candidate) =>
@@ -389,10 +424,13 @@ async function bootstrap(): Promise<void> {
         const launchRequest = {
           ...request,
           speedMultiplier: computePlayerLaunchSpeedMultiplier(
-            gameMode,
+            binding?.instance.side === "white"
+              ? gameMode
+              : "online",
             runCardState,
             permanentForceBonus,
             appliedCardEffectScale,
+            createCardEffectTuning(cardTuningRuntime.settings),
           ),
         };
         return gameMode === "online" &&
@@ -424,6 +462,35 @@ async function bootstrap(): Promise<void> {
   );
   readsAiTelegraphActive = () =>
     isAiTelegraphActive(aiRuntime);
+  const refreshCardTuningLiveValues = (): void => {
+    const gameMode = gameModeRuntime?.mode ?? "hotseat";
+    const cardTuning = createCardEffectTuning(
+      cardTuningRuntime.settings,
+    );
+    appliedCardTuningValues = {
+      ...appliedCardTuningValues,
+      gameMode,
+      forceGrade: computeEffectiveGeneralCardGrade(
+        gameMode,
+        runCardState,
+        "force",
+        cardTuning,
+      ),
+      liveForceFraction: computeTunedGeneralCardEffect(
+        gameMode,
+        runCardState,
+        "force",
+        appliedCardEffectScale,
+        cardTuning,
+      ),
+    };
+    updateCardTuningAppliedValues(
+      cardTuningRuntime,
+      appliedCardTuningValues,
+    );
+  };
+  cardTuningRuntime.settingsChangedHandler =
+    refreshCardTuningLiveValues;
   const resetBoard = async (
     requestedOptions?: StageSpawnOptions,
   ): Promise<void> => {
@@ -449,6 +516,9 @@ async function bootstrap(): Promise<void> {
         baseOptions.gameMode === "stage"
           ? tuningRuntime.settings.cardEffectScale
           : undefined,
+      cardTuning: createCardEffectTuning(
+        cardTuningRuntime.settings,
+      ),
     };
     const spawnInstances = selectStageSpawnInstances(
       PIECE_INSTANCES,
@@ -504,8 +574,85 @@ async function bootstrap(): Promise<void> {
       stageOptions.enemyBuffStepScale ??
       tuningRuntime.settings.enemyStageBuffScale;
     appliedCardEffectScale =
-      stageOptions.cardEffectScale ??
-      tuningRuntime.settings.cardEffectScale;
+      stageOptions.gameMode === "stage"
+        ? (stageOptions.cardEffectScale ??
+          tuningRuntime.settings.cardEffectScale)
+        : CARD_EFFECT_SCALE;
+    const appliedCardTuning = stageOptions.cardTuning;
+    if (appliedCardTuning === undefined) {
+      throw new Error("보드에 적용할 카드 조절값이 없습니다.");
+    }
+    const regularSizeInstance =
+      playerReadoutInstances.find(
+        (instance) => instance.type !== "Pawn",
+      );
+    if (regularSizeInstance === undefined) {
+      throw new Error("카드 크기 적용값 기준 백 말을 찾지 못했습니다.");
+    }
+    const giantPawnActive = isGiantPawnCardActive(
+      stageOptions.gameMode,
+      runCardState,
+      appliedCardTuning,
+    );
+    const giantPawnBinding = giantPawnActive
+      ? [...physicsRuntime.pieces.values()].find(
+          (binding) =>
+            binding.instance.side === "white" &&
+            binding.instance.type === "Pawn",
+        )
+      : undefined;
+    appliedCardTuningValues = {
+      gameMode: stageOptions.gameMode,
+      weightGrade: computeEffectiveGeneralCardGrade(
+        stageOptions.gameMode,
+        runCardState,
+        "weight",
+        appliedCardTuning,
+      ),
+      forceGrade: computeEffectiveGeneralCardGrade(
+        stageOptions.gameMode,
+        runCardState,
+        "force",
+        appliedCardTuning,
+      ),
+      sizeGrade: computeEffectiveGeneralCardGrade(
+        stageOptions.gameMode,
+        runCardState,
+        "size",
+        appliedCardTuning,
+      ),
+      boardWeightFraction: computeTunedGeneralCardEffect(
+        stageOptions.gameMode,
+        runCardState,
+        "weight",
+        appliedCardEffectScale,
+        appliedCardTuning,
+      ),
+      liveForceFraction: computeTunedGeneralCardEffect(
+        stageOptions.gameMode,
+        runCardState,
+        "force",
+        appliedCardEffectScale,
+        appliedCardTuning,
+      ),
+      boardRegularSizeScale: computeStagePieceScale(
+        regularSizeInstance,
+        assets.meta,
+        stageOptions,
+      ),
+      boardGiantPawnScale:
+        giantPawnBinding?.uniformScale ?? null,
+      spawnedPieceCount: physicsRuntime.pieces.size,
+      proneStartActive: isProneStartCardActive(
+        stageOptions.gameMode,
+        runCardState,
+        appliedCardTuning,
+      ),
+    };
+    updateCardTuningAppliedValues(
+      cardTuningRuntime,
+      appliedCardTuningValues,
+    );
     if (stageOptions.gameMode !== "stage") {
       updateTuningAppliedValues(tuningRuntime, {
         gameMode: stageOptions.gameMode,
@@ -590,12 +737,14 @@ async function bootstrap(): Promise<void> {
     resetRunCardState(runCardState);
     setTurnGameMode(turnRuntime, mode);
     setTuningGameMode(tuningRuntime, mode);
+    setCardTuningGameMode(cardTuningRuntime, mode);
     try {
       await resetBoard({ gameMode: mode, stageNumber: 1 });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
       setTurnGameMode(turnRuntime, previousMode);
       setTuningGameMode(tuningRuntime, previousMode);
+      setCardTuningGameMode(cardTuningRuntime, previousMode);
       throw error;
     }
   });

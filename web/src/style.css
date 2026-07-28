@@ -213,6 +213,11 @@ body {
   overflow: auto;
 }
 
+.card-tuning-panel {
+  right: 0.75rem;
+  left: auto;
+}
+
 .aim-parameters[hidden],
 .tuning-panel[hidden] {
   display: none;
@@ -240,6 +245,15 @@ body {
   border-radius: 0.3rem;
   color: inherit;
   background: rgb(0 0 0 / 28%);
+}
+
+.tuning-control.tuning-toggle {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.tuning-control.tuning-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
 }
 
 .tuning-readout {
@@ -890,6 +904,11 @@ body {
   .tuning-panel {
     top: 3.7rem;
     max-height: calc(100vh - 4.1rem);
+  }
+
+  .card-tuning-panel {
+    right: 0.4rem;
+    left: auto;
   }
 
   .tuning-control {
