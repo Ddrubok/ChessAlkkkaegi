@@ -8,7 +8,8 @@ import {
   PERMANENT_UPGRADE_STEP,
   PERMANENT_UPGRADE_TIER_MAX_LEVEL,
   PIECE_TYPES,
-  STAGE_CLEAR_POINTS,
+  STAGE_POINT_CONTRIBUTION_UNIT,
+  STAGE_RUN_LENGTH,
   type PieceType,
 } from "./config";
 
@@ -64,6 +65,11 @@ export interface MetaRuntime {
   state: MetaState;
   // 브라우저 저장소를 사용할 수 없으면 null로 닫는 선택적 저장 연결이다.
   storage: MetaStorage | null;
+}
+
+export interface StageRunPointState {
+  // 아직 영구 저장하지 않은 이번 런의 마지막 클리어 스테이지다.
+  lastClearedStage: number;
 }
 
 export interface PurchaseResult {
@@ -630,9 +636,102 @@ export function resetPermanentUpgrades(runtime: MetaRuntime): number {
 }
 
 /**
- * 스테이지 승리 보상 100포인트를 카드 선택 전에 더하고 즉시 저장한다.
+ * 새 런이 아직 어느 스테이지도 클리어하지 않은 임시 정산 상태를 만든다.
  */
-export function awardStageClearPoints(runtime: MetaRuntime): void {
-  runtime.state.points += STAGE_CLEAR_POINTS;
-  saveMetaState(runtime);
+export function createStageRunPointState(): StageRunPointState {
+  return { lastClearedStage: 0 };
+}
+
+/**
+ * 마지막 클리어 스테이지까지 N배 기본 단위를 누적해 런 정산액을 계산한다.
+ */
+export function computeStageRunPayout(
+  lastClearedStage: number,
+): number {
+  if (
+    !Number.isInteger(lastClearedStage) ||
+    lastClearedStage < 0 ||
+    lastClearedStage > STAGE_RUN_LENGTH
+  ) {
+    throw new Error(
+      `마지막 클리어 스테이지 ${lastClearedStage}가 0~${STAGE_RUN_LENGTH} 정수가 아닙니다.`,
+    );
+  }
+  let payout = 0;
+  for (let stage = 1; stage <= lastClearedStage; stage += 1) {
+    payout += stage * STAGE_POINT_CONTRIBUTION_UNIT;
+  }
+  return payout;
+}
+
+/**
+ * 순서대로 클리어한 스테이지만 임시 상태에 기록하고 영구 저장은 하지 않는다.
+ */
+export function recordStageRunClear(
+  state: StageRunPointState,
+  stageNumber: number,
+): number {
+  if (
+    !Number.isInteger(stageNumber) ||
+    stageNumber < 1 ||
+    stageNumber > STAGE_RUN_LENGTH
+  ) {
+    throw new Error(
+      `클리어 스테이지 ${stageNumber}가 1~${STAGE_RUN_LENGTH} 정수가 아닙니다.`,
+    );
+  }
+  if (stageNumber !== state.lastClearedStage + 1) {
+    throw new Error(
+      `스테이지 클리어 순서가 올바르지 않습니다: ${state.lastClearedStage} 다음에 ${stageNumber}`,
+    );
+  }
+  state.lastClearedStage = stageNumber;
+  return computeStageRunPayout(state.lastClearedStage);
+}
+
+/**
+ * 패배 또는 10스테이지 완주 때만 임시 포인트를 영구 메타에 더하고 저장한다.
+ */
+export function settleStageRunPoints(
+  runtime: MetaRuntime,
+  state: StageRunPointState,
+): number {
+  const payout = computeStageRunPayout(state.lastClearedStage);
+  state.lastClearedStage = 0;
+  if (payout > 0) {
+    runtime.state.points += payout;
+    saveMetaState(runtime);
+  }
+  return payout;
+}
+
+/**
+ * 런 이탈 때 임시 정산액을 지급하지 않고 전부 버린다.
+ */
+export function discardStageRunPoints(
+  state: StageRunPointState,
+): number {
+  const discarded = computeStageRunPayout(
+    state.lastClearedStage,
+  );
+  state.lastClearedStage = 0;
+  return discarded;
+}
+
+/**
+ * 1~9 스테이지 클리어만 다음 스테이지용 카드 선택으로 이어지는지 반환한다.
+ */
+export function shouldOfferStageClearCards(
+  completedStage: number,
+): boolean {
+  if (
+    !Number.isInteger(completedStage) ||
+    completedStage < 1 ||
+    completedStage > STAGE_RUN_LENGTH
+  ) {
+    throw new Error(
+      `카드 제공 판정 스테이지 ${completedStage}가 1~${STAGE_RUN_LENGTH} 정수가 아닙니다.`,
+    );
+  }
+  return completedStage < STAGE_RUN_LENGTH;
 }

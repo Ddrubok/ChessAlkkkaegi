@@ -34,6 +34,7 @@ import {
   deriveBoardHalfExtent,
   PIECE_TYPES,
   PLAYER_MAX_SIZE_SCALE,
+  STAGE_RUN_LENGTH,
 } from "./config";
 import {
   createGameModeRuntime,
@@ -56,6 +57,7 @@ import {
   hideMatchResult,
   showDisconnectedMatchEnd,
   showMatchResult,
+  showStageRunResult,
 } from "./match";
 import {
   createMainMenu,
@@ -66,9 +68,13 @@ import {
   setMainMenuReady,
 } from "./menu";
 import {
-  awardStageClearPoints,
   computePermanentForceBonus,
   createMetaRuntime,
+  createStageRunPointState,
+  discardStageRunPoints,
+  recordStageRunClear,
+  settleStageRunPoints,
+  shouldOfferStageClearCards,
 } from "./meta";
 import {
   createPhysicsRuntime,
@@ -168,6 +174,7 @@ async function bootstrap(): Promise<void> {
     | ((mode: GameMode) => Promise<void>)
     | null = null;
   let returnToMenuAction: (() => Promise<void>) | null = null;
+  let confirmAbandonAction: (() => Promise<void>) | null = null;
   const menuRuntime = createMainMenu(
     app,
     metaRuntime,
@@ -182,6 +189,12 @@ async function bootstrap(): Promise<void> {
         throw new Error("메뉴 복귀 경로가 아직 준비되지 않았습니다.");
       }
       await returnToMenuAction();
+    },
+    async () => {
+      if (confirmAbandonAction === null) {
+        throw new Error("대국 포기 경로가 아직 준비되지 않았습니다.");
+      }
+      await confirmAbandonAction();
     },
   );
   const assets = await loadChessAssets((event) => {
@@ -261,6 +274,7 @@ async function bootstrap(): Promise<void> {
     tuningRuntime.settings,
   );
   const runCardState = createRunCardState();
+  const stageRunPoints = createStageRunPointState();
   let replayDevelopmentRuntime: ReplayDevelopmentRuntime | null =
     null;
   let gameModeRuntime: GameModeRuntime | null = null;
@@ -871,7 +885,10 @@ async function bootstrap(): Promise<void> {
   gameModeRuntime = createGameModeRuntime(async (mode) => {
     const previousMode = gameModeRuntime?.mode ?? "hotseat";
     const previousCards = cloneRunCardState(runCardState);
+    const previousLastClearedStage =
+      stageRunPoints.lastClearedStage;
     resetRunCardState(runCardState);
+    stageRunPoints.lastClearedStage = 0;
     setTurnGameMode(turnRuntime, mode);
     setTuningGameMode(tuningRuntime, mode);
     setCardTuningGameMode(cardTuningRuntime, mode);
@@ -879,6 +896,8 @@ async function bootstrap(): Promise<void> {
       await resetBoard({ gameMode: mode, stageNumber: 1 });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
+      stageRunPoints.lastClearedStage =
+        previousLastClearedStage;
       setTurnGameMode(turnRuntime, previousMode);
       setTuningGameMode(tuningRuntime, previousMode);
       setCardTuningGameMode(cardTuningRuntime, previousMode);
@@ -1009,6 +1028,30 @@ async function bootstrap(): Promise<void> {
     lockInputForMatchOver(inputRuntime);
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
+    if (gameMode === "stage") {
+      if (winner === "white") {
+        recordStageRunClear(stageRunPoints, completedStage);
+      }
+      const completedRun =
+        winner === "white" &&
+        completedStage === STAGE_RUN_LENGTH;
+      if (winner === "black" || completedRun) {
+        const payout = settleStageRunPoints(
+          metaRuntime,
+          stageRunPoints,
+        );
+        renderMainMenu(menuRuntime);
+        menuRuntime.returnButton.hidden = true;
+        showStageRunResult(
+          matchRuntime,
+          completedStage,
+          payout,
+          completedRun,
+          () => returnToMainMenu(menuRuntime),
+        );
+        return;
+      }
+    }
     const restartAfterResult = async (): Promise<void> => {
       if (gameMode === "online") {
         return;
@@ -1038,19 +1081,19 @@ async function bootstrap(): Promise<void> {
       }
     };
     const upgradeCards =
-      gameMode === "stage" && winner === "white"
+      gameMode === "stage" &&
+      winner === "white" &&
+      shouldOfferStageClearCards(completedStage)
         ? drawUpgradeCards(
             completedStage,
             runCardState,
             tuningRuntime.settings.cardEffectScale,
           )
         : [];
-    if (gameMode === "stage" && winner === "white") {
-      awardStageClearPoints(metaRuntime);
-      renderMainMenu(menuRuntime);
-    }
     const selectUpgradeCard =
-      gameMode === "stage" && winner === "white"
+      gameMode === "stage" &&
+      winner === "white" &&
+      shouldOfferStageClearCards(completedStage)
         ? async (cardId: CardId): Promise<void> => {
             const previousStage =
               gameModeRuntime?.stageNumber ?? completedStage;
@@ -1277,6 +1320,27 @@ async function bootstrap(): Promise<void> {
     hideDisconnectOverlay();
     await switchGameMode(gameModeRuntime, "hotseat", true);
     hideMatchResult(matchRuntime);
+  };
+  confirmAbandonAction = async (): Promise<void> => {
+    if (gameModeRuntime === null) {
+      throw new Error("대전 모드 상태가 준비되지 않았습니다.");
+    }
+    if (gameModeRuntime.mode !== "stage") {
+      await returnToMainMenu(menuRuntime);
+      return;
+    }
+    const abandonedStage = gameModeRuntime.stageNumber;
+    discardStageRunPoints(stageRunPoints);
+    turnRuntime.phase = "match-over";
+    lockInputForMatchOver(inputRuntime);
+    menuRuntime.returnButton.hidden = true;
+    showStageRunResult(
+      matchRuntime,
+      abandonedStage,
+      0,
+      false,
+      () => returnToMainMenu(menuRuntime),
+    );
   };
   if (
     new URLSearchParams(window.location.search).get("replay") === "1"

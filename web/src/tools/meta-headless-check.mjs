@@ -145,6 +145,7 @@ try {
     cardsModule,
     configModule,
     layoutModule,
+    matchModule,
     metaModule,
     physicsModule,
     stageModule,
@@ -154,6 +155,7 @@ try {
     vite.ssrLoadModule("/src/cards.ts"),
     vite.ssrLoadModule("/src/config.ts"),
     vite.ssrLoadModule("/src/layout.ts"),
+    vite.ssrLoadModule("/src/match.ts"),
     vite.ssrLoadModule("/src/meta.ts"),
     vite.ssrLoadModule("/src/physics.ts"),
     vite.ssrLoadModule("/src/stage.ts"),
@@ -351,17 +353,164 @@ try {
     `[통과 tuning-storage] roundTrip speed=${loadedTuning.settings.maxLaunchSpeed.toFixed(2)}, friction=${loadedTuning.settings.friction.toFixed(2)}, enemyScale=${loadedTuning.settings.enemyStageBuffScale.toFixed(2)}, cardScale=${loadedTuning.settings.cardEffectScale.toFixed(2)}; partialFallback=${partiallyCorrupted.invalidKeys.join(",")}; corruptFallback=${fullyCorrupted.invalidKeys.length}/${Object.keys(tuningDefaults).length}, warning=${fullyCorrupted.warning !== null}; onlineDefaults=${onlineUsesDefaults}, localRestored=${localValuesRestored}, cleared=${clearWarning === null}`,
   );
 
-  const rewardStorage = new MemoryStorage();
-  const rewardRuntime = metaModule.createMetaRuntime(rewardStorage);
-  metaModule.awardStageClearPoints(rewardRuntime);
+  const expectedDefeatPayouts = [
+    0, 1, 3, 6, 10, 15, 21, 28, 36, 45,
+  ];
+  const measuredDefeatPayouts = [];
+  for (
+    let lostStage = 1;
+    lostStage <= configModule.STAGE_RUN_LENGTH;
+    lostStage += 1
+  ) {
+    const defeatStorage = new MemoryStorage();
+    const defeatRuntime =
+      metaModule.createMetaRuntime(defeatStorage);
+    const defeatProgress =
+      metaModule.createStageRunPointState();
+    for (
+      let clearedStage = 1;
+      clearedStage < lostStage;
+      clearedStage += 1
+    ) {
+      metaModule.recordStageRunClear(
+        defeatProgress,
+        clearedStage,
+      );
+      assertCondition(
+        defeatStorage.values.size === 0 &&
+          defeatRuntime.state.points === 0,
+        `${clearedStage} 스테이지 중간 클리어 전에 포인트가 저장됐습니다.`,
+      );
+    }
+    const payout = metaModule.settleStageRunPoints(
+      defeatRuntime,
+      defeatProgress,
+    );
+    measuredDefeatPayouts.push(payout);
+    const storedPoints = defeatStorage.getItem(
+      metaModule.META_POINTS_STORAGE_KEY,
+    );
+    assertCondition(
+      payout === expectedDefeatPayouts[lostStage - 1] &&
+        defeatRuntime.state.points === payout &&
+        (payout === 0
+          ? storedPoints === null
+          : JSON.parse(storedPoints) === payout),
+      `${lostStage} 스테이지 패배 정산 실패: payout=${payout}, stored=${storedPoints}`,
+    );
+  }
+
+  const completionStorage = new MemoryStorage();
+  const completionRuntime =
+    metaModule.createMetaRuntime(completionStorage);
+  const completionProgress =
+    metaModule.createStageRunPointState();
+  for (
+    let clearedStage = 1;
+    clearedStage <= configModule.STAGE_RUN_LENGTH;
+    clearedStage += 1
+  ) {
+    metaModule.recordStageRunClear(
+      completionProgress,
+      clearedStage,
+    );
+    assertCondition(
+      completionStorage.values.size === 0 &&
+        completionRuntime.state.points === 0,
+      `${clearedStage} 스테이지 완주 정산 전에 포인트가 저장됐습니다.`,
+    );
+  }
+  const completionPayout = metaModule.settleStageRunPoints(
+    completionRuntime,
+    completionProgress,
+  );
   assertCondition(
-    rewardRuntime.state.points === 100 &&
+    completionPayout === 55 &&
+      completionRuntime.state.points === 55 &&
       JSON.parse(
-        rewardStorage.getItem(
+        completionStorage.getItem(
           metaModule.META_POINTS_STORAGE_KEY,
-    ),
-      ) === 100,
-    "스테이지 클리어 100포인트가 즉시 저장되지 않았습니다.",
+        ),
+      ) === 55,
+    `10스테이지 완주 정산 실패: payout=${completionPayout}`,
+  );
+
+  const abandonStorage = new MemoryStorage();
+  const abandonRuntime =
+    metaModule.createMetaRuntime(abandonStorage);
+  const abandonProgress =
+    metaModule.createStageRunPointState();
+  for (let clearedStage = 1; clearedStage <= 4; clearedStage += 1) {
+    metaModule.recordStageRunClear(
+      abandonProgress,
+      clearedStage,
+    );
+  }
+  const discardedPayout =
+    metaModule.discardStageRunPoints(abandonProgress);
+  assertCondition(
+    discardedPayout === 10 &&
+      abandonProgress.lastClearedStage === 0 &&
+      abandonRuntime.state.points === 0 &&
+      abandonStorage.values.size === 0 &&
+      metaModule.settleStageRunPoints(
+        abandonRuntime,
+        abandonProgress,
+      ) === 0,
+    `런 이탈 미지급 실패: discarded=${discardedPayout}, state=${JSON.stringify(abandonProgress)}`,
+  );
+
+  const cardOfferStages = Array.from(
+    { length: configModule.STAGE_RUN_LENGTH },
+    (_, index) =>
+      metaModule.shouldOfferStageClearCards(index + 1),
+  );
+  const defeatCopy = matchModule.createStageRunResultCopy(
+    7,
+    21,
+    false,
+  );
+  const completionCopy = matchModule.createStageRunResultCopy(
+    10,
+    55,
+    true,
+  );
+  assertCondition(
+    configModule.STAGE_POINT_CONTRIBUTION_UNIT === 1 &&
+      JSON.stringify(cardOfferStages) ===
+        JSON.stringify([
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          false,
+        ]) &&
+      JSON.stringify(defeatCopy) ===
+        JSON.stringify({
+          kicker: "대국 종료",
+          heading: "스테이지 7 종료",
+          detailLines: ["획득 포인트 : 21점"],
+          buttonLabel: "메인으로 이동",
+        }) &&
+      JSON.stringify(completionCopy) ===
+        JSON.stringify({
+          kicker: null,
+          heading: "축하합니다.",
+          detailLines: [
+            "데모 버전 스테이지를 전부 클리어하셨습니다.",
+            "플레이해 주셔서 감사합니다.",
+          ],
+          buttonLabel: "메인으로 이동",
+        }),
+    `카드 제공·결과 문구 실패: cards=${JSON.stringify(cardOfferStages)}, defeat=${JSON.stringify(defeatCopy)}, completion=${JSON.stringify(completionCopy)}`,
+  );
+  console.log(
+    `[통과 run] defeat=${measuredDefeatPayouts.join("/")}, complete=${completionPayout}, abandon=0(discarded ${discardedPayout}), cards=${cardOfferStages.map((offered) => (offered ? 1 : 0)).join("/")}`,
   );
 
   const costs = {
@@ -588,7 +737,7 @@ try {
     `전체 초기화 실패: refund=${refunded}, state=${JSON.stringify(purchaseRuntime.state)}, persisted=${JSON.stringify(persistedAfterReset)}`,
   );
   console.log(
-    `[통과 b] nodes=25, costs=${JSON.stringify(costs)}, total=322; prerequisites=blocked→unlocked; size=0/1(+3%, repeat blocked); caps=force/weight +6%; reset=free/refund ${refunded}/322; stageClear=+100(saved)`,
+    `[통과 b] nodes=25, costs=${JSON.stringify(costs)}, total=322; prerequisites=blocked→unlocked; size=0/1(+3%, repeat blocked); caps=force/weight +6%; reset=free/refund ${refunded}/322`,
   );
 
   const permanentUpgrades =
