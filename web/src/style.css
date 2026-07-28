@@ -149,6 +149,38 @@ body {
   background: #ffd54a;
 }
 
+.strike-action-bar {
+  position: absolute;
+  z-index: 5;
+  top: 3.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 0.65rem;
+  background: rgb(12 14 17 / 84%);
+}
+
+.strike-action-bar button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 0.45rem;
+  color: #f8f2e7;
+  background: rgb(255 255 255 / 7%);
+  cursor: pointer;
+}
+
+.strike-action-bar button[aria-pressed="true"] {
+  border-color: #ffd54a;
+  color: #171410;
+  background: #ffd54a;
+}
+
+.strike-action-bar[hidden] {
+  display: none;
+}
+
 .return-menu-button:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -821,6 +853,11 @@ body {
   }
 
   .return-menu-button {
+    top: 3.4rem;
+    right: 0.4rem;
+  }
+
+  .strike-action-bar {
     top: 3.4rem;
     right: 0.4rem;
   }
