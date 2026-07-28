@@ -29,6 +29,91 @@ function measureMessageBytes(message) {
 }
 
 /**
+ * 스냅샷 복구 전후의 살아 있는 말·수면·속도·pose를 원시 수치로 계측한다.
+ */
+function captureRecoveryBodies(runtime) {
+  return {
+    step: runtime.turnRuntime.physicsStepNumber,
+    pieces: [...runtime.physicsRuntime.pieces.values()]
+      .sort((left, right) =>
+        left.instance.id.localeCompare(right.instance.id),
+      )
+      .map((binding) => {
+        const position = binding.body.translation();
+        const rotation = binding.body.rotation();
+        const linearVelocity = binding.body.linvel();
+        const angularVelocity = binding.body.angvel();
+        return {
+          id: binding.instance.id,
+          p: [position.x, position.y, position.z],
+          q: [
+            rotation.x,
+            rotation.y,
+            rotation.z,
+            rotation.w,
+          ],
+          linearSpeed: Math.hypot(
+            linearVelocity.x,
+            linearVelocity.y,
+            linearVelocity.z,
+          ),
+          angularSpeed: Math.hypot(
+            angularVelocity.x,
+            angularVelocity.y,
+            angularVelocity.z,
+          ),
+          sleeping: binding.body.isSleeping(),
+        };
+      }),
+  };
+}
+
+/**
+ * 권위 스냅샷과 실제 바디 pose 사이의 원시 수치 차이를 센다.
+ */
+function compareSnapshotBodies(snapshot, captured) {
+  const actualById = new Map(
+    captured.pieces.map((piece) => [piece.id, piece]),
+  );
+  let movedPieces = 0;
+  let maxPositionDelta = 0;
+  let maxRotationDelta = 0;
+  const changed = [];
+  for (const expected of snapshot.pieces) {
+    const actual = actualById.get(expected.id);
+    if (actual === undefined) {
+      continue;
+    }
+    const positionDelta = Math.max(
+      ...expected.p.map((value, index) =>
+        Math.abs(value - actual.p[index]),
+      ),
+    );
+    const rotationDelta = Math.max(
+      ...expected.q.map((value, index) =>
+        Math.abs(value - actual.q[index]),
+      ),
+    );
+    if (positionDelta > 0 || rotationDelta > 0) {
+      movedPieces += 1;
+      changed.push({
+        id: expected.id,
+        positionDelta,
+        rotationDelta,
+      });
+    }
+    maxPositionDelta = Math.max(maxPositionDelta, positionDelta);
+    maxRotationDelta = Math.max(maxRotationDelta, rotationDelta);
+  }
+  return {
+    movedPieces,
+    maxPositionDelta,
+    maxRotationDelta,
+    changed,
+  };
+}
+
+/**
  * 두 온라인 런타임 사이에서 동기적으로 메시지를 전달하고 전체 로그를 보존한다.
  */
 function createFakeTransportPair() {
@@ -43,6 +128,8 @@ function createFakeTransportPair() {
       dropKinds: new Set(),
       deferMessages: false,
       disconnectCause: null,
+      beforeDeliver: null,
+      afterDeliver: null,
       // 실제 데이터 채널처럼 닫힌 뒤 전송을 즉시 거절하기 위한 연결 상태다.
       connected: true,
       send(payload) {
@@ -63,9 +150,11 @@ function createFakeTransportPair() {
         this.deliver(cloned);
       },
       deliver(payload) {
+        this.beforeDeliver?.(payload);
         for (const handler of this.peer.messageHandlers) {
           handler(payload);
         }
+        this.afterDeliver?.(payload);
       },
       flushDeferred() {
         for (const payload of deferredMessages.splice(0)) {
@@ -436,6 +525,46 @@ try {
       onResigned: (side) => resignedEvents.push(`guest:${side}`),
     },
   );
+  let recoveryDiagnostics = null;
+  transports.guest.beforeDeliver = (payload) => {
+    if (payload.kind !== "stateRequest") {
+      return;
+    }
+    recoveryDiagnostics = {
+      sourceSnapshot: online.createOnlineStateSnapshot(
+        host.turnRuntime,
+        payload.turnIndex,
+      ),
+      canonicalSnapshot: null,
+      hostBeforeApply: captureRecoveryBodies(host),
+      hostBeforeDelivery: null,
+      guestBeforeApply: null,
+      guestAfterApply: null,
+    };
+  };
+  transports.host.beforeDeliver = (payload) => {
+    if (payload.kind !== "stateSnapshot") {
+      return;
+    }
+    assertCondition(
+      recoveryDiagnostics !== null,
+      "stateRequest보다 stateSnapshot이 먼저 전달됐습니다.",
+    );
+    recoveryDiagnostics.canonicalSnapshot = payload;
+    recoveryDiagnostics.hostBeforeDelivery =
+      captureRecoveryBodies(host);
+    recoveryDiagnostics.guestBeforeApply =
+      captureRecoveryBodies(guest);
+  };
+  transports.host.afterDeliver = (payload) => {
+    if (
+      payload.kind === "stateSnapshot" &&
+      recoveryDiagnostics !== null
+    ) {
+      recoveryDiagnostics.guestAfterApply =
+        captureRecoveryBodies(guest);
+    }
+  };
   hostOnline.startMatch();
   guestOnline.startMatch();
   await Promise.all([
@@ -457,6 +586,7 @@ try {
   const settleSteps = [];
   let recoveryTurn = null;
   let recoverySleeping = false;
+  let recoveryMeasurement = null;
   for (let turnIndex = 0; turnIndex < 10; turnIndex += 1) {
     const localRuntime =
       host.turnRuntime.currentSide === "white"
@@ -534,6 +664,57 @@ try {
       recoverySleeping = [
         ...guest.physicsRuntime.pieces.values(),
       ].every((binding) => binding.body.isSleeping());
+      assertCondition(
+        recoveryDiagnostics !== null &&
+          recoveryDiagnostics.guestAfterApply !== null &&
+          guestOnline.lastHashComparison !== null,
+        "스냅샷 복구 진단값이 수집되지 않았습니다.",
+      );
+      const hostIds =
+        recoveryDiagnostics.hostBeforeDelivery.pieces.map(
+          (piece) => piece.id,
+        );
+      const guestIds =
+        recoveryDiagnostics.guestBeforeApply.pieces.map(
+          (piece) => piece.id,
+        );
+      const guestAfterApply =
+        recoveryDiagnostics.guestAfterApply;
+      recoveryMeasurement = {
+        hostCount: hostIds.length,
+        guestCount: guestIds.length,
+        hostOnly: hostIds.filter(
+          (id) => !guestIds.includes(id),
+        ),
+        guestOnly: guestIds.filter(
+          (id) => !hostIds.includes(id),
+        ),
+        preGuestHash:
+          guestOnline.lastHashComparison.guestHash,
+        authoritativeHostHash:
+          guestOnline.lastHashComparison.hostHash,
+        postHostHash: hostState.sha256,
+        postGuestHash: guestState.sha256,
+        awakeAfter: guestAfterApply.pieces.filter(
+          (piece) => !piece.sleeping,
+        ),
+        movingAfter: guestAfterApply.pieces.filter(
+          (piece) =>
+            piece.linearSpeed > 0 ||
+            piece.angularSpeed > 0,
+        ),
+        hostPoseDelta: compareSnapshotBodies(
+          recoveryDiagnostics.sourceSnapshot,
+          recoveryDiagnostics.hostBeforeDelivery,
+        ),
+        guestPoseDelta: compareSnapshotBodies(
+          recoveryDiagnostics.canonicalSnapshot,
+          guestAfterApply,
+        ),
+        turnStepsBetweenApplyAndCapture:
+          guestAfterApply.step -
+          recoveryDiagnostics.guestBeforeApply.step,
+      };
     }
   }
 
@@ -557,6 +738,21 @@ try {
       guestOnline.desyncCount === 1 &&
       recoverySleeping,
     `스냅샷 복구 결과가 예상과 다릅니다: recoveryTurn=${recoveryTurn}, hostDesync=${hostOnline.desyncCount}, guestDesync=${guestOnline.desyncCount}`,
+  );
+  assertCondition(
+    recoveryMeasurement !== null &&
+      recoveryMeasurement.hostOnly.length === 0 &&
+      recoveryMeasurement.guestOnly.length === 0 &&
+      recoveryMeasurement.awakeAfter.length === 0 &&
+      recoveryMeasurement.movingAfter.length === 0 &&
+      recoveryMeasurement.postHostHash ===
+        recoveryMeasurement.postGuestHash &&
+      recoveryMeasurement.authoritativeHostHash !==
+        recoveryMeasurement.postHostHash &&
+      recoveryMeasurement.hostPoseDelta.movedPieces === 1 &&
+      recoveryMeasurement.guestPoseDelta.movedPieces === 0 &&
+      recoveryMeasurement.turnStepsBetweenApplyAndCapture === 0,
+    `스냅샷 정규화 진단이 예상과 다릅니다: ${JSON.stringify(recoveryMeasurement)}`,
   );
 
   const combinedLog = [
@@ -594,7 +790,7 @@ try {
     `[통과 a] 두 실제 월드 10턴 최종 해시 일치: ${finalHost.sha256}, settleSteps=${settleSteps.join(",")}`,
   );
   console.log(
-    `[통과 b] 의도적 발산→스냅샷 복구: recoveryTurn=${recoveryTurn}, host/guest desync=1/1, sleeping=${guest.physicsRuntime.pieces.size}/${guest.physicsRuntime.pieces.size}`,
+    `[통과 b] 의도적 발산→스냅샷 복구: recoveryTurn=${recoveryTurn}, host/guest desync=1/1, living=${recoveryMeasurement.hostCount}/${recoveryMeasurement.guestCount}, idDiff=${recoveryMeasurement.hostOnly.length + recoveryMeasurement.guestOnly.length}, sleeping=${guest.physicsRuntime.pieces.size}/${guest.physicsRuntime.pieces.size}, awake=${recoveryMeasurement.awakeAfter.length}, moving=${recoveryMeasurement.movingAfter.length}, poseMovesAfterApply=${recoveryMeasurement.guestPoseDelta.movedPieces}, stepsAfterApply=${recoveryMeasurement.turnStepsBetweenApplyAndCapture}, normalized=${recoveryMeasurement.hostPoseDelta.changed[0].id}:Δq=${recoveryMeasurement.hostPoseDelta.maxRotationDelta}, hashes=${recoveryMeasurement.preGuestHash}/${recoveryMeasurement.authoritativeHostHash}/${recoveryMeasurement.postGuestHash}`,
   );
   console.log(
     `[프로토콜] ready=${measureMessageBytes(firstReady)} bytes ${JSON.stringify(firstReady)}`,

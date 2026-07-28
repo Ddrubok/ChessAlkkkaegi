@@ -1,5 +1,4 @@
 import { Mesh, Scene, Vector3 } from "three";
-import type { AimRuntime } from "../aim";
 import { computeStrikeApplicationPoint } from "../aimparams";
 import type { ChessAssets } from "../assets";
 import {
@@ -12,8 +11,6 @@ import {
 } from "../layout";
 import { createPeerLink, type PeerLink, type PeerLinkState } from "../net";
 import {
-  applyOnlineStateSnapshot,
-  createOnlineStateSnapshot,
   createOnlineRuntime,
   type OnlineTransport,
   type OnlineRuntime,
@@ -24,12 +21,15 @@ import {
   resetPhysicsPieces,
   type PhysicsRuntime,
 } from "../physics";
-import type { SceneRuntime } from "../scene";
+import {
+  synchronizePieceMeshes,
+  type SceneRuntime,
+} from "../scene";
 import { capturePhysicsStateHash } from "../state-hash";
 import {
+  createDefaultRuntimeTuningSettings,
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
-  type RuntimeTuningSettings,
 } from "../tuning";
 import {
   applyPendingLaunchBeforeStep,
@@ -37,8 +37,110 @@ import {
   resetTurnRuntime,
   setTurnGameMode,
   updateTurnAfterStep,
+  type TurnLaunchRequest,
   type TurnRuntime,
 } from "../turn";
+
+interface OnlineSelfTestVector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface OnlineSelfTestRotation extends OnlineSelfTestVector3 {
+  w: number;
+}
+
+interface OnlineSelfTestLaunchDiagnostic {
+  pieceId: string;
+  direction: OnlineSelfTestVector3;
+  normalizedPower: number;
+  applicationPoint: OnlineSelfTestVector3;
+  speedMultiplier: number;
+  worldComBeforeLaunch: OnlineSelfTestVector3 | null;
+  applicationPointMinusWorldCom: OnlineSelfTestVector3 | null;
+}
+
+interface OnlineSelfTestBodyDifference {
+  hostPhysicsStep: number;
+  guestPhysicsStep: number;
+  alignedPostLaunchStep: number | null;
+  pieceId: string;
+  component: "position" | "rotation" | "linearVelocity" | "angularVelocity";
+  host: OnlineSelfTestVector3 | OnlineSelfTestRotation;
+  guest: OnlineSelfTestVector3 | OnlineSelfTestRotation;
+}
+
+interface OnlineSelfTestPhysicsParameters {
+  board: {
+    hostFriction: number;
+    guestFriction: number;
+    hostRestitution: number;
+    guestRestitution: number;
+  };
+  pieces: Array<{
+    pieceId: string;
+    hostFriction: number;
+    guestFriction: number;
+    hostRestitution: number;
+    guestRestitution: number;
+    hostLinearDamping: number;
+    guestLinearDamping: number;
+    hostAngularDamping: number;
+    guestAngularDamping: number;
+    hostMass: number;
+    guestMass: number;
+    differingFields: string[];
+  }>;
+}
+
+interface OnlineSelfTestHandleDiagnostics {
+  board: {
+    hostBody: string;
+    guestBody: string;
+    hostCollider: string;
+    guestCollider: string;
+  };
+  pieces: Array<{
+    pieceId: string;
+    hostBody: string;
+    guestBody: string;
+    hostCollider: string;
+    guestCollider: string;
+    bodyMatched: boolean;
+    colliderMatched: boolean;
+  }>;
+}
+
+export interface OnlineSelfTestDiagnostics {
+  constructionTags: {
+    host: string;
+    guest: string;
+  } | null;
+  origin: "host" | "guest" | null;
+  hostStartPhysicsStep: number | null;
+  guestStartPhysicsStep: number | null;
+  hostLaunchAppliedAtPhysicsStep: number | null;
+  guestLaunchAppliedAtPhysicsStep: number | null;
+  hostLaunchAppliedAtTurnStep: number | null;
+  guestLaunchAppliedAtTurnStep: number | null;
+  launchOrdinalMatched: boolean | null;
+  hostFrozenTickCount: number;
+  guestFrozenTickCount: number;
+  hostWorldStepCount: number;
+  guestWorldStepCount: number;
+  hostLaunch: OnlineSelfTestLaunchDiagnostic | null;
+  guestLaunch: OnlineSelfTestLaunchDiagnostic | null;
+  preLaunchDifference: OnlineSelfTestBodyDifference | null;
+  firstPairedDifference: OnlineSelfTestBodyDifference | null;
+  firstAlignedDifference: OnlineSelfTestBodyDifference | null;
+  physicsParameters: OnlineSelfTestPhysicsParameters | null;
+  handles: OnlineSelfTestHandleDiagnostics | null;
+  tuningReapplyOrder: {
+    host: string;
+    guest: string;
+  };
+}
 
 export interface OnlineSelfTestState {
   // 화면 런타임을 소유하는 방장 진영이다.
@@ -144,39 +246,37 @@ export interface OnlineSelfTestApi {
     side: PieceSide,
     accept: boolean,
   ): Promise<OnlineSelfTestState>;
+  // 양쪽 피어의 생성·물리·발사 동일성과 첫 원시 차이를 읽는다.
+  diagnostics(): OnlineSelfTestDiagnostics;
 }
 
 export interface OnlineSelfTestRuntime {
   // 브라우저 콘솔에 노출할 온라인 셀프테스트 API다.
   api: OnlineSelfTestApi;
-  // 화면 루프의 각 fixed step 뒤 씬 없는 상대 물리를 한 번 진행한다.
-  stepGuest(): void;
-  // 각 렌더 프레임에 씬 없는 상대의 ready 재전송과 수신 발사를 진행한다.
-  updateGuest(now: number): void;
+  // 화면 루프의 한 fixed step마다 발사 대기 중이 아닌 숨은 피어의 월드만 진행한다.
+  stepPeers(): void;
+  // 각 렌더 프레임에 숨은 두 피어의 ready 재전송과 수신 발사를 함께 진행한다.
+  updatePeers(now: number): void;
   // 모드 전환 때 두 온라인 런타임과 WebRTC 연결 및 게스트 월드를 정리한다.
   destroy(): void;
 }
 
 export interface OnlineSelfTestOptions {
-  // 실제 메타와 종류별 렌더 geometry를 게스트 스폰·타점 계산에 공유한다.
+  // 실제 메타와 종류별 렌더 geometry를 두 피어의 스폰·타점 계산에 공유한다.
   assets: ChessAssets;
-  // 화면에 보이는 호스트 턴 런타임이다.
-  hostTurnRuntime: TurnRuntime;
-  // 상대 발사를 기존 R33 조준 연출로 보여 줄 화면 조준 런타임이다.
-  hostAimRuntime: AimRuntime;
-  // 두 월드가 같은 발사 속도·타점 설정을 쓰게 할 현재 조절값이다.
-  tuningSettings: RuntimeTuningSettings;
-  // 버프 없는 온라인 표준 보드로 화면 런타임을 초기화하며, 재대결 때는 현재 P2P 링크를 보존한다.
-  prepareHostBoard(preserveOnlineRuntime: boolean): Promise<void>;
-  // 메인 입력·디버그 루프가 화면 호스트 온라인 런타임을 사용하도록 연결한다.
-  setHostOnlineRuntime(runtime: OnlineRuntime | null): void;
+  // 실제 페이지와 같은 크기의 독립 피어 월드를 만드는 보드 반지름이다.
+  boardHalfExtent: number;
+  // 화면 월드는 물리에 참여시키지 않고 온라인 UI와 fixed-step 시계만 준비한다.
+  preparePageForSelfTest(): Promise<void>;
   // 최초 호출이면 화면 RAF 루프를 시작한다.
   ensureGameLoopStarted(): void;
   // 실제 연결과 ready가 끝난 뒤 기존 메뉴 성공 경로로 오버레이를 닫는다.
   finishMenuStart(): void;
 }
 
-interface GuestMatchRuntime {
+interface SelfTestPeerMatchRuntime {
+  // 양쪽 피어가 같은 fresh 생성 함수를 통과했음을 시작 시 검증하는 태그다.
+  constructionTag: "fresh-online-peer-v1";
   // 실제 표준 스폰 경로로 만든 씬 없는 물리 월드다.
   physicsRuntime: PhysicsRuntime;
   // 말 geometry와 제거 연결만 제공하는 씬 없는 런타임이다.
@@ -186,6 +286,8 @@ interface GuestMatchRuntime {
 }
 
 interface ActiveSelfTest {
+  // 실제 별도 페이지의 방장처럼 fresh 경로로 만든 숨은 피어 월드다.
+  hostMatch: SelfTestPeerMatchRuntime;
   // 화면 호스트의 실제 온라인 런타임이다.
   hostOnline: OnlineRuntime;
   // 실제 링크를 감싸 방장 턴 한 개만 의도적으로 유실할 수 있는 검증 전송 계층이다.
@@ -193,12 +295,37 @@ interface ActiveSelfTest {
   // 씬 없는 참가자의 실제 온라인 런타임이다.
   guestOnline: OnlineRuntime | null;
   // 고정 step을 함께 진행할 참가자 대국 상태다.
-  guestMatch: GuestMatchRuntime | null;
+  guestMatch: SelfTestPeerMatchRuntime | null;
 }
 
 interface ControllableSelfTestTransport extends OnlineTransport {
   // true인 동안 방장의 turn·turnHash만 버려 실제 링크 단절 직전 수신 누락을 재현한다.
   dropTurnMessages: boolean;
+}
+
+interface BodyDiagnosticState {
+  position: OnlineSelfTestVector3;
+  rotation: OnlineSelfTestRotation;
+  linearVelocity: OnlineSelfTestVector3;
+  angularVelocity: OnlineSelfTestVector3;
+}
+
+interface ActiveTurnDiagnostics {
+  origin: "host" | "guest";
+  hostStartStep: number;
+  guestStartStep: number;
+  hostLaunchAppliedAtPhysicsStep: number | null;
+  guestLaunchAppliedAtPhysicsStep: number | null;
+  hostFrozenTickCount: number;
+  guestFrozenTickCount: number;
+  hostWorldStepCount: number;
+  guestWorldStepCount: number;
+  hostLaunch: OnlineSelfTestLaunchDiagnostic | null;
+  guestLaunch: OnlineSelfTestLaunchDiagnostic | null;
+  preLaunchDifference: OnlineSelfTestBodyDifference | null;
+  firstPairedDifference: OnlineSelfTestBodyDifference | null;
+  firstAlignedDifference: OnlineSelfTestBodyDifference | null;
+  hostPostLaunchStates: Map<number, Map<string, BodyDiagnosticState>>;
 }
 
 declare global {
@@ -214,6 +341,287 @@ const SELF_TEST_CONNECTION_TIMEOUT_MS = NET_ICE_GATHER_TIMEOUT_MS;
 const SELF_TEST_TURN_TIMEOUT_MS = 30_000;
 // 셀프테스트 한 실행 안에서 최초 연결과 새 창 재접속이 공유하는 고정 매치 식별자다.
 const SELF_TEST_MATCH_ID = "online-selftest-match";
+
+function cloneVector3(value: {
+  x: number;
+  y: number;
+  z: number;
+}): OnlineSelfTestVector3 {
+  return { x: value.x, y: value.y, z: value.z };
+}
+
+function cloneRotation(value: {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+}): OnlineSelfTestRotation {
+  return { x: value.x, y: value.y, z: value.z, w: value.w };
+}
+
+function rapierHandleToUint64String(handle: number): string {
+  const bytes = new ArrayBuffer(8);
+  const view = new DataView(bytes);
+  // Rapier JS의 number 핸들은 f64에 담긴 세대형 u64 비트패턴이다.
+  view.setFloat64(0, handle, true);
+  return view.getBigUint64(0, true).toString();
+}
+
+function cloneLaunchDiagnostic(
+  request: TurnLaunchRequest,
+  runtime?: PhysicsRuntime,
+): OnlineSelfTestLaunchDiagnostic {
+  const worldCom =
+    runtime?.pieces.get(request.pieceId)?.body.worldCom() ?? null;
+  return {
+    pieceId: request.pieceId,
+    direction: cloneVector3(request.direction),
+    normalizedPower: request.normalizedPower,
+    applicationPoint: cloneVector3(request.applicationPoint),
+    speedMultiplier: request.speedMultiplier ?? 1,
+    worldComBeforeLaunch:
+      worldCom === null ? null : cloneVector3(worldCom),
+    applicationPointMinusWorldCom:
+      worldCom === null
+        ? null
+        : {
+            x: request.applicationPoint.x - worldCom.x,
+            y: request.applicationPoint.y - worldCom.y,
+            z: request.applicationPoint.z - worldCom.z,
+          },
+  };
+}
+
+function captureBodyDiagnosticStates(
+  runtime: PhysicsRuntime,
+): Map<string, BodyDiagnosticState> {
+  const states = new Map<string, BodyDiagnosticState>();
+  for (const [pieceId, binding] of runtime.pieces) {
+    states.set(pieceId, {
+      position: cloneVector3(binding.body.translation()),
+      rotation: cloneRotation(binding.body.rotation()),
+      linearVelocity: cloneVector3(binding.body.linvel()),
+      angularVelocity: cloneVector3(binding.body.angvel()),
+    });
+  }
+  return states;
+}
+
+function findFirstBodyDifference(
+  hostStates: Map<string, BodyDiagnosticState>,
+  guestStates: Map<string, BodyDiagnosticState>,
+  hostPhysicsStep: number,
+  guestPhysicsStep: number,
+  alignedPostLaunchStep: number | null,
+): OnlineSelfTestBodyDifference | null {
+  const componentKeys = [
+    "position",
+    "rotation",
+    "linearVelocity",
+    "angularVelocity",
+  ] as const;
+  for (const pieceId of [...hostStates.keys()].sort()) {
+    const host = hostStates.get(pieceId);
+    const guest = guestStates.get(pieceId);
+    if (host === undefined || guest === undefined) {
+      continue;
+    }
+    for (const component of componentKeys) {
+      const hostValue = host[component];
+      const guestValue = guest[component];
+      const differs =
+        !Object.is(hostValue.x, guestValue.x) ||
+        !Object.is(hostValue.y, guestValue.y) ||
+        !Object.is(hostValue.z, guestValue.z) ||
+        (component === "rotation" &&
+          "w" in hostValue &&
+          "w" in guestValue &&
+          !Object.is(hostValue.w, guestValue.w));
+      if (differs) {
+        return {
+          hostPhysicsStep,
+          guestPhysicsStep,
+          alignedPostLaunchStep,
+          pieceId,
+          component,
+          host: { ...hostValue },
+          guest: { ...guestValue },
+        };
+      }
+    }
+  }
+  return null;
+}
+
+function capturePhysicsParameterDiagnostics(
+  host: PhysicsRuntime,
+  guest: PhysicsRuntime,
+): OnlineSelfTestPhysicsParameters {
+  const pieces: OnlineSelfTestPhysicsParameters["pieces"] = [];
+  for (const [pieceId, hostBinding] of host.pieces) {
+    const guestBinding = guest.pieces.get(pieceId);
+    if (guestBinding === undefined) {
+      continue;
+    }
+    const values = {
+      pieceId,
+      hostFriction: hostBinding.collider.friction(),
+      guestFriction: guestBinding.collider.friction(),
+      hostRestitution: hostBinding.collider.restitution(),
+      guestRestitution: guestBinding.collider.restitution(),
+      hostLinearDamping: hostBinding.body.linearDamping(),
+      guestLinearDamping: guestBinding.body.linearDamping(),
+      hostAngularDamping: hostBinding.body.angularDamping(),
+      guestAngularDamping: guestBinding.body.angularDamping(),
+      hostMass: hostBinding.body.mass(),
+      guestMass: guestBinding.body.mass(),
+    };
+    const differingFields = [
+      ["friction", values.hostFriction, values.guestFriction],
+      [
+        "restitution",
+        values.hostRestitution,
+        values.guestRestitution,
+      ],
+      [
+        "linearDamping",
+        values.hostLinearDamping,
+        values.guestLinearDamping,
+      ],
+      [
+        "angularDamping",
+        values.hostAngularDamping,
+        values.guestAngularDamping,
+      ],
+      ["mass", values.hostMass, values.guestMass],
+    ]
+      .filter(([, hostValue, guestValue]) =>
+        !Object.is(hostValue, guestValue)
+      )
+      .map(([field]) => String(field));
+    pieces.push({ ...values, differingFields });
+  }
+  pieces.sort((left, right) =>
+    left.pieceId.localeCompare(right.pieceId)
+  );
+  return {
+    board: {
+      hostFriction: host.boardCollider.friction(),
+      guestFriction: guest.boardCollider.friction(),
+      hostRestitution: host.boardCollider.restitution(),
+      guestRestitution: guest.boardCollider.restitution(),
+    },
+    pieces,
+  };
+}
+
+function captureHandleDiagnostics(
+  host: PhysicsRuntime,
+  guest: PhysicsRuntime,
+): OnlineSelfTestHandleDiagnostics {
+  const pieces: OnlineSelfTestHandleDiagnostics["pieces"] = [];
+  for (const pieceId of [...host.pieces.keys()].sort()) {
+    const hostBinding = host.pieces.get(pieceId);
+    const guestBinding = guest.pieces.get(pieceId);
+    if (hostBinding === undefined || guestBinding === undefined) {
+      continue;
+    }
+    const hostBody = rapierHandleToUint64String(
+      hostBinding.body.handle,
+    );
+    const guestBody = rapierHandleToUint64String(
+      guestBinding.body.handle,
+    );
+    const hostCollider = rapierHandleToUint64String(
+      hostBinding.collider.handle,
+    );
+    const guestCollider = rapierHandleToUint64String(
+      guestBinding.collider.handle,
+    );
+    pieces.push({
+      pieceId,
+      hostBody,
+      guestBody,
+      hostCollider,
+      guestCollider,
+      bodyMatched: hostBody === guestBody,
+      colliderMatched: hostCollider === guestCollider,
+    });
+  }
+  return {
+    board: {
+      hostBody: rapierHandleToUint64String(host.boardBody.handle),
+      guestBody: rapierHandleToUint64String(guest.boardBody.handle),
+      hostCollider: rapierHandleToUint64String(
+        host.boardCollider.handle,
+      ),
+      guestCollider: rapierHandleToUint64String(
+        guest.boardCollider.handle,
+      ),
+    },
+    pieces,
+  };
+}
+
+function assertPeerConstructionFidelity(
+  host: SelfTestPeerMatchRuntime,
+  guest: SelfTestPeerMatchRuntime,
+): void {
+  if (host.constructionTag !== guest.constructionTag) {
+    throw new Error(
+      `셀프테스트 피어 생성 경로가 다릅니다: ${host.constructionTag}/${guest.constructionTag}`,
+    );
+  }
+  const parameters = capturePhysicsParameterDiagnostics(
+    host.physicsRuntime,
+    guest.physicsRuntime,
+  );
+  if (
+    host.physicsRuntime.pieces.size !==
+      guest.physicsRuntime.pieces.size ||
+    parameters.pieces.length !== host.physicsRuntime.pieces.size
+  ) {
+    throw new Error(
+      `셀프테스트 피어 말 집합이 다릅니다: host=${host.physicsRuntime.pieces.size}, guest=${guest.physicsRuntime.pieces.size}, paired=${parameters.pieces.length}`,
+    );
+  }
+  const boardParametersMatched =
+    Object.is(
+      parameters.board.hostFriction,
+      parameters.board.guestFriction,
+    ) &&
+    Object.is(
+      parameters.board.hostRestitution,
+      parameters.board.guestRestitution,
+    );
+  const parameterMismatches = parameters.pieces
+    .filter((piece) => piece.differingFields.length > 0)
+    .map(
+      (piece) =>
+        `${piece.pieceId}:${piece.differingFields.join(",")}`,
+    );
+  if (!boardParametersMatched || parameterMismatches.length > 0) {
+    throw new Error(
+      `셀프테스트 피어 물리값이 다릅니다: board=${boardParametersMatched}, pieces=${parameterMismatches.join(";")}`,
+    );
+  }
+
+  const handles = captureHandleDiagnostics(
+    host.physicsRuntime,
+    guest.physicsRuntime,
+  );
+  const boardHandlesMatched =
+    handles.board.hostBody === handles.board.guestBody &&
+    handles.board.hostCollider === handles.board.guestCollider;
+  const handleMismatches = handles.pieces
+    .filter((piece) => !piece.bodyMatched || !piece.colliderMatched)
+    .map((piece) => piece.pieceId);
+  if (!boardHandlesMatched || handleMismatches.length > 0) {
+    throw new Error(
+      `셀프테스트 피어 Rapier 핸들이 다릅니다: board=${boardHandlesMatched}, pieces=${handleMismatches.join(",")}`,
+    );
+  }
+}
 
 /**
  * 현재 상태를 즉시 알리는 PeerLink 구독으로 실제 connected까지 기다린다.
@@ -254,9 +662,9 @@ function waitForConnected(link: PeerLink, label: string): Promise<void> {
 }
 
 /**
- * 실제 geometry를 쓰되 카메라·렌더러 없이 턴 제거와 타점 계산만 가능한 게스트 씬을 만든다.
+ * 실제 geometry를 쓰되 카메라·렌더러 없이 턴 제거와 타점 계산만 가능한 피어 씬을 만든다.
  */
-function createGuestSceneRuntime(
+function createPeerSceneRuntime(
   physicsRuntime: PhysicsRuntime,
   assets: ChessAssets,
 ): SceneRuntime {
@@ -266,7 +674,7 @@ function createGuestSceneRuntime(
     const geometry = assets.geometries.get(binding.instance.type);
     if (geometry === undefined) {
       throw new Error(
-        `${binding.instance.type} 셀프테스트 게스트 geometry가 없습니다.`,
+        `${binding.instance.type} 셀프테스트 피어 geometry가 없습니다.`,
       );
     }
     const mesh = new Mesh(geometry);
@@ -282,44 +690,51 @@ function createGuestSceneRuntime(
 }
 
 /**
- * 버프·카드·영구 강화가 없는 실제 온라인 표준 게스트 월드를 만든다.
+ * 버프·카드·저장 조절값이 없는 실제 온라인 표준 피어 월드를 양쪽 공용 경로로 만든다.
  */
-async function createGuestMatch(
+async function createSelfTestPeerMatch(
   options: OnlineSelfTestOptions,
-): Promise<GuestMatchRuntime> {
+): Promise<SelfTestPeerMatchRuntime> {
   const physicsRuntime = await createPhysicsRuntime(
     options.assets.meta,
     PIECE_INSTANCES,
-    options.hostTurnRuntime.sceneRuntime.boardHalfExtent,
+    options.boardHalfExtent,
     { gameMode: "online", stageNumber: 1 },
   );
-  // 화면 보드 재시작과 같은 조절판 재적용 경로를 거쳐 질량·관성·감쇠까지 동일하게 만든다.
+  // 실제 페이지 부팅 순서대로 먼저 안정화한 뒤 온라인 config 기본값만 적용한다.
+  preSettlePhysics(physicsRuntime);
+  const settings = createDefaultRuntimeTuningSettings();
   const tuningRuntime = createTuningRuntime(
     document.createElement("div"),
     physicsRuntime,
     null,
   );
-  Object.assign(tuningRuntime.settings, options.tuningSettings);
+  Object.assign(tuningRuntime.settings, settings);
   reapplyTuningPhysicsSettings(tuningRuntime);
-  preSettlePhysics(physicsRuntime);
-  const sceneRuntime = createGuestSceneRuntime(
+  const sceneRuntime = createPeerSceneRuntime(
     physicsRuntime,
     options.assets,
   );
+  synchronizePieceMeshes(sceneRuntime, physicsRuntime);
   const turnRuntime = createTurnRuntime(
     physicsRuntime,
     sceneRuntime,
-    options.tuningSettings,
+    settings,
   );
   setTurnGameMode(turnRuntime, "online");
-  return { physicsRuntime, sceneRuntime, turnRuntime };
+  return {
+    constructionTag: "fresh-online-peer-v1",
+    physicsRuntime,
+    sceneRuntime,
+    turnRuntime,
+  };
 }
 
 /**
- * 재대결 참가자도 최초 게스트와 같은 스폰·조절판·사전 정착 경로로 표준 보드를 다시 만든다.
+ * 재대결 양쪽 피어도 같은 스폰·온라인 기본 조절값·사전 정착 경로로 표준 보드를 다시 만든다.
  */
-function resetGuestMatch(
-  match: GuestMatchRuntime,
+function resetPeerMatch(
+  match: SelfTestPeerMatchRuntime,
   options: OnlineSelfTestOptions,
 ): void {
   resetPhysicsPieces(
@@ -333,7 +748,10 @@ function resetGuestMatch(
     match.physicsRuntime,
     null,
   );
-  Object.assign(tuningRuntime.settings, options.tuningSettings);
+  Object.assign(
+    tuningRuntime.settings,
+    createDefaultRuntimeTuningSettings(),
+  );
   reapplyTuningPhysicsSettings(tuningRuntime);
   preSettlePhysics(match.physicsRuntime);
   for (const mesh of match.sceneRuntime.pieceMeshes.values()) {
@@ -346,7 +764,7 @@ function resetGuestMatch(
     );
     if (geometry === undefined) {
       throw new Error(
-        `${binding.instance.type} 재대결 게스트 geometry가 없습니다.`,
+        `${binding.instance.type} 재대결 피어 geometry가 없습니다.`,
       );
     }
     const mesh = new Mesh(geometry);
@@ -354,6 +772,10 @@ function resetGuestMatch(
     match.sceneRuntime.scene.add(mesh);
     match.sceneRuntime.pieceMeshes.set(binding.instance.id, mesh);
   }
+  synchronizePieceMeshes(
+    match.sceneRuntime,
+    match.physicsRuntime,
+  );
   resetTurnRuntime(match.turnRuntime);
   setTurnGameMode(match.turnRuntime, "online");
 }
@@ -529,6 +951,7 @@ export function createOnlineSelfTestRuntime(
   let latestGuestHash: string | null = null;
   let lastHostTurnStepCount: number | null = null;
   let lastGuestTurnStepCount: number | null = null;
+  let turnDiagnostics: ActiveTurnDiagnostics | null = null;
 
   const destroy = (): void => {
     if (active === null) {
@@ -540,10 +963,11 @@ export function createOnlineSelfTestRuntime(
     latestGuestHash = null;
     lastHostTurnStepCount = null;
     lastGuestTurnStepCount = null;
+    turnDiagnostics = null;
     current.hostOnline.close();
     current.guestOnline?.close();
+    current.hostMatch.physicsRuntime.world.free();
     current.guestMatch?.physicsRuntime.world.free();
-    options.setHostOnlineRuntime(null);
   };
 
   const readDynamicComparison = (): {
@@ -560,8 +984,9 @@ export function createOnlineSelfTestRuntime(
     maxRawPositionDelta: number | null;
     maxRawRotationDelta: number | null;
   } => {
+    const hostPhysics = active?.hostMatch.physicsRuntime;
     const guestPhysics = active?.guestMatch?.physicsRuntime;
-    if (guestPhysics === undefined) {
+    if (hostPhysics === undefined || guestPhysics === undefined) {
       return {
         hostSleepingCount: null,
         guestSleepingCount: null,
@@ -589,8 +1014,7 @@ export function createOnlineSelfTestRuntime(
     let rawPoseDifferingComponentCount = 0;
     let maxRawPositionDelta = 0;
     let maxRawRotationDelta = 0;
-    for (const [pieceId, hostBinding] of options.hostTurnRuntime
-      .physicsRuntime.pieces) {
+    for (const [pieceId, hostBinding] of hostPhysics.pieces) {
       const guestBinding = guestPhysics.pieces.get(pieceId);
       if (guestBinding === undefined) {
         continue;
@@ -757,6 +1181,7 @@ export function createOnlineSelfTestRuntime(
       };
     }
     const guestOnline = active.guestOnline;
+    const hostMatch = active.hostMatch;
     const guestMatch = active.guestMatch;
     const dynamicComparison = readDynamicComparison();
     const hostRematch = active.hostOnline.getRematchStatus();
@@ -765,7 +1190,7 @@ export function createOnlineSelfTestRuntime(
     return {
       hostSide: "white",
       guestSide: "black",
-      currentSide: options.hostTurnRuntime.currentSide,
+      currentSide: hostMatch.turnRuntime.currentSide,
       guestCurrentSide:
         guestMatch?.turnRuntime.currentSide ?? null,
       hostTurnIndex: active.hostOnline.nextTurnIndex,
@@ -776,7 +1201,7 @@ export function createOnlineSelfTestRuntime(
         active.hostOnline.desyncCount,
         guestOnline?.desyncCount ?? 0,
       ),
-      phase: options.hostTurnRuntime.phase,
+      phase: hostMatch.turnRuntime.phase,
       hostActive: active.hostOnline.active,
       guestActive: guestOnline?.active ?? false,
       guestExists: guestOnline !== null && guestMatch !== null,
@@ -811,9 +1236,7 @@ export function createOnlineSelfTestRuntime(
     }
     const guestMatch = active.guestMatch;
     const [hostState, guestState] = await Promise.all([
-      capturePhysicsStateHash(
-        options.hostTurnRuntime.physicsRuntime,
-      ),
+      capturePhysicsStateHash(active.hostMatch.physicsRuntime),
       guestMatch === null
         ? Promise.resolve(null)
         : capturePhysicsStateHash(guestMatch.physicsRuntime),
@@ -833,6 +1256,7 @@ export function createOnlineSelfTestRuntime(
       throw new Error("먼저 window.__onlineSelfTest.start()를 실행하세요.");
     }
     const guestOnline = current.guestOnline;
+    const hostMatch = current.hostMatch;
     const guestMatch = current.guestMatch;
     if (guestOnline === null || guestMatch === null) {
       throw new Error(
@@ -842,11 +1266,7 @@ export function createOnlineSelfTestRuntime(
     const local =
       origin === "host"
         ? {
-            physicsRuntime:
-              options.hostTurnRuntime.physicsRuntime,
-            sceneRuntime:
-              options.hostTurnRuntime.sceneRuntime,
-            turnRuntime: options.hostTurnRuntime,
+            ...hostMatch,
             online: current.hostOnline,
             side: "white" as const,
           }
@@ -861,39 +1281,75 @@ export function createOnlineSelfTestRuntime(
       );
     }
     const startTurnIndex = current.hostOnline.nextTurnIndex;
-    const hostStartStep =
-      options.hostTurnRuntime.physicsStepNumber;
+    const hostStartStep = hostMatch.turnRuntime.physicsStepNumber;
     const guestStartStep =
       guestMatch.turnRuntime.physicsStepNumber;
-    const outcome = local.online.queueLocalLaunch(
-      createDeterministicLaunch(
-        local,
-        local.side,
-        pieceId,
-        power,
-      ),
+    const launchRequest = createDeterministicLaunch(
+      local,
+      local.side,
+      pieceId,
+      power,
     );
+    turnDiagnostics = {
+      origin,
+      hostStartStep,
+      guestStartStep,
+      hostLaunchAppliedAtPhysicsStep: null,
+      guestLaunchAppliedAtPhysicsStep: null,
+      hostFrozenTickCount: 0,
+      guestFrozenTickCount: 0,
+      hostWorldStepCount: 0,
+      guestWorldStepCount: 0,
+      hostLaunch:
+        origin === "host"
+          ? cloneLaunchDiagnostic(
+              launchRequest,
+              local.physicsRuntime,
+            )
+          : null,
+      guestLaunch:
+        origin === "guest"
+          ? cloneLaunchDiagnostic(
+              launchRequest,
+              local.physicsRuntime,
+            )
+          : null,
+      preLaunchDifference: findFirstBodyDifference(
+        captureBodyDiagnosticStates(
+          hostMatch.physicsRuntime,
+        ),
+        captureBodyDiagnosticStates(guestMatch.physicsRuntime),
+        hostStartStep,
+        guestStartStep,
+        null,
+      ),
+      firstPairedDifference: null,
+      firstAlignedDifference: null,
+      hostPostLaunchStates: new Map(),
+    };
+    const outcome = local.online.queueLocalLaunch(launchRequest);
     if (!outcome.accepted) {
       throw new Error(
         `셀프테스트 ${origin} 발사가 거절됐습니다: ${outcome.reason ?? "원인 없음"}`,
       );
     }
     // 씬 없는 수신자는 다음 RAF를 기다릴 필요 없이 받은 발사를 바로 큐에 넣을 수 있다.
-    guestOnline.update(performance.now());
+    const messageDeliveryTime = performance.now();
+    current.hostOnline.update(messageDeliveryTime);
+    guestOnline.update(messageDeliveryTime);
     await waitForCondition(
       `${startTurnIndex}번 셀프테스트 턴 정착`,
       SELF_TEST_TURN_TIMEOUT_MS,
       () =>
         current.hostOnline.nextTurnIndex > startTurnIndex &&
         guestOnline.nextTurnIndex > startTurnIndex &&
-        (options.hostTurnRuntime.phase === "ready" ||
-          options.hostTurnRuntime.phase === "match-over") &&
+        (hostMatch.turnRuntime.phase === "ready" ||
+          hostMatch.turnRuntime.phase === "match-over") &&
         (guestMatch.turnRuntime.phase === "ready" ||
           guestMatch.turnRuntime.phase === "match-over"),
     );
     lastHostTurnStepCount =
-      options.hostTurnRuntime.physicsStepNumber -
-      hostStartStep;
+      hostMatch.turnRuntime.physicsStepNumber - hostStartStep;
     lastGuestTurnStepCount =
       guestMatch.turnRuntime.physicsStepNumber -
       guestStartStep;
@@ -901,28 +1357,130 @@ export function createOnlineSelfTestRuntime(
       current.hostOnline.flush(),
       guestOnline.flush(),
     ]);
-    return await refreshState();
+    const state = await refreshState();
+    const hostApplied =
+      turnDiagnostics?.hostLaunchAppliedAtPhysicsStep;
+    const guestApplied =
+      turnDiagnostics?.guestLaunchAppliedAtPhysicsStep;
+    if (
+      turnDiagnostics !== null &&
+      hostApplied !== null &&
+      hostApplied !== undefined &&
+      guestApplied !== null &&
+      guestApplied !== undefined
+    ) {
+      const hostOrdinal =
+        hostApplied - turnDiagnostics.hostStartStep;
+      const guestOrdinal =
+        guestApplied - turnDiagnostics.guestStartStep;
+      if (hostOrdinal !== guestOrdinal) {
+        throw new Error(
+          `셀프테스트 피어 발사 적용 ordinal이 다릅니다: host=${hostOrdinal}, guest=${guestOrdinal}, hostHash=${state.hostHash}, guestHash=${state.guestHash}`,
+        );
+      }
+    }
+    return state;
+  };
+
+  const readDiagnostics = (): OnlineSelfTestDiagnostics => {
+    const hostPhysics = active?.hostMatch.physicsRuntime;
+    const guestPhysics = active?.guestMatch?.physicsRuntime;
+    return {
+      constructionTags:
+        active === null
+          ? null
+          : {
+              host: active.hostMatch.constructionTag,
+              guest:
+                active.guestMatch?.constructionTag ?? "destroyed",
+            },
+      origin: turnDiagnostics?.origin ?? null,
+      hostStartPhysicsStep:
+        turnDiagnostics?.hostStartStep ?? null,
+      guestStartPhysicsStep:
+        turnDiagnostics?.guestStartStep ?? null,
+      hostLaunchAppliedAtPhysicsStep:
+        turnDiagnostics?.hostLaunchAppliedAtPhysicsStep ?? null,
+      guestLaunchAppliedAtPhysicsStep:
+        turnDiagnostics?.guestLaunchAppliedAtPhysicsStep ?? null,
+      hostLaunchAppliedAtTurnStep:
+        turnDiagnostics?.hostLaunchAppliedAtPhysicsStep === null ||
+        turnDiagnostics === null
+          ? null
+          : turnDiagnostics.hostLaunchAppliedAtPhysicsStep -
+            turnDiagnostics.hostStartStep,
+      guestLaunchAppliedAtTurnStep:
+        turnDiagnostics?.guestLaunchAppliedAtPhysicsStep === null ||
+        turnDiagnostics === null
+          ? null
+          : turnDiagnostics.guestLaunchAppliedAtPhysicsStep -
+            turnDiagnostics.guestStartStep,
+      launchOrdinalMatched:
+        turnDiagnostics?.hostLaunchAppliedAtPhysicsStep === null ||
+        turnDiagnostics?.guestLaunchAppliedAtPhysicsStep === null ||
+        turnDiagnostics === null
+          ? null
+          : turnDiagnostics.hostLaunchAppliedAtPhysicsStep -
+              turnDiagnostics.hostStartStep ===
+            turnDiagnostics.guestLaunchAppliedAtPhysicsStep -
+              turnDiagnostics.guestStartStep,
+      hostFrozenTickCount:
+        turnDiagnostics?.hostFrozenTickCount ?? 0,
+      guestFrozenTickCount:
+        turnDiagnostics?.guestFrozenTickCount ?? 0,
+      hostWorldStepCount:
+        turnDiagnostics?.hostWorldStepCount ?? 0,
+      guestWorldStepCount:
+        turnDiagnostics?.guestWorldStepCount ?? 0,
+      hostLaunch: turnDiagnostics?.hostLaunch ?? null,
+      guestLaunch: turnDiagnostics?.guestLaunch ?? null,
+      preLaunchDifference:
+        turnDiagnostics?.preLaunchDifference ?? null,
+      firstPairedDifference:
+        turnDiagnostics?.firstPairedDifference ?? null,
+      firstAlignedDifference:
+        turnDiagnostics?.firstAlignedDifference ?? null,
+      physicsParameters:
+        hostPhysics === undefined || guestPhysics === undefined
+          ? null
+          : capturePhysicsParameterDiagnostics(
+              hostPhysics,
+              guestPhysics,
+            ),
+      handles:
+        hostPhysics === undefined || guestPhysics === undefined
+          ? null
+          : captureHandleDiagnostics(
+              hostPhysics,
+              guestPhysics,
+            ),
+      tuningReapplyOrder: {
+        host:
+          "createPhysicsRuntime(스폰) → preSettlePhysics → online config 기본값 적용",
+        guest:
+          "createPhysicsRuntime(스폰) → preSettlePhysics → online config 기본값 적용",
+      },
+    };
   };
 
   const api: OnlineSelfTestApi = {
     async start(): Promise<OnlineSelfTestState> {
       destroy();
-      await options.prepareHostBoard(false);
-      const guestMatch = await createGuestMatch(options);
-      // 화면 월드는 재사용 월드 재시작, 게스트는 새 월드 생성이므로 사전 정착의 원시 비트와 접촉 캐시가 다를 수 있다.
-      // 실제 온라인 복구 경로를 양쪽에 똑같이 적용해 좌표뿐 아니라 다음 물리 step의 출발 절차도 맞춘다.
-      const initialSnapshot = createOnlineStateSnapshot(
-        options.hostTurnRuntime,
-        0,
-      );
-      applyOnlineStateSnapshot(
-        options.hostTurnRuntime,
-        initialSnapshot,
-      );
-      applyOnlineStateSnapshot(
-        guestMatch.turnRuntime,
-        initialSnapshot,
-      );
+      await options.preparePageForSelfTest();
+      const hostMatch = await createSelfTestPeerMatch(options);
+      let guestMatch: SelfTestPeerMatchRuntime | null = null;
+      try {
+        guestMatch = await createSelfTestPeerMatch(options);
+        assertPeerConstructionFidelity(hostMatch, guestMatch);
+      } catch (error: unknown) {
+        hostMatch.physicsRuntime.world.free();
+        guestMatch?.physicsRuntime.world.free();
+        throw error;
+      }
+      if (guestMatch === null) {
+        hostMatch.physicsRuntime.world.free();
+        throw new Error("셀프테스트 참가자 월드를 만들지 못했습니다.");
+      }
       let hostOnline: OnlineRuntime | null = null;
       let guestOnline: OnlineRuntime | null = null;
       try {
@@ -931,12 +1489,12 @@ export function createOnlineSelfTestRuntime(
           createControllableSelfTestTransport(hostLink);
         hostOnline = createOnlineRuntime(
           hostTransport,
-          options.hostTurnRuntime,
-          options.hostAimRuntime,
+          hostMatch.turnRuntime,
+          null,
           "white",
           {
             prepareRematch: async () => {
-              await options.prepareHostBoard(true);
+              resetPeerMatch(hostMatch, options);
             },
           },
           { matchId: SELF_TEST_MATCH_ID },
@@ -948,18 +1506,18 @@ export function createOnlineSelfTestRuntime(
           "black",
           {
             prepareRematch: async () => {
-              resetGuestMatch(guestMatch, options);
+              resetPeerMatch(guestMatch, options);
             },
           },
           { matchId: SELF_TEST_MATCH_ID },
         );
         active = {
+          hostMatch,
           hostOnline,
           hostTransport,
           guestOnline,
           guestMatch,
         };
-        options.setHostOnlineRuntime(hostOnline);
         hostOnline.startMatch();
         guestOnline.startMatch();
         options.ensureGameLoopStarted();
@@ -970,7 +1528,7 @@ export function createOnlineSelfTestRuntime(
         await waitForCondition(
           "호스트 첫 턴 카메라 준비",
           5_000,
-          () => options.hostTurnRuntime.phase === "ready",
+          () => hostMatch.turnRuntime.phase === "ready",
         );
         options.finishMenuStart();
         return await refreshState();
@@ -980,6 +1538,7 @@ export function createOnlineSelfTestRuntime(
         } else {
           hostOnline?.close();
           guestOnline?.close();
+          hostMatch.physicsRuntime.world.free();
           guestMatch.physicsRuntime.world.free();
         }
         throw error;
@@ -987,6 +1546,8 @@ export function createOnlineSelfTestRuntime(
     },
 
     state: readState,
+
+    diagnostics: readDiagnostics,
 
     async localShoot(
       pieceId?: string,
@@ -1084,7 +1645,7 @@ export function createOnlineSelfTestRuntime(
         );
       }
       const current = active;
-      const guestMatch = await createGuestMatch(options);
+      const guestMatch = await createSelfTestPeerMatch(options);
       let guestOnline: OnlineRuntime | null = null;
       try {
         const { hostLink, guestLink } = await connectLoopback();
@@ -1097,7 +1658,7 @@ export function createOnlineSelfTestRuntime(
           "black",
           {
             prepareRematch: async () => {
-              resetGuestMatch(guestMatch, options);
+              resetPeerMatch(guestMatch, options);
             },
           },
           { matchId: current.hostOnline.matchId },
@@ -1118,7 +1679,7 @@ export function createOnlineSelfTestRuntime(
             current.guestOnline?.active === true &&
             current.hostOnline.nextTurnIndex ===
               current.guestOnline.nextTurnIndex &&
-            options.hostTurnRuntime.currentSide ===
+            current.hostMatch.turnRuntime.currentSide ===
               current.guestMatch?.turnRuntime.currentSide,
         );
         return await refreshState();
@@ -1142,7 +1703,7 @@ export function createOnlineSelfTestRuntime(
       if (!active.hostOnline.active || !active.guestOnline.active) {
         throw new Error("참가자 수신 누락은 연결된 대국에서만 만들 수 있습니다.");
       }
-      if (options.hostTurnRuntime.currentSide !== "white") {
+      if (active.hostMatch.turnRuntime.currentSide !== "white") {
         throw new Error("방장 백 차례에서만 참가자 한 턴 수신 누락을 만들 수 있습니다.");
       }
       const current = active;
@@ -1150,18 +1711,14 @@ export function createOnlineSelfTestRuntime(
       const guestMatch = active.guestMatch;
       const startTurnIndex = current.hostOnline.nextTurnIndex;
       const hostStartStep =
-        options.hostTurnRuntime.physicsStepNumber;
+        current.hostMatch.turnRuntime.physicsStepNumber;
       const guestStartStep =
         guestMatch.turnRuntime.physicsStepNumber;
       current.hostTransport.dropTurnMessages = true;
       const outcome = current.hostOnline.queueLocalLaunch(
         createDeterministicLaunch(
           {
-            physicsRuntime:
-              options.hostTurnRuntime.physicsRuntime,
-            sceneRuntime:
-              options.hostTurnRuntime.sceneRuntime,
-            turnRuntime: options.hostTurnRuntime,
+            ...current.hostMatch,
           },
           "white",
           undefined,
@@ -1179,12 +1736,12 @@ export function createOnlineSelfTestRuntime(
         () =>
           current.hostOnline.nextTurnIndex ===
             startTurnIndex + 1 &&
-          options.hostTurnRuntime.phase === "ready" &&
+          current.hostMatch.turnRuntime.phase === "ready" &&
           guestOnline.nextTurnIndex === startTurnIndex,
       );
       await current.hostOnline.flush();
       lastHostTurnStepCount =
-        options.hostTurnRuntime.physicsStepNumber -
+        current.hostMatch.turnRuntime.physicsStepNumber -
         hostStartStep;
       lastGuestTurnStepCount =
         guestMatch.turnRuntime.physicsStepNumber -
@@ -1271,24 +1828,144 @@ export function createOnlineSelfTestRuntime(
 
   return {
     api,
-    stepGuest(): void {
+    stepPeers(): void {
       if (active === null) {
         return;
       }
+      const hostMatch = active.hostMatch;
       const guestMatch = active.guestMatch;
       if (guestMatch === null) {
         return;
       }
-      applyPendingLaunchBeforeStep(
-        guestMatch.turnRuntime,
-      );
-      guestMatch.physicsRuntime.world.step();
-      updateTurnAfterStep(
-        guestMatch.turnRuntime,
-        FIXED_STEP,
-      );
+      const diagnostics = turnDiagnostics;
+      const shouldStepHost =
+        active.hostOnline.shouldStepPhysics();
+      const shouldStepGuest =
+        active.guestOnline?.shouldStepPhysics() ?? false;
+      const hostPendingLaunch =
+        hostMatch.turnRuntime.pendingLaunch;
+      const guestPendingLaunch =
+        guestMatch.turnRuntime.pendingLaunch;
+      if (
+        diagnostics !== null &&
+        diagnostics.hostLaunchAppliedAtPhysicsStep === null &&
+        hostPendingLaunch !== null &&
+        shouldStepHost
+      ) {
+        diagnostics.hostLaunchAppliedAtPhysicsStep =
+          hostMatch.turnRuntime.physicsStepNumber + 1;
+        diagnostics.hostLaunch =
+          cloneLaunchDiagnostic(
+            hostPendingLaunch,
+            hostMatch.physicsRuntime,
+          );
+      }
+      if (
+        diagnostics !== null &&
+        diagnostics.guestLaunchAppliedAtPhysicsStep === null &&
+        guestPendingLaunch !== null &&
+        shouldStepGuest
+      ) {
+        diagnostics.guestLaunchAppliedAtPhysicsStep =
+          guestMatch.turnRuntime.physicsStepNumber + 1;
+        diagnostics.guestLaunch =
+          cloneLaunchDiagnostic(
+            guestPendingLaunch,
+            guestMatch.physicsRuntime,
+          );
+      }
+
+      if (shouldStepHost) {
+        applyPendingLaunchBeforeStep(hostMatch.turnRuntime);
+        hostMatch.physicsRuntime.world.step();
+        updateTurnAfterStep(hostMatch.turnRuntime, FIXED_STEP);
+        if (diagnostics !== null) {
+          diagnostics.hostWorldStepCount += 1;
+        }
+      } else if (diagnostics !== null) {
+        diagnostics.hostFrozenTickCount += 1;
+      }
+      if (shouldStepGuest) {
+        applyPendingLaunchBeforeStep(guestMatch.turnRuntime);
+        guestMatch.physicsRuntime.world.step();
+        updateTurnAfterStep(
+          guestMatch.turnRuntime,
+          FIXED_STEP,
+        );
+        if (diagnostics !== null) {
+          diagnostics.guestWorldStepCount += 1;
+        }
+      } else if (diagnostics !== null) {
+        diagnostics.guestFrozenTickCount += 1;
+      }
+      if (
+        diagnostics === null ||
+        diagnostics.hostLaunchAppliedAtPhysicsStep === null
+      ) {
+        return;
+      }
+      const hostPhysicsStep =
+        hostMatch.turnRuntime.physicsStepNumber;
+      const guestPhysicsStep =
+        guestMatch.turnRuntime.physicsStepNumber;
+      if (shouldStepHost) {
+        const hostStates = captureBodyDiagnosticStates(
+          hostMatch.physicsRuntime,
+        );
+        const hostPostLaunchStep =
+          hostPhysicsStep -
+          diagnostics.hostLaunchAppliedAtPhysicsStep +
+          1;
+        diagnostics.hostPostLaunchStates.set(
+          hostPostLaunchStep,
+          hostStates,
+        );
+        if (diagnostics.firstPairedDifference === null) {
+          const guestStates = captureBodyDiagnosticStates(
+            guestMatch.physicsRuntime,
+          );
+          diagnostics.firstPairedDifference =
+            findFirstBodyDifference(
+              hostStates,
+              guestStates,
+              hostPhysicsStep,
+              guestPhysicsStep,
+              null,
+            );
+        }
+      }
+      if (
+        diagnostics.firstAlignedDifference === null &&
+        diagnostics.guestLaunchAppliedAtPhysicsStep !== null &&
+        shouldStepGuest
+      ) {
+        const guestStates = captureBodyDiagnosticStates(
+          guestMatch.physicsRuntime,
+        );
+        const guestPostLaunchStep =
+          guestPhysicsStep -
+          diagnostics.guestLaunchAppliedAtPhysicsStep +
+          1;
+        const alignedHostStates =
+          diagnostics.hostPostLaunchStates.get(
+            guestPostLaunchStep,
+          );
+        if (alignedHostStates !== undefined) {
+          diagnostics.firstAlignedDifference =
+            findFirstBodyDifference(
+              alignedHostStates,
+              guestStates,
+              diagnostics.hostLaunchAppliedAtPhysicsStep +
+                guestPostLaunchStep -
+                1,
+              guestPhysicsStep,
+              guestPostLaunchStep,
+            );
+        }
+      }
     },
-    updateGuest(now: number): void {
+    updatePeers(now: number): void {
+      active?.hostOnline.update(now);
       active?.guestOnline?.update(now);
     },
     destroy,
