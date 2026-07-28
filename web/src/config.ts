@@ -56,6 +56,10 @@ export const BREAKABLE_WALL_THICKNESS = 0.08;
 // 한 조각 파괴 시 Pawn은 지나가고 King은 이웃 조각에 걸리도록 인접 벽이 겹치는 길이를 셀 비율로 정한다.
 export const BREAKABLE_WALL_OVERLAP_CELLS = 0.75;
 
+// 포켓볼 맵 문서의 “가장 큰 말보다 약간 넓게”를 킹 밑동 지름의 1.2배 실제 대각 출구 폭으로 정한다.
+export const POCKET_WALL_EXIT_WIDTH_KING_DIAMETER_MULTIPLIER =
+  1.2;
+
 // 마우스와 한 손가락 모두 화면 크기에 과도하게 의존하지 않는 최대 세기 드래그 거리다.
 export const MAX_DRAG_PIXELS = 180;
 

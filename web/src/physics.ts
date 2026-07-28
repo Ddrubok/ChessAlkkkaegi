@@ -34,7 +34,10 @@ import {
 } from "./stage";
 import {
   computeBreakableWallSegments,
+  computePocketKingBaseRadius,
+  computePocketWallSegments,
   hasBreakableWalls,
+  hasPocketWalls,
   type BreakableWallSegmentDefinition,
 } from "./walls";
 
@@ -87,17 +90,17 @@ export interface PieceBodyBinding {
 }
 
 export interface BreakableWallPhysicsBinding {
-  // 물리·렌더가 같은 벽 조각 상태를 참조하는 고정 배치 정의다.
+  // 물리·렌더가 같은 내구 변형과 벽 조각 상태를 참조하는 고정 배치 정의다.
   definition: BreakableWallSegmentDefinition;
   // 다음 fixed step 직전까지 반사를 유지하는 고정 강체다.
   body: RAPIER.RigidBody;
   // 말과의 실제 solver contact를 조회하는 박스 콜라이더다.
   collider: RAPIER.Collider;
-  // 서로 다른 말과 재접촉을 합쳐 최대 두 번까지 누적하는 타격 수다.
+  // 파괴 변형에서만 서로 다른 말과 재접촉을 합쳐 최대 두 번까지 누적하는 타격 수다.
   hitCount: number;
-  // 같은 말의 정지·슬라이딩 접촉을 중복 계수하지 않는 직전 접촉 집합이다.
+  // 파괴 변형에서 같은 말의 정지·슬라이딩 접촉을 중복 계수하지 않는 직전 접촉 집합이다.
   touchingPieceIds: Set<string>;
-  // 두 번째 타격 스텝의 반사가 끝난 뒤 다음 step 직전에 제거할 예약 상태다.
+  // 파괴 변형의 두 번째 타격 반사가 끝난 뒤 다음 step 직전에 제거할 예약 상태다.
   pendingDestruction: boolean;
 }
 
@@ -127,7 +130,7 @@ export interface PhysicsRuntime {
   // 렌더 판과 매 리셋마다 일치 여부를 검사하는 현재 물리 바닥 반폭이다.
   boardHalfExtent: number;
   pieces: Map<string, PieceBodyBinding>;
-  // 스테이지 3·4에서만 존재하며 매 보드 리셋마다 새 상태로 교체되는 벽 조각표다.
+  // 스테이지 3~8의 파괴·불파괴 변형을 같은 바디 생성 경로로 관리하는 외곽 벽 조각표다.
   breakableWalls: Map<string, BreakableWallPhysicsBinding>;
   // 다음 step 경계에서 제거된 조각을 렌더와 검증이 확인하는 id 집합이다.
   destroyedBreakableWallIds: Set<string>;
@@ -239,7 +242,7 @@ function createPhysicsBoard(
 }
 
 /**
- * 하나의 벽 조각을 보드 상면에 고정하고 말과 같은 마찰·반발 조건을 적용한다.
+ * 내구 변형과 무관하게 하나의 벽 조각을 보드 상면에 고정하고 같은 마찰·반발을 적용한다.
  */
 function createBreakableWallBody(
   runtime: PhysicsRuntime,
@@ -273,7 +276,7 @@ function createBreakableWallBody(
 }
 
 /**
- * 기존 벽 바디와 타격 상태를 전부 버리고 현재 스테이지의 새 벽을 처음 상태로 만든다.
+ * 기존 벽 바디와 타격 상태를 전부 버리고 현재 스테이지의 파괴·불파괴 벽을 처음 상태로 만든다.
  */
 export function resetPhysicsBreakableWalls(
   runtime: PhysicsRuntime,
@@ -285,19 +288,31 @@ export function resetPhysicsBreakableWalls(
   }
   runtime.breakableWalls.clear();
   runtime.destroyedBreakableWallIds.clear();
-  if (
-    !hasBreakableWalls(
-      stageOptions.gameMode,
-      stageOptions.stageNumber,
-    )
-  ) {
+  const breakable = hasBreakableWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const pocket = hasPocketWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  if (!breakable && !pocket) {
     return;
   }
-  const definitions = computeBreakableWallSegments(
-    runtime.boardHalfExtent,
-    runtime.boardTop,
-    meta.cellSize,
-  );
+  const definitions = breakable
+    ? computeBreakableWallSegments(
+        runtime.boardHalfExtent,
+        runtime.boardTop,
+        meta.cellSize,
+      )
+    : computePocketWallSegments(
+        runtime.boardHalfExtent,
+        runtime.boardTop,
+        computePocketKingBaseRadius(
+          meta.pieces.King.colliderPoints,
+          meta.pieces.King.bounds.y,
+        ),
+      );
   for (const definition of definitions) {
     runtime.breakableWalls.set(
       definition.id,
@@ -325,6 +340,13 @@ export function scanBreakableWallContacts(
       left.definition.index - right.definition.index,
   );
   for (const wall of walls) {
+    if (wall.definition.variant !== "breakable") {
+      // 포켓 벽은 같은 접촉 스캔을 지나도 내구도·균열 상태를 절대 만들지 않는다.
+      wall.hitCount = 0;
+      wall.touchingPieceIds.clear();
+      wall.pendingDestruction = false;
+      continue;
+    }
     if (wall.pendingDestruction) {
       continue;
     }
@@ -375,6 +397,11 @@ export function applyPendingBreakableWallDestructions(
       left.definition.index - right.definition.index,
   );
   for (const wall of walls) {
+    if (wall.definition.variant !== "breakable") {
+      wall.hitCount = 0;
+      wall.pendingDestruction = false;
+      continue;
+    }
     if (!wall.pendingDestruction) {
       continue;
     }

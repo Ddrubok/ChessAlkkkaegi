@@ -44,23 +44,26 @@ import {
 } from "./stage";
 import {
   computeBreakableWallSegments,
+  computePocketKingBaseRadius,
+  computePocketWallSegments,
   hasBreakableWalls,
+  hasPocketWalls,
   type BreakableWallSegmentDefinition,
 } from "./walls";
 
 export interface BreakableWallMeshBinding {
-  // 물리 조각과 같은 id·위치·크기를 제공하는 고정 배치 정의다.
+  // 물리 조각과 같은 내구 변형·id·위치·크기를 제공하는 고정 배치 정의다.
   definition: BreakableWallSegmentDefinition;
-  // 파란 띠와 첫 타격 균열을 그리는 실제 박스 메시다.
+  // 파괴 벽의 파란 띠 또는 불파괴 벽의 회백색 띠를 그리는 실제 박스 메시다.
   mesh: Mesh;
-  // 같은 균열 텍스처를 매 프레임 다시 만들지 않는 마지막 표시 타격 수다.
+  // 파괴 변형에서만 같은 균열 텍스처를 매 프레임 다시 만들지 않는 마지막 표시 타격 수다.
   shownHitCount: number;
 }
 
 export interface SceneRuntime {
   // 루프가 물리 자세를 개체별 렌더 메시로 복사하기 위한 연결표다.
   pieceMeshes: Map<string, Mesh>;
-  // 스테이지 3·4 외곽 벽 메시를 물리 타격 상태와 동기화하는 연결표다.
+  // 파괴 벽과 포켓 불파괴 벽을 같은 정의·메시 생성 경로로 동기화하는 연결표다.
   breakableWallMeshes: Map<string, BreakableWallMeshBinding>;
   scene: Scene;
   camera: PerspectiveCamera;
@@ -500,7 +503,7 @@ function createWallCrackTexture(segmentIndex: number): CanvasTexture {
 }
 
 /**
- * 한 벽 정의를 파란 박스 메시로 만들고 씬과 연결표에 등록한다.
+ * 한 벽 정의를 내구 변형에 맞는 파란색 또는 회백색 박스 메시로 만들어 등록한다.
  */
 function addBreakableWallMesh(
   scene: Scene,
@@ -513,7 +516,10 @@ function addBreakableWallMesh(
     definition.halfExtents.z * 2,
   );
   const material = new MeshStandardMaterial({
-    color: 0x176d94,
+    color:
+      definition.variant === "breakable"
+        ? 0x176d94
+        : 0xd9dee3,
     roughness: 0.7,
     polygonOffset: true,
     polygonOffsetFactor:
@@ -699,17 +705,30 @@ export function createSceneRuntime(
     string,
     BreakableWallMeshBinding
   >();
-  if (
-    hasBreakableWalls(
-      stageOptions.gameMode,
-      stageOptions.stageNumber,
-    )
-  ) {
-    for (const definition of computeBreakableWallSegments(
-      boardHalfExtent,
-      boardTop,
-      assets.meta.cellSize,
-    )) {
+  const breakable = hasBreakableWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const pocket = hasPocketWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  if (breakable || pocket) {
+    const definitions = breakable
+      ? computeBreakableWallSegments(
+          boardHalfExtent,
+          boardTop,
+          assets.meta.cellSize,
+        )
+      : computePocketWallSegments(
+          boardHalfExtent,
+          boardTop,
+          computePocketKingBaseRadius(
+            assets.meta.pieces.King.colliderPoints,
+            assets.meta.pieces.King.bounds.y,
+          ),
+        );
+    for (const definition of definitions) {
       addBreakableWallMesh(
         scene,
         breakableWallMeshes,
@@ -861,19 +880,32 @@ export function resetSceneBreakableWalls(
     disposeBreakableWallMesh(runtime.scene, binding);
   }
   runtime.breakableWallMeshes.clear();
-  if (
-    !hasBreakableWalls(
-      stageOptions.gameMode,
-      stageOptions.stageNumber,
-    )
-  ) {
+  const breakable = hasBreakableWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const pocket = hasPocketWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  if (!breakable && !pocket) {
     return;
   }
-  for (const definition of computeBreakableWallSegments(
-    runtime.boardHalfExtent,
-    runtime.boardTop,
-    assets.meta.cellSize,
-  )) {
+  const definitions = breakable
+    ? computeBreakableWallSegments(
+        runtime.boardHalfExtent,
+        runtime.boardTop,
+        assets.meta.cellSize,
+      )
+    : computePocketWallSegments(
+        runtime.boardHalfExtent,
+        runtime.boardTop,
+        computePocketKingBaseRadius(
+          assets.meta.pieces.King.colliderPoints,
+          assets.meta.pieces.King.bounds.y,
+        ),
+      );
+  for (const definition of definitions) {
     addBreakableWallMesh(
       runtime.scene,
       runtime.breakableWallMeshes,
@@ -903,6 +935,7 @@ export function synchronizeBreakableWallMeshes(
       continue;
     }
     if (
+      binding.definition.variant === "breakable" &&
       physicsBinding.hitCount >= 1 &&
       binding.shownHitCount < 1
     ) {

@@ -97,7 +97,7 @@ async function createRecordingRuntime(
 /**
  * 실제 정착·낙하 제거·승자 경로가 끝날 때까지 고정 스텝을 진행한다.
  */
-function settleTurn(modules, runtime) {
+function settleTurn(modules, runtime, onStep) {
   const maximumSteps = Math.ceil(
     (modules.config.MAX_SETTLE_SECONDS * 2) /
       modules.config.FIXED_STEP,
@@ -116,6 +116,7 @@ function settleTurn(modules, runtime) {
       runtime.turnRuntime,
       modules.config.FIXED_STEP,
     );
+    onStep?.();
     steps += 1;
   }
   if (
@@ -228,6 +229,7 @@ async function recordDirectedTurn(
   pieceId,
   direction,
   normalizedPower,
+  onStep,
 ) {
   const binding =
     runtime.physicsRuntime.pieces.get(pieceId);
@@ -275,7 +277,7 @@ async function recordDirectedTurn(
     queued.accepted,
     `${pieceId} 지정 기록 발사가 거절됐습니다: ${queued.reason}`,
   );
-  const steps = settleTurn(modules, runtime);
+  const steps = settleTurn(modules, runtime, onStep);
   assertCondition(
     runtime.turnRuntime.phase !== "match-over",
     `${pieceId} 지정 기록 발사 뒤 대국이 예상보다 일찍 끝났습니다.`,
@@ -362,6 +364,91 @@ async function recordStageFiveHoleFall(
     `구멍 낙하 기록이 1턴이 아니라 ${recording.turns.length}턴입니다.`,
   );
   return { recording, settleSteps, pieceId };
+}
+
+/**
+ * 불파괴 중앙 벽 반사 뒤 흑 Rook이 모서리 출구로 나가는 스테이지 7 기록을 만든다.
+ */
+async function recordStageSevenPocketExit(
+  modules,
+  meta,
+  source,
+) {
+  const runtime = await createRecordingRuntime(
+    modules,
+    meta,
+    source,
+  );
+  const reflectedPieceId = "white-rook-a1";
+  const exitedPieceId = "black-rook-a8";
+  const settleSteps = [];
+  let reflectedMinimumZ = Number.POSITIVE_INFINITY;
+  settleSteps.push(
+    await recordDirectedTurn(
+      modules,
+      runtime,
+      reflectedPieceId,
+      new Vector3(0, 0, -1),
+      0.18,
+      () => {
+        const binding =
+          runtime.physicsRuntime.pieces.get(reflectedPieceId);
+        if (binding !== undefined) {
+          reflectedMinimumZ = Math.min(
+            reflectedMinimumZ,
+            binding.body.translation().z,
+          );
+        }
+      },
+    ),
+  );
+  const reflectedFinalZ =
+    runtime.physicsRuntime.pieces
+      .get(reflectedPieceId)
+      ?.body.translation().z ??
+    Number.NEGATIVE_INFINITY;
+  assertCondition(
+    runtime.physicsRuntime.pieces.has(reflectedPieceId) &&
+      reflectedMinimumZ <
+        -runtime.physicsRuntime.boardHalfExtent + 0.35 &&
+      reflectedFinalZ > reflectedMinimumZ + 0.05 &&
+      [...runtime.physicsRuntime.breakableWalls.values()].every(
+        (wall) =>
+          wall.definition.variant === "indestructible" &&
+          wall.hitCount === 0 &&
+          !wall.pendingDestruction,
+      ),
+    `${reflectedPieceId} 중앙 벽 반사 또는 불파괴 상태가 다릅니다: minZ=${reflectedMinimumZ}, finalZ=${reflectedFinalZ}`,
+  );
+  settleSteps.push(
+    await recordDirectedTurn(
+      modules,
+      runtime,
+      exitedPieceId,
+      new Vector3(1, 0, 1).normalize(),
+      0.3,
+    ),
+  );
+  assertCondition(
+    !runtime.physicsRuntime.pieces.has(exitedPieceId),
+    `${exitedPieceId}가 스테이지 7 모서리 출구로 제거되지 않았습니다.`,
+  );
+  const recording =
+    await modules.replay.readReplayRecording(
+      runtime.recorder,
+    );
+  assertCondition(
+    recording.turns.length === 2,
+    `포켓 벽 기록이 2턴이 아니라 ${recording.turns.length}턴입니다.`,
+  );
+  return {
+    recording,
+    settleSteps,
+    reflectedPieceId,
+    reflectedMinimumZ,
+    reflectedFinalZ,
+    exitedPieceId,
+  };
 }
 
 /**
@@ -543,6 +630,32 @@ try {
   );
   console.log(
     `[통과 hole] stage5 ${holeRecording.pieceId} 중앙 구멍 낙하 1턴 기록→재생: hashes=1/1, settleSteps=${holeRecording.settleSteps}`,
+  );
+
+  const stageSevenSource = {
+    gameMode: "stage",
+    initialSide: "white",
+    stageNumber: 7,
+    runCards: cards.createRunCardState(),
+    permanentUpgrades:
+      metaModule.createDefaultPermanentUpgrades(),
+  };
+  const pocketRecording = await recordStageSevenPocketExit(
+    modules,
+    meta,
+    stageSevenSource,
+  );
+  const pocketReplay = await replay.replayRecording(
+    meta,
+    pocketRecording.recording,
+  );
+  assertCondition(
+    pocketReplay.matched &&
+      pocketReplay.turns.length === 2,
+    `스테이지 7 포켓 벽 재생 불일치: ${JSON.stringify(pocketReplay)}`,
+  );
+  console.log(
+    `[통과 pocket] stage7 ${pocketRecording.reflectedPieceId} 중앙 반사(minZ=${pocketRecording.reflectedMinimumZ.toFixed(6)}→finalZ=${pocketRecording.reflectedFinalZ.toFixed(6)})→${pocketRecording.exitedPieceId} 모서리 장외 2턴 기록→재생: hashes=2/2, settleSteps=${pocketRecording.settleSteps.join(",")}`,
   );
 
   const tampered = replay.deserializeRecording(
