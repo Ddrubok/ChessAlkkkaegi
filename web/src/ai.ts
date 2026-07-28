@@ -11,9 +11,10 @@ import { computeStrikeApplicationPoint } from "./aimparams";
 import {
   AI_AIM_CHARGE_SECONDS,
   AI_AIM_PREVIEW_DELAY,
-  AI_BASE_JITTER_DEGREES,
   AI_BASE_POWER_MAX,
   AI_BASE_POWER_MIN,
+  AI_STAGE_DECISION_BANDS,
+  deriveBoardHalfExtent,
 } from "./config";
 import type { GameMode } from "./game-mode";
 import type { PieceSide } from "./layout";
@@ -40,8 +41,10 @@ export interface AiPiecePosition {
 export interface AiDecision {
   // 이번 수에 발사할 흑 말 id다.
   pieceId: string;
-  // 발사 방향의 기준이 된 가장 가까운 백 말 id다.
+  // 현재 스테이지 판단 규칙이 발사 방향의 기준으로 고른 백 말 id다.
   targetPieceId: string;
+  // 선택에 사용한 무작위·장외·연쇄·최적 판단 구간이다.
+  judgement: AiJudgement;
   // 결정적 각도 변형까지 적용한 수평 단위 방향이다.
   direction: { x: number; z: number };
   // 현재 두 말 사이의 수평 거리다.
@@ -53,7 +56,7 @@ export interface AiDecision {
 }
 
 export interface AiDecisionOverrides {
-  // 스윕에서 기본 좌우 오차 상한만 바꿀 수 있으며 생략하면 config 값을 쓴다.
+  // 스윕에서 구간별 좌우 오차 상한만 바꿀 수 있으며 생략하면 config 표를 쓴다.
   jitterDegrees?: number;
   // 스윕에서 거리 비례 세기 하한만 바꿀 수 있으며 생략하면 config 값을 쓴다.
   minimumPower?: number;
@@ -122,23 +125,209 @@ const HEADLESS_AI_SHOT_DELAY_MILLISECONDS = 800;
 // 겹친 두 점에서 정규화가 발산하지 않게 무시하는 수평 거리 제곱이다.
 const ZERO_DISTANCE_EPSILON_SQUARED = 1e-18;
 
+export type AiJudgement =
+  (typeof AI_STAGE_DECISION_BANDS)[number]["judgement"];
+
+interface AiStageDecisionBand {
+  minimumStage: number;
+  maximumStage: number;
+  judgement: AiJudgement;
+  maximumAimErrorDegrees: number;
+}
+
+interface AiShotCandidate {
+  black: AiPiecePosition;
+  white: AiPiecePosition;
+  distanceSquared: number;
+  targetEdgeDistance: number;
+  chainTargetCount: number;
+}
+
+/**
+ * 1~10 스테이지를 기획서 판단 구간과 조준 오차 상한으로 변환한다.
+ */
+export function getAiStageDecisionBand(
+  stageNumber: number,
+): AiStageDecisionBand {
+  if (!Number.isInteger(stageNumber) || stageNumber < 1) {
+    throw new Error(
+      `AI stageNumber ${stageNumber}가 1 이상의 정수가 아닙니다.`,
+    );
+  }
+  const band = AI_STAGE_DECISION_BANDS.find(
+    (candidate) =>
+      stageNumber >= candidate.minimumStage &&
+      stageNumber <= candidate.maximumStage,
+  );
+  if (band === undefined) {
+    throw new Error(
+      `AI stageNumber ${stageNumber}에 정의된 판단 구간이 없습니다.`,
+    );
+  }
+  return band;
+}
+
+/**
+ * 같은 스테이지와 샷 번호가 선택·조준마다 재사용할 결정적 32비트 해시를 만든다.
+ */
+function computeAiDecisionHash(
+  stageNumber: number,
+  shotCounter: number,
+  salt: number,
+): number {
+  let hash =
+    Math.imul(stageNumber, 2_246_822_519) ^
+    Math.imul(shotCounter + 1, 3_266_489_917) ^
+    salt;
+  hash = Math.imul(hash ^ (hash >>> 16), 2_246_822_507);
+  hash = Math.imul(hash ^ (hash >>> 13), 3_266_489_909);
+  return (hash ^ (hash >>> 16)) >>> 0;
+}
+
 /**
  * 같은 샷 번호가 항상 설정된 좌우 오차 범위 안의 같은 각도 변형을 만들게 한다.
  */
 function computeVariationDegrees(
+  stageNumber: number,
   shotCounter: number,
-  jitterDegrees: number = AI_BASE_JITTER_DEGREES,
+  jitterDegrees: number,
 ): number {
   if (!Number.isFinite(jitterDegrees) || jitterDegrees < 0) {
     throw new Error(
       `AI jitterDegrees ${jitterDegrees}가 유한한 음이 아닌 수가 아닙니다.`,
     );
   }
-  const hash = Math.imul(shotCounter + 1, 2_654_435_761) >>> 0;
+  if (jitterDegrees === 0) {
+    return 0;
+  }
+  const hash = computeAiDecisionHash(
+    stageNumber,
+    shotCounter,
+    0x68bc_21eb,
+  );
   return (
     -jitterDegrees +
     (hash / 0xffff_ffff) * jitterDegrees * 2
   );
+}
+
+/**
+ * 목표를 지난 발사선 회랑에서 연쇄 충돌 후보가 되는 추가 백 말 수를 센다.
+ */
+function countChainTargets(
+  black: AiPiecePosition,
+  target: AiPiecePosition,
+  whitePieces: readonly AiPiecePosition[],
+  cellSize: number,
+): number {
+  const deltaX = target.x - black.x;
+  const deltaZ = target.z - black.z;
+  const distance = Math.hypot(deltaX, deltaZ);
+  if (distance * distance <= ZERO_DISTANCE_EPSILON_SQUARED) {
+    return 0;
+  }
+  const directionX = deltaX / distance;
+  const directionZ = deltaZ / distance;
+  let count = 0;
+  for (const other of whitePieces) {
+    if (other.id === target.id) {
+      continue;
+    }
+    const relativeX = other.x - target.x;
+    const relativeZ = other.z - target.z;
+    const along =
+      relativeX * directionX + relativeZ * directionZ;
+    const perpendicular = Math.abs(
+      relativeX * directionZ - relativeZ * directionX,
+    );
+    if (
+      along >= -cellSize * 0.5 &&
+      along <= cellSize * 2 &&
+      perpendicular <= cellSize * 0.75
+    ) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+/**
+ * 정렬된 유효 흑·백 쌍에 장외 거리와 연쇄 후보 수를 붙여 판단 공통 입력을 만든다.
+ */
+function collectAiShotCandidates(
+  blackPieces: readonly AiPiecePosition[],
+  whitePieces: readonly AiPiecePosition[],
+  cellSize: number,
+): AiShotCandidate[] {
+  const boardHalfExtent = deriveBoardHalfExtent(cellSize);
+  const candidates: AiShotCandidate[] = [];
+  for (const black of blackPieces) {
+    for (const white of whitePieces) {
+      const deltaX = white.x - black.x;
+      const deltaZ = white.z - black.z;
+      const distanceSquared =
+        deltaX * deltaX + deltaZ * deltaZ;
+      if (distanceSquared <= ZERO_DISTANCE_EPSILON_SQUARED) {
+        continue;
+      }
+      candidates.push({
+        black,
+        white,
+        distanceSquared,
+        targetEdgeDistance:
+          boardHalfExtent -
+          Math.max(Math.abs(white.x), Math.abs(white.z)),
+        chainTargetCount: countChainTargets(
+          black,
+          white,
+          whitePieces,
+          cellSize,
+        ),
+      });
+    }
+  }
+  return candidates;
+}
+
+/**
+ * 현재 구간의 단순 우선순위만 적용하고 완전 동률은 정렬된 후보 순서로 유지한다.
+ */
+function selectAiShotCandidate(
+  candidates: readonly AiShotCandidate[],
+  judgement: AiJudgement,
+  stageNumber: number,
+  shotCounter: number,
+): AiShotCandidate | null {
+  if (candidates.length === 0) {
+    return null;
+  }
+  if (judgement === "random") {
+    const hash = computeAiDecisionHash(
+      stageNumber,
+      shotCounter,
+      0x9e37_79b9,
+    );
+    return candidates[hash % candidates.length];
+  }
+  const sorted = [...candidates].sort((left, right) => {
+    if (
+      (judgement === "chain" || judgement === "optimal") &&
+      left.chainTargetCount !== right.chainTargetCount
+    ) {
+      return right.chainTargetCount - left.chainTargetCount;
+    }
+    if (
+      (judgement === "edge" || judgement === "optimal") &&
+      left.targetEdgeDistance !== right.targetEdgeDistance
+    ) {
+      return left.targetEdgeDistance - right.targetEdgeDistance;
+    }
+    if (left.distanceSquared !== right.distanceSquared) {
+      return left.distanceSquared - right.distanceSquared;
+    }
+    return 0;
+  });
+  return sorted[0];
 }
 
 /**
@@ -175,12 +364,13 @@ export function computeAiPower(
 }
 
 /**
- * 현재 수평 위치에서 가장 가까운 흑·백 쌍과 결정적 발사 방향·세기를 고른다.
+ * 현재 스테이지의 무작위·장외·연쇄·최적 규칙으로 결정적 발사 쌍과 방향·세기를 고른다.
  */
 export function decideAiShot(
   pieces: readonly AiPiecePosition[],
   cellSize: number,
   shotCounter: number,
+  stageNumber: number = 1,
   overrides: Readonly<AiDecisionOverrides> = {},
 ): AiDecision | null {
   if (!Number.isFinite(cellSize) || cellSize <= 0) {
@@ -196,44 +386,52 @@ export function decideAiShot(
     .sort((left, right) =>
       left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
     );
-  let selectedBlack: AiPiecePosition | null = null;
-  let selectedWhite: AiPiecePosition | null = null;
-  let minimumDistanceSquared = Number.POSITIVE_INFINITY;
-  for (const black of blackPieces) {
-    for (const white of whitePieces) {
-      const deltaX = white.x - black.x;
-      const deltaZ = white.z - black.z;
-      const distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
-      if (
-        distanceSquared <= ZERO_DISTANCE_EPSILON_SQUARED ||
-        distanceSquared >= minimumDistanceSquared
-      ) {
-        continue;
-      }
-      selectedBlack = black;
-      selectedWhite = white;
-      minimumDistanceSquared = distanceSquared;
-    }
-  }
-  if (selectedBlack === null || selectedWhite === null) {
+  const band = getAiStageDecisionBand(stageNumber);
+  const selected = selectAiShotCandidate(
+    collectAiShotCandidates(
+      blackPieces,
+      whitePieces,
+      cellSize,
+    ),
+    band.judgement,
+    stageNumber,
+    shotCounter,
+  );
+  if (selected === null) {
     return null;
   }
-  const distance = Math.sqrt(minimumDistanceSquared);
+  const selectedBlack = selected.black;
+  const selectedWhite = selected.white;
+  const distance = Math.sqrt(selected.distanceSquared);
   const baseDirectionX =
     (selectedWhite.x - selectedBlack.x) / distance;
   const baseDirectionZ =
     (selectedWhite.z - selectedBlack.z) / distance;
   const variationDegrees = computeVariationDegrees(
+    stageNumber,
     shotCounter,
-    overrides.jitterDegrees,
+    band.maximumAimErrorDegrees === 0
+      ? 0
+      : (overrides.jitterDegrees ??
+        band.maximumAimErrorDegrees),
   );
-  const variationRadians = MathUtils.degToRad(variationDegrees);
-  const cosine = Math.cos(variationRadians);
-  const sine = Math.sin(variationRadians);
-  const direction = {
-    x: baseDirectionX * cosine - baseDirectionZ * sine,
-    z: baseDirectionX * sine + baseDirectionZ * cosine,
-  };
+  const direction =
+    variationDegrees === 0
+      ? { x: baseDirectionX, z: baseDirectionZ }
+      : (() => {
+          const variationRadians =
+            MathUtils.degToRad(variationDegrees);
+          const cosine = Math.cos(variationRadians);
+          const sine = Math.sin(variationRadians);
+          return {
+            x:
+              baseDirectionX * cosine -
+              baseDirectionZ * sine,
+            z:
+              baseDirectionX * sine +
+              baseDirectionZ * cosine,
+          };
+        })();
   const power = computeAiPower(
     distance,
     cellSize,
@@ -243,6 +441,7 @@ export function decideAiShot(
   return {
     pieceId: selectedBlack.id,
     targetPieceId: selectedWhite.id,
+    judgement: band.judgement,
     direction,
     distance,
     power,
@@ -278,6 +477,7 @@ function prepareAiTelegraph(
     collectAiPiecePositions(runtime.physicsRuntime),
     runtime.cellSize,
     runtime.shotCounter,
+    runtime.getStageNumber(),
     runtime.getDecisionOverrides(),
   );
   if (decision === null) {

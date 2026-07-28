@@ -547,7 +547,8 @@ async function runBaseline(
     {
       id: "r37-v3-player-current-runtime",
       aiJitterDegrees:
-        modules.config.AI_BASE_JITTER_DEGREES,
+        modules.config.AI_STAGE_DECISION_BANDS[0]
+          .maximumAimErrorDegrees,
       aiPowerMaximum: modules.config.AI_BASE_POWER_MAX,
       buffStepScale:
         modules.config.ENEMY_STAGE_BUFF_SCALE,

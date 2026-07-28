@@ -127,10 +127,12 @@ try {
     deterministicBoard,
     0.6,
     7,
+    7,
   );
   const secondDecision = decideAiShot(
-    deterministicBoard,
+    [...deterministicBoard].reverse(),
     0.6,
+    7,
     7,
   );
   assertSame(secondDecision, firstDecision, "AI 결정성");
@@ -138,26 +140,117 @@ try {
     `[통과] 결정성: ${JSON.stringify(firstDecision)}`,
   );
 
-  const nearestDecision = decideAiShot(
-    [
-      { id: "white-near", side: "white", x: 0, z: 0 },
-      { id: "white-far", side: "white", x: 10, z: 0 },
-      { id: "black-near", side: "black", x: 1, z: 0 },
-      { id: "black-far", side: "black", x: 7, z: 0 },
-    ],
-    0.6,
-    0,
+  const fixedBoard = [
+    { id: "black-a-chain", side: "black", x: -1, z: 0 },
+    { id: "black-z-edge", side: "black", x: 2, z: 2 },
+    { id: "white-a-central", side: "white", x: 0, z: 0 },
+    { id: "white-b-central-back", side: "white", x: 1, z: 0 },
+    { id: "white-y-edge-inner", side: "white", x: 3, z: 2 },
+    { id: "white-z-edge-outer", side: "white", x: 4, z: 2 },
+  ];
+  const bandDecisions = [
+    { stage: 1, judgement: "random" },
+    { stage: 4, judgement: "edge" },
+    { stage: 7, judgement: "chain" },
+    { stage: 10, judgement: "optimal" },
+  ].map(({ stage, judgement }) => {
+    const decision = decideAiShot(
+      fixedBoard,
+      1,
+      0,
+      stage,
+    );
+    if (decision === null || decision.judgement !== judgement) {
+      throw new Error(
+        `스테이지 ${stage} 판단 구간 실패: ${JSON.stringify(decision)}`,
+      );
+    }
+    return decision;
+  });
+  const expectedBandSelections = [
+    ["black-z-edge", "white-a-central"],
+    ["black-z-edge", "white-z-edge-outer"],
+    ["black-a-chain", "white-a-central"],
+    ["black-z-edge", "white-y-edge-inner"],
+  ];
+  assertSame(
+    bandDecisions.map((decision) => [
+      decision.pieceId,
+      decision.targetPieceId,
+    ]),
+    expectedBandSelections,
+    "구간별 판단 선택",
+  );
+  console.log(
+    `[통과] 구간별 판단: ${bandDecisions.map((decision) => `${decision.judgement}=${decision.pieceId}→${decision.targetPieceId}`).join(", ")}`,
+  );
+
+  const expectedAimErrors = [10, 7, 3, 0];
+  const configuredAimErrors =
+    configModule.AI_STAGE_DECISION_BANDS.map(
+      (band) => band.maximumAimErrorDegrees,
+    );
+  assertSame(
+    configuredAimErrors,
+    expectedAimErrors,
+    "구간별 조준 오차표",
+  );
+  const aimErrorProbeBoard = [
+    { id: "black-probe", side: "black", x: 0, z: 0 },
+    { id: "white-probe", side: "white", x: 3, z: 4 },
+  ];
+  const measuredAimErrors = [1, 4, 7, 10].map(
+    (stage, bandIndex) => {
+      let maximumDeviation = 0;
+      for (let shotCounter = 0; shotCounter < 20_000; shotCounter += 1) {
+        const decision = decideAiShot(
+          aimErrorProbeBoard,
+          1,
+          shotCounter,
+          stage,
+        );
+        if (decision === null) {
+          throw new Error(
+            `스테이지 ${stage} 오차 측정 결정을 만들지 못했습니다.`,
+          );
+        }
+        maximumDeviation = Math.max(
+          maximumDeviation,
+          Math.abs(decision.variationDegrees),
+        );
+      }
+      const expectedMaximum = expectedAimErrors[bandIndex];
+      if (
+        maximumDeviation > expectedMaximum + 1e-12 ||
+        (expectedMaximum > 0 &&
+          maximumDeviation < expectedMaximum * 0.999)
+      ) {
+        throw new Error(
+          `스테이지 ${stage} 오차 상한 실측 실패: expected=${expectedMaximum}, measured=${maximumDeviation}`,
+        );
+      }
+      return maximumDeviation;
+    },
+  );
+  const stage10Decision = decideAiShot(
+    aimErrorProbeBoard,
+    1,
+    123,
+    10,
+    { jitterDegrees: 10 },
   );
   if (
-    nearestDecision?.pieceId !== "black-near" ||
-    nearestDecision.targetPieceId !== "white-near"
+    stage10Decision === null ||
+    stage10Decision.variationDegrees !== 0 ||
+    stage10Decision.direction.x !== 0.6 ||
+    stage10Decision.direction.z !== 0.8
   ) {
     throw new Error(
-      `최근접 선택 실패: ${JSON.stringify(nearestDecision)}`,
+      `스테이지 10 순수 조준 실패: ${JSON.stringify(stage10Decision)}`,
     );
   }
   console.log(
-    `[통과] 최근접 선택: ${nearestDecision.pieceId} → ${nearestDecision.targetPieceId}`,
+    `[통과] 조준 오차 상한: configured=${configuredAimErrors.join("/")}, measured=${measuredAimErrors.map((value) => value.toFixed(6)).join("/")}, stage10Pure=${stage10Decision.direction.x.toFixed(1)}/${stage10Decision.direction.z.toFixed(1)}`,
   );
 
   const minimumPower = computeAiPower(0, 0.6);
