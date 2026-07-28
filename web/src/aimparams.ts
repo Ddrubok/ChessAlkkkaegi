@@ -39,6 +39,8 @@ export interface AimParametersRuntime {
   redDot: Mesh;
   normalizedPower: number;
   currentSolution: StrikeSolution | null;
+  // 타점선택 모드에서 사용자가 직접 지정한 타점. null이면 자동 계산 타점을 쓴다.
+  strikePointOverride: Vector3 | null;
   // 같은 거절 원인을 매 프레임 콘솔에 반복하지 않도록 마지막 로그만 기억한다.
   lastLoggedError: string | null;
 }
@@ -131,11 +133,13 @@ export function computeStrikeSolution(
     .normalize();
 
   const worldCom = binding.body.worldCom();
-  const applicationPoint = computeStrikeApplicationPoint(
-    binding,
-    mesh,
-    runtime.tuningRuntime.settings.strikeHeightRatio,
-  );
+  const applicationPoint =
+    runtime.strikePointOverride ??
+    computeStrikeApplicationPoint(
+      binding,
+      mesh,
+      runtime.tuningRuntime.settings.strikeHeightRatio,
+    );
   const initialSpeed =
     MathUtils.clamp(normalizedPower, 0, 1) *
     runtime.tuningRuntime.settings.maxLaunchSpeed;
@@ -205,6 +209,7 @@ export function createAimParametersRuntime(
     redDot,
     normalizedPower: 0,
     currentSolution: null,
+    strikePointOverride: null,
     lastLoggedError: null,
   };
 }
@@ -249,6 +254,11 @@ export function setAimPower(
   normalizedPower: number,
 ): void {
   runtime.normalizedPower = MathUtils.clamp(normalizedPower, 0, 1);
+  if (runtime.redDot.visible) {
+    runtime.redDot.scale.setScalar(1 + runtime.normalizedPower * 2);
+    const material = runtime.redDot.material as MeshBasicMaterial;
+    material.color.setRGB(1, 1 - runtime.normalizedPower, 1 - runtime.normalizedPower);
+  }
 }
 
 /**
@@ -259,6 +269,8 @@ export function clearStrikePreview(
 ): void {
   runtime.currentSolution = null;
   runtime.normalizedPower = 0;
+  runtime.redDot.scale.setScalar(1);
+  (runtime.redDot.material as MeshBasicMaterial).color.setHex(0xff2d2d);
   runtime.redDot.visible = false;
   runtime.root.hidden = true;
   runtime.error.hidden = true;
@@ -301,4 +313,22 @@ export function isRedDotHit(
   const screenX = rect.left + ((projected.x + 1) / 2) * rect.width;
   const screenY = rect.top + ((1 - projected.y) / 2) * rect.height;
   return Math.hypot(clientX - screenX, clientY - screenY) <= radiusPixels;
+}
+/**
+ * 사용자가 직접 지정한 타점을 저장한다.
+ */
+export function setStrikePointOverride(
+  runtime: AimParametersRuntime,
+  point: Vector3,
+): void {
+  runtime.strikePointOverride = point.clone();
+}
+
+/**
+ * 사용자 지정 타점을 해제하고 자동 계산으로 되돌린다.
+ */
+export function clearStrikePointOverride(
+  runtime: AimParametersRuntime,
+): void {
+  runtime.strikePointOverride = null;
 }

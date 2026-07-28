@@ -29,6 +29,8 @@ import {
   setAimPower,
   showAimError,
   updateStrikePreview,
+  setStrikePointOverride,
+  clearStrikePointOverride,
   type AimParametersRuntime,
   type StrikeSolution,
 } from "./aimparams";
@@ -148,6 +150,10 @@ export interface InputRuntime {
   // 선택 말과 빨간 점을 프러스텀 안에 두는 현재 최소 거리다.
   adaptiveCloseDistance: number | null;
   modeToggle: HTMLElement;
+  // 담돌받기 / 타점선택 앙션 바.
+  actionBar: HTMLElement;
+  // true이면 기물 표면 탭으로 타점을 지정한다.
+  strikeMode: boolean;
 }
 
 // 탭과 카메라 공전 드래그를 같은 캔버스 포인터에서 구별하는 최대 이동 거리다.
@@ -587,6 +593,9 @@ function selectPiece(
   runtime.failureReason = null;
   selectAimPiece(runtime.aimRuntime, pieceId);
   setAimPower(runtime.aimParametersRuntime, 0);
+  runtime.strikeMode = false;
+  clearStrikePointOverride(runtime.aimParametersRuntime);
+  updateActionBar(runtime);
   runtime.state =
     pieceId !== null && runtime.mode === "billiards"
       ? "selected-preview"
@@ -628,6 +637,9 @@ function cancelInteraction(
   runtime.preparedStrikeSolution = null;
   if (clearSelection) {
     runtime.adaptiveCloseDistance = null;
+    runtime.strikeMode = false;
+    clearStrikePointOverride(runtime.aimParametersRuntime);
+    updateActionBar(runtime);
   }
   runtime.activePointerId = null;
   runtime.activeCaptureElement = null;
@@ -855,6 +867,51 @@ function updateModeToggle(runtime: InputRuntime): void {
 }
 
 /**
+ * 담돌받기 / 타점선택 앙션 바를 현재 상태로 보여준다.
+ */
+function updateActionBar(runtime: InputRuntime): void {
+  const selected =
+    runtime.mode === "billiards" &&
+    runtime.aimRuntime.selectedPieceId !== null;
+  runtime.actionBar.hidden = !selected;
+  for (const button of runtime.actionBar.querySelectorAll("button")) {
+    const active =
+      button.dataset.action === "strike"
+        ? runtime.strikeMode
+        : !runtime.strikeMode;
+    button.setAttribute("aria-pressed", String(active));
+  }
+}
+
+/**
+ * 선택한 기물 표면을 킭했을 때 첫 교차점을 반환한다.
+ */
+function raycastSelectedPieceSurface(
+  runtime: InputRuntime,
+  event: PointerEvent,
+): Vector3 | null {
+  const pieceId = runtime.aimRuntime.selectedPieceId;
+  if (pieceId === null) {
+    return null;
+  }
+  const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
+  if (mesh === undefined) {
+    return null;
+  }
+  const rect = runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  runtime.pointerNdc.set(
+    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+    -((event.clientY - rect.top) / rect.height) * 2 + 1,
+  );
+  runtime.raycaster.setFromCamera(
+    runtime.pointerNdc,
+    runtime.sceneRuntime.camera,
+  );
+  const intersections = runtime.raycaster.intersectObject(mesh, false);
+  return intersections[0]?.point.clone() ?? null;
+}
+
+/**
  * 모드 전환은 현재 상호작용을 완전히 정리한 뒤 대상 카메라 계약을 복원한다.
  */
 export function switchInputMode(
@@ -925,6 +982,7 @@ function handleCanvasPointerDown(
   const canCharge =
     runtime.mode === "billiards" &&
     selectedId !== null &&
+    !runtime.strikeMode &&
     runtime.policy.canSelectPiece(selectedId) &&
     isRedDotHit(
       runtime.aimParametersRuntime,
@@ -1094,6 +1152,27 @@ function handleCanvasPointerUp(
   const tapped =
     gesture.maximumDistance <= TAP_MAX_DISTANCE_PIXELS;
   const candidatePieceId = gesture.candidatePieceId;
+  if (
+    tapped &&
+    runtime.strikeMode &&
+    candidatePieceId === runtime.aimRuntime.selectedPieceId
+  ) {
+    const point = raycastSelectedPieceSurface(runtime, event);
+    if (point !== null) {
+      setStrikePointOverride(runtime.aimParametersRuntime, point);
+      try {
+        refreshBilliardsPreview(runtime);
+      } catch (error: unknown) {
+        const reason = formatInteractionError(error);
+        cancelInteraction(runtime, true);
+        runtime.failureReason = reason;
+        showAimError(runtime.aimParametersRuntime, reason);
+        return;
+      }
+    }
+    cancelInteraction(runtime, false);
+    return;
+  }
   cancelInteraction(runtime, false);
   if (tapped) {
     selectPiece(runtime, candidatePieceId);
@@ -1189,6 +1268,22 @@ export function createInputRuntime(
     modeToggle.append(button);
   }
   sceneRuntime.renderer.domElement.parentElement?.append(modeToggle);
+  const actionBar = document.createElement("div");
+  actionBar.className = "strike-action-bar";
+  actionBar.setAttribute("role", "group");
+  actionBar.setAttribute("aria-label", "동작 선택");
+  actionBar.hidden = true;
+  for (const [action, label] of [
+    ["launch", "발사"],
+    ["strike", "타점선택"],
+  ] as const) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.action = action;
+    button.textContent = label;
+    actionBar.append(button);
+  }
+  sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
   const runtime: InputRuntime = {
     sceneRuntime,
     physicsRuntime,
@@ -1214,6 +1309,8 @@ export function createInputRuntime(
     failureReason: null,
     adaptiveCloseDistance: null,
     modeToggle,
+    actionBar,
+    strikeMode: false,
   };
 
   for (const button of modeToggle.querySelectorAll("button")) {
@@ -1222,6 +1319,28 @@ export function createInputRuntime(
       if (mode === "classic" || mode === "billiards") {
         switchInputMode(runtime, mode);
       }
+    });
+  }
+  updateActionBar(runtime);
+  for (const button of actionBar.querySelectorAll("button")) {
+    button.addEventListener("click", () => {
+      const action = button.dataset.action;
+      if (action === "strike") {
+        runtime.strikeMode = true;
+      } else if (action === "launch") {
+        runtime.strikeMode = false;
+        if (runtime.aimRuntime.selectedPieceId !== null) {
+          try {
+            refreshBilliardsPreview(runtime);
+          } catch (error: unknown) {
+            const reason = formatInteractionError(error);
+            cancelInteraction(runtime, true);
+            runtime.failureReason = reason;
+            showAimError(runtime.aimParametersRuntime, reason);
+          }
+        }
+      }
+      updateActionBar(runtime);
     });
   }
   const canvas = sceneRuntime.renderer.domElement;
