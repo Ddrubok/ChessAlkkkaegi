@@ -220,6 +220,115 @@ async function recordScriptedTurn(
 }
 
 /**
+ * 벽 재생 사례가 지정 말·방향·세기를 실제 recorder와 발사 경로로 기록하게 한다.
+ */
+async function recordDirectedTurn(
+  modules,
+  runtime,
+  pieceId,
+  direction,
+  normalizedPower,
+) {
+  const binding =
+    runtime.physicsRuntime.pieces.get(pieceId);
+  assertCondition(
+    binding !== undefined,
+    `지정 기록 말 ${pieceId}가 없습니다.`,
+  );
+  assertCondition(
+    binding.instance.side ===
+      runtime.turnRuntime.currentSide,
+    `${pieceId}의 진영 ${binding.instance.side}이 현재 턴 ${runtime.turnRuntime.currentSide}과 다릅니다.`,
+  );
+  let speedMultiplier = 1;
+  if (runtime.stageOptions.gameMode === "stage") {
+    if (binding.instance.side === "white") {
+      const permanentBonus =
+        modules.meta.computePermanentForceBonus(
+          runtime.stageOptions.permanentUpgrades,
+          binding.instance.type,
+        );
+      speedMultiplier =
+        modules.cards.computePlayerLaunchSpeedMultiplier(
+          "stage",
+          runtime.stageOptions.runCards,
+          permanentBonus,
+        );
+    } else {
+      speedMultiplier =
+        modules.stage.computeStageAiSpeedMultiplier(
+          runtime.stageOptions,
+        );
+    }
+  }
+  const queued = modules.turn.queueTurnLaunch(
+    runtime.turnRuntime,
+    {
+      pieceId,
+      direction,
+      normalizedPower,
+      applicationPoint: binding.body.worldCom(),
+      speedMultiplier,
+    },
+  );
+  assertCondition(
+    queued.accepted,
+    `${pieceId} 지정 기록 발사가 거절됐습니다: ${queued.reason}`,
+  );
+  const steps = settleTurn(modules, runtime);
+  assertCondition(
+    runtime.turnRuntime.phase !== "match-over",
+    `${pieceId} 지정 기록 발사 뒤 대국이 예상보다 일찍 끝났습니다.`,
+  );
+  await modules.replay.readReplayRecording(
+    runtime.recorder,
+  );
+  return steps;
+}
+
+/**
+ * 백 Rook이 남쪽 조각에 반사된 뒤 다시 접촉해 파괴하는 스테이지 3 기록을 만든다.
+ */
+async function recordStageThreeWallDestruction(
+  modules,
+  meta,
+  source,
+) {
+  const runtime = await createRecordingRuntime(
+    modules,
+    meta,
+    source,
+  );
+  const wallId = "wall-south-1";
+  const settleSteps = [];
+  settleSteps.push(
+    await recordDirectedTurn(
+      modules,
+      runtime,
+      "white-rook-h1",
+      new Vector3(0.3, 0, -1).normalize(),
+      0.18,
+    ),
+  );
+  assertCondition(
+    !runtime.physicsRuntime.breakableWalls.has(wallId) &&
+      runtime.physicsRuntime.destroyedBreakableWallIds.has(
+        wallId,
+      ),
+    `${wallId}가 Rook의 분리 후 재접촉 두 번째 타격 뒤 파괴되지 않았습니다.`,
+  );
+  const recording =
+    await modules.replay.readReplayRecording(
+      runtime.recorder,
+    );
+  assertCondition(
+    recording.turns.length === 1,
+    `벽 파괴 기록이 1턴이 아니라 ${recording.turns.length}턴입니다.`,
+  );
+  return { recording, settleSteps, wallId };
+}
+
+/**
  * 지정한 헤더 원본으로 10턴을 실제 recorder에 기록한다.
  */
 async function recordTenTurns(modules, meta, source) {
@@ -355,6 +464,25 @@ try {
     `[통과 b] stage3 force 카드+Pawn 영구 강화 10턴: hashes=10/10, activeCards=${stageRecording.recording.header.stage.activeCardIds.join(",")}, Pawn=${JSON.stringify(stageRecording.recording.header.stage.permanentUpgrades.pieces.Pawn)}`,
   );
 
+  const wallRecording =
+    await recordStageThreeWallDestruction(
+      modules,
+      meta,
+      stageSource,
+    );
+  const wallReplay = await replay.replayRecording(
+    meta,
+    wallRecording.recording,
+  );
+  assertCondition(
+    wallReplay.matched &&
+      wallReplay.turns.length === 1,
+    `스테이지 3 벽 파괴 재생 불일치: ${JSON.stringify(wallReplay)}`,
+  );
+  console.log(
+    `[통과 c] stage3 벽 2회 접촉·파괴 1턴 기록→재생: wall=${wallRecording.wallId}, hashes=1/1, settleSteps=${wallRecording.settleSteps.join(",")}`,
+  );
+
   const tampered = replay.deserializeRecording(
     replay.serializeRecording(hotseat.recording),
   );
@@ -371,7 +499,7 @@ try {
     `세기 변조가 ${tamperedTurnIndex}번 턴에서 잡히지 않았습니다: ${JSON.stringify(tamperedReplay)}`,
   );
   console.log(
-    `[통과 c] power 변조 감지: expectedTurn=${tamperedTurnIndex}, firstMismatch=${tamperedReplay.firstMismatchTurn}`,
+    `[통과 d] power 변조 감지: expectedTurn=${tamperedTurnIndex}, firstMismatch=${tamperedReplay.firstMismatchTurn}`,
   );
 
   const compactTurn = replay.toCompactTurn(
@@ -385,7 +513,7 @@ try {
     "compact turn JSON 크기가 0바이트입니다.",
   );
   console.log(
-    `[통과 d] compact turn payload=${compactBytes} bytes, json=${compactJson}`,
+    `[통과 e] compact turn payload=${compactBytes} bytes, json=${compactJson}`,
   );
 } catch (error) {
   const fullError =

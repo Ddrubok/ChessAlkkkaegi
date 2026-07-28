@@ -25,6 +25,11 @@ import {
   selectStageSpawnInstances,
   type StageSpawnOptions,
 } from "./stage";
+import {
+  computeBreakableWallSegments,
+  hasBreakableWalls,
+  type BreakableWallSegmentDefinition,
+} from "./walls";
 
 export interface PieceMassProperties {
   mass: number;
@@ -74,6 +79,30 @@ export interface PieceBodyBinding {
   upgradeAdditionalMass: number;
 }
 
+export interface BreakableWallPhysicsBinding {
+  // 물리·렌더가 같은 벽 조각 상태를 참조하는 고정 배치 정의다.
+  definition: BreakableWallSegmentDefinition;
+  // 다음 fixed step 직전까지 반사를 유지하는 고정 강체다.
+  body: RAPIER.RigidBody;
+  // 말과의 실제 solver contact를 조회하는 박스 콜라이더다.
+  collider: RAPIER.Collider;
+  // 서로 다른 말과 재접촉을 합쳐 최대 두 번까지 누적하는 타격 수다.
+  hitCount: number;
+  // 같은 말의 정지·슬라이딩 접촉을 중복 계수하지 않는 직전 접촉 집합이다.
+  touchingPieceIds: Set<string>;
+  // 두 번째 타격 스텝의 반사가 끝난 뒤 다음 step 직전에 제거할 예약 상태다.
+  pendingDestruction: boolean;
+}
+
+export interface BreakableWallHit {
+  // 새 접촉을 만든 말의 결정적 식별자다.
+  pieceId: string;
+  // 새 접촉을 받은 벽 조각의 결정적 식별자다.
+  wallId: string;
+  // 이번 접촉까지 포함한 조각의 누적 타격 수다.
+  hitCount: number;
+}
+
 export interface PhysicsRuntime {
   world: RAPIER.World;
   boardBody: RAPIER.RigidBody;
@@ -82,6 +111,10 @@ export interface PhysicsRuntime {
   // 렌더 판과 매 리셋마다 일치 여부를 검사하는 현재 물리 바닥 반폭이다.
   boardHalfExtent: number;
   pieces: Map<string, PieceBodyBinding>;
+  // 스테이지 3·4에서만 존재하며 매 보드 리셋마다 새 상태로 교체되는 벽 조각표다.
+  breakableWalls: Map<string, BreakableWallPhysicsBinding>;
+  // 다음 step 경계에서 제거된 조각을 렌더와 검증이 확인하는 id 집합이다.
+  destroyedBreakableWallIds: Set<string>;
   // 같은 종류가 여러 개여도 디버그 표시와 로그는 한 번만 기록한다.
   massProperties: Map<PieceType, PieceMassProperties>;
 }
@@ -149,6 +182,154 @@ function createPhysicsBoard(
     collider,
     top: boardCenterY + meta.boardThickness / 2,
   };
+}
+
+/**
+ * 하나의 벽 조각을 보드 상면에 고정하고 말과 같은 마찰·반발 조건을 적용한다.
+ */
+function createBreakableWallBody(
+  runtime: PhysicsRuntime,
+  definition: BreakableWallSegmentDefinition,
+): BreakableWallPhysicsBinding {
+  const body = runtime.world.createRigidBody(
+    RAPIER.RigidBodyDesc.fixed().setTranslation(
+      definition.center.x,
+      definition.center.y,
+      definition.center.z,
+    ),
+  );
+  const collider = runtime.world.createCollider(
+    RAPIER.ColliderDesc.cuboid(
+      definition.halfExtents.x,
+      definition.halfExtents.y,
+      definition.halfExtents.z,
+    )
+      .setFriction(PIECE_FRICTION)
+      .setRestitution(PIECE_RESTITUTION),
+    body,
+  );
+  return {
+    definition,
+    body,
+    collider,
+    hitCount: 0,
+    touchingPieceIds: new Set(),
+    pendingDestruction: false,
+  };
+}
+
+/**
+ * 기존 벽 바디와 타격 상태를 전부 버리고 현재 스테이지의 새 벽을 처음 상태로 만든다.
+ */
+export function resetPhysicsBreakableWalls(
+  runtime: PhysicsRuntime,
+  meta: ChessSetMeta,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of runtime.breakableWalls.values()) {
+    runtime.world.removeRigidBody(binding.body);
+  }
+  runtime.breakableWalls.clear();
+  runtime.destroyedBreakableWallIds.clear();
+  if (
+    !hasBreakableWalls(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    return;
+  }
+  const definitions = computeBreakableWallSegments(
+    runtime.boardHalfExtent,
+    runtime.boardTop,
+    meta.cellSize,
+  );
+  for (const definition of definitions) {
+    runtime.breakableWalls.set(
+      definition.id,
+      createBreakableWallBody(runtime, definition),
+    );
+  }
+}
+
+/**
+ * 모든 말·벽 쌍의 solver contact를 id 순으로 훑어 거짓→참 전이만 타격으로 계수한다.
+ */
+export function scanBreakableWallContacts(
+  runtime: PhysicsRuntime,
+): BreakableWallHit[] {
+  const hits: BreakableWallHit[] = [];
+  const pieces = [...runtime.pieces.values()].sort((left, right) =>
+    left.instance.id < right.instance.id
+      ? -1
+      : left.instance.id > right.instance.id
+        ? 1
+        : 0,
+  );
+  const walls = [...runtime.breakableWalls.values()].sort(
+    (left, right) =>
+      left.definition.index - right.definition.index,
+  );
+  for (const wall of walls) {
+    if (wall.pendingDestruction) {
+      continue;
+    }
+    const currentTouchingPieceIds = new Set<string>();
+    for (const piece of pieces) {
+      let touching = false;
+      runtime.world.contactPair(
+        piece.collider,
+        wall.collider,
+        (manifold) => {
+          if (manifold.numSolverContacts() > 0) {
+            touching = true;
+          }
+        },
+      );
+      if (!touching) {
+        continue;
+      }
+      const pieceId = piece.instance.id;
+      currentTouchingPieceIds.add(pieceId);
+      if (!wall.touchingPieceIds.has(pieceId)) {
+        wall.hitCount += 1;
+        hits.push({
+          pieceId,
+          wallId: wall.definition.id,
+          hitCount: wall.hitCount,
+        });
+        if (wall.hitCount >= 2) {
+          wall.pendingDestruction = true;
+          break;
+        }
+      }
+    }
+    wall.touchingPieceIds = currentTouchingPieceIds;
+  }
+  return hits;
+}
+
+/**
+ * 직전 step에서 두 번째 타격을 받은 벽만 다음 step 직전에 제거해 반사 순서를 보장한다.
+ */
+export function applyPendingBreakableWallDestructions(
+  runtime: PhysicsRuntime,
+): string[] {
+  const destroyedIds: string[] = [];
+  const walls = [...runtime.breakableWalls.values()].sort(
+    (left, right) =>
+      left.definition.index - right.definition.index,
+  );
+  for (const wall of walls) {
+    if (!wall.pendingDestruction) {
+      continue;
+    }
+    runtime.world.removeRigidBody(wall.body);
+    runtime.breakableWalls.delete(wall.definition.id);
+    runtime.destroyedBreakableWallIds.add(wall.definition.id);
+    destroyedIds.push(wall.definition.id);
+  }
+  return destroyedIds;
 }
 
 /**
@@ -577,8 +758,11 @@ export async function createPhysicsRuntime(
     boardTop: board.top,
     boardHalfExtent,
     pieces: new Map(),
+    breakableWalls: new Map(),
+    destroyedBreakableWallIds: new Set(),
     massProperties: new Map(),
   };
+  resetPhysicsBreakableWalls(runtime, meta, stageOptions);
 
   const spawnInstances = selectStageSpawnInstances(
     instances,
@@ -657,7 +841,8 @@ export function rebuildPhysicsBoard(
       );
     }
   }
-  const expectedWorldCount = runtime.pieces.size + 1;
+  const expectedWorldCount =
+    runtime.pieces.size + runtime.breakableWalls.size + 1;
   if (
     runtime.world.bodies.len() !== expectedWorldCount ||
     runtime.world.colliders.len() !== expectedWorldCount
@@ -714,6 +899,7 @@ export function resetPhysicsPieces(
   }
   runtime.pieces.clear();
   runtime.massProperties.clear();
+  resetPhysicsBreakableWalls(runtime, meta, stageOptions);
   const spawnInstances = selectStageSpawnInstances(
     instances,
     stageOptions,
@@ -722,7 +908,8 @@ export function resetPhysicsPieces(
     createPieceBody(runtime, instance, meta, stageOptions);
   }
   validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
-  const expectedWorldCount = spawnInstances.length + 1;
+  const expectedWorldCount =
+    spawnInstances.length + runtime.breakableWalls.size + 1;
   if (
     runtime.pieces.size !== spawnInstances.length ||
     runtime.world.bodies.len() !== expectedWorldCount ||

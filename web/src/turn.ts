@@ -18,7 +18,14 @@ import type {
   PhysicsRuntime,
   PieceBodyBinding,
 } from "./physics";
-import type { SceneRuntime } from "./scene";
+import {
+  applyPendingBreakableWallDestructions,
+  scanBreakableWallContacts,
+} from "./physics";
+import {
+  synchronizeBreakableWallMeshes,
+  type SceneRuntime,
+} from "./scene";
 import type { RuntimeTuningSettings } from "./tuning";
 
 export type TurnPhase =
@@ -538,6 +545,13 @@ export function queueTurnLaunch(
 export function applyPendingLaunchBeforeStep(
   runtime: TurnRuntime,
 ): void {
+  applyPendingBreakableWallDestructions(
+    runtime.physicsRuntime,
+  );
+  synchronizeBreakableWallMeshes(
+    runtime.sceneRuntime,
+    runtime.physicsRuntime,
+  );
   const request = runtime.pendingLaunch;
   if (request === null) {
     return;
@@ -722,6 +736,11 @@ export function updateTurnAfterStep(
   fixedStep: number,
 ): void {
   runtime.physicsStepNumber += 1;
+  scanBreakableWallContacts(runtime.physicsRuntime);
+  synchronizeBreakableWallMeshes(
+    runtime.sceneRuntime,
+    runtime.physicsRuntime,
+  );
   removeFallenPieces(runtime);
   if (runtime.phase !== "settling") {
     return;

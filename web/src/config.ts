@@ -44,6 +44,18 @@ export const STAGE_BOARD_SCALE = 1.3;
 // 기획 해석을 되돌릴 때 한 상수로 셀 간격까지 확대할 수 있게 두되, 확정된 여백식 배치는 false다.
 export const STAGE_BOARD_EXPANSION_SCALES_CELLS = false;
 
+// 공식 맵 문서 45쪽의 한 변당 8조각 벽 구성을 확대 보드 외곽에도 그대로 적용한다.
+export const BREAKABLE_WALL_SEGMENTS_PER_SIDE = 8;
+
+// 공식 맵 문서의 당구장 벽과 같은 낮은 단차를 일반 발사는 반사하되 빠른 말은 넘을 수 있는 높이로 둔다.
+export const BREAKABLE_WALL_HEIGHT = 0.16;
+
+// 확대 보드 가장자리 안쪽에 놓이는 벽의 충돌 두께를 셀보다 충분히 얇게 유지한다.
+export const BREAKABLE_WALL_THICKNESS = 0.08;
+
+// 한 조각 파괴 시 Pawn은 지나가고 King은 이웃 조각에 걸리도록 인접 벽이 겹치는 길이를 셀 비율로 정한다.
+export const BREAKABLE_WALL_OVERLAP_CELLS = 0.75;
+
 // 마우스와 한 손가락 모두 화면 크기에 과도하게 의존하지 않는 최대 세기 드래그 거리다.
 export const MAX_DRAG_PIXELS = 180;
 

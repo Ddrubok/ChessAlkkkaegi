@@ -1,4 +1,5 @@
 import {
+  BoxGeometry,
   CanvasTexture,
   Color,
   DirectionalLight,
@@ -34,10 +35,26 @@ import {
   selectStageSpawnInstances,
   type StageSpawnOptions,
 } from "./stage";
+import {
+  computeBreakableWallSegments,
+  hasBreakableWalls,
+  type BreakableWallSegmentDefinition,
+} from "./walls";
+
+export interface BreakableWallMeshBinding {
+  // 물리 조각과 같은 id·위치·크기를 제공하는 고정 배치 정의다.
+  definition: BreakableWallSegmentDefinition;
+  // 파란 띠와 첫 타격 균열을 그리는 실제 박스 메시다.
+  mesh: Mesh;
+  // 같은 균열 텍스처를 매 프레임 다시 만들지 않는 마지막 표시 타격 수다.
+  shownHitCount: number;
+}
 
 export interface SceneRuntime {
   // 루프가 물리 자세를 개체별 렌더 메시로 복사하기 위한 연결표다.
   pieceMeshes: Map<string, Mesh>;
+  // 스테이지 3·4 외곽 벽 메시를 물리 타격 상태와 동기화하는 연결표다.
+  breakableWallMeshes: Map<string, BreakableWallMeshBinding>;
   scene: Scene;
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
@@ -363,6 +380,101 @@ function createBoardMesh(
 }
 
 /**
+ * 조각 순번만으로 같은 갈라짐을 만드는 작은 파란 캔버스 텍스처를 생성한다.
+ */
+function createWallCrackTexture(segmentIndex: number): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (context === null) {
+    throw new Error("벽 균열 캔버스의 2D 문맥을 만들 수 없습니다.");
+  }
+  context.fillStyle = "#176d94";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.strokeStyle = "#d8eef5";
+  context.lineWidth = 4;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  let seed = ((segmentIndex + 1) * 2654435761) >>> 0;
+  context.beginPath();
+  context.moveTo(canvas.width * 0.5, 2);
+  for (let step = 1; step <= 6; step += 1) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const offset = ((seed >>> 16) / 0xffff - 0.5) * 30;
+    context.lineTo(
+      canvas.width * 0.5 + offset,
+      (canvas.height * step) / 7,
+    );
+  }
+  context.lineTo(canvas.width * 0.5, canvas.height - 2);
+  context.stroke();
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.magFilter = NearestFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * 한 벽 정의를 파란 박스 메시로 만들고 씬과 연결표에 등록한다.
+ */
+function addBreakableWallMesh(
+  scene: Scene,
+  wallMeshes: Map<string, BreakableWallMeshBinding>,
+  definition: BreakableWallSegmentDefinition,
+): void {
+  const geometry = new BoxGeometry(
+    definition.halfExtents.x * 2,
+    definition.halfExtents.y * 2,
+    definition.halfExtents.z * 2,
+  );
+  const material = new MeshStandardMaterial({
+    color: 0x176d94,
+    roughness: 0.7,
+    polygonOffset: true,
+    polygonOffsetFactor:
+      definition.sideIndex % 2 === 0 ? -1 : -2,
+    polygonOffsetUnits: -1,
+  });
+  const mesh = new Mesh(geometry, material);
+  mesh.name = definition.id;
+  mesh.position.set(
+    definition.center.x,
+    definition.center.y,
+    definition.center.z,
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  wallMeshes.set(definition.id, {
+    definition,
+    mesh,
+    shownHitCount: 0,
+  });
+}
+
+/**
+ * 벽 메시와 균열 텍스처가 소유한 GPU 자원을 함께 해제한다.
+ */
+function disposeBreakableWallMesh(
+  scene: Scene,
+  binding: BreakableWallMeshBinding,
+): void {
+  scene.remove(binding.mesh);
+  binding.mesh.geometry.dispose();
+  const materials = Array.isArray(binding.mesh.material)
+    ? binding.mesh.material
+    : [binding.mesh.material];
+  for (const material of materials) {
+    if (material instanceof MeshStandardMaterial) {
+      material.map?.dispose();
+    }
+    material.dispose();
+  }
+}
+
+/**
  * 진영별 공유 재질을 선택해 32개 개별 메시가 지오메트리와 재질만 공유하게 한다.
  */
 function choosePieceMaterial(
@@ -493,6 +605,30 @@ export function createSceneRuntime(
     assets.meta.cellSize,
   );
   scene.add(boardMesh);
+  const boardTop =
+    boardMesh.position.y + assets.meta.boardThickness / 2;
+  const breakableWallMeshes = new Map<
+    string,
+    BreakableWallMeshBinding
+  >();
+  if (
+    hasBreakableWalls(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    for (const definition of computeBreakableWallSegments(
+      boardHalfExtent,
+      boardTop,
+      assets.meta.cellSize,
+    )) {
+      addBreakableWallMesh(
+        scene,
+        breakableWallMeshes,
+        definition,
+      );
+    }
+  }
 
   const whiteMaterial = new MeshStandardMaterial({
     color: 0xf1eadc,
@@ -523,13 +659,13 @@ export function createSceneRuntime(
 
   const runtime: SceneRuntime = {
     pieceMeshes,
+    breakableWallMeshes,
     scene,
     camera,
     renderer,
     controls,
     boardMesh,
-    boardTop:
-      boardMesh.position.y + assets.meta.boardThickness / 2,
+    boardTop,
     minimumCameraDistance: 0,
     boardHalfExtent,
     whitePieceMaterial: whiteMaterial,
@@ -609,6 +745,91 @@ export function rebuildSceneBoard(
 }
 
 /**
+ * 이전 균열·파괴 상태를 버리고 현재 스테이지 보드 외곽의 벽 메시를 새로 만든다.
+ */
+export function resetSceneBreakableWalls(
+  runtime: SceneRuntime,
+  assets: ChessAssets,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of runtime.breakableWallMeshes.values()) {
+    disposeBreakableWallMesh(runtime.scene, binding);
+  }
+  runtime.breakableWallMeshes.clear();
+  if (
+    !hasBreakableWalls(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    return;
+  }
+  for (const definition of computeBreakableWallSegments(
+    runtime.boardHalfExtent,
+    runtime.boardTop,
+    assets.meta.cellSize,
+  )) {
+    addBreakableWallMesh(
+      runtime.scene,
+      runtime.breakableWallMeshes,
+      definition,
+    );
+  }
+}
+
+/**
+ * 첫 타격에는 결정적 균열을 붙이고 물리에서 제거된 조각은 같은 fixed-step 경계에 숨긴다.
+ */
+export function synchronizeBreakableWallMeshes(
+  runtime: SceneRuntime,
+  physicsRuntime: PhysicsRuntime,
+): void {
+  const wallMeshes = runtime.breakableWallMeshes;
+  if (wallMeshes === undefined) {
+    // 리플레이·헤드리스 검증의 최소 씬은 벽 렌더를 소유하지 않는다.
+    return;
+  }
+  for (const [wallId, binding] of [...wallMeshes]) {
+    const physicsBinding =
+      physicsRuntime.breakableWalls.get(wallId);
+    if (physicsBinding === undefined) {
+      disposeBreakableWallMesh(runtime.scene, binding);
+      wallMeshes.delete(wallId);
+      continue;
+    }
+    if (
+      physicsBinding.hitCount >= 1 &&
+      binding.shownHitCount < 1
+    ) {
+      const previousMaterial = binding.mesh.material;
+      const crackMaterial = new MeshStandardMaterial({
+        map: createWallCrackTexture(
+          binding.definition.index,
+        ),
+        roughness: 0.7,
+        polygonOffset: true,
+        polygonOffsetFactor:
+          binding.definition.sideIndex % 2 === 0
+            ? -1
+            : -2,
+        polygonOffsetUnits: -1,
+      });
+      binding.mesh.material = crackMaterial;
+      const materials = Array.isArray(previousMaterial)
+        ? previousMaterial
+        : [previousMaterial];
+      for (const material of materials) {
+        if (material instanceof MeshStandardMaterial) {
+          material.map?.dispose();
+        }
+        material.dispose();
+      }
+      binding.shownHitCount = physicsBinding.hitCount;
+    }
+  }
+}
+
+/**
  * 기존 말 메시 참조를 씬과 연결표에서 모두 제거하고 표준 32개 메시를 다시 등록한다.
  */
 export function resetScenePieces(
@@ -617,6 +838,7 @@ export function resetScenePieces(
   instances: readonly PieceInstance[],
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): void {
+  resetSceneBreakableWalls(runtime, assets, stageOptions);
   for (const mesh of runtime.pieceMeshes.values()) {
     runtime.scene.remove(mesh);
   }
