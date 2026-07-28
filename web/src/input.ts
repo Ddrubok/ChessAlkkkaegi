@@ -1576,7 +1576,7 @@ export function lockInputForMatchOver(runtime: InputRuntime): void {
   runtime.cameraTransition = null;
   runtime.heldCameraKeys.clear();
   for (const pulse of runtime.aimRuntime.pulses.values()) {
-    pulse.mesh.scale.setScalar(1);
+    pulse.mesh.scale.copy(pulse.baseScale);
   }
   runtime.aimRuntime.pulses.clear();
   runtime.sceneRuntime.controls.enabled = false;
