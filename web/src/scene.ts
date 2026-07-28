@@ -19,10 +19,17 @@ import {
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ChessAssets } from "./assets";
 import {
+  computeBoardRenderFloorRectangles,
   computeBoardSurfaceLayout,
-  createBoardGeometry,
+  createBoardFloorGeometry,
 } from "./board";
 import { CAMERA_PITCH_DEG } from "./config";
+import {
+  computeBoardHoleRectangles,
+  createBoardFloorLayoutKey,
+  type BoardFloorRectangle,
+  type BoardHoleRectangle,
+} from "./holes";
 import type { PhysicsRuntime } from "./physics";
 import {
   getCellCenter,
@@ -59,7 +66,16 @@ export interface SceneRuntime {
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
   controls: OrbitControls;
+  // 기존 단일 보드 API와 호환할 첫 번째 바닥 메시다.
   boardMesh: Mesh;
+  // 구멍을 제외한 렌더 바닥 전체를 이루는 직사각형 메시들이다.
+  boardMeshes: Mesh[];
+  // 물리 바닥과 값 단위로 대조할 렌더 바닥 직사각형 목록이다.
+  boardFloorRectangles: BoardFloorRectangle[];
+  // 현재 렌더 보드에서 비워 둔 구멍 직사각형 목록이다.
+  boardHoleRectangles: BoardHoleRectangle[];
+  // 같은 반폭의 서로 다른 스테이지 보드를 구분하는 값 기반 키다.
+  boardFloorLayoutKey: string;
   boardTop: number;
   // 세로 화면에서도 보드 전체가 들어오도록 현재 종횡비에서 계산한 최소 거리다.
   minimumCameraDistance: number;
@@ -267,17 +283,23 @@ export function fitCameraToBoard(runtime: SceneRuntime): void {
 function createBoardTexture(
   boardHalfExtent: number,
   cellSize: number,
+  rectangle: Readonly<BoardFloorRectangle>,
 ): CanvasTexture {
   const layout = computeBoardSurfaceLayout(
     cellSize,
     boardHalfExtent,
   );
-  const canvasSize = Math.ceil(
-    (boardHalfExtent * 2 * BOARD_CELL_PIXELS) / cellSize,
+  const canvasWidth = Math.ceil(
+    ((rectangle.maxX - rectangle.minX) * BOARD_CELL_PIXELS) /
+      cellSize,
+  );
+  const canvasHeight = Math.ceil(
+    ((rectangle.maxZ - rectangle.minZ) * BOARD_CELL_PIXELS) /
+      cellSize,
   );
   const canvas = document.createElement("canvas");
-  canvas.width = canvasSize;
-  canvas.height = canvasSize;
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
   const context = canvas.getContext("2d");
   if (context === null) {
     throw new Error("체스판 텍스처를 그릴 2D 캔버스를 만들지 못했습니다.");
@@ -285,9 +307,11 @@ function createBoardTexture(
   context.imageSmoothingEnabled = false;
 
   context.fillStyle = "#4b3023";
-  context.fillRect(0, 0, canvasSize, canvasSize);
-  const pixelsPerWorldUnit =
-    canvasSize / (boardHalfExtent * 2);
+  context.fillRect(0, 0, canvasWidth, canvasHeight);
+  const pixelsPerWorldUnitX =
+    canvasWidth / (rectangle.maxX - rectangle.minX);
+  const pixelsPerWorldUnitZ =
+    canvasHeight / (rectangle.maxZ - rectangle.minZ);
   const firstCellIndex = Math.floor(
     -layout.checkerHalfExtent / cellSize,
   );
@@ -307,18 +331,22 @@ function createBoardTexture(
       const minimumX = Math.max(
         fileIndex * cellSize,
         -layout.checkerHalfExtent,
+        rectangle.minX,
       );
       const maximumX = Math.min(
         (fileIndex + 1) * cellSize,
         layout.checkerHalfExtent,
+        rectangle.maxX,
       );
       const minimumZ = Math.max(
         rankIndex * cellSize,
         -layout.checkerHalfExtent,
+        rectangle.minZ,
       );
       const maximumZ = Math.min(
         (rankIndex + 1) * cellSize,
         layout.checkerHalfExtent,
+        rectangle.maxZ,
       );
       if (minimumX >= maximumX || minimumZ >= maximumZ) {
         continue;
@@ -329,10 +357,10 @@ function createBoardTexture(
           ? "#7b4d35"
           : "#e3d2b2";
       context.fillRect(
-        (minimumX + boardHalfExtent) * pixelsPerWorldUnit,
-        (minimumZ + boardHalfExtent) * pixelsPerWorldUnit,
-        (maximumX - minimumX) * pixelsPerWorldUnit,
-        (maximumZ - minimumZ) * pixelsPerWorldUnit,
+        (minimumX - rectangle.minX) * pixelsPerWorldUnitX,
+        (minimumZ - rectangle.minZ) * pixelsPerWorldUnitZ,
+        (maximumX - minimumX) * pixelsPerWorldUnitX,
+        (maximumZ - minimumZ) * pixelsPerWorldUnitZ,
       );
     }
   }
@@ -347,36 +375,91 @@ function createBoardTexture(
 /**
  * BoxGeometry의 위쪽 면 그룹에만 체크무늬 재질을 배정해 옆면을 평평한 단색으로 둔다.
  */
-function createBoardMesh(
+function createBoardMeshes(
   boardHalfExtent: number,
   boardThickness: number,
   cellSize: number,
-): Mesh {
-  const geometry = createBoardGeometry(
-    boardHalfExtent,
-    boardThickness,
+  stageOptions: StageSpawnOptions,
+): {
+  meshes: Mesh[];
+  floorRectangles: BoardFloorRectangle[];
+  holeRectangles: BoardHoleRectangle[];
+  layoutKey: string;
+} {
+  const holeRectangles = computeBoardHoleRectangles(
+    cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
   );
-  const sideMaterial = new MeshStandardMaterial({
-    color: 0x36251f,
-    roughness: 0.84,
+  const floorRectangles = computeBoardRenderFloorRectangles(
+    boardHalfExtent,
+    cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const meshes = floorRectangles.map((rectangle, index) => {
+    const geometry = createBoardFloorGeometry(
+      rectangle,
+      boardThickness,
+    );
+    const sideMaterial = new MeshStandardMaterial({
+      color: 0x36251f,
+      roughness: 0.84,
+    });
+    const topMaterial = new MeshStandardMaterial({
+      map: createBoardTexture(
+        boardHalfExtent,
+        cellSize,
+        rectangle,
+      ),
+      roughness: 0.72,
+    });
+    const materials = [
+      sideMaterial,
+      sideMaterial,
+      topMaterial,
+      sideMaterial,
+      sideMaterial,
+      sideMaterial,
+    ];
+    const board = new Mesh(geometry, materials);
+    board.name = `Board-${index}`;
+    board.position.set(
+      (rectangle.minX + rectangle.maxX) / 2,
+      -boardThickness / 2,
+      (rectangle.minZ + rectangle.maxZ) / 2,
+    );
+    board.receiveShadow = true;
+    return board;
   });
-  const topMaterial = new MeshStandardMaterial({
-    map: createBoardTexture(boardHalfExtent, cellSize),
-    roughness: 0.72,
-  });
-  const materials = [
-    sideMaterial,
-    sideMaterial,
-    topMaterial,
-    sideMaterial,
-    sideMaterial,
-    sideMaterial,
-  ];
-  const board = new Mesh(geometry, materials);
-  board.name = "Board";
-  board.position.y = -boardThickness / 2;
-  board.receiveShadow = true;
-  return board;
+  if (meshes.length === 0) {
+    throw new Error("구멍 분할 뒤 렌더 보드 바닥이 하나도 남지 않았습니다.");
+  }
+  return {
+    meshes,
+    floorRectangles,
+    holeRectangles,
+    layoutKey: createBoardFloorLayoutKey(
+      boardHalfExtent,
+      floorRectangles,
+    ),
+  };
+}
+
+/**
+ * 보드 한 조각의 지오메트리·재질·캔버스 텍스처를 누수 없이 해제한다.
+ */
+function disposeBoardMesh(mesh: Mesh): void {
+  mesh.geometry.dispose();
+  const materials = Array.isArray(mesh.material)
+    ? mesh.material
+    : [mesh.material];
+  for (const material of new Set(materials)) {
+    if (material instanceof MeshStandardMaterial) {
+      material.map?.dispose();
+    }
+    material.dispose();
+  }
 }
 
 /**
@@ -599,12 +682,17 @@ export function createSceneRuntime(
   sunlight.target.position.set(0, 0, 0);
   scene.add(sunlight, sunlight.target);
 
-  const boardMesh = createBoardMesh(
+  const board = createBoardMeshes(
     boardHalfExtent,
     assets.meta.boardThickness,
     assets.meta.cellSize,
+    stageOptions,
   );
-  scene.add(boardMesh);
+  scene.add(...board.meshes);
+  const boardMesh = board.meshes[0];
+  if (boardMesh === undefined) {
+    throw new Error("대표 렌더 보드 메시가 없습니다.");
+  }
   const boardTop =
     boardMesh.position.y + assets.meta.boardThickness / 2;
   const breakableWallMeshes = new Map<
@@ -665,6 +753,10 @@ export function createSceneRuntime(
     renderer,
     controls,
     boardMesh,
+    boardMeshes: board.meshes,
+    boardFloorRectangles: board.floorRectangles,
+    boardHoleRectangles: board.holeRectangles,
+    boardFloorLayoutKey: board.layoutKey,
     boardTop,
     minimumCameraDistance: 0,
     boardHalfExtent,
@@ -715,31 +807,44 @@ export function rebuildSceneBoard(
   runtime: SceneRuntime,
   assets: ChessAssets,
   boardHalfExtent: number,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): void {
-  if (runtime.boardHalfExtent === boardHalfExtent) {
+  const nextFloorRectangles = computeBoardRenderFloorRectangles(
+    boardHalfExtent,
+    assets.meta.cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const nextLayoutKey = createBoardFloorLayoutKey(
+    boardHalfExtent,
+    nextFloorRectangles,
+  );
+  if (runtime.boardFloorLayoutKey === nextLayoutKey) {
     return;
   }
-  const previousBoard = runtime.boardMesh;
-  const nextBoard = createBoardMesh(
+  const previousBoards = runtime.boardMeshes;
+  const nextBoard = createBoardMeshes(
     boardHalfExtent,
     assets.meta.boardThickness,
     assets.meta.cellSize,
+    stageOptions,
   );
-  runtime.scene.remove(previousBoard);
-  runtime.scene.add(nextBoard);
-  previousBoard.geometry.dispose();
-  const previousMaterials = Array.isArray(previousBoard.material)
-    ? previousBoard.material
-    : [previousBoard.material];
-  for (const material of new Set(previousMaterials)) {
-    if (material instanceof MeshStandardMaterial) {
-      material.map?.dispose();
-    }
-    material.dispose();
+  for (const previousBoard of previousBoards) {
+    runtime.scene.remove(previousBoard);
+    disposeBoardMesh(previousBoard);
   }
-  runtime.boardMesh = nextBoard;
+  runtime.scene.add(...nextBoard.meshes);
+  const representative = nextBoard.meshes[0];
+  if (representative === undefined) {
+    throw new Error("재구축한 대표 렌더 보드 메시가 없습니다.");
+  }
+  runtime.boardMesh = representative;
+  runtime.boardMeshes = nextBoard.meshes;
+  runtime.boardFloorRectangles = nextBoard.floorRectangles;
+  runtime.boardHoleRectangles = nextBoard.holeRectangles;
+  runtime.boardFloorLayoutKey = nextBoard.layoutKey;
   runtime.boardTop =
-    nextBoard.position.y + assets.meta.boardThickness / 2;
+    representative.position.y + assets.meta.boardThickness / 2;
   runtime.boardHalfExtent = boardHalfExtent;
   fitCameraToBoard(runtime);
 }

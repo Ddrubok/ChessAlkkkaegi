@@ -316,7 +316,7 @@ try {
   );
 
   const stageCounts = [];
-  for (const stageNumber of [1, 2, 3, 4, 5, 10]) {
+  for (const stageNumber of [1, 2, 3, 4, 5, 6, 10]) {
     modules.physics.resetPhysicsBreakableWalls(
       runtime,
       meta,
@@ -340,7 +340,8 @@ try {
         [2, 0],
         [3, 32],
         [4, 32],
-        [5, 0],
+        [5, 32],
+        [6, 32],
         [10, 0],
       ]) &&
       hotseatCount === 0,

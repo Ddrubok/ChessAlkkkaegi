@@ -36,7 +36,8 @@ export interface BreakableWallSegmentDefinition {
 }
 
 /**
- * 벽 부수기 맵이 지정된 스테이지 3·4에만 벽을 만든다.
+ * 스테이지 3·4의 명시와 함정 1·2 도면의 파란 분절 띠 판독에 따라 3~6에 벽을 만든다.
+ * 5·6 범위는 도면 근거 해석이라 기획이 뒤집히면 이 조건 한 줄만 바꾸면 된다.
  */
 export function hasBreakableWalls(
   gameMode: GameMode,
@@ -44,7 +45,8 @@ export function hasBreakableWalls(
 ): boolean {
   return (
     gameMode === "stage" &&
-    (stageNumber === 3 || stageNumber === 4)
+    stageNumber >= 3 &&
+    stageNumber <= 6
   );
 }
 

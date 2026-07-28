@@ -681,11 +681,13 @@ async function bootstrap(): Promise<void> {
       physicsRuntime,
       assets.meta,
       nextBoardHalfExtent,
+      stageOptions,
     );
     rebuildSceneBoard(
       sceneRuntime,
       assets,
       nextBoardHalfExtent,
+      stageOptions,
     );
     assertBoardAgreement(
       sceneRuntime.boardTop,

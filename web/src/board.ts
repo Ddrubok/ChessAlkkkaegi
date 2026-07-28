@@ -1,5 +1,11 @@
 import { BoxGeometry } from "three";
 import { BOARD_BORDER_CELLS } from "./config";
+import type { GameMode } from "./game-mode";
+import {
+  computeBoardFloorRectangles,
+  computeBoardHoleRectangles,
+  type BoardFloorRectangle,
+} from "./holes";
 
 export type BoardSurfaceKind = "wood" | "light" | "dark";
 
@@ -12,6 +18,21 @@ export interface BoardSurfaceLayout {
   checkerHalfExtent: number;
   // 확대 여백에서도 달라지지 않는 체크무늬 한 셀의 월드 크기다.
   cellSize: number;
+}
+
+/**
+ * 렌더 보드가 물리 보드와 같은 구멍 경계를 쓰도록 공통 분할 결과를 그대로 돌려준다.
+ */
+export function computeBoardRenderFloorRectangles(
+  boardHalfExtent: number,
+  cellSize: number,
+  gameMode: GameMode,
+  stageNumber: number,
+): BoardFloorRectangle[] {
+  return computeBoardFloorRectangles(
+    boardHalfExtent,
+    computeBoardHoleRectangles(cellSize, gameMode, stageNumber),
+  );
 }
 
 /**
@@ -89,4 +110,29 @@ export function createBoardGeometry(
     boardThickness,
     boardHalfExtent * 2,
   );
+}
+
+/**
+ * 구멍을 제외하고 남은 한 바닥 직사각형의 렌더 지오메트리를 만든다.
+ */
+export function createBoardFloorGeometry(
+  rectangle: Readonly<BoardFloorRectangle>,
+  boardThickness: number,
+): BoxGeometry {
+  if (!Number.isFinite(boardThickness) || boardThickness <= 0) {
+    throw new Error(
+      `보드 두께 ${boardThickness}가 유한한 양수가 아닙니다.`,
+    );
+  }
+  const width = rectangle.maxX - rectangle.minX;
+  const depth = rectangle.maxZ - rectangle.minZ;
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(depth) ||
+    width <= 0 ||
+    depth <= 0
+  ) {
+    throw new Error("렌더 바닥 직사각형의 폭과 깊이가 올바르지 않습니다.");
+  }
+  return new BoxGeometry(width, boardThickness, depth);
 }

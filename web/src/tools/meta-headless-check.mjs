@@ -317,6 +317,7 @@ try {
   const tuningModeRuntime = {
     physicsRuntime: {
       boardCollider,
+      boardColliders: [boardCollider],
       pieces: new Map(),
     },
     settings: { ...modifiedTuning },

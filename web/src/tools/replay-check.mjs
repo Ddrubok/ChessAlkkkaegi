@@ -329,6 +329,42 @@ async function recordStageThreeWallDestruction(
 }
 
 /**
+ * 백 Pawn이 중앙 2×2 구멍으로 떨어져 제거되는 스테이지 5 기록을 만든다.
+ */
+async function recordStageFiveHoleFall(
+  modules,
+  meta,
+  source,
+) {
+  const runtime = await createRecordingRuntime(
+    modules,
+    meta,
+    source,
+  );
+  const pieceId = "white-pawn-d2";
+  const settleSteps = await recordDirectedTurn(
+    modules,
+    runtime,
+    pieceId,
+    new Vector3(0, 0, 1),
+    0.18,
+  );
+  assertCondition(
+    !runtime.physicsRuntime.pieces.has(pieceId),
+    `${pieceId}가 스테이지 5 중앙 구멍으로 떨어져 제거되지 않았습니다.`,
+  );
+  const recording =
+    await modules.replay.readReplayRecording(
+      runtime.recorder,
+    );
+  assertCondition(
+    recording.turns.length === 1,
+    `구멍 낙하 기록이 1턴이 아니라 ${recording.turns.length}턴입니다.`,
+  );
+  return { recording, settleSteps, pieceId };
+}
+
+/**
  * 지정한 헤더 원본으로 10턴을 실제 recorder에 기록한다.
  */
 async function recordTenTurns(modules, meta, source) {
@@ -481,6 +517,32 @@ try {
   );
   console.log(
     `[통과 c] stage3 벽 2회 접촉·파괴 1턴 기록→재생: wall=${wallRecording.wallId}, hashes=1/1, settleSteps=${wallRecording.settleSteps.join(",")}`,
+  );
+
+  const stageFiveSource = {
+    gameMode: "stage",
+    initialSide: "white",
+    stageNumber: 5,
+    runCards: cards.createRunCardState(),
+    permanentUpgrades:
+      metaModule.createDefaultPermanentUpgrades(),
+  };
+  const holeRecording = await recordStageFiveHoleFall(
+    modules,
+    meta,
+    stageFiveSource,
+  );
+  const holeReplay = await replay.replayRecording(
+    meta,
+    holeRecording.recording,
+  );
+  assertCondition(
+    holeReplay.matched &&
+      holeReplay.turns.length === 1,
+    `스테이지 5 구멍 낙하 재생 불일치: ${JSON.stringify(holeReplay)}`,
+  );
+  console.log(
+    `[통과 hole] stage5 ${holeRecording.pieceId} 중앙 구멍 낙하 1턴 기록→재생: hashes=1/1, settleSteps=${holeRecording.settleSteps}`,
   );
 
   const tampered = replay.deserializeRecording(

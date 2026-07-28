@@ -150,6 +150,11 @@ export function collectGroundedPieceIds(
   const colliderOwners = new Map<number, string>();
   const neighbors = new Map<string, Set<string>>();
   const grounded = new Set<string>();
+  const boardColliderHandles = new Set(
+    runtime.physicsRuntime.boardColliders.map(
+      (collider) => collider.handle,
+    ),
+  );
   for (const binding of runtime.physicsRuntime.pieces.values()) {
     colliderOwners.set(binding.collider.handle, binding.instance.id);
     neighbors.set(binding.instance.id, new Set());
@@ -168,10 +173,7 @@ export function collectGroundedPieceIds(
         ) {
           return;
         }
-        if (
-          otherCollider.handle ===
-          runtime.physicsRuntime.boardCollider.handle
-        ) {
+        if (boardColliderHandles.has(otherCollider.handle)) {
           grounded.add(binding.instance.id);
           return;
         }

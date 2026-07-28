@@ -18,6 +18,13 @@ import {
 } from "./config";
 import type { PieceInstance } from "./layout";
 import {
+  computeBoardFloorRectangles,
+  computeBoardHoleRectangles,
+  createBoardFloorLayoutKey,
+  type BoardFloorRectangle,
+  type BoardHoleRectangle,
+} from "./holes";
+import {
   computeStageBoardHalfExtent,
   computeStagePieceScale,
   computeStageSpawnPose,
@@ -106,7 +113,16 @@ export interface BreakableWallHit {
 export interface PhysicsRuntime {
   world: RAPIER.World;
   boardBody: RAPIER.RigidBody;
+  // 기존 단일 바닥 API와 호환할 대표 바닥 콜라이더다.
   boardCollider: RAPIER.Collider;
+  // 구멍 가장자리와 정확히 맞물려 실제 바닥을 이루는 모든 콜라이더다.
+  boardColliders: RAPIER.Collider[];
+  // 렌더 보드와 대조할 현재 물리 바닥 직사각형 목록이다.
+  boardFloorRectangles: BoardFloorRectangle[];
+  // 현재 스테이지에서 실제로 비워 둔 구멍 직사각형 목록이다.
+  boardHoleRectangles: BoardHoleRectangle[];
+  // 반폭이 같아도 스테이지 4→5에서 바닥을 재구축하도록 비교하는 값 기반 키다.
+  boardFloorLayoutKey: string;
   boardTop: number;
   // 렌더 판과 매 리셋마다 일치 여부를 검사하는 현재 물리 바닥 반폭이다.
   boardHalfExtent: number;
@@ -140,6 +156,14 @@ interface PhysicsBoardBinding {
   body: RAPIER.RigidBody;
   // 고정 강체에 붙어 실제 접촉 범위를 만드는 직육면체 콜라이더다.
   collider: RAPIER.Collider;
+  // 하나의 고정 바디에 붙어 구멍을 제외한 바닥 전체를 이루는 콜라이더들이다.
+  colliders: RAPIER.Collider[];
+  // 물리 콜라이더와 일대일 대응하는 바닥 직사각형 목록이다.
+  floorRectangles: BoardFloorRectangle[];
+  // 콜라이더를 만들지 않아 실제 낙하가 가능한 구멍 직사각형 목록이다.
+  holeRectangles: BoardHoleRectangle[];
+  // 같은 반폭의 서로 다른 스테이지 바닥을 구분하는 값 기반 키다.
+  layoutKey: string;
   // 렌더 판의 y=0 상면과 비교할 물리 바닥 상면이다.
   top: number;
 }
@@ -157,6 +181,7 @@ function createPhysicsBoard(
   world: RAPIER.World,
   meta: ChessSetMeta,
   boardHalfExtent: number,
+  stageOptions: StageSpawnOptions,
 ): PhysicsBoardBinding {
   if (!Number.isFinite(boardHalfExtent) || boardHalfExtent <= 0) {
     throw new Error(
@@ -167,19 +192,48 @@ function createPhysicsBoard(
   const body = world.createRigidBody(
     RAPIER.RigidBodyDesc.fixed().setTranslation(0, boardCenterY, 0),
   );
-  const collider = world.createCollider(
-    RAPIER.ColliderDesc.cuboid(
-      boardHalfExtent,
-      meta.boardThickness / 2,
-      boardHalfExtent,
-    )
-      .setFriction(PIECE_FRICTION)
-      .setRestitution(PIECE_RESTITUTION),
-    body,
+  const holeRectangles = computeBoardHoleRectangles(
+    meta.cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
   );
+  const floorRectangles = computeBoardFloorRectangles(
+    boardHalfExtent,
+    holeRectangles,
+  );
+  const colliders = floorRectangles.map((rectangle) => {
+    const halfWidth = (rectangle.maxX - rectangle.minX) / 2;
+    const halfDepth = (rectangle.maxZ - rectangle.minZ) / 2;
+    return world.createCollider(
+      RAPIER.ColliderDesc.cuboid(
+        halfWidth,
+        meta.boardThickness / 2,
+        halfDepth,
+      )
+        .setTranslation(
+          (rectangle.minX + rectangle.maxX) / 2,
+          0,
+          (rectangle.minZ + rectangle.maxZ) / 2,
+        )
+        .setFriction(PIECE_FRICTION)
+        .setRestitution(PIECE_RESTITUTION),
+      body,
+    );
+  });
+  const collider = colliders[0];
+  if (collider === undefined) {
+    throw new Error("구멍 분할 뒤 물리 보드 바닥이 하나도 남지 않았습니다.");
+  }
   return {
     body,
     collider,
+    colliders,
+    floorRectangles,
+    holeRectangles,
+    layoutKey: createBoardFloorLayoutKey(
+      boardHalfExtent,
+      floorRectangles,
+    ),
     top: boardCenterY + meta.boardThickness / 2,
   };
 }
@@ -750,11 +804,16 @@ export async function createPhysicsRuntime(
     world,
     meta,
     boardHalfExtent,
+    stageOptions,
   );
   const runtime: PhysicsRuntime = {
     world,
     boardBody: board.body,
     boardCollider: board.collider,
+    boardColliders: board.colliders,
+    boardFloorRectangles: board.floorRectangles,
+    boardHoleRectangles: board.holeRectangles,
+    boardFloorLayoutKey: board.layoutKey,
     boardTop: board.top,
     boardHalfExtent,
     pieces: new Map(),
@@ -782,8 +841,22 @@ export function rebuildPhysicsBoard(
   runtime: PhysicsRuntime,
   meta: ChessSetMeta,
   boardHalfExtent: number,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): void {
-  if (runtime.boardHalfExtent === boardHalfExtent) {
+  const nextHoleRectangles = computeBoardHoleRectangles(
+    meta.cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const nextFloorRectangles = computeBoardFloorRectangles(
+    boardHalfExtent,
+    nextHoleRectangles,
+  );
+  const nextLayoutKey = createBoardFloorLayoutKey(
+    boardHalfExtent,
+    nextFloorRectangles,
+  );
+  if (runtime.boardFloorLayoutKey === nextLayoutKey) {
     return;
   }
   const piecePoses = new Map(
@@ -813,9 +886,14 @@ export function rebuildPhysicsBoard(
     runtime.world,
     meta,
     boardHalfExtent,
+    stageOptions,
   );
   runtime.boardBody = board.body;
   runtime.boardCollider = board.collider;
+  runtime.boardColliders = board.colliders;
+  runtime.boardFloorRectangles = board.floorRectangles;
+  runtime.boardHoleRectangles = board.holeRectangles;
+  runtime.boardFloorLayoutKey = board.layoutKey;
   runtime.boardTop = board.top;
   runtime.boardHalfExtent = boardHalfExtent;
   for (const [pieceId, pose] of piecePoses) {
@@ -841,14 +919,18 @@ export function rebuildPhysicsBoard(
       );
     }
   }
-  const expectedWorldCount =
+  const expectedBodyCount =
     runtime.pieces.size + runtime.breakableWalls.size + 1;
+  const expectedColliderCount =
+    runtime.pieces.size +
+    runtime.breakableWalls.size +
+    runtime.boardColliders.length;
   if (
-    runtime.world.bodies.len() !== expectedWorldCount ||
-    runtime.world.colliders.len() !== expectedWorldCount
+    runtime.world.bodies.len() !== expectedBodyCount ||
+    runtime.world.colliders.len() !== expectedColliderCount
   ) {
     throw new Error(
-      `물리 보드 재구축 누수 검사 실패: 바디 ${runtime.world.bodies.len()}/${expectedWorldCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedWorldCount}`,
+      `물리 보드 재구축 누수 검사 실패: 바디 ${runtime.world.bodies.len()}/${expectedBodyCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedColliderCount}`,
     );
   }
 }
@@ -908,15 +990,19 @@ export function resetPhysicsPieces(
     createPieceBody(runtime, instance, meta, stageOptions);
   }
   validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
-  const expectedWorldCount =
+  const expectedBodyCount =
     spawnInstances.length + runtime.breakableWalls.size + 1;
+  const expectedColliderCount =
+    spawnInstances.length +
+    runtime.breakableWalls.size +
+    runtime.boardColliders.length;
   if (
     runtime.pieces.size !== spawnInstances.length ||
-    runtime.world.bodies.len() !== expectedWorldCount ||
-    runtime.world.colliders.len() !== expectedWorldCount
+    runtime.world.bodies.len() !== expectedBodyCount ||
+    runtime.world.colliders.len() !== expectedColliderCount
   ) {
     throw new Error(
-      `재시작 물리 연결 누수 검사 실패: 말 ${runtime.pieces.size}/${spawnInstances.length}, 바디 ${runtime.world.bodies.len()}/${expectedWorldCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedWorldCount}`,
+      `재시작 물리 연결 누수 검사 실패: 말 ${runtime.pieces.size}/${spawnInstances.length}, 바디 ${runtime.world.bodies.len()}/${expectedBodyCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedColliderCount}`,
     );
   }
 }
