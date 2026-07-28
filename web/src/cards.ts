@@ -10,6 +10,29 @@ export type SpecialCardId = "giantPawn" | "proneStart";
 export type CardId = GeneralCardId | SpecialCardId;
 export type CardGrade = 0 | 1 | 2 | 3 | 4 | 5;
 
+export interface CardEffectTuning {
+  // 실제 런 등급과 비교해 더 높은 쪽을 적용할 디버그 크기 카드 등급이다.
+  debugSizeGrade: CardGrade;
+  // 실제 런 등급과 비교해 더 높은 쪽을 적용할 디버그 중량 카드 등급이다.
+  debugWeightGrade: CardGrade;
+  // 실제 런 등급과 비교해 더 높은 쪽을 적용할 디버그 힘 카드 등급이다.
+  debugForceGrade: CardGrade;
+  // 1~5등급을 최종 효과 비율로 바꾸는 조절 가능한 교체값 표다.
+  gradeEffects: readonly [number, number, number, number, number];
+  // 계산된 크기 등급 효과에 마지막으로 곱할 카드 종류별 배수다.
+  sizeEffectMultiplier: number;
+  // 계산된 중량 등급 효과에 마지막으로 곱할 카드 종류별 배수다.
+  weightEffectMultiplier: number;
+  // 계산된 힘 등급 효과에 마지막으로 곱할 카드 종류별 배수다.
+  forceEffectMultiplier: number;
+  // 실제 런 카드와 합성해 다음 보드의 백 폰 구조를 바꿀 디버그 스위치다.
+  giantPawnEnabled: boolean;
+  // 디버그 거대 폰을 켰을 때 원래 폰 크기에 곱할 균일 배수다.
+  giantPawnSizeMultiplier: number;
+  // 실제 런 카드와 합성해 다음 보드의 백 말 시작 자세를 바꿀 디버그 스위치다.
+  proneStartEnabled: boolean;
+}
+
 export interface UpgradeCard {
   // 런 상태에 효과를 적용할 때 사용하는 안정적인 식별자다.
   id: CardId;
@@ -148,8 +171,19 @@ function validateCardEffectScale(cardEffectScale: number): void {
 export function computeCardGradeEffect(
   grade: CardGrade,
   cardEffectScale: number = CARD_EFFECT_SCALE,
+  gradeEffects: readonly number[] = CARD_GRADE_EFFECTS,
 ): number {
   validateCardEffectScale(cardEffectScale);
+  if (
+    gradeEffects.length !== CARD_GRADE_EFFECTS.length ||
+    gradeEffects.some(
+      (effect) => !Number.isFinite(effect) || effect < 0,
+    )
+  ) {
+    throw new Error(
+      "카드 등급 효과표가 5개의 유한한 음이 아닌 수로 구성되지 않았습니다.",
+    );
+  }
   if (
     !Number.isInteger(grade) ||
     grade < 0 ||
@@ -159,7 +193,7 @@ export function computeCardGradeEffect(
   }
   return grade === 0
     ? 0
-    : CARD_GRADE_EFFECTS[grade - 1] * cardEffectScale;
+    : gradeEffects[grade - 1] * cardEffectScale;
 }
 
 /**
@@ -189,6 +223,111 @@ export function computeGeneralCardEffect(
   return computeCardGradeEffect(
     getGeneralCardGrade(state, cardId),
     cardEffectScale,
+  );
+}
+
+/**
+ * 디버그 카드 등급을 실제 런 카드와 합성하되 온라인에서는 로컬 값을 구조적으로 무시한다.
+ */
+export function computeEffectiveGeneralCardGrade(
+  gameMode: GameMode,
+  state: Readonly<RunCardState>,
+  cardId: GeneralCardId,
+  tuning?: Readonly<CardEffectTuning>,
+): CardGrade {
+  if (gameMode === "online") {
+    return 0;
+  }
+  const runGrade =
+    gameMode === "stage" ? getGeneralCardGrade(state, cardId) : 0;
+  if (tuning === undefined) {
+    return runGrade;
+  }
+  const debugGrade =
+    cardId === "size"
+      ? tuning.debugSizeGrade
+      : cardId === "weight"
+        ? tuning.debugWeightGrade
+        : tuning.debugForceGrade;
+  if (
+    !Number.isInteger(debugGrade) ||
+    debugGrade < 0 ||
+    debugGrade > MAX_CARD_GRADE
+  ) {
+    throw new Error(
+      `디버그 카드 등급 ${debugGrade}가 0~5 정수가 아닙니다.`,
+    );
+  }
+  return Math.max(runGrade, debugGrade) as CardGrade;
+}
+
+/**
+ * 합성된 현재 등급을 조절 곡선과 카드 종류별 배수까지 포함한 최종 효과로 바꾼다.
+ */
+export function computeTunedGeneralCardEffect(
+  gameMode: GameMode,
+  state: Readonly<RunCardState>,
+  cardId: GeneralCardId,
+  cardEffectScale: number = CARD_EFFECT_SCALE,
+  tuning?: Readonly<CardEffectTuning>,
+): number {
+  if (gameMode === "online") {
+    return 0;
+  }
+  const multiplier =
+    tuning === undefined
+      ? 1
+      : cardId === "size"
+        ? tuning.sizeEffectMultiplier
+        : cardId === "weight"
+          ? tuning.weightEffectMultiplier
+          : tuning.forceEffectMultiplier;
+  if (!Number.isFinite(multiplier) || multiplier < 0) {
+    throw new Error(
+      `${cardId} 카드 종류별 배수 ${multiplier}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
+  return (
+    computeCardGradeEffect(
+      computeEffectiveGeneralCardGrade(
+        gameMode,
+        state,
+        cardId,
+        tuning,
+      ),
+      cardEffectScale,
+      tuning?.gradeEffects,
+    ) * multiplier
+  );
+}
+
+/**
+ * 실제 런과 디버그 중 하나라도 켠 거대 폰을 로컬 모드에만 적용한다.
+ */
+export function isGiantPawnCardActive(
+  gameMode: GameMode,
+  state: Readonly<RunCardState>,
+  tuning?: Readonly<CardEffectTuning>,
+): boolean {
+  return (
+    gameMode !== "online" &&
+    ((gameMode === "stage" && state.giantPawn) ||
+      tuning?.giantPawnEnabled === true)
+  );
+}
+
+/**
+ * 실제 런과 디버그 중 하나라도 켠 포복 개시를 로컬 모드에만 적용한다.
+ */
+export function isProneStartCardActive(
+  gameMode: GameMode,
+  state: Readonly<RunCardState>,
+  tuning?: Readonly<CardEffectTuning>,
+): boolean {
+  return (
+    gameMode !== "online" &&
+    ((gameMode === "stage" && state.proneStart) ||
+      tuning?.proneStartEnabled === true)
   );
 }
 
@@ -404,13 +543,14 @@ export function applyCardPick(
 }
 
 /**
- * 핫시트에는 영향을 주지 않고 현재 힘 등급을 플레이어 목표 발사 속도 배율로 바꾼다.
+ * 로컬 모드의 실제·디버그 힘 등급을 합성하고 온라인에서는 항상 중립 배율을 반환한다.
  */
 export function computePlayerLaunchSpeedMultiplier(
   gameMode: GameMode,
   state: Readonly<RunCardState>,
   permanentForceBonus = 0,
   cardEffectScale: number = CARD_EFFECT_SCALE,
+  tuning?: Readonly<CardEffectTuning>,
 ): number {
   validateCardEffectScale(cardEffectScale);
   if (
@@ -421,13 +561,18 @@ export function computePlayerLaunchSpeedMultiplier(
       `영구 힘 보너스 ${permanentForceBonus}가 유한한 음이 아닌 수가 아닙니다.`,
     );
   }
-  return gameMode === "stage"
-    ? 1 +
-        computeGeneralCardEffect(
-          state,
-          "force",
-          cardEffectScale,
-        ) +
-        permanentForceBonus
-    : 1;
+  if (gameMode === "online") {
+    return 1;
+  }
+  return (
+    1 +
+    computeTunedGeneralCardEffect(
+      gameMode,
+      state,
+      "force",
+      cardEffectScale,
+      tuning,
+    ) +
+    (gameMode === "stage" ? permanentForceBonus : 0)
+  );
 }

@@ -1,6 +1,9 @@
 import type { ChessSetMeta } from "./assets";
 import {
-  computeGeneralCardEffect,
+  computeTunedGeneralCardEffect,
+  isGiantPawnCardActive,
+  isProneStartCardActive,
+  type CardEffectTuning,
   type RunCardState,
 } from "./cards";
 import {
@@ -55,6 +58,8 @@ export interface StageSpawnOptions {
   enemyBuffStepScale?: number;
   // 런타임 조절판과 측정 하네스가 백 크기·중량·힘 카드의 현재 등급 최종 효과에 공통 적용한다.
   cardEffectScale?: number;
+  // Y 카드 조절판이 실제 런 카드와 합성할 등급·곡선·종류별 배수·특수 카드 설정이다.
+  cardTuning?: Readonly<CardEffectTuning>;
 }
 
 export interface EnemyStageStepValues {
@@ -164,7 +169,7 @@ export function computeStagePieceScale(
   meta: ChessSetMeta,
   options: StageSpawnOptions,
 ): number {
-  if (options.gameMode !== "stage") {
+  if (options.gameMode === "online") {
     return 1;
   }
   if (instance.side === "white") {
@@ -178,15 +183,24 @@ export function computeStagePieceScale(
     const generalScale =
       1 +
       // 카드 크기는 등급 최종값으로 교체되고, 영구 강화 크기는 그 위에 더해진다.
-      computeGeneralCardEffect(
+      computeTunedGeneralCardEffect(
+        options.gameMode,
         runCards,
         "size",
         getCardEffectScale(options),
+        options.cardTuning,
       ) +
       permanentSizeFraction;
+    const giantPawnActive = isGiantPawnCardActive(
+      options.gameMode,
+      runCards,
+      options.cardTuning,
+    );
     const tierScale =
-      instance.type === "Pawn" && runCards.giantPawn
-        ? meta.pieces.King.bounds.y / meta.pieces.Pawn.bounds.y
+      instance.type === "Pawn" && giantPawnActive
+        ? options.cardTuning?.giantPawnEnabled === true
+          ? options.cardTuning.giantPawnSizeMultiplier
+          : meta.pieces.King.bounds.y / meta.pieces.Pawn.bounds.y
         : 1;
     return Math.min(
       generalScale * tierScale,
@@ -194,6 +208,9 @@ export function computeStagePieceScale(
         ? STAGE_MAX_PIECE_SCALE
         : PLAYER_MAX_SIZE_SCALE,
     );
+  }
+  if (options.gameMode !== "stage") {
+    return 1;
   }
   const buffs = computeStageBuffs(options.stageNumber);
   const steps = computeEnemyStageStepValues(
@@ -257,8 +274,11 @@ export function shouldUsePawnZigzag(
   }
   if (
     instance.side === "white" &&
-    options.gameMode === "stage" &&
-    getRunCards(options).giantPawn
+    isGiantPawnCardActive(
+      options.gameMode,
+      getRunCards(options),
+      options.cardTuning,
+    )
   ) {
     return false;
   }
@@ -309,8 +329,11 @@ export function selectStageSpawnInstances(
   options: StageSpawnOptions,
 ): PieceInstance[] {
   if (
-    options.gameMode !== "stage" ||
-    !getRunCards(options).giantPawn
+    !isGiantPawnCardActive(
+      options.gameMode,
+      getRunCards(options),
+      options.cardTuning,
+    )
   ) {
     return [...instances];
   }
@@ -337,9 +360,12 @@ export function computeStageSpawnPose(
   const center = computeStageSpawnCenter(instance, meta, options);
   const uniformScale = computeStagePieceScale(instance, meta, options);
   const usesProneStart =
-    options.gameMode === "stage" &&
     instance.side === "white" &&
-    getRunCards(options).proneStart;
+    isProneStartCardActive(
+      options.gameMode,
+      getRunCards(options),
+      options.cardTuning,
+    );
   if (!usesProneStart) {
     return {
       translation: { x: center.x, y: SPAWN_GAP, z: center.z },
@@ -385,15 +411,17 @@ export function computeUpgradeWeightFraction(
   instance: PieceInstance,
   options: StageSpawnOptions,
 ): number {
-  if (options.gameMode !== "stage") {
+  if (options.gameMode === "online") {
     return 0;
   }
   if (instance.side === "white") {
     const cardFraction =
-      computeGeneralCardEffect(
+      computeTunedGeneralCardEffect(
+        options.gameMode,
         getRunCards(options),
         "weight",
         getCardEffectScale(options),
+        options.cardTuning,
       );
     const permanentFraction =
       options.permanentUpgrades === undefined
@@ -403,6 +431,9 @@ export function computeUpgradeWeightFraction(
             instance.type,
           );
     return cardFraction + permanentFraction;
+  }
+  if (options.gameMode !== "stage") {
+    return 0;
   }
   return (
     computeEnemyStageStepValues(

@@ -121,6 +121,7 @@ function computeWorldUp(body) {
 
 try {
   const [
+    cardTuningModule,
     cardsModule,
     configModule,
     layoutModule,
@@ -128,6 +129,7 @@ try {
     stageModule,
     turnModule,
   ] = await Promise.all([
+    vite.ssrLoadModule("/src/card-tuning.ts"),
     vite.ssrLoadModule("/src/cards.ts"),
     vite.ssrLoadModule("/src/config.ts"),
     vite.ssrLoadModule("/src/layout.ts"),
@@ -146,6 +148,198 @@ try {
   );
   const geometries = await loadPieceGeometries(
     configModule.PIECE_TYPES,
+  );
+  const giantPawnSizeMultiplier =
+    meta.pieces.King.bounds.y / meta.pieces.Pawn.bounds.y;
+  const panelSettings =
+    cardTuningModule.createDefaultCardTuningSettings(
+      giantPawnSizeMultiplier,
+    );
+  panelSettings.debugWeightGrade = 4;
+  const panelProfile =
+    cardTuningModule.createCardEffectTuning(panelSettings);
+  const playGradeState = cardsModule.createRunCardState();
+  for (let grade = 0; grade < 4; grade += 1) {
+    cardsModule.applyCardPick(playGradeState, "weight");
+  }
+  const playGradeEffect = cardsModule.computeGeneralCardEffect(
+    playGradeState,
+    "weight",
+  );
+  const panelGradeEffect =
+    cardsModule.computeTunedGeneralCardEffect(
+      "hotseat",
+      cardsModule.createRunCardState(),
+      "weight",
+      1,
+      panelProfile,
+    );
+  panelSettings.weightEffectMultiplier = 1.5;
+  const multipliedProfile =
+    cardTuningModule.createCardEffectTuning(panelSettings);
+  const multipliedWeightEffect =
+    cardsModule.computeTunedGeneralCardEffect(
+      "stage",
+      playGradeState,
+      "weight",
+      1,
+      multipliedProfile,
+    );
+  cardsModule.applyCardPick(playGradeState, "weight");
+  const composedGrade = cardsModule.computeEffectiveGeneralCardGrade(
+    "stage",
+    playGradeState,
+    "weight",
+    multipliedProfile,
+  );
+  panelSettings.debugForceGrade = 5;
+  panelSettings.debugSizeGrade = 5;
+  panelSettings.gradeEffect5 = 0.5;
+  panelSettings.forceEffectMultiplier = 5;
+  panelSettings.sizeEffectMultiplier = 5;
+  panelSettings.giantPawnEnabled = true;
+  panelSettings.proneStartEnabled = true;
+  const extremeProfile =
+    cardTuningModule.createCardEffectTuning(panelSettings);
+  const emptyState = cardsModule.createRunCardState();
+  const whiteKingInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "white-king-e1",
+  );
+  assertCondition(
+    whiteKingInstance !== undefined,
+    "카드 조절 검증용 백 킹 인스턴스를 찾지 못했습니다.",
+  );
+  const onlineOptions = {
+    gameMode: "online",
+    stageNumber: 1,
+    cardTuning: extremeProfile,
+  };
+  const onlineScale = stageModule.computeStagePieceScale(
+    whiteKingInstance,
+    meta,
+    onlineOptions,
+  );
+  const onlineWeight = stageModule.computeUpgradeWeightFraction(
+    whiteKingInstance,
+    onlineOptions,
+  );
+  const onlineForce =
+    cardsModule.computePlayerLaunchSpeedMultiplier(
+      "online",
+      emptyState,
+      0,
+      1,
+      extremeProfile,
+    );
+  const onlineSpawnCount =
+    stageModule.selectStageSpawnInstances(
+      layoutModule.PIECE_INSTANCES,
+      onlineOptions,
+    ).length;
+  const blackKingInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "black-king-e8",
+  );
+  assertCondition(
+    blackKingInstance !== undefined,
+    "카드 조절 검증용 흑 킹 인스턴스를 찾지 못했습니다.",
+  );
+  const hotseatOptions = {
+    gameMode: "hotseat",
+    stageNumber: 1,
+    cardTuning: extremeProfile,
+  };
+  const hotseatWhiteScale = stageModule.computeStagePieceScale(
+    whiteKingInstance,
+    meta,
+    hotseatOptions,
+  );
+  const hotseatBlackScale = stageModule.computeStagePieceScale(
+    blackKingInstance,
+    meta,
+    hotseatOptions,
+  );
+  const hotseatWhiteWeight =
+    stageModule.computeUpgradeWeightFraction(
+      whiteKingInstance,
+      hotseatOptions,
+    );
+  const hotseatBlackWeight =
+    stageModule.computeUpgradeWeightFraction(
+      blackKingInstance,
+      hotseatOptions,
+    );
+  const hotseatSpawnCount =
+    stageModule.selectStageSpawnInstances(
+      layoutModule.PIECE_INSTANCES,
+      hotseatOptions,
+    ).length;
+  const hotseatPronePose = stageModule.computeStageSpawnPose(
+    whiteKingInstance,
+    meta,
+    hotseatOptions,
+  );
+  const specialSettings =
+    cardTuningModule.createDefaultCardTuningSettings(
+      giantPawnSizeMultiplier,
+    );
+  specialSettings.giantPawnEnabled = true;
+  specialSettings.giantPawnSizeMultiplier = 1.5;
+  const customGiantOptions = {
+    gameMode: "hotseat",
+    stageNumber: 1,
+    cardTuning:
+      cardTuningModule.createCardEffectTuning(specialSettings),
+  };
+  const whitePawnInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "white-pawn-b2",
+  );
+  assertCondition(
+    whitePawnInstance !== undefined,
+    "거대 폰 배수 검증용 백 폰 인스턴스를 찾지 못했습니다.",
+  );
+  const customGiantScale = stageModule.computeStagePieceScale(
+    whitePawnInstance,
+    meta,
+    customGiantOptions,
+  );
+  const corruptStorage = {
+    getItem: () => "{손상",
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  const corruptLoad =
+    cardTuningModule.loadCardTuningSettings(
+      corruptStorage,
+      giantPawnSizeMultiplier,
+    );
+  const defaultPanelSettings =
+    cardTuningModule.createDefaultCardTuningSettings(
+      giantPawnSizeMultiplier,
+    );
+  assertCondition(
+    Math.abs(playGradeEffect - panelGradeEffect) < 1e-12 &&
+      Math.abs(multipliedWeightEffect - playGradeEffect * 1.5) <
+        1e-12 &&
+      composedGrade === 5 &&
+      onlineScale === 1 &&
+      onlineWeight === 0 &&
+      onlineForce === 1 &&
+      onlineSpawnCount === 32 &&
+      hotseatWhiteScale === configModule.PLAYER_MAX_SIZE_SCALE &&
+      hotseatBlackScale === 1 &&
+      Math.abs(hotseatWhiteWeight - 0.105) < 1e-12 &&
+      hotseatBlackWeight === 0 &&
+      hotseatSpawnCount === 28 &&
+      Math.abs(hotseatPronePose.rotation.x - Math.SQRT1_2) <
+        1e-12 &&
+      customGiantScale === 1.5 &&
+      JSON.stringify(corruptLoad.settings) ===
+        JSON.stringify(defaultPanelSettings) &&
+      corruptLoad.warning !== null,
+    `카드 조절판 합성·핫시트 적용·온라인 차단·저장 복구 실패: play=${playGradeEffect}, panel=${panelGradeEffect}, multiplied=${multipliedWeightEffect}, composedGrade=${composedGrade}, hotseat=${hotseatWhiteScale}/${hotseatBlackScale}/${hotseatWhiteWeight}/${hotseatBlackWeight}/${hotseatSpawnCount}/${hotseatPronePose.rotation.x}, customGiant=${customGiantScale}, online=${onlineScale}/${onlineWeight}/${onlineForce}/${onlineSpawnCount}, corruptWarning=${corruptLoad.warning}`,
+  );
+  console.log(
+    `[통과 0] panelGrade4=${panelGradeEffect.toFixed(6)}=playGrade4, weight×1.5=${multipliedWeightEffect.toFixed(6)}, stageMaxGrade=${composedGrade}, hotseat(whiteSize/blackSize/whiteWeight/blackWeight/pieces/prone)=${hotseatWhiteScale.toFixed(2)}/${hotseatBlackScale.toFixed(2)}/${hotseatWhiteWeight.toFixed(3)}/${hotseatBlackWeight.toFixed(2)}/${hotseatSpawnCount}/true, customGiant=${customGiantScale.toFixed(2)}, online(size/weight/force/pieces)=${onlineScale.toFixed(2)}/${onlineWeight.toFixed(2)}/${onlineForce.toFixed(2)}/${onlineSpawnCount}, corruptFallback=true`,
   );
 
   const drawState = cardsModule.createRunCardState();
@@ -258,13 +452,6 @@ try {
     `짧은 풀이 남은 카드만 표시하지 않았습니다: ${shortDraw.map((card) => card.id).join(",")}`,
   );
 
-  const whiteKingInstance = layoutModule.PIECE_INSTANCES.find(
-    (instance) => instance.id === "white-king-e1",
-  );
-  assertCondition(
-    whiteKingInstance !== undefined,
-    "크기 상한 검사용 백 킹 인스턴스를 찾지 못했습니다.",
-  );
   const defaultLegendState = cardsModule.createRunCardState();
   for (let grade = 0; grade < 5; grade += 1) {
     cardsModule.applyCardPick(defaultLegendState, "size");
