@@ -426,6 +426,15 @@ try {
   const buffTable = [];
   for (let stageNumber = 1; stageNumber <= 12; stageNumber += 1) {
     const actual = stageModule.computeStageBuffs(stageNumber);
+    const actualSizeMultiplier =
+      stageModule.computeEnemyStageSizeMultiplier(stageNumber);
+    const expectedSizeMultiplier =
+      configModule.STAGE_SIZE_MULTIPLIERS[
+        Math.min(
+          stageNumber,
+          configModule.STAGE_SIZE_MULTIPLIERS.length,
+        ) - 1
+      ];
     const expected = {
       weightSteps: Math.floor(stageNumber / 2),
       forceSteps:
@@ -439,12 +448,27 @@ try {
             : "none",
     };
     assertCondition(
-      JSON.stringify(actual) === JSON.stringify(expected),
-      `스테이지 ${stageNumber} 버프 표 불일치: expected=${JSON.stringify(expected)}, actual=${JSON.stringify(actual)}`,
+      JSON.stringify(actual) === JSON.stringify(expected) &&
+        Math.abs(actualSizeMultiplier - expectedSizeMultiplier) <
+          1e-12,
+      `스테이지 ${stageNumber} 버프 표 불일치: expected=${JSON.stringify(expected)}/size=${expectedSizeMultiplier}, actual=${JSON.stringify(actual)}/size=${actualSizeMultiplier}`,
     );
-    buffTable.push({ stage: stageNumber, ...actual });
+    buffTable.push({
+      stage: stageNumber,
+      ...actual,
+      sizeMultiplier: actualSizeMultiplier,
+    });
   }
+  const halfDifficultyStage10Scale =
+    stageModule.computeEnemyStageSizeMultiplier(10, 0.5);
+  assertCondition(
+    Math.abs(halfDifficultyStage10Scale - 1.15) < 1e-12,
+    `흑 크기표 증가분 0.5배 실패: ${halfDifficultyStage10Scale}/1.15`,
+  );
   console.log(`[통과 a] N=1..12 버프 표: ${JSON.stringify(buffTable)}`);
+  console.log(
+    `[통과 a-scale] S10 표 1.3의 증가분 0.5배=${halfDifficultyStage10Scale.toFixed(6)}`,
+  );
 
   const stageSettleMeasurements = [];
   for (let stageNumber = 1; stageNumber <= 10; stageNumber += 1) {
@@ -604,16 +628,19 @@ try {
     blackPawn !== undefined && blackKing !== undefined,
     "스테이지 10 높이 검사용 흑 폰 또는 킹을 찾지 못했습니다.",
   );
-  const pawnHeight = measureWorldHeight(
-    stage10Scene.pieceMeshes.get(blackPawn.instance.id),
-  );
-  const kingHeight = measureWorldHeight(
-    stage10Scene.pieceMeshes.get(blackKing.instance.id),
-  );
-  const heightDifference = Math.abs(pawnHeight - kingHeight);
+  const expectedStage10GeneralScale =
+    configModule.STAGE_SIZE_MULTIPLIERS[9];
+  const expectedStage10PawnScale =
+    expectedStage10GeneralScale *
+    configModule.GIANT_PAWN_SIZE_MULTIPLIER;
   assertCondition(
-    heightDifference < 1e-3,
-    `스테이지 10 흑 폰·킹 높이 차이가 큽니다: ${heightDifference}`,
+    Math.abs(
+      blackKing.uniformScale - expectedStage10GeneralScale,
+    ) < 1e-12 &&
+      Math.abs(
+        blackPawn.uniformScale - expectedStage10PawnScale,
+      ) < 1e-12,
+    `스테이지 10 최종 크기표 실패: regular=${blackKing.uniformScale}/${expectedStage10GeneralScale}, pawn=${blackPawn.uniformScale}/${expectedStage10PawnScale}`,
   );
   // Rapier는 추가 질량 속성을 다음 물리 스텝에서 최종 질량에 반영한다.
   stage10Runtime.world.step();
@@ -685,7 +712,7 @@ try {
     `스테이지+조절판 질량 합성 오차 ${(composedRelativeError * 100).toFixed(4)}%`,
   );
   console.log(
-    `[통과 b] stage10: pawnHeight=${pawnHeight.toFixed(6)}, kingHeight=${kingHeight.toFixed(6)}, |Δ|=${heightDifference.toExponential(3)}, maxMassError=${(maximumMassRelativeError * 100).toFixed(6)}%, tuningComposeError=${(composedRelativeError * 100).toFixed(6)}%`,
+    `[통과 b] stage10: regularScale=${blackKing.uniformScale.toFixed(6)}, giantPawnScale=${blackPawn.uniformScale.toFixed(6)}, maxMassError=${(maximumMassRelativeError * 100).toFixed(6)}%, tuningComposeError=${(composedRelativeError * 100).toFixed(6)}%`,
   );
 
   const stage6Runtime = await physicsModule.createPhysicsRuntime(
@@ -893,11 +920,14 @@ try {
   const stage30PawnScale = stage30Runtime.pieces.get(
     "black-pawn-a7",
   ).uniformScale;
+  const expectedStage30PawnScale =
+    configModule.STAGE_SIZE_MULTIPLIERS.at(-1) *
+    configModule.GIANT_PAWN_SIZE_MULTIPLIER;
   assertCondition(
     Math.abs(
-      stage30PawnScale - configModule.STAGE_MAX_PIECE_SCALE,
+      stage30PawnScale - expectedStage30PawnScale,
     ) < 1e-9,
-    `스테이지 30 폰 배율 상한 실패: ${stage30PawnScale}`,
+    `스테이지 30 마지막 표 고정·거대 폰 배율 실패: ${stage30PawnScale}/${expectedStage30PawnScale}`,
   );
   const stage30Spawn = settleAndMeasureSpawn(
     physicsModule,
@@ -928,7 +958,7 @@ try {
       `[실패 d2] stage30 spawn: clampedScale=${stage30PawnScale.toFixed(6)}, preSettle=${stage30Spawn.settle.steps} step, sleeping=${stage30Spawn.sleepingCount}/32, maxXZDrift=${stage30Spawn.maximumSpawnDrift.toFixed(6)} (${stage30Spawn.maximumDriftPieceId}), vector=(${stage30Spawn.maximumDriftX.toFixed(6)}, ${stage30Spawn.maximumDriftZ.toFixed(6)})`,
     );
   }
-  // 상한 배율 스테이지에서는 인접 말의 미세 겹침이 사전 정착으로 풀리며 약간의 재배치가 생긴다. 판정 기준은 수면 32/32와 비이탈이고, 0.10은 칸의 19%로 육안 배치가 유지되는 수준이다.
+  // 표 밖 스테이지도 마지막 일반 배율과 1.3배 거대 폰을 유지하며 판정 기준은 수면 32/32와 비이탈이다.
   assertCondition(
     stage30Spawn.sleepingCount === 32 &&
       stage30ExitedPieceIds.length === 0 &&
@@ -936,7 +966,7 @@ try {
     `스테이지 30 스폰 안전 실패: sleeping=${stage30Spawn.sleepingCount}/32, exited=${stage30ExitedPieceIds.join(",") || "none"}, maxDrift=${stage30Spawn.maximumSpawnDrift}, piece=${stage30Spawn.maximumDriftPieceId}`,
   );
   console.log(
-    `[통과 d2] stage30 spawn: clampedScale=${stage30PawnScale.toFixed(6)}, preSettle=${stage30Spawn.settle.steps} step, sleeping=${stage30Spawn.sleepingCount}/32, exited=0, maxXZDrift=${stage30Spawn.maximumSpawnDrift.toFixed(6)} (${stage30Spawn.maximumDriftPieceId})`,
+    `[통과 d2] stage30 spawn: finalTablePawnScale=${stage30PawnScale.toFixed(6)}, preSettle=${stage30Spawn.settle.steps} step, sleeping=${stage30Spawn.sleepingCount}/32, exited=0, maxXZDrift=${stage30Spawn.maximumSpawnDrift.toFixed(6)} (${stage30Spawn.maximumDriftPieceId})`,
   );
 } finally {
   await vite.close();

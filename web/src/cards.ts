@@ -101,7 +101,7 @@ export const UPGRADE_CARDS: readonly UpgradeCard[] = [
   {
     id: "giantPawn",
     name: "거대 폰",
-    description: "폰 4개를 잃고 남은 폰이 킹 크기가 된다",
+    description: "폰 4개를 잃고 남은 폰이 원래 크기의 1.3배가 된다",
     category: "special",
     oneShot: true,
   },

@@ -252,9 +252,7 @@ async function measureSpawn(
   const tierRatio =
     buffs.pawnTier === "none"
       ? 1
-      : meta.pieces[
-            buffs.pawnTier === "rook" ? "Rook" : "King"
-          ].bounds.y / meta.pieces.Pawn.bounds.y;
+      : modules.config.GIANT_PAWN_SIZE_MULTIPLIER;
   const rawPawnScale = generalScale * tierRatio;
   const appliedPawnScale = blackPawn?.uniformScale ?? 1;
   return {
@@ -342,6 +340,32 @@ try {
         `S${stageNumber}-proneStart`,
       ),
     );
+  }
+  const normalMeasurements = measurements.slice(0, 10);
+  for (const [index, entry] of normalMeasurements.entries()) {
+    const expectedGeneralScale =
+      config.STAGE_SIZE_MULTIPLIERS[index];
+    if (
+      Math.abs(entry.generalScale - expectedGeneralScale) > 1e-12 ||
+      entry.lost.length > 0 ||
+      entry.sleepingCount !== entry.pieceCount ||
+      entry.overlapMapPairs > 0
+    ) {
+      throw new Error(
+        `${entry.label} 최종 크기표 스폰 검증 실패: general=${entry.generalScale}/${expectedGeneralScale}, lost=${entry.lost.length}, sleeping=${entry.sleepingCount}/${entry.pieceCount}, mapOverlap=${entry.overlapMapPairs}`,
+      );
+    }
+  }
+  for (const entry of measurements) {
+    if (
+      entry.lost.length > 0 ||
+      entry.sleepingCount !== entry.pieceCount ||
+      entry.overlapMapPairs > 0
+    ) {
+      throw new Error(
+        `${entry.label} 맵 스폰 안전 실패: lost=${entry.lost.length}, sleeping=${entry.sleepingCount}/${entry.pieceCount}, mapOverlap=${entry.overlapMapPairs}`,
+      );
+    }
   }
   console.log(
     `[측정 size-table] ${measurements.map((entry) => `${entry.label}:general=${entry.generalScale.toFixed(3)},tier=${entry.pawnTier},pawn=${entry.appliedPawnScale.toFixed(3)}${entry.clampEngaged ? "(clamp)" : ""},overlap=${entry.overlapPiecePairs}/${entry.maximumPiecePenetration.toFixed(6)},mapOverlap=${entry.overlapMapPairs}/${entry.maximumMapPenetration.toFixed(6)}[${entry.overlapMapPairIds.join(",")}],settle=${entry.sleepingCount}/${entry.pieceCount}@${entry.settleSteps},lost=${entry.lost.map((lost) => `${lost.id}:${lost.route}`).join(",") || "0"},drift=${entry.maximumDrift.toFixed(6)}(${entry.maximumDriftPieceId}),walls=${entry.wallCount},wallContacts=${entry.settleWallContactPairs.length},contained=${entry.wallContained},wallHits=${entry.wallHitCount},cracks=${entry.crackedWallCount},pending=${entry.pendingWallDestructionCount}`).join("\n")}`,

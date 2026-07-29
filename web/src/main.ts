@@ -33,6 +33,7 @@ import {
 } from "./card-tuning";
 import {
   CARD_EFFECT_SCALE,
+  GIANT_PAWN_SIZE_MULTIPLIER,
   PIECE_TYPES,
   PLAYER_MAX_SIZE_SCALE,
   STAGE_RUN_LENGTH,
@@ -106,6 +107,7 @@ import type {
 import type { OnlineSelfTestRuntime } from "./tools/online-selftest";
 import {
   computeEnemyStageStepValues,
+  computeEnemyStageSizeMultiplier,
   computeStageBuffs,
   computeStageBoardHalfExtent,
   computeStagePieceScale,
@@ -274,12 +276,9 @@ async function bootstrap(): Promise<void> {
   synchronizePieceMeshes(sceneRuntime, physicsRuntime);
   loadingPanel.remove();
   const tuningRuntime = createTuningRuntime(app, physicsRuntime);
-  const defaultGiantPawnSizeMultiplier =
-    assets.meta.pieces.King.bounds.y /
-    assets.meta.pieces.Pawn.bounds.y;
   const cardTuningRuntime = createCardTuningRuntime(
     app,
-    defaultGiantPawnSizeMultiplier,
+    GIANT_PAWN_SIZE_MULTIPLIER,
   );
   const aimRuntime = createAimRuntime(sceneRuntime);
   const aimParametersRuntime = createAimParametersRuntime(
@@ -871,7 +870,10 @@ async function bootstrap(): Promise<void> {
           enemyStepValues.forceStep * stageBuffs.forceSteps,
         enemyForceSteps: stageBuffs.forceSteps,
         enemySizeFraction:
-          enemyStepValues.sizeStep * stageBuffs.sizeSteps,
+          computeEnemyStageSizeMultiplier(
+            stageOptions.stageNumber,
+            tuningRuntime.settings.enemyStageBuffScale,
+          ) - 1,
         enemySizeSteps: stageBuffs.sizeSteps,
         enemyPawnTier: stageBuffs.pawnTier,
         playerWeightFractions: playerReadoutInstances.map(

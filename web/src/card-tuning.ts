@@ -1,5 +1,6 @@
 import {
   CARD_GRADE_EFFECTS,
+  GIANT_PAWN_SIZE_MULTIPLIER,
   PLAYER_MAX_SIZE_SCALE,
   STAGE_MAX_PIECE_SCALE,
 } from "./config";
@@ -277,10 +278,10 @@ const NUMERIC_DEFINITIONS: Record<
 };
 
 /**
- * 에셋에서 유도한 거대 폰 배수를 포함해 저장과 초기화가 공유할 코드 기본값을 만든다.
+ * 플래너의 1.3배 거대 폰 기본값을 포함해 저장과 초기화가 공유할 코드 기본값을 만든다.
  */
 export function createDefaultCardTuningSettings(
-  giantPawnSizeMultiplier: number,
+  giantPawnSizeMultiplier: number = GIANT_PAWN_SIZE_MULTIPLIER,
 ): CardTuningSettings {
   if (
     !Number.isFinite(giantPawnSizeMultiplier) ||
@@ -923,7 +924,7 @@ function appendAppliedValuesGroup(
  */
 export function createCardTuningRuntime(
   container: HTMLElement,
-  giantPawnSizeMultiplier: number,
+  giantPawnSizeMultiplier: number = GIANT_PAWN_SIZE_MULTIPLIER,
   storage?: CardTuningStorage | null,
 ): CardTuningRuntime {
   const resolvedStorage =

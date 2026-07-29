@@ -81,10 +81,11 @@ async function createSettledJumpBoard(
 }
 
 try {
-  const [cardTuning, cards, layout, physics, stage] =
+  const [cardTuning, cards, config, layout, physics, stage] =
     await Promise.all([
       vite.ssrLoadModule("/src/card-tuning.ts"),
       vite.ssrLoadModule("/src/cards.ts"),
+      vite.ssrLoadModule("/src/config.ts"),
       vite.ssrLoadModule("/src/layout.ts"),
       vite.ssrLoadModule("/src/physics.ts"),
       vite.ssrLoadModule("/src/stage.ts"),
@@ -212,6 +213,18 @@ try {
           meta,
           options,
         );
+        const expectedTableScale =
+          config.STAGE_SIZE_MULTIPLIERS[
+            Math.min(
+              stageNumber,
+              config.STAGE_SIZE_MULTIPLIERS.length,
+            ) - 1
+          ];
+        const expectedFlatPawnScale =
+          expectedTableScale *
+          (buffs.pawnTier === "none"
+            ? 1
+            : config.GIANT_PAWN_SIZE_MULTIPLIER);
         assertCondition(
           runtime.breakableWalls.size === expectedMap.walls &&
             runtime.boardHoleRectangles.length ===
@@ -234,6 +247,12 @@ try {
             ) < 1e-12 &&
             Math.abs(
               blackPawn.uniformScale - expectedPawnScale,
+            ) < 1e-12 &&
+            Math.abs(
+              blackRook.uniformScale - expectedTableScale,
+            ) < 1e-12 &&
+            Math.abs(
+              blackPawn.uniformScale - expectedFlatPawnScale,
             ) < 1e-12,
           `스테이지 ${stageNumber} 흑 버프가 다릅니다: weight=${actualWeightFraction}/${expectedWeightFraction}, rookScale=${blackRook.uniformScale}/${expectedRookScale}, pawnScale=${blackPawn.uniformScale}/${expectedPawnScale}`,
         );
@@ -266,7 +285,7 @@ try {
     );
   }
   console.log(
-    `[통과 a] 실제 맵·흑 버프 이동: ${measurements.map((entry) => `S${entry.stageNumber}=wall${entry.walls}/${entry.wallVariant},hole${entry.holes},pin${entry.cylinders},steps${entry.weightSteps}/${entry.forceSteps}/${entry.sizeSteps},tier=${entry.pawnTier},weight=${entry.weightFraction.toFixed(3)},scale=${entry.rookScale.toFixed(3)}/${entry.pawnScale.toFixed(3)}`).join(" | ")}`,
+    `[통과 a] 실제 맵·흑 버프 이동: ${measurements.map((entry) => `S${entry.stageNumber}=wall${entry.walls}/${entry.wallVariant},hole${entry.holes},pin${entry.cylinders},steps${entry.weightSteps}/${entry.forceSteps}/${entry.sizeSteps},tier=${entry.pawnTier},weight=${entry.weightFraction.toFixed(3)},table/pawn=${entry.rookScale.toFixed(3)}/${entry.pawnScale.toFixed(3)}`).join(" | ")}`,
   );
   console.log(
     `[통과 b] 이동 전후 런 카드·영구 강화·포인트·임시 정산 보존: cards=${initialPreservedState.runCards}, points=${state.points}, provisional=${initialPreservedState.stageRunPoints}`,

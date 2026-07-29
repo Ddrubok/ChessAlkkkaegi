@@ -10,13 +10,14 @@ import {
   CARD_EFFECT_SCALE,
   deriveBoardHalfExtent,
   ENEMY_STAGE_BUFF_SCALE,
+  GIANT_PAWN_SIZE_MULTIPLIER,
   PLAYER_MAX_SIZE_SCALE,
   SPAWN_GAP,
   STAGE_BOARD_EXPANSION_SCALES_CELLS,
   STAGE_BOARD_SCALE,
   STAGE_FORCE_STEP,
   STAGE_MAX_PIECE_SCALE,
-  STAGE_SIZE_STEP,
+  STAGE_SIZE_MULTIPLIERS,
   STAGE_WEIGHT_STEP,
 } from "./config";
 import type { GameMode } from "./game-mode";
@@ -41,9 +42,9 @@ export interface StageBuffs {
   weightSteps: number;
   // 3부터 현재까지 포함된 홀수 스테이지 수다.
   forceSteps: number;
-  // 현재까지 포함된 3의 배수 스테이지 수다.
+  // 기존 활성 구간 표시와 조절판 표시에 남긴 3의 배수 스테이지 수이며 크기 계산은 최종 표를 직접 쓴다.
   sizeSteps: number;
-  // 현재 스테이지에서 흑 폰에 치환할 높이 등급이다.
+  // 기존 활성 시점을 보존하는 흑 거대 폰 구간이며 두 활성 값 모두 같은 1.3배를 쓴다.
   pawnTier: PawnTier;
 }
 
@@ -56,7 +57,7 @@ export interface StageSpawnOptions {
   runCards?: Readonly<RunCardState>;
   // 플레이어 백 말 종류별 중량에 매 리셋마다 합성할 영구 강화 상태다.
   permanentUpgrades?: Readonly<PermanentUpgrades>;
-  // 런타임 조절판과 측정 하네스가 흑 중량·힘·크기 단계값에 공통 적용하며 생략하면 config 기본값을 쓴다.
+  // 런타임 조절판과 측정 하네스가 흑 중량·힘 단계 및 크기표 증가분에 공통 적용하며 생략하면 config 기본값을 쓴다.
   enemyBuffStepScale?: number;
   // 런타임 조절판과 측정 하네스가 백 크기·중량·힘 카드의 현재 등급 최종 효과에 공통 적용한다.
   cardEffectScale?: number;
@@ -69,8 +70,6 @@ export interface EnemyStageStepValues {
   weightStep: number;
   // 현재 공통 배율이 적용된 흑 AI 힘 한 단계 비율이다.
   forceStep: number;
-  // 현재 공통 배율이 적용된 흑 크기 한 단계 비율이다.
-  sizeStep: number;
 }
 
 export interface PieceSpawnPose {
@@ -172,7 +171,7 @@ function getCardEffectScale(options: StageSpawnOptions): number {
 }
 
 /**
- * 세 종류 흑 스테이지 단계값에 같은 측정 배율을 적용하되 게임은 config 기본값을 사용한다.
+ * 흑 중량·힘 단계값에 같은 측정 배율을 적용하되 게임은 config 기본값을 사용한다.
  */
 export function computeEnemyStageStepValues(
   scale: number = ENEMY_STAGE_BUFF_SCALE,
@@ -185,8 +184,32 @@ export function computeEnemyStageStepValues(
   return {
     weightStep: STAGE_WEIGHT_STEP * scale,
     forceStep: STAGE_FORCE_STEP * scale,
-    sizeStep: STAGE_SIZE_STEP * scale,
   };
+}
+
+/**
+ * 플래너 표의 스테이지별 일반 크기를 조회하고 디버그 배율은 1배 초과분에만 적용한다.
+ */
+export function computeEnemyStageSizeMultiplier(
+  stageNumber: number,
+  scale: number = ENEMY_STAGE_BUFF_SCALE,
+): number {
+  if (!Number.isInteger(stageNumber) || stageNumber < 1) {
+    throw new Error(
+      `스테이지 크기 배율 번호 ${stageNumber}가 1 이상의 정수가 아닙니다.`,
+    );
+  }
+  if (!Number.isFinite(scale) || scale < 0) {
+    throw new Error(
+      `흑 스테이지 크기 배율 ${scale}가 유한한 음이 아닌 수가 아닙니다.`,
+    );
+  }
+  const tableIndex = Math.min(
+    stageNumber,
+    STAGE_SIZE_MULTIPLIERS.length,
+  ) - 1;
+  const tableMultiplier = STAGE_SIZE_MULTIPLIERS[tableIndex];
+  return 1 + (tableMultiplier - 1) * scale;
 }
 
 /**
@@ -217,7 +240,7 @@ export function computeStageBuffs(stageNumber: number): StageBuffs {
  */
 export function computeStagePieceScale(
   instance: PieceInstance,
-  meta: ChessSetMeta,
+  _meta: ChessSetMeta,
   options: StageSpawnOptions,
 ): number {
   if (options.gameMode === "online") {
@@ -251,7 +274,7 @@ export function computeStagePieceScale(
       instance.type === "Pawn" && giantPawnActive
         ? options.cardTuning?.giantPawnEnabled === true
           ? options.cardTuning.giantPawnSizeMultiplier
-          : meta.pieces.King.bounds.y / meta.pieces.Pawn.bounds.y
+          : GIANT_PAWN_SIZE_MULTIPLIER
         : 1;
     return Math.min(
       generalScale * tierScale,
@@ -264,20 +287,15 @@ export function computeStagePieceScale(
     return 1;
   }
   const buffs = computeStageBuffs(options.stageNumber);
-  const steps = computeEnemyStageStepValues(
+  const generalScale = computeEnemyStageSizeMultiplier(
+    options.stageNumber,
     options.enemyBuffStepScale,
   );
-  const generalScale = 1 + steps.sizeStep * buffs.sizeSteps;
   if (instance.type !== "Pawn" || buffs.pawnTier === "none") {
     return Math.min(generalScale, STAGE_MAX_PIECE_SCALE);
   }
-  const pawnHeight = meta.pieces.Pawn.bounds.y;
-  const tierHeight =
-    buffs.pawnTier === "rook"
-      ? meta.pieces.Rook.bounds.y
-      : meta.pieces.King.bounds.y;
   return Math.min(
-    generalScale * (tierHeight / pawnHeight),
+    generalScale * GIANT_PAWN_SIZE_MULTIPLIER,
     STAGE_MAX_PIECE_SCALE,
   );
 }

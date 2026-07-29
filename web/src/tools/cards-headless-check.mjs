@@ -208,7 +208,7 @@ try {
     configModule.PIECE_TYPES,
   );
   const giantPawnSizeMultiplier =
-    meta.pieces.King.bounds.y / meta.pieces.Pawn.bounds.y;
+    configModule.GIANT_PAWN_SIZE_MULTIPLIER;
   const panelSettings =
     cardTuningModule.createDefaultCardTuningSettings(
       giantPawnSizeMultiplier,
@@ -732,11 +732,11 @@ try {
   const giantPawnHeight = measureWorldHeight(
     giantMeshes.pieceMeshes.get(giantPawn.instance.id),
   );
-  const whiteKingHeight = measureWorldHeight(
-    giantMeshes.pieceMeshes.get(whiteKing.instance.id),
-  );
-  const giantHeightDifference = Math.abs(
-    giantPawnHeight - whiteKingHeight,
+  const expectedGiantPawnHeight =
+    meta.pieces.Pawn.bounds.y *
+    configModule.GIANT_PAWN_SIZE_MULTIPLIER;
+  const giantHeightError = Math.abs(
+    giantPawnHeight - expectedGiantPawnHeight,
   );
   const giantSettle = physicsModule.preSettlePhysics(giantRuntime);
   sceneModule.synchronizePieceMeshes(giantMeshes, giantRuntime);
@@ -918,7 +918,9 @@ try {
   sceneModule.synchronizePieceMeshes(giantMeshes, giantRuntime);
   const scaleAfterSettle = readGiantScaleSnapshot();
   assertCondition(
-    giantHeightDifference < 1e-3 &&
+    giantPawn.uniformScale ===
+      configModule.GIANT_PAWN_SIZE_MULTIPLIER &&
+      giantHeightError < 1e-3 &&
       giantSleeping === 28 &&
       giantDrift.maximumDrift < 0.05 &&
       giantAabbError < 1e-6 &&
@@ -958,10 +960,10 @@ try {
           snapshot.visible &&
           snapshot.sameMesh,
       ),
-    `거대 폰 AABB·발사 배율 검증 실패: heightΔ=${giantHeightDifference}, sleeping=${giantSleeping}/28, maxDrift=${giantDrift.maximumDrift}, giantAabb=${giantAabbError}, sizeAabb=${sizeCardAabbError}, strike=${giantStrikeError}/${sizeCardStrikeError}, marker=${giantMarkerDiameter}/${giantExpectedMarkerDiameter},${sizeCardMarkerDiameter}/${sizeCardExpectedMarkerDiameter}, scales=${JSON.stringify({ before: scaleBeforeLaunch, launch: scaleAtLaunchStep, peak: scaleAtPulsePeak, settled: scaleAfterSettle })}`,
+    `거대 폰 AABB·발사 배율 검증 실패: scale=${giantPawn.uniformScale}, heightError=${giantHeightError}, sleeping=${giantSleeping}/28, maxDrift=${giantDrift.maximumDrift}, giantAabb=${giantAabbError}, sizeAabb=${sizeCardAabbError}, strike=${giantStrikeError}/${sizeCardStrikeError}, marker=${giantMarkerDiameter}/${giantExpectedMarkerDiameter},${sizeCardMarkerDiameter}/${sizeCardExpectedMarkerDiameter}, scales=${JSON.stringify({ before: scaleBeforeLaunch, launch: scaleAtLaunchStep, peak: scaleAtPulsePeak, settled: scaleAfterSettle })}`,
   );
   console.log(
-    `[통과 b] pieces=28, pawns=${whitePawnFiles.join(",")}, pawnHeight=${giantPawnHeight.toFixed(6)}, kingHeight=${whiteKingHeight.toFixed(6)}, |Δ|=${giantHeightDifference.toExponential(3)}, AABB giant@${giantPawn.uniformScale.toFixed(6)}=${giantAabbError.toExponential(3)} size@${sizeCardKing.uniformScale.toFixed(6)}=${sizeCardAabbError.toExponential(3)}, strike=${giantStrikeError.toExponential(3)}/${sizeCardStrikeError.toExponential(3)}, marker=${giantMarkerDiameter.toFixed(6)}/${sizeCardMarkerDiameter.toFixed(6)}, scale mesh(before/launch/peak/settled)=${scaleBeforeLaunch.mesh.toFixed(6)}/${scaleAtLaunchStep.mesh.toFixed(6)}/${scaleAtPulsePeak.mesh.toFixed(6)}/${scaleAfterSettle.mesh.toFixed(6)}, collider=${scaleBeforeLaunch.collider.toFixed(6)}/${scaleAtLaunchStep.collider.toFixed(6)}/${scaleAtPulsePeak.collider.toFixed(6)}/${scaleAfterSettle.collider.toFixed(6)}, visible=true, sameMesh=true, launchSettle=${giantLaunchSettleSteps}, preSettle=${giantSettle.steps}, sleeping=${giantSleeping}/28, maxDrift=${giantDrift.maximumDrift.toFixed(6)} (${giantDrift.maximumPieceId})`,
+    `[통과 b] pieces=28, pawns=${whitePawnFiles.join(",")}, giantScale=${giantPawn.uniformScale.toFixed(6)}, pawnHeight=${giantPawnHeight.toFixed(6)}, expectedHeight=${expectedGiantPawnHeight.toFixed(6)}, error=${giantHeightError.toExponential(3)}, AABB giant=${giantAabbError.toExponential(3)} size=${sizeCardAabbError.toExponential(3)}, strike=${giantStrikeError.toExponential(3)}/${sizeCardStrikeError.toExponential(3)}, marker=${giantMarkerDiameter.toFixed(6)}/${sizeCardMarkerDiameter.toFixed(6)}, scale mesh(before/launch/peak/settled)=${scaleBeforeLaunch.mesh.toFixed(6)}/${scaleAtLaunchStep.mesh.toFixed(6)}/${scaleAtPulsePeak.mesh.toFixed(6)}/${scaleAfterSettle.mesh.toFixed(6)}, collider=${scaleBeforeLaunch.collider.toFixed(6)}/${scaleAtLaunchStep.collider.toFixed(6)}/${scaleAtPulsePeak.collider.toFixed(6)}/${scaleAfterSettle.collider.toFixed(6)}, visible=true, sameMesh=true, launchSettle=${giantLaunchSettleSteps}, preSettle=${giantSettle.steps}, sleeping=${giantSleeping}/28, maxDrift=${giantDrift.maximumDrift.toFixed(6)} (${giantDrift.maximumPieceId})`,
   );
 
   const stackedGiantState = cardsModule.createRunCardState();
@@ -1048,8 +1050,18 @@ try {
     (binding) =>
       binding.body.translation().y < configModule.FALL_OUT_Y,
   );
+  const expectedStackedGiantScale =
+    (1 +
+      cardsModule.computeGeneralCardEffect(
+        stackedGiantState,
+        "size",
+        capTestEffectScale,
+      )) *
+    configModule.GIANT_PAWN_SIZE_MULTIPLIER;
   assertCondition(
-    stackedGiantScale === configModule.STAGE_MAX_PIECE_SCALE &&
+    Math.abs(
+      stackedGiantScale - expectedStackedGiantScale,
+    ) < 1e-12 &&
       stackedWhiteKingScale ===
         configModule.PLAYER_MAX_SIZE_SCALE &&
       stackedGiantFlare + 0.02 < meta.cellSize * 2 &&
@@ -1059,7 +1071,7 @@ try {
     `거대 폰+크기 상한 보드 안전 실패: pawnScale=${stackedGiantScale}, regularScale=${stackedWhiteKingScale}, flare=${stackedGiantFlare}, sleeping=${stackedGiantSleeping}/28, maxDrift=${stackedGiantDrift.maximumDrift}, fallen=${stackedGiantFallen.length}`,
   );
   console.log(
-    `[통과 b-상한] giantPawn+sizeGrade4×3: pawnScale=${stackedGiantScale.toFixed(6)}, regularScale=${stackedWhiteKingScale.toFixed(6)}, flare+margin=${(stackedGiantFlare + 0.02).toFixed(6)}<twoCells=${(meta.cellSize * 2).toFixed(6)}, preSettle=${stackedGiantSettle.steps}, sleeping=${stackedGiantSleeping}/28, fallen=0, maxDrift=${stackedGiantDrift.maximumDrift.toFixed(6)} (${stackedGiantDrift.maximumPieceId})`,
+    `[통과 b-상한] giantPawn1.3×sizeCap: pawnScale=${stackedGiantScale.toFixed(6)}, regularScale=${stackedWhiteKingScale.toFixed(6)}, flare+margin=${(stackedGiantFlare + 0.02).toFixed(6)}<twoCells=${(meta.cellSize * 2).toFixed(6)}, preSettle=${stackedGiantSettle.steps}, sleeping=${stackedGiantSleeping}/28, fallen=0, maxDrift=${stackedGiantDrift.maximumDrift.toFixed(6)} (${stackedGiantDrift.maximumPieceId})`,
   );
 
   const proneState = cardsModule.createRunCardState();

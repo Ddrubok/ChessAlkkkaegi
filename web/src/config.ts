@@ -140,8 +140,22 @@ export const STAGE_WEIGHT_STEP = 0.1;
 // 3 이상 홀수 스테이지 한 단계마다 흑 AI 목표 발사 속도에 더하는 비율이다.
 export const STAGE_FORCE_STEP = 0.05;
 
-// 3의 배수 스테이지 한 단계마다 흑 말의 렌더와 콜라이더에 더하는 균일 배율이다.
-export const STAGE_SIZE_STEP = 0.03;
+// 플래너 최종 스테이지별 표를 그대로 옮긴 흑 말 일반 크기 배율이며 표 밖의 고스테이지는 마지막 값을 유지한다.
+export const STAGE_SIZE_MULTIPLIERS = [
+  1,
+  1,
+  1.05,
+  1.05,
+  1.1,
+  1.1,
+  1.15,
+  1.2,
+  1.25,
+  1.3,
+] as const;
+
+// 플래너 최종 결정에 따라 플레이어 카드와 AI 폰 티어가 공통으로 사용하는 원래 폰 대비 거대 폰 균일 배율이다.
+export const GIANT_PAWN_SIZE_MULTIPLIER = 1.3;
 
 // 보드 격자에 물리적으로 들어가는 총 배율 상한이다. 초고스테이지에서 지그재그로도 안 들어가는 것을 막되 중량·힘 버프는 계속 누적한다.
 export const STAGE_MAX_PIECE_SCALE = 2.2;
