@@ -107,6 +107,8 @@ export interface CardTuningRelayoutSnapshot {
   permanentUpgradesSignature: string;
   // 다시 깔기가 보상이나 구매를 일으키지 않았음을 비교할 메타 포인트다.
   points: number;
+  // 스테이지 이동이 건너뛴 보상을 만들지 않았음을 비교할 런 임시 정산 상태다.
+  stageRunPointsSignature: string;
 }
 
 type CardTuningAppliedKey =
@@ -151,10 +153,22 @@ export interface CardTuningRuntime {
   storageWarningShown: boolean;
   // 현재 온라인 차단으로 모든 조작을 비활성화했는지 나타낸다.
   onlineDisabled: boolean;
+  // 스테이지 이동 버튼의 모드별 활성 여부를 결정하는 현재 대전 모드다.
+  gameMode: GameMode;
+  // 이동할 스테이지를 1 이상의 정수로 받는 디버그 입력이다.
+  stageJumpInput: HTMLInputElement;
+  // 스테이지 모드에서만 기존 보드 리셋 경로를 실행하는 이동 버튼이다.
+  stageJumpButton: HTMLButtonElement;
+  // 핫시트에서 이동 기능을 쓸 수 없는 이유를 짧게 보여 주는 문구다.
+  stageOnlyNotice: HTMLParagraphElement;
   // 힘처럼 다음 보드 없이 적용할 값의 읽기 전용 출력을 외부가 갱신하는 연결점이다.
   settingsChangedHandler: (() => void) | null;
   // 현재 모드·스테이지·런 상태를 보존한 기존 보드 리셋을 외부가 실행하는 연결점이다.
   relayoutHandler: (() => Promise<void>) | null;
+  // 입력한 단계로 현재 런 번호만 바꾸고 기존 보드 리셋을 실행하는 연결점이다.
+  stageJumpHandler:
+    | ((stageNumber: number) => Promise<void>)
+    | null;
 }
 
 const NUMERIC_DEFINITIONS: Record<
@@ -479,10 +493,60 @@ export async function relayoutCurrentCardTuningBoard(
     after.runCardsSignature !== before.runCardsSignature ||
     after.permanentUpgradesSignature !==
       before.permanentUpgradesSignature ||
-    after.points !== before.points
+    after.points !== before.points ||
+    after.stageRunPointsSignature !==
+      before.stageRunPointsSignature
   ) {
     throw new Error(
       `현재 판 다시 깔기가 런 상태를 바꿨습니다: before=${JSON.stringify(before)}, after=${JSON.stringify(after)}`,
+    );
+  }
+}
+
+/**
+ * 스테이지 모드에서 현재 단계 번호만 바꾼 뒤 기존 보드 리셋으로 실제 맵과 버프를 다시 만든다.
+ */
+export async function jumpCardTuningStage(
+  targetStageNumber: number,
+  readSnapshot: () => CardTuningRelayoutSnapshot,
+  setStageNumber: (stageNumber: number) => void,
+  resetBoard: (
+    gameMode: GameMode,
+    stageNumber: number,
+  ) => Promise<void>,
+): Promise<void> {
+  if (
+    !Number.isInteger(targetStageNumber) ||
+    targetStageNumber < 1
+  ) {
+    throw new Error(
+      `이동할 스테이지 ${targetStageNumber}가 1 이상의 정수가 아닙니다.`,
+    );
+  }
+  const before = readSnapshot();
+  if (before.gameMode !== "stage") {
+    throw new Error("스테이지 이동은 스테이지 모드 전용입니다.");
+  }
+  setStageNumber(targetStageNumber);
+  try {
+    await resetBoard("stage", targetStageNumber);
+  } catch (error: unknown) {
+    setStageNumber(before.stageNumber);
+    throw error;
+  }
+  const after = readSnapshot();
+  if (
+    after.gameMode !== "stage" ||
+    after.stageNumber !== targetStageNumber ||
+    after.runCardsSignature !== before.runCardsSignature ||
+    after.permanentUpgradesSignature !==
+      before.permanentUpgradesSignature ||
+    after.points !== before.points ||
+    after.stageRunPointsSignature !==
+      before.stageRunPointsSignature
+  ) {
+    throw new Error(
+      `스테이지 이동이 단계 이외의 런 상태를 바꿨습니다: before=${JSON.stringify(before)}, after=${JSON.stringify(after)}`,
     );
   }
 }
@@ -590,6 +654,7 @@ export function setCardTuningGameMode(
 ): void {
   const disabled = gameMode === "online";
   runtime.onlineDisabled = disabled;
+  runtime.gameMode = gameMode;
   for (const elements of runtime.controls.values()) {
     for (const element of elements) {
       if (element instanceof HTMLInputElement) {
@@ -602,7 +667,26 @@ export function setCardTuningGameMode(
   )) {
     button.disabled = disabled;
   }
+  const stageJumpDisabled = gameMode !== "stage";
+  runtime.stageJumpInput.disabled = stageJumpDisabled;
+  runtime.stageJumpButton.disabled = stageJumpDisabled;
+  runtime.stageOnlyNotice.hidden = gameMode !== "hotseat";
   runtime.onlineNotice.hidden = !disabled;
+}
+
+/**
+ * 성공적으로 다시 깐 보드의 현재 단계를 이동 입력 기본값과 동기화한다.
+ */
+export function updateCardTuningStageNumber(
+  runtime: CardTuningRuntime,
+  stageNumber: number,
+): void {
+  if (!Number.isInteger(stageNumber) || stageNumber < 1) {
+    throw new Error(
+      `카드 조절판 현재 스테이지 ${stageNumber}가 1 이상의 정수가 아닙니다.`,
+    );
+  }
+  runtime.stageJumpInput.value = String(stageNumber);
 }
 
 /**
@@ -824,6 +908,20 @@ export function createCardTuningRuntime(
   onlineNotice.textContent =
     "온라인 대전에서는 양쪽 물리 결정성을 위해 카드 조절값을 모두 무시합니다.";
   onlineNotice.hidden = true;
+  const stageJumpInput = document.createElement("input");
+  stageJumpInput.type = "number";
+  stageJumpInput.min = "1";
+  stageJumpInput.step = "1";
+  stageJumpInput.value = "1";
+  stageJumpInput.disabled = true;
+  const stageJumpButton = document.createElement("button");
+  stageJumpButton.type = "button";
+  stageJumpButton.dataset.cardTuningStageJump = "";
+  stageJumpButton.textContent = "이 스테이지로 이동";
+  stageJumpButton.disabled = true;
+  const stageOnlyNotice = document.createElement("p");
+  stageOnlyNotice.className = "tuning-note";
+  stageOnlyNotice.textContent = "스테이지 모드 전용";
   const runtime: CardTuningRuntime = {
     settings: loaded.settings,
     panel,
@@ -836,8 +934,13 @@ export function createCardTuningRuntime(
     onlineNotice,
     storageWarningShown: false,
     onlineDisabled: false,
+    gameMode: "hotseat",
+    stageJumpInput,
+    stageJumpButton,
+    stageOnlyNotice,
     settingsChangedHandler: null,
     relayoutHandler: null,
+    stageJumpHandler: null,
   };
   const initialWarning =
     resolvedStorage.warning ?? loaded.warning;
@@ -917,6 +1020,24 @@ export function createCardTuningRuntime(
     "포복 개시 적용 · 다음 보드",
   );
   panel.append(specialFieldset);
+  const stageJumpFieldset = document.createElement("fieldset");
+  const stageJumpLegend = document.createElement("legend");
+  stageJumpLegend.textContent = "스테이지 이동 · 디버그";
+  const stageJumpControl = document.createElement("label");
+  stageJumpControl.className = "tuning-control";
+  const stageJumpLabel = document.createElement("span");
+  stageJumpLabel.textContent = "이동할 스테이지";
+  stageJumpControl.append(stageJumpLabel, stageJumpInput);
+  const stageJumpActions = document.createElement("div");
+  stageJumpActions.className = "tuning-actions";
+  stageJumpActions.append(stageJumpButton);
+  stageJumpFieldset.append(
+    stageJumpLegend,
+    stageJumpControl,
+    stageJumpActions,
+    stageOnlyNotice,
+  );
+  panel.append(stageJumpFieldset);
   const compositionNote = document.createElement("p");
   compositionNote.className = "tuning-note";
   compositionNote.textContent =
@@ -931,6 +1052,36 @@ export function createCardTuningRuntime(
   actionNotice.className = "tuning-note";
   actionNotice.setAttribute("aria-live", "polite");
   actionNotice.hidden = true;
+  stageJumpButton.addEventListener("click", () => {
+    if (
+      runtime.gameMode !== "stage" ||
+      runtime.stageJumpHandler === null
+    ) {
+      return;
+    }
+    const targetStageNumber = Number(stageJumpInput.value);
+    stageJumpButton.disabled = true;
+    actionNotice.hidden = false;
+    actionNotice.textContent =
+      `${targetStageNumber}스테이지의 실제 맵과 버프로 이동하는 중입니다.`;
+    void runtime
+      .stageJumpHandler(targetStageNumber)
+      .then(() => {
+        actionNotice.textContent =
+          `${targetStageNumber}스테이지로 이동했습니다. 카드와 포인트는 유지됐습니다.`;
+      })
+      .catch((error: unknown) => {
+        const detail =
+          error instanceof Error ? error.message : String(error);
+        actionNotice.textContent =
+          `스테이지로 이동하지 못했습니다: ${detail}`;
+        console.error(error);
+      })
+      .finally(() => {
+        stageJumpButton.disabled =
+          runtime.gameMode !== "stage";
+      });
+  });
   relayoutButton.addEventListener("click", () => {
     if (
       runtime.onlineDisabled ||

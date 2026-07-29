@@ -24,9 +24,11 @@ import {
 import {
   createCardEffectTuning,
   createCardTuningRuntime,
+  jumpCardTuningStage,
   relayoutCurrentCardTuningBoard,
   setCardTuningGameMode,
   updateCardTuningAppliedValues,
+  updateCardTuningStageNumber,
   type CardTuningAppliedValues,
 } from "./card-tuning";
 import {
@@ -820,6 +822,10 @@ async function bootstrap(): Promise<void> {
       appliedCardTuningValues,
       pendingCardTuningValues,
     );
+    updateCardTuningStageNumber(
+      cardTuningRuntime,
+      stageOptions.stageNumber,
+    );
     if (stageOptions.gameMode !== "stage") {
       updateTuningAppliedValues(tuningRuntime, {
         gameMode: stageOptions.gameMode,
@@ -916,7 +922,42 @@ async function bootstrap(): Promise<void> {
           metaRuntime.state.upgrades,
         ),
         points: metaRuntime.state.points,
+        stageRunPointsSignature: JSON.stringify(stageRunPoints),
       }),
+      async (gameMode, stageNumber) => {
+        await resetBoard({ gameMode, stageNumber });
+      },
+    );
+  };
+  cardTuningRuntime.stageJumpHandler = async (
+    targetStageNumber: number,
+  ): Promise<void> => {
+    if (gameModeRuntime === null) {
+      throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+    }
+    if (gameModeRuntime.switching) {
+      throw new Error(
+        "대전 모드 전환 중에는 스테이지를 이동할 수 없습니다.",
+      );
+    }
+    await jumpCardTuningStage(
+      targetStageNumber,
+      () => ({
+        gameMode: gameModeRuntime?.mode ?? "hotseat",
+        stageNumber: gameModeRuntime?.stageNumber ?? 1,
+        runCardsSignature: JSON.stringify(runCardState),
+        permanentUpgradesSignature: JSON.stringify(
+          metaRuntime.state.upgrades,
+        ),
+        points: metaRuntime.state.points,
+        stageRunPointsSignature: JSON.stringify(stageRunPoints),
+      }),
+      (stageNumber) => {
+        if (gameModeRuntime === null) {
+          throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+        }
+        setStageNumber(gameModeRuntime, stageNumber);
+      },
       async (gameMode, stageNumber) => {
         await resetBoard({ gameMode, stageNumber });
       },
