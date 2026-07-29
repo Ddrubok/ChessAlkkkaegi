@@ -814,12 +814,13 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         }
         setAimApplicationPoint(
           runtime.aimRuntime,
-          computeStrikeApplicationPoint(
-            binding,
-            mesh,
-            runtime.aimParametersRuntime.tuningRuntime.settings
-              .strikeHeightRatio,
-          ),
+          runtime.aimParametersRuntime.strikePointOverride ??
+            computeStrikeApplicationPoint(
+              binding,
+              mesh,
+              runtime.aimParametersRuntime.tuningRuntime.settings
+                .strikeHeightRatio,
+            ),
         );
       },
       onAimCancel: () => {},
@@ -985,7 +986,6 @@ function handleCanvasPointerDown(
   const selectedId = runtime.aimRuntime.selectedPieceId;
   const canCharge =
     selectedId !== null &&
-    selectedId !== null &&
     !runtime.strikeMode &&
     runtime.policy.canSelectPiece(selectedId) &&
     isRedDotHit(
@@ -1002,13 +1002,16 @@ function handleCanvasPointerDown(
     runtime.activePointerId = event.pointerId;
     runtime.activeCaptureElement = canvas;
     runtime.gesture = {
-      source: "red-dot",
+      source: runtime.mode === "classic" ? "classic-canvas" : "red-dot",
       startX: event.clientX,
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectedId,
     };
     setAimPower(runtime.aimParametersRuntime, 0);
+    if (runtime.mode === "classic") {
+      runtime.strategy.onAimBegin(runtime, selectedId, event);
+    }
     canvas.setPointerCapture(event.pointerId);
     return;
   }
@@ -1081,6 +1084,10 @@ function handleCanvasPointerMove(
       runtime.aimRuntime,
       event.clientX,
       event.clientY,
+    );
+    setAimPower(
+      runtime.aimParametersRuntime,
+      runtime.aimRuntime.activeAim?.normalizedPower ?? 0,
     );
   } else if (gesture.source === "red-dot") {
     event.preventDefault();
@@ -1528,6 +1535,20 @@ export function updateInputRuntime(
       const reason = formatInteractionError(error);
       cancelInteraction(runtime, true);
       beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+      runtime.failureReason = reason;
+      showAimError(runtime.aimParametersRuntime, reason);
+    }
+  } else if (
+    runtime.mode === "classic" &&
+    runtime.aimRuntime.selectedPieceId !== null &&
+    !externalAimActive &&
+    runtime.state !== "charging"
+  ) {
+    try {
+      refreshBilliardsPreview(runtime);
+    } catch (error: unknown) {
+      const reason = formatInteractionError(error);
+      cancelInteraction(runtime, true);
       runtime.failureReason = reason;
       showAimError(runtime.aimParametersRuntime, reason);
     }
