@@ -480,7 +480,7 @@ export function getBilliardsHorizontalDirection(
  */
 function refreshBilliardsPreview(runtime: InputRuntime): void {
   const pieceId = runtime.aimRuntime.selectedPieceId;
-  if (runtime.mode !== "billiards" || pieceId === null) {
+  if (pieceId === null) {
     return;
   }
   const binding = runtime.physicsRuntime.pieces.get(pieceId);
@@ -602,24 +602,22 @@ function selectPiece(
   clearStrikePointOverride(runtime.aimParametersRuntime);
   updateActionBar(runtime);
   runtime.state =
-    pieceId !== null && runtime.mode === "billiards"
+    pieceId !== null
       ? "selected-preview"
       : "idle";
-  if (runtime.mode === "billiards") {
-    if (pieceId !== null) {
-      try {
-        refreshBilliardsPreview(runtime);
-      } catch (error: unknown) {
-        const reason = formatInteractionError(error);
-        cancelInteraction(runtime, true);
-        beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
-        runtime.failureReason = reason;
-        showAimError(runtime.aimParametersRuntime, reason);
-        return;
-      }
+  if (pieceId !== null) {
+    try {
+      refreshBilliardsPreview(runtime);
+    } catch (error: unknown) {
+      const reason = formatInteractionError(error);
+      cancelInteraction(runtime, true);
+      beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+      runtime.failureReason = reason;
+      showAimError(runtime.aimParametersRuntime, reason);
+      return;
     }
-    beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
   }
+  beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
 }
 
 /**
@@ -665,12 +663,10 @@ function cancelInteraction(
     !runtime.policy.isInputBlocked();
   runtime.state =
     !clearSelection &&
-    runtime.mode === "billiards" &&
     runtime.aimRuntime.selectedPieceId !== null
       ? "selected-preview"
       : "idle";
 }
-
 /**
  * 외부 튜닝 깨우기도 내부 취소와 동일한 정리 계약을 사용하도록 공개한다.
  */
@@ -724,7 +720,7 @@ function commitActiveLaunch(runtime: InputRuntime): void {
   }
   const dotPoint =
     runtime.aimParametersRuntime.currentSolution?.applicationPoint;
-  if (runtime.mode === "billiards" && dotPoint !== undefined) {
+  if (dotPoint !== undefined) {
     const distance = dotPoint.distanceTo(request.applicationPoint);
     console.info(
       `[조준] 빨간 점-적용점 거리=${distance.toExponential(3)}`,
@@ -781,8 +777,12 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         return aim.direction.clone().normalize();
       },
       computeApplicationPoint: (runtime) => {
-        const pieceId = runtime.aimRuntime.activeAim?.pieceId;
-        if (pieceId === undefined) {
+        const override = runtime.aimParametersRuntime.strikePointOverride;
+        if (override !== null) {
+          return override.clone();
+        }
+        const pieceId = runtime.aimRuntime.activeAim?.pieceId ?? runtime.aimRuntime.selectedPieceId;
+        if (pieceId === null) {
           throw new Error("클래식 발사 적용점이 준비되지 않았습니다.");
         }
         const binding = runtime.physicsRuntime.pieces.get(pieceId);
@@ -877,8 +877,8 @@ function updateModeToggle(runtime: InputRuntime): void {
  */
 function updateActionBar(runtime: InputRuntime): void {
   const selected =
-    runtime.mode === "billiards" &&
     runtime.aimRuntime.selectedPieceId !== null;
+
   runtime.actionBar.hidden = !selected;
   for (const button of runtime.actionBar.querySelectorAll("button")) {
     const active =
@@ -986,7 +986,7 @@ function handleCanvasPointerDown(
   const canvas = runtime.sceneRuntime.renderer.domElement;
   const selectedId = runtime.aimRuntime.selectedPieceId;
   const canCharge =
-    runtime.mode === "billiards" &&
+    selectedId !== null &&
     selectedId !== null &&
     !runtime.strikeMode &&
     runtime.policy.canSelectPiece(selectedId) &&
@@ -1015,6 +1015,22 @@ function handleCanvasPointerDown(
     return;
   }
 
+  if (runtime.strikeMode && selectedId !== null) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    runtime.activePointerId = event.pointerId;
+    runtime.activeCaptureElement = canvas;
+    runtime.gesture = {
+      source: "billiards-canvas",
+      startX: event.clientX,
+      startY: event.clientY,
+      maximumDistance: 0,
+      candidatePieceId: selectedId,
+    };
+    canvas.setPointerCapture(event.pointerId);
+    return;
+  }
+
   const nearestPieceId = raycastNearestPiece(runtime, event);
   const selectablePieceId =
     nearestPieceId !== null &&
@@ -1022,28 +1038,6 @@ function handleCanvasPointerDown(
     runtime.policy.canSelectPiece(nearestPieceId)
       ? nearestPieceId
       : null;
-  if (runtime.mode === "classic") {
-    if (selectablePieceId === null) {
-      return;
-    }
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    runtime.sceneRuntime.controls.enabled = false;
-    runtime.state = "aiming";
-    runtime.activePointerId = event.pointerId;
-    runtime.activeCaptureElement = canvas;
-    runtime.gesture = {
-      source: "classic-canvas",
-      startX: event.clientX,
-      startY: event.clientY,
-      maximumDistance: 0,
-      candidatePieceId: selectablePieceId,
-    };
-    canvas.setPointerCapture(event.pointerId);
-    runtime.strategy.onAimBegin(runtime, selectablePieceId, event);
-    playPieceClickSound();
-    return;
-  }
 
   runtime.activePointerId = event.pointerId;
   runtime.activeCaptureElement = canvas;
@@ -1181,6 +1175,7 @@ function handleCanvasPointerUp(
       }
     }
     cancelInteraction(runtime, false);
+    refreshBilliardsPreview(runtime);
     return;
   }
   cancelInteraction(runtime, false);

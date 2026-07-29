@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ChessAlkkagi</string>
+    <string name="title_activity_main">ChessAlkkagi</string>
+    <string name="package_name">com.chessalkkagi.app</string>
+    <string name="custom_url_scheme">com.chessalkkagi.app</string>
+</resources>
