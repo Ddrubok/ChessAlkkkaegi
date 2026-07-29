@@ -248,14 +248,21 @@ try {
   const removedFraction =
     (pocketGeometry.sideSetback * 2) /
     (halfExtent * 2);
+  // 맵 수정안 도면 실측으로 확정한 두 배 출구를 독립 기대값으로 고정한다.
+  const expectedExitMultiplier = 2.4;
   assertCondition(
     Math.abs(
       widthRatio -
         config.POCKET_WALL_EXIT_WIDTH_KING_DIAMETER_MULTIPLIER,
     ) < 1e-12 &&
+      Math.abs(
+        config.POCKET_WALL_EXIT_WIDTH_KING_DIAMETER_MULTIPLIER -
+          expectedExitMultiplier,
+      ) < 1e-12 &&
       pocketGeometry.diagonalClearance >=
         pocketGeometry.kingBaseDiameter &&
-      removedFraction < 0.25,
+      pocketGeometry.wallLength > 0 &&
+      removedFraction < 0.35,
     `포켓 출구가 킹을 받지 못하거나 벽을 과도하게 줄였습니다: ${JSON.stringify(pocketGeometry)}, removedFraction=${removedFraction}`,
   );
   console.log(

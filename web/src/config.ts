@@ -71,9 +71,10 @@ export const BREAKABLE_WALL_THICKNESS = 0.08;
 // 한 조각 파괴 시 Pawn은 지나가고 King은 이웃 조각에 걸리도록 인접 벽이 겹치는 길이를 셀 비율로 정한다.
 export const BREAKABLE_WALL_OVERLAP_CELLS = 0.75;
 
-// 포켓볼 맵 문서의 “가장 큰 말보다 약간 넓게”를 킹 밑동 지름의 1.2배 실제 대각 출구 폭으로 정한다.
+// 맵 수정안 도면을 155px/월드 단위로 재어 각 벽 끝을 약 0.40만큼 비운 결과를 킹 밑동 지름의 2.4배 대각 출구 폭으로 해석한다.
+// 도면 이미지에서 유도한 값이라 기획자가 수치를 확정하면 이 상수만 교체한다.
 export const POCKET_WALL_EXIT_WIDTH_KING_DIAMETER_MULTIPLIER =
-  1.2;
+  2.4;
 
 // 핀볼 맵 도면의 좌우 대칭 여섯 점을 셀 단위로 보존해 기획 수정 시 이 표만 바꾸게 한다.
 export const PINBALL_OBSTACLE_CELLS = [

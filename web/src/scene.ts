@@ -481,7 +481,7 @@ function disposeBoardMesh(mesh: Mesh): void {
 }
 
 /**
- * 조각 순번만으로 같은 갈라짐을 만드는 작은 파란 캔버스 텍스처를 생성한다.
+ * 조각 순번만으로 같은 갈라짐을 만드는 작은 갈색 캔버스 텍스처를 생성한다.
  */
 function createWallCrackTexture(segmentIndex: number): CanvasTexture {
   const canvas = document.createElement("canvas");
@@ -491,9 +491,10 @@ function createWallCrackTexture(segmentIndex: number): CanvasTexture {
   if (context === null) {
     throw new Error("벽 균열 캔버스의 2D 문맥을 만들 수 없습니다.");
   }
-  context.fillStyle = "#176d94";
+  context.fillStyle = "#a06443";
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.strokeStyle = "#d8eef5";
+  // 갈색 바탕에서도 한 번 맞은 상태를 즉시 읽을 수 있도록 밝은 목재색 균열을 유지한다.
+  context.strokeStyle = "#f2dfc9";
   context.lineWidth = 4;
   context.lineCap = "round";
   context.lineJoin = "round";
@@ -518,7 +519,7 @@ function createWallCrackTexture(segmentIndex: number): CanvasTexture {
 }
 
 /**
- * 한 벽 정의를 내구 변형에 맞는 파란색 또는 회백색 박스 메시로 만들어 등록한다.
+ * 한 벽 정의를 수정안의 목재 갈색 또는 이미지에서 채집한 회색 박스 메시로 만들어 등록한다.
  */
 function addBreakableWallMesh(
   scene: Scene,
@@ -530,11 +531,12 @@ function addBreakableWallMesh(
     definition.halfExtents.y * 2,
     definition.halfExtents.z * 2,
   );
+  // 불파괴 벽 #6B6962는 PDF 회색 견본의 우세 픽셀에서 채집한 값이라 기획 확정 시 교체할 수 있다.
   const material = new MeshStandardMaterial({
     color:
       definition.variant === "breakable"
-        ? 0x176d94
-        : 0xd9dee3,
+        ? 0xa06443
+        : 0x6b6962,
     roughness: 0.7,
     polygonOffset: true,
     polygonOffsetFactor:
@@ -579,7 +581,7 @@ function disposeBreakableWallMesh(
 }
 
 /**
- * 한 핀볼 정의를 물리 원기둥과 같은 치수의 파란 메시로 만들어 등록한다.
+ * 한 핀볼 정의를 물리 원기둥과 같은 치수의 수정안 회백색 메시로 만들어 등록한다.
  */
 function addPinballObstacleMesh(
   scene: Scene,
@@ -593,7 +595,7 @@ function addPinballObstacleMesh(
     32,
   );
   const material = new MeshStandardMaterial({
-    color: 0x176d94,
+    color: 0xc2c7c9,
     roughness: 0.58,
     metalness: 0.04,
   });

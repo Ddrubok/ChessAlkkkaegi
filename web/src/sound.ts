@@ -10,9 +10,18 @@ import type { PhysicsRuntime } from "./physics";
 type SoundEffectId =
   | "button"
   | "hit"
+  | "wood"
+  | "rock"
+  | "iron"
   | "power10"
   | "power50"
   | "power90";
+
+type CollisionSoundEffectId =
+  | "hit"
+  | "wood"
+  | "rock"
+  | "iron";
 
 interface PowerThresholdState {
   // 10%를 아래에서 위로 지날 때 다시 한 번 재생할 수 있는지 나타낸다.
@@ -24,7 +33,7 @@ interface PowerThresholdState {
 }
 
 interface PieceHitSoundState {
-  // 직전 fixed step에서 실제 solver contact 중이던 말 쌍 키다.
+  // 직전 fixed step에서 실제 solver contact 중이던 말·표면 쌍 키다.
   touchingPairs: Set<string>;
   // 같은 쌍의 빠른 재접촉음을 제한하는 마지막 재생 실제 시각이다.
   lastPlayedAtByPair: Map<string, number>;
@@ -47,7 +56,7 @@ interface SoundRuntime {
   warningKeys: Set<string>;
   // 한 드래그 안에서 위쪽 임계 통과만 재생하는 세기 상태다.
   powerThresholds: PowerThresholdState;
-  // live fixed step에서만 갱신하는 말 충돌음 접촉·제한 상태다.
+  // live fixed step에서만 갱신하는 말·말과 말·맵 충돌음 접촉·제한 상태다.
   pieceHits: PieceHitSoundState;
 }
 
@@ -59,6 +68,9 @@ const SOUND_EFFECT_URLS: Readonly<
 > = {
   button: `${SOUND_ASSET_BASE_URL}buttonclick_sound.mp3`,
   hit: `${SOUND_ASSET_BASE_URL}hit_sound.mp3`,
+  wood: `${SOUND_ASSET_BASE_URL}wood_hit_sound.mp3`,
+  rock: `${SOUND_ASSET_BASE_URL}rock_hit_sound.mp3`,
+  iron: `${SOUND_ASSET_BASE_URL}iron_hit_sound.mp3`,
   power10: `${SOUND_ASSET_BASE_URL}power_10.mp3`,
   power50: `${SOUND_ASSET_BASE_URL}power_50.mp3`,
   power90: `${SOUND_ASSET_BASE_URL}power_90.mp3`,
@@ -327,7 +339,28 @@ export function resetPieceHitSoundTracking(): void {
 }
 
 /**
- * live fixed step 직후 말·말 접촉을 읽기만 해 새롭고 충분히 빠른 충돌 하나를 재생한다.
+ * 두 콜라이더 사이에 실제 solver contact가 하나라도 있는지 상태를 바꾸지 않고 조회한다.
+ */
+function hasSolverContact(
+  physicsRuntime: PhysicsRuntime,
+  leftCollider: PhysicsRuntime["boardCollider"],
+  rightCollider: PhysicsRuntime["boardCollider"],
+): boolean {
+  let touching = false;
+  physicsRuntime.world.contactPair(
+    leftCollider,
+    rightCollider,
+    (manifold) => {
+      if (manifold.numSolverContacts() > 0) {
+        touching = true;
+      }
+    },
+  );
+  return touching;
+}
+
+/**
+ * live fixed step 직후 말·말과 말·맵 접촉을 읽기만 해 표면에 맞는 가장 강한 새 충돌음을 재생한다.
  */
 export function scanLivePieceHitSounds(
   physicsRuntime: PhysicsRuntime,
@@ -346,14 +379,49 @@ export function scanLivePieceHitSounds(
           : 0,
   );
   const currentTouchingPairs = new Set<string>();
-  let strongestCandidate:
-    | {
-        // 충돌 제한과 추적에 쓰는 정렬된 말 쌍 키다.
+  const candidateState: {
+    // 중첩 접촉 등록 함수가 갱신해도 마지막 선택부에서 타입을 정확히 좁히는 공유 상자다.
+    strongest:
+      | {
+        // 충돌 제한과 추적에 쓰는 결정적 말·표면 쌍 키다.
         pairKey: string;
         // 같은 step의 여러 접촉 중 실제로 재생할 가장 큰 상대 선속도다.
         relativeSpeed: number;
+        // 말·말, 목재 벽, 석재 벽, 철제 장애물을 구분하는 효과음이다.
+        soundId: CollisionSoundEffectId;
       }
-    | null = null;
+      | null;
+  } = { strongest: null };
+  const considerContact = (
+    pairKey: string,
+    relativeSpeed: number,
+    soundId: CollisionSoundEffectId,
+  ): void => {
+    currentTouchingPairs.add(pairKey);
+    if (runtime.pieceHits.touchingPairs.has(pairKey)) {
+      return;
+    }
+    const lastPairPlay =
+      runtime.pieceHits.lastPlayedAtByPair.get(pairKey) ??
+      Number.NEGATIVE_INFINITY;
+    if (
+      relativeSpeed < SOUND_HIT_MIN_RELATIVE_SPEED ||
+      now - lastPairPlay < SOUND_HIT_PAIR_COOLDOWN_MS
+    ) {
+      return;
+    }
+    if (
+      candidateState.strongest === null ||
+      relativeSpeed > candidateState.strongest.relativeSpeed
+    ) {
+      candidateState.strongest = {
+        pairKey,
+        relativeSpeed,
+        soundId,
+      };
+    }
+  };
+
   for (let leftIndex = 0; leftIndex < pieces.length; leftIndex += 1) {
     const left = pieces[leftIndex];
     for (
@@ -362,49 +430,100 @@ export function scanLivePieceHitSounds(
       rightIndex += 1
     ) {
       const right = pieces[rightIndex];
-      let touching = false;
-      physicsRuntime.world.contactPair(
-        left.collider,
-        right.collider,
-        (manifold) => {
-          if (manifold.numSolverContacts() > 0) {
-            touching = true;
-          }
-        },
-      );
-      if (!touching) {
-        continue;
-      }
-      const pairKey = `${left.instance.id}|${right.instance.id}`;
-      currentTouchingPairs.add(pairKey);
-      if (runtime.pieceHits.touchingPairs.has(pairKey)) {
+      if (
+        !hasSolverContact(
+          physicsRuntime,
+          left.collider,
+          right.collider,
+        )
+      ) {
         continue;
       }
       const leftVelocity = left.body.linvel();
       const rightVelocity = right.body.linvel();
-      const relativeSpeed = Math.hypot(
-        leftVelocity.x - rightVelocity.x,
-        leftVelocity.y - rightVelocity.y,
-        leftVelocity.z - rightVelocity.z,
+      considerContact(
+        `piece:${left.instance.id}|piece:${right.instance.id}`,
+        Math.hypot(
+          leftVelocity.x - rightVelocity.x,
+          leftVelocity.y - rightVelocity.y,
+          leftVelocity.z - rightVelocity.z,
+        ),
+        "hit",
       );
-      const lastPairPlay =
-        runtime.pieceHits.lastPlayedAtByPair.get(pairKey) ??
-        Number.NEGATIVE_INFINITY;
+    }
+  }
+
+  const walls = [...physicsRuntime.breakableWalls.values()].sort(
+    (left, right) =>
+      left.definition.id < right.definition.id
+        ? -1
+        : left.definition.id > right.definition.id
+          ? 1
+          : 0,
+  );
+  for (const piece of pieces) {
+    const velocity = piece.body.linvel();
+    const speed = Math.hypot(
+      velocity.x,
+      velocity.y,
+      velocity.z,
+    );
+    for (const wall of walls) {
       if (
-        relativeSpeed < SOUND_HIT_MIN_RELATIVE_SPEED ||
-        now - lastPairPlay < SOUND_HIT_PAIR_COOLDOWN_MS
+        !hasSolverContact(
+          physicsRuntime,
+          piece.collider,
+          wall.collider,
+        )
       ) {
         continue;
       }
-      if (
-        strongestCandidate === null ||
-        relativeSpeed > strongestCandidate.relativeSpeed
-      ) {
-        strongestCandidate = { pairKey, relativeSpeed };
-      }
+      considerContact(
+        `piece:${piece.instance.id}|wall:${wall.definition.id}`,
+        speed,
+        wall.definition.variant === "breakable"
+          ? "wood"
+          : "rock",
+      );
     }
   }
+
+  const obstacles = [
+    ...physicsRuntime.pinballObstacles.values(),
+  ].sort((left, right) =>
+    left.definition.id < right.definition.id
+      ? -1
+      : left.definition.id > right.definition.id
+        ? 1
+        : 0,
+  );
+  for (const piece of pieces) {
+    const velocity = piece.body.linvel();
+    const speed = Math.hypot(
+      velocity.x,
+      velocity.y,
+      velocity.z,
+    );
+    for (const obstacle of obstacles) {
+      if (
+        !hasSolverContact(
+          physicsRuntime,
+          piece.collider,
+          obstacle.collider,
+        )
+      ) {
+        continue;
+      }
+      considerContact(
+        `piece:${piece.instance.id}|obstacle:${obstacle.definition.id}`,
+        speed,
+        "iron",
+      );
+    }
+  }
+
   runtime.pieceHits.touchingPairs = currentTouchingPairs;
+  const strongestCandidate = candidateState.strongest;
   if (
     strongestCandidate === null ||
     now - runtime.pieceHits.lastGlobalPlayAt <
@@ -417,5 +536,5 @@ export function scanLivePieceHitSounds(
     strongestCandidate.pairKey,
     now,
   );
-  playSoundEffect("hit");
+  playSoundEffect(strongestCandidate.soundId);
 }
