@@ -35,6 +35,21 @@ export const MAX_STEPS_PER_FRAME = 24;
 // 탭 복귀나 디버거 정지 뒤 과도한 물리 시간을 한꺼번에 처리하지 않게 한다.
 export const MAX_FRAME_DELTA = 0.25;
 
+// 로비와 대국에서 계속 재생하는 배경음이 효과음을 덮지 않도록 낮게 고정한 음량이다.
+export const SOUND_BGM_VOLUME = 0.18;
+
+// 버튼·세기·충돌 효과음을 같은 기준으로 재생하는 과하지 않은 고정 음량이다.
+export const SOUND_SFX_VOLUME = 0.45;
+
+// 말끼리 단순 접촉이나 정지 포개짐이 아닌 실제 충돌음으로 인정할 상대 선속도 하한이다.
+export const SOUND_HIT_MIN_RELATIVE_SPEED = 0.65;
+
+// 같은 말 쌍이 짧게 분리·재접촉해도 연타음이 나지 않게 하는 실제 시간 간격이다.
+export const SOUND_HIT_PAIR_COOLDOWN_MS = 180;
+
+// 여러 말이 동시에 부딪힐 때 한 프레임에 효과음이 겹쳐 폭주하지 않게 하는 전체 간격이다.
+export const SOUND_HIT_GLOBAL_COOLDOWN_MS = 70;
+
 // 말이 미끄러져 나갈 수 있는 평평한 여백을 셀 비율로 정의한다.
 export const BOARD_BORDER_CELLS = 0.25;
 

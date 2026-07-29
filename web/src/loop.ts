@@ -24,6 +24,7 @@ import {
   synchronizePieceMeshes,
   type SceneRuntime,
 } from "./scene";
+import { scanLivePieceHitSounds } from "./sound";
 import {
   verifyTuningAfterStep,
   type TuningRuntime,
@@ -379,6 +380,8 @@ export function startGameLoop(
       if (stepsPrimaryPhysics) {
         applyPendingLaunchBeforeStep(turnRuntime);
         physicsRuntime.world.step();
+        // 사전 정착과 분리된 live 루프에서만 접촉을 읽어 물리 결과를 바꾸지 않고 충돌음을 낸다.
+        scanLivePieceHitSounds(physicsRuntime, now);
         verifyTuningAfterStep(tuningRuntime);
       }
       accumulator -= FIXED_STEP;

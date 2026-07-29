@@ -50,6 +50,7 @@ import {
   restoreHiddenPieceMeshes,
   type SceneRuntime,
 } from "./scene";
+import { playPieceClickSound } from "./sound";
 
 export type PointerState =
   | "idle"
@@ -489,7 +490,7 @@ function refreshBilliardsPreview(runtime: InputRuntime): void {
   }
   const horizontal = getBilliardsHorizontalDirection(runtime);
   if (runtime.aimRuntime.activeAim?.pieceId !== pieceId) {
-    beginDirectedAim(runtime.aimRuntime, pieceId, horizontal);
+    beginDirectedAim(runtime.aimRuntime, pieceId, horizontal, true);
   }
   const solution = updateStrikePreview(
     runtime.aimParametersRuntime,
@@ -849,6 +850,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
           runtime.aimRuntime,
           pieceId,
           getBilliardsHorizontalDirection(runtime),
+          true,
         );
       },
       onAimCancel: (runtime) => {
@@ -1039,6 +1041,7 @@ function handleCanvasPointerDown(
     };
     canvas.setPointerCapture(event.pointerId);
     runtime.strategy.onAimBegin(runtime, selectablePieceId, event);
+    playPieceClickSound();
     return;
   }
 
@@ -1156,6 +1159,9 @@ function handleCanvasPointerUp(
   const tapped =
     gesture.maximumDistance <= TAP_MAX_DISTANCE_PIXELS;
   const candidatePieceId = gesture.candidatePieceId;
+  if (tapped && candidatePieceId !== null) {
+    playPieceClickSound();
+  }
   if (
     tapped &&
     runtime.strikeMode &&

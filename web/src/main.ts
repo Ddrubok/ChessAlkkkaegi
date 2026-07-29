@@ -91,6 +91,10 @@ import {
   synchronizePieceMeshes,
 } from "./scene";
 import {
+  initializeSound,
+  resetPieceHitSoundTracking,
+} from "./sound";
+import {
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
   setTuningGameMode,
@@ -181,6 +185,7 @@ async function bootstrap(): Promise<void> {
     "ChessAlkkagi 에셋을 불러오는 중입니다";
   // app을 비울 때 인라인 부트 노드를 함께 넘겨 같은 요소를 유지한다.
   app.replaceChildren(loadingPanel);
+  initializeSound();
   const metaRuntime = createMetaRuntime();
   let startModeAction:
     | ((mode: GameMode) => Promise<void>)
@@ -273,6 +278,7 @@ async function bootstrap(): Promise<void> {
   loadingPhase.textContent =
     "말의 시작 자세를 안정시키는 중입니다";
   preSettlePhysics(physicsRuntime);
+  resetPieceHitSoundTracking();
   synchronizePieceMeshes(sceneRuntime, physicsRuntime);
   loadingPanel.remove();
   const tuningRuntime = createTuningRuntime(app, physicsRuntime);
@@ -710,6 +716,7 @@ async function bootstrap(): Promise<void> {
     );
     reapplyTuningPhysicsSettings(tuningRuntime);
     preSettlePhysics(physicsRuntime);
+    resetPieceHitSoundTracking();
     synchronizePieceMeshes(sceneRuntime, physicsRuntime);
     resetTurnRuntime(turnRuntime);
     resetInputAfterMatch(inputRuntime, physicsRuntime.pieces.keys());

@@ -29,6 +29,10 @@ import {
 } from "./config";
 import type { PieceBodyBinding } from "./physics";
 import type { SceneRuntime } from "./scene";
+import {
+  resetAimPowerSounds,
+  updateAimPowerSounds,
+} from "./sound";
 
 export interface FrozenCameraBasis {
   // 포인터를 누른 순간의 화면 가로축을 고정해 카메라 변화가 조준을 바꾸지 않게 한다.
@@ -63,6 +67,8 @@ export interface ActiveAim {
   showsPowerReadout: boolean;
   // 클래식 드래그는 항상 수평이라 고도 계기가 의미 없고 당구식에서만 표시한다.
   showsElevationGauge: boolean;
+  // 로컬 플레이어 드래그만 세기 임계 효과음을 내고 AI·원격 텔레그래프는 끄는 표시다.
+  tracksPowerSounds: boolean;
 }
 
 interface RenderPulse {
@@ -1138,6 +1144,7 @@ export function beginAim(
   startY: number,
   basis: FrozenCameraBasis,
   showsPowerReadout = true,
+  tracksPowerSounds = showsPowerReadout,
 ): void {
   selectAimPiece(runtime, pieceId);
   runtime.activeAim = {
@@ -1149,7 +1156,11 @@ export function beginAim(
     normalizedPower: 0,
     showsPowerReadout,
     showsElevationGauge: !showsPowerReadout,
+    tracksPowerSounds,
   };
+  if (tracksPowerSounds) {
+    resetAimPowerSounds();
+  }
   setAimGuideColor(runtime, new Color(0xffffff));
   setAimGuidesVisible(runtime, true);
   setBowstringVisible(runtime, false);
@@ -1165,6 +1176,7 @@ export function beginDirectedAim(
   runtime: AimRuntime,
   pieceId: string,
   direction: Vector3,
+  tracksPowerSounds = false,
 ): void {
   assertFiniteGuideVector("방향 조준 시작 방향", direction);
   if (direction.lengthSq() < 1e-12) {
@@ -1185,6 +1197,7 @@ export function beginDirectedAim(
       forward: normalizedDirection,
     },
     false,
+    tracksPowerSounds,
   );
 }
 
@@ -1210,6 +1223,9 @@ export function updateDirectedAim(
     Math.max(normalizedPower, 0),
     1,
   );
+  if (activeAim.tracksPowerSounds) {
+    updateAimPowerSounds(activeAim.normalizedPower);
+  }
   const color = new Color(0xffffff).lerp(
     new Color(0xff3b30),
     activeAim.normalizedPower,
@@ -1240,6 +1256,9 @@ export function updateAimPointer(
   const deltaY = clientY - activeAim.startY;
   const dragLength = Math.hypot(deltaX, deltaY);
   activeAim.normalizedPower = Math.min(dragLength / MAX_DRAG_PIXELS, 1);
+  if (activeAim.tracksPowerSounds) {
+    updateAimPowerSounds(activeAim.normalizedPower);
+  }
 
   // 화면 아래로 당기면 백 시점에서는 +z, 흑 시점에서는 -z로 발사되도록 카메라 forward의 부호를 유지한다.
   activeAim.direction
@@ -1285,6 +1304,9 @@ export function cancelAim(
   runtime: AimRuntime,
   clearSelection: boolean,
 ): void {
+  if (runtime.activeAim?.tracksPowerSounds === true) {
+    resetAimPowerSounds();
+  }
   runtime.activeAim = null;
   runtime.applicationPoint = null;
   setAimGuidesVisible(runtime, false);
