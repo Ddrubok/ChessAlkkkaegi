@@ -36,6 +36,50 @@ function readJumpSnapshot(state) {
   };
 }
 
+/**
+ * 실제 스테이지 월드를 새로 만들고 정상 리셋과 같은 사전 정착·32말 검증을 통과시킨다.
+ */
+async function createSettledJumpBoard(
+  modules,
+  meta,
+  state,
+  stageNumber,
+) {
+  const options = {
+    gameMode: "stage",
+    stageNumber,
+    runCards: state.runCards,
+  };
+  const physicsRuntime =
+    await modules.physics.createPhysicsRuntime(
+      meta,
+      modules.layout.PIECE_INSTANCES,
+      modules.stage.computeStageBoardHalfExtent(
+        meta.cellSize,
+        "stage",
+        stageNumber,
+      ),
+      options,
+    );
+  modules.physics.preSettlePhysics(physicsRuntime);
+  const renderMeshes = new Map(
+    [...physicsRuntime.pieces.keys()].map((pieceId) => [
+      pieceId,
+      { pieceId },
+    ]),
+  );
+  const sleepingCount = [
+    ...physicsRuntime.pieces.values(),
+  ].filter((binding) => binding.body.isSleeping()).length;
+  assertCondition(
+    physicsRuntime.pieces.size === 32 &&
+      renderMeshes.size === 32 &&
+      sleepingCount === 32,
+    `스테이지 ${stageNumber} 복구용 보드가 정상 정착하지 않았습니다: physics=${physicsRuntime.pieces.size}, render=${renderMeshes.size}, sleeping=${sleepingCount}`,
+  );
+  return { physicsRuntime, renderMeshes };
+}
+
 try {
   const [cardTuning, cards, layout, physics, stage] =
     await Promise.all([
@@ -259,6 +303,104 @@ try {
   );
   console.log(
     `[통과 c] 스테이지 외 모드 거부: hotseat/online=${rejectedCount}/2, reset=${resetCount}`,
+  );
+
+  state.gameMode = "stage";
+  state.stageNumber = 3;
+  let liveBoard = await createSettledJumpBoard(
+    { layout, physics, stage },
+    meta,
+    state,
+    state.stageNumber,
+  );
+  const failedTargetError = new Error(
+    "사전 정착이 1200 step 상한에서 실패했습니다: 수면 30/32",
+  );
+  let receivedTargetError = null;
+  try {
+    await cardTuning.jumpCardTuningStage(
+      6,
+      () => readJumpSnapshot(state),
+      (stageNumber) => {
+        state.stageNumber = stageNumber;
+      },
+      async (_gameMode, stageNumber) => {
+        if (stageNumber === 6) {
+          for (const pieceId of [
+            ...liveBoard.physicsRuntime.pieces.keys(),
+          ].slice(-2)) {
+            liveBoard.physicsRuntime.pieces.delete(pieceId);
+            liveBoard.renderMeshes.delete(pieceId);
+          }
+          throw failedTargetError;
+        }
+        liveBoard = await createSettledJumpBoard(
+          { layout, physics, stage },
+          meta,
+          state,
+          stageNumber,
+        );
+      },
+    );
+  } catch (error) {
+    receivedTargetError = error;
+  }
+  const recoveredSleepingCount = [
+    ...liveBoard.physicsRuntime.pieces.values(),
+  ].filter((binding) => binding.body.isSleeping()).length;
+  assertCondition(
+    receivedTargetError === failedTargetError &&
+      state.stageNumber === 3 &&
+      liveBoard.physicsRuntime.pieces.size === 32 &&
+      liveBoard.renderMeshes.size === 32 &&
+      recoveredSleepingCount === 32 &&
+      JSON.stringify(state.runCards) ===
+        initialPreservedState.runCards &&
+      state.points === initialPreservedState.points &&
+      JSON.stringify(state.stageRunPoints) ===
+        initialPreservedState.stageRunPoints,
+    `실패 이동 복구가 오염됐습니다: stage=${state.stageNumber}, physics=${liveBoard.physicsRuntime.pieces.size}, render=${liveBoard.renderMeshes.size}, sleeping=${recoveredSleepingCount}, sameError=${receivedTargetError === failedTargetError}`,
+  );
+  console.log(
+    `[통과 d] S3→S6 실패 복구: target="수면 30/32", restoredStage=${state.stageNumber}, physics/render/sleeping=${liveBoard.physicsRuntime.pieces.size}/${liveBoard.renderMeshes.size}/${recoveredSleepingCount}, cards/points/provisional=유지`,
+  );
+
+  const failedRecoveryError = new Error(
+    "재시작 보드 검증 실패: 물리 31/32, 렌더 31/32, 수면 31/32",
+  );
+  let surfacedRecoveryError = null;
+  try {
+    await cardTuning.jumpCardTuningStage(
+      6,
+      () => readJumpSnapshot(state),
+      (stageNumber) => {
+        state.stageNumber = stageNumber;
+      },
+      async (_gameMode, stageNumber) => {
+        throw stageNumber === 6
+          ? failedTargetError
+          : failedRecoveryError;
+      },
+    );
+  } catch (error) {
+    surfacedRecoveryError = error;
+  }
+  assertCondition(
+    surfacedRecoveryError instanceof Error &&
+      state.stageNumber === 3 &&
+      surfacedRecoveryError.message.includes(
+        "6스테이지 이동 실패 뒤 3스테이지 복구에도 실패했습니다",
+      ) &&
+      surfacedRecoveryError.message.includes(
+        failedTargetError.message,
+      ) &&
+      surfacedRecoveryError.message.includes(
+        failedRecoveryError.message,
+      ),
+    `복구 자체 실패가 명확히 드러나지 않았습니다: stage=${state.stageNumber}, error=${String(surfacedRecoveryError)}`,
+  );
+  console.log(
+    `[통과 e] 복구 자체 실패 표면화: ${surfacedRecoveryError.message}`,
   );
 } catch (error) {
   const fullError =

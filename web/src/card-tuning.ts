@@ -504,6 +504,27 @@ export async function relayoutCurrentCardTuningBoard(
 }
 
 /**
+ * 보드 리셋 전후에 단계만 의도대로 달라지고 런 상태 서명은 모두 보존됐는지 확인한다.
+ */
+function matchesCardTuningJumpSnapshot(
+  snapshot: CardTuningRelayoutSnapshot,
+  reference: CardTuningRelayoutSnapshot,
+  stageNumber: number,
+): boolean {
+  return (
+    snapshot.gameMode === "stage" &&
+    snapshot.stageNumber === stageNumber &&
+    snapshot.runCardsSignature ===
+      reference.runCardsSignature &&
+    snapshot.permanentUpgradesSignature ===
+      reference.permanentUpgradesSignature &&
+    snapshot.points === reference.points &&
+    snapshot.stageRunPointsSignature ===
+      reference.stageRunPointsSignature
+  );
+}
+
+/**
  * 스테이지 모드에서 현재 단계 번호만 바꾼 뒤 기존 보드 리셋으로 실제 맵과 버프를 다시 만든다.
  */
 export async function jumpCardTuningStage(
@@ -530,24 +551,50 @@ export async function jumpCardTuningStage(
   setStageNumber(targetStageNumber);
   try {
     await resetBoard("stage", targetStageNumber);
-  } catch (error: unknown) {
-    setStageNumber(before.stageNumber);
-    throw error;
-  }
-  const after = readSnapshot();
-  if (
-    after.gameMode !== "stage" ||
-    after.stageNumber !== targetStageNumber ||
-    after.runCardsSignature !== before.runCardsSignature ||
-    after.permanentUpgradesSignature !==
-      before.permanentUpgradesSignature ||
-    after.points !== before.points ||
-    after.stageRunPointsSignature !==
-      before.stageRunPointsSignature
-  ) {
-    throw new Error(
-      `스테이지 이동이 단계 이외의 런 상태를 바꿨습니다: before=${JSON.stringify(before)}, after=${JSON.stringify(after)}`,
-    );
+    const after = readSnapshot();
+    if (
+      !matchesCardTuningJumpSnapshot(
+        after,
+        before,
+        targetStageNumber,
+      )
+    ) {
+      throw new Error(
+        `스테이지 이동이 단계 이외의 런 상태를 바꿨습니다: before=${JSON.stringify(before)}, after=${JSON.stringify(after)}`,
+      );
+    }
+  } catch (targetError: unknown) {
+    try {
+      // 실패한 리셋이 말·벽·렌더를 변형했을 수 있으므로 번호만 되돌리지 않고 원래 판을 처음부터 다시 만든다.
+      setStageNumber(before.stageNumber);
+      await resetBoard("stage", before.stageNumber);
+      const recovered = readSnapshot();
+      if (
+        !matchesCardTuningJumpSnapshot(
+          recovered,
+          before,
+          before.stageNumber,
+        )
+      ) {
+        throw new Error(
+          `원래 스테이지 복구가 런 상태를 보존하지 못했습니다: before=${JSON.stringify(before)}, recovered=${JSON.stringify(recovered)}`,
+        );
+      }
+    } catch (recoveryError: unknown) {
+      const targetDetail =
+        targetError instanceof Error
+          ? targetError.message
+          : String(targetError);
+      const recoveryDetail =
+        recoveryError instanceof Error
+          ? recoveryError.message
+          : String(recoveryError);
+      throw new Error(
+        `${targetStageNumber}스테이지 이동 실패 뒤 ${before.stageNumber}스테이지 복구에도 실패했습니다: 대상 실패=${targetDetail}; 복구 실패=${recoveryDetail}`,
+      );
+    }
+    // 원래 판이 완전히 복구된 뒤에는 UI가 기존 대상 단계 거부 문구를 그대로 표시하게 한다.
+    throw targetError;
   }
 }
 
