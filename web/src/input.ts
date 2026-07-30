@@ -11,6 +11,11 @@ import {
   Vector3,
 } from "three";
 import {
+  computeActionBarPlacement,
+  type ActionBarAnchor,
+  type ActionBarRect,
+} from "./action-bar";
+import {
   beginAim,
   beginDirectedAim,
   cancelAim,
@@ -205,6 +210,16 @@ export interface InputRuntime {
   modeToggle: HTMLElement;
   // 담돌받기 / 타점선택 앙션 바.
   actionBar: HTMLElement;
+  // 마지막 팝업 위치 계산에 사용한 선택 말 id다.
+  actionBarSelectedPieceId: string | null;
+  // 카메라 이동 중 DOM 위치 쓰기를 제한하는 마지막 계산 시각이다.
+  actionBarLastPositionedAt: number;
+  // 0.5px 미만 흔들림을 DOM에 다시 쓰지 않기 위한 마지막 X 좌표다.
+  actionBarLastLeft: number | null;
+  // 0.5px 미만 흔들림을 DOM에 다시 쓰지 않기 위한 마지막 Y 좌표다.
+  actionBarLastTop: number | null;
+  // 타점 패널 표시 전환 때 즉시 재배치하기 위한 직전 표시 상태다.
+  actionBarPanelWasVisible: boolean;
   // true이면 기물 표면 탭으로 타점을 지정한다.
   strikeMode: boolean;
   // 3D 직접 클릭과 같은 override를 편집하는 확대 정면 패널 런타임이다.
@@ -219,6 +234,9 @@ const RED_DOT_HIT_RADIUS_PIXELS = 24;
 
 // 모드 선택을 새로고침 뒤에도 유지하는 브라우저 저장 키다.
 const INPUT_MODE_STORAGE_KEY = "chessAlkkagi.inputMode";
+
+// M3 패널과 같은 100ms 상한으로 카메라 공전 중 팝업 DOM 갱신을 제한한다.
+const ACTION_BAR_POSITION_INTERVAL_MS = 100;
 
 // 판·구·빨간 점이 화면 경계에 붙지 않도록 프러스텀 제약을 안쪽으로 줄이는 배율이다.
 const CAMERA_CLOSE_FIT_MARGIN = 1.08;
@@ -1078,6 +1096,8 @@ function updateActionBar(runtime: InputRuntime): void {
     runtime.aimRuntime.selectedPieceId !== null;
 
   runtime.actionBar.hidden = !selected;
+  // 선택·동작 전환 직후 다음 입력 프레임에서 위치를 반드시 다시 계산한다.
+  runtime.actionBarLastPositionedAt = Number.NEGATIVE_INFINITY;
   for (const button of runtime.actionBar.querySelectorAll("button")) {
     const active =
       button.dataset.action === "strike"
@@ -1085,6 +1105,149 @@ function updateActionBar(runtime: InputRuntime): void {
         : !runtime.strikeMode;
     button.setAttribute("aria-pressed", String(active));
   }
+}
+
+/**
+ * 선택 말의 월드 AABB 여덟 꼭짓점을 화면으로 투영해 중심과 겹침 금지 외곽을 만든다.
+ */
+function projectActionBarAnchor(
+  runtime: InputRuntime,
+  mesh: Mesh,
+  viewport: ActionBarRect,
+): ActionBarAnchor | null {
+  if (mesh.geometry.boundingBox === null) {
+    mesh.geometry.computeBoundingBox();
+  }
+  const bounds = mesh.geometry.boundingBox;
+  if (bounds === null) {
+    return null;
+  }
+  mesh.updateWorldMatrix(true, false);
+  const camera = runtime.sceneRuntime.camera;
+  const projected = new Vector3();
+  let left = Number.POSITIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const x of [bounds.min.x, bounds.max.x]) {
+    for (const y of [bounds.min.y, bounds.max.y]) {
+      for (const z of [bounds.min.z, bounds.max.z]) {
+        projected
+          .set(x, y, z)
+          .applyMatrix4(mesh.matrixWorld)
+          .project(camera);
+        const clientX =
+          viewport.left +
+          ((projected.x + 1) / 2) *
+            (viewport.right - viewport.left);
+        const clientY =
+          viewport.top +
+          ((1 - projected.y) / 2) *
+            (viewport.bottom - viewport.top);
+        left = Math.min(left, clientX);
+        top = Math.min(top, clientY);
+        right = Math.max(right, clientX);
+        bottom = Math.max(bottom, clientY);
+      }
+    }
+  }
+  if (![left, top, right, bottom].every(Number.isFinite)) {
+    return null;
+  }
+  return {
+    x: (left + right) / 2,
+    y: (top + bottom) / 2,
+    pieceRect: { left, top, right, bottom },
+  };
+}
+
+/**
+ * 선택·카메라·패널 변화만 100ms 간격으로 반영해 액션 바를 말 옆에 고정한다.
+ */
+function updateActionBarPosition(
+  runtime: InputRuntime,
+  now: number,
+): void {
+  const pieceId = runtime.aimRuntime.selectedPieceId;
+  if (pieceId === null || runtime.actionBar.hidden) {
+    runtime.actionBarSelectedPieceId = null;
+    return;
+  }
+  const panelVisible = !runtime.strikePointPanel.root.hidden;
+  const selectionChanged =
+    runtime.actionBarSelectedPieceId !== pieceId;
+  const panelVisibilityChanged =
+    runtime.actionBarPanelWasVisible !== panelVisible;
+  if (
+    !selectionChanged &&
+    !panelVisibilityChanged &&
+    now - runtime.actionBarLastPositionedAt <
+      ACTION_BAR_POSITION_INTERVAL_MS
+  ) {
+    return;
+  }
+  const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
+  if (mesh === undefined) {
+    return;
+  }
+  const canvasRect =
+    runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  const viewport: ActionBarRect = {
+    left: canvasRect.left,
+    top: canvasRect.top,
+    right: canvasRect.right,
+    bottom: canvasRect.bottom,
+  };
+  const anchor = projectActionBarAnchor(runtime, mesh, viewport);
+  const popupRect = runtime.actionBar.getBoundingClientRect();
+  if (
+    anchor === null ||
+    popupRect.width <= 0 ||
+    popupRect.height <= 0
+  ) {
+    return;
+  }
+  const panelClientRect = panelVisible
+    ? runtime.strikePointPanel.root.getBoundingClientRect()
+    : null;
+  const panelRect: ActionBarRect | null =
+    panelClientRect === null
+      ? null
+      : {
+          left: panelClientRect.left,
+          top: panelClientRect.top,
+          right: panelClientRect.right,
+          bottom: panelClientRect.bottom,
+        };
+  const placement = computeActionBarPlacement(
+    viewport,
+    anchor,
+    { width: popupRect.width, height: popupRect.height },
+    panelRect,
+  );
+  const offsetParentRect =
+    runtime.actionBar.offsetParent instanceof HTMLElement
+      ? runtime.actionBar.offsetParent.getBoundingClientRect()
+      : { left: 0, top: 0 };
+  const localLeft = placement.left - offsetParentRect.left;
+  const localTop = placement.top - offsetParentRect.top;
+  if (
+    runtime.actionBarLastLeft === null ||
+    runtime.actionBarLastTop === null ||
+    Math.abs(localLeft - runtime.actionBarLastLeft) >= 0.5 ||
+    Math.abs(localTop - runtime.actionBarLastTop) >= 0.5 ||
+    selectionChanged ||
+    panelVisibilityChanged
+  ) {
+    runtime.actionBar.style.left = `${localLeft}px`;
+    runtime.actionBar.style.top = `${localTop}px`;
+    runtime.actionBar.dataset.side = placement.side;
+    runtime.actionBarLastLeft = localLeft;
+    runtime.actionBarLastTop = localTop;
+  }
+  runtime.actionBarSelectedPieceId = pieceId;
+  runtime.actionBarPanelWasVisible = panelVisible;
+  runtime.actionBarLastPositionedAt = now;
 }
 
 /**
@@ -1639,6 +1802,11 @@ export function createInputRuntime(
     adaptiveCloseDistance: null,
     modeToggle,
     actionBar,
+    actionBarSelectedPieceId: null,
+    actionBarLastPositionedAt: Number.NEGATIVE_INFINITY,
+    actionBarLastLeft: null,
+    actionBarLastTop: null,
+    actionBarPanelWasVisible: false,
     strikeMode: false,
     strikePointPanel,
   };
@@ -1971,6 +2139,7 @@ export function updateInputRuntime(
       null,
     now,
   );
+  updateActionBarPosition(runtime, now);
 }
 
 /**

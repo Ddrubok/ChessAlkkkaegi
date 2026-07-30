@@ -33,14 +33,21 @@ function nearlyEqual(actual, expected, tolerance = 1e-9) {
 }
 
 try {
-  const [capability, config, input, strikePanel, orientation] =
-    await Promise.all([
-      vite.ssrLoadModule("/src/input-capability.ts"),
-      vite.ssrLoadModule("/src/config.ts"),
-      vite.ssrLoadModule("/src/input.ts"),
-      vite.ssrLoadModule("/src/strike-panel.ts"),
-      vite.ssrLoadModule("/src/orientation.ts"),
-    ]);
+  const [
+    capability,
+    config,
+    input,
+    strikePanel,
+    orientation,
+    actionBar,
+  ] = await Promise.all([
+    vite.ssrLoadModule("/src/input-capability.ts"),
+    vite.ssrLoadModule("/src/config.ts"),
+    vite.ssrLoadModule("/src/input.ts"),
+    vite.ssrLoadModule("/src/strike-panel.ts"),
+    vite.ssrLoadModule("/src/orientation.ts"),
+    vite.ssrLoadModule("/src/action-bar.ts"),
+  ]);
 
   assertCondition(
     capability.isCoarsePointerEnvironment() === false &&
@@ -264,6 +271,83 @@ try {
   );
   console.log(
     "[통과 e] 화면 방향: Node API no-op, match+coarse+portrait에서만 안내=true",
+  );
+
+  const viewport = {
+    left: 0,
+    top: 0,
+    right: 400,
+    bottom: 300,
+  };
+  const popup = { width: 100, height: 50 };
+  const anchorAt = (x, y) => ({
+    x,
+    y,
+    pieceRect: { left: x, top: y, right: x, bottom: y },
+  });
+  const centerPlacement = actionBar.computeActionBarPlacement(
+    viewport,
+    anchorAt(200, 150),
+    popup,
+    null,
+  );
+  const rightEdgePlacement = actionBar.computeActionBarPlacement(
+    viewport,
+    anchorAt(380, 150),
+    popup,
+    null,
+  );
+  const leftEdgePlacement = actionBar.computeActionBarPlacement(
+    viewport,
+    anchorAt(4, 150),
+    popup,
+    null,
+  );
+  const bottomEdgePlacement = actionBar.computeActionBarPlacement(
+    viewport,
+    anchorAt(200, 290),
+    popup,
+    null,
+  );
+  const panelFlipPlacement = actionBar.computeActionBarPlacement(
+    viewport,
+    anchorAt(250, 150),
+    popup,
+    { left: 260, top: 100, right: 390, bottom: 200 },
+  );
+  const narrowPieceAvoidPlacement =
+    actionBar.computeActionBarPlacement(
+      { left: 0, top: 0, right: 240, bottom: 300 },
+      {
+        x: 120,
+        y: 150,
+        pieceRect: {
+          left: 100,
+          top: 130,
+          right: 140,
+          bottom: 170,
+        },
+      },
+      { width: 120, height: 50 },
+      null,
+    );
+  assertCondition(
+    centerPlacement.side === "right" &&
+      centerPlacement.left === 212 &&
+      centerPlacement.top === 125 &&
+      rightEdgePlacement.side === "left" &&
+      rightEdgePlacement.left === 268 &&
+      leftEdgePlacement.side === "right" &&
+      leftEdgePlacement.left === 16 &&
+      bottomEdgePlacement.top === 242 &&
+      panelFlipPlacement.side === "left" &&
+      panelFlipPlacement.left === 138 &&
+      narrowPieceAvoidPlacement.left === 60 &&
+      narrowPieceAvoidPlacement.top === 68,
+    `액션 바 배치가 다릅니다: center=${JSON.stringify(centerPlacement)}, right=${JSON.stringify(rightEdgePlacement)}, left=${JSON.stringify(leftEdgePlacement)}, bottom=${JSON.stringify(bottomEdgePlacement)}, panel=${JSON.stringify(panelFlipPlacement)}, narrow=${JSON.stringify(narrowPieceAvoidPlacement)}`,
+  );
+  console.log(
+    `[통과 f] 액션 바 팝업: center=${centerPlacement.side}@(${centerPlacement.left},${centerPlacement.top}), right-edge=${rightEdgePlacement.side}@${rightEdgePlacement.left}, left-edge=${leftEdgePlacement.side}@${leftEdgePlacement.left}, bottom-top=${bottomEdgePlacement.top}, panel-flip=${panelFlipPlacement.side}@${panelFlipPlacement.left}, narrow-piece-avoid=(${narrowPieceAvoidPlacement.left},${narrowPieceAvoidPlacement.top})`,
   );
 } finally {
   await vite.close();

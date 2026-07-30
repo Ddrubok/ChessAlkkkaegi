@@ -218,14 +218,13 @@ body {
 .strike-action-bar {
   position: absolute;
   z-index: 5;
-  top: 3.75rem;
-  right: 0.75rem;
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 0.65rem;
   background: rgb(12 14 17 / 84%);
+  pointer-events: none;
 }
 
 .strike-action-bar button {
@@ -235,6 +234,7 @@ body {
   color: #f8f2e7;
   background: rgb(255 255 255 / 7%);
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .strike-action-bar button[aria-pressed="true"] {
@@ -245,6 +245,13 @@ body {
 
 .strike-action-bar[hidden] {
   display: none;
+}
+
+@media (pointer: coarse) {
+  .strike-action-bar button {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .strike-point-panel {
@@ -1034,11 +1041,6 @@ body {
 
   .online-resign-button {
     right: 7.4rem;
-  }
-
-  .strike-action-bar {
-    top: 3.4rem;
-    right: 0.4rem;
   }
 
   .strike-point-panel {
