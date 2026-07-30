@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -127,6 +128,51 @@ assertCondition(
   "file:// 실행을 막는 module 스크립트 문법이 남았습니다.",
 );
 
+// 조립 과정의 replacement 패턴 손상을 실제 스크립트 파서로 검출한다.
+const inlineScriptMatches = [
+  ...portableHtml.matchAll(
+    /<script\b[^>]*>([\s\S]*?)<\/script>/gu,
+  ),
+];
+assertCondition(
+  inlineScriptMatches.length === 1,
+  `portable HTML의 인라인 스크립트가 1개가 아닙니다: ${inlineScriptMatches.length}`,
+);
+const inlineJavascript = inlineScriptMatches[0][1];
+const syntaxCheck = spawnSync(
+  process.execPath,
+  ["--check", "-"],
+  {
+    input: inlineJavascript,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  },
+);
+const syntaxError = [
+  syntaxCheck.error?.message,
+  syntaxCheck.stderr,
+]
+  .filter((value) => typeof value === "string" && value.length > 0)
+  .join("\n")
+  .slice(-2000);
+assertCondition(
+  syntaxCheck.status === 0,
+  `portable 인라인 JS node --check 실패: ${syntaxError}`,
+);
+
+// 정적 로딩 화면을 넘기는 bootstrap 단계 문자열이 번들 조립 뒤에도 온전히 남아 있어야 한다.
+const bootstrapMarkers = [
+  "ChessAlkkagi 에셋을 불러오는 중입니다",
+  "물리 월드를 준비하는 중입니다",
+  "말의 시작 자세를 안정시키는 중입니다",
+];
+for (const marker of bootstrapMarkers) {
+  assertCondition(
+    inlineJavascript.includes(marker),
+    `portable 인라인 JS에서 bootstrap 표식이 손상됐습니다: ${marker}`,
+  );
+}
+
 const roundTripLabels = [];
 for (const asset of embeddedAssets) {
   const sourceBytes = await readFile(resolve(projectRoot, asset.path));
@@ -191,4 +237,7 @@ console.log(
 );
 console.log(
   `[통과 c] 정상 빌드 분리: module=${normalScriptMatch[1]}, css=${normalStylesheetMatch[1]}, embeddedData=0`,
+);
+console.log(
+  `[통과 d] 인라인 JS 문법과 bootstrap 표식: nodeCheck=0, markers=${bootstrapMarkers.length}/${bootstrapMarkers.length}`,
 );

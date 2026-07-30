@@ -40,7 +40,7 @@ function resolveOutputReference(reference) {
 function escapeInlineClosingTag(source, tagName) {
   return source.replaceAll(
     new RegExp(`</${tagName}`, "giu"),
-    `<\\/${tagName}`,
+    () => `<\\/${tagName}`,
   );
 }
 
@@ -49,8 +49,8 @@ function escapeInlineClosingTag(source, tagName) {
  */
 function convertModuleMetadataForInlineScript(source) {
   return source
-    .replaceAll("import.meta.resolve", "undefined")
-    .replaceAll("import.meta.url", "document.baseURI");
+    .replaceAll("import.meta.resolve", () => "undefined")
+    .replaceAll("import.meta.url", () => "document.baseURI");
 }
 
 let html = await readFile(sourceHtmlPath, "utf8");
@@ -77,11 +77,14 @@ const inlineJavascript =
 
 html = html.replace(
   scriptMatch[0],
-  `<script>${escapeInlineClosingTag(inlineJavascript, "script")}</script>`,
+  // 번들 안의 $`, $&, $'를 replacement 패턴으로 해석하지 않고 원문 그대로 넣는다.
+  () =>
+    `<script>${escapeInlineClosingTag(inlineJavascript, "script")}</script>`,
 );
 html = html.replace(
   stylesheetMatch[0],
-  `<style>${escapeInlineClosingTag(stylesheet, "style")}</style>`,
+  // CSS도 같은 조립 규칙을 적용해 이후 생성기에 $ 패턴이 생겨도 안전하게 유지한다.
+  () => `<style>${escapeInlineClosingTag(stylesheet, "style")}</style>`,
 );
 
 // Vite 중간 청크를 지우고 완성된 HTML 하나만 남겨 비개발자 전달 실수를 방지한다.
