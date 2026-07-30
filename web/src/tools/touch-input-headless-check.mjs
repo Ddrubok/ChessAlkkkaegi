@@ -135,8 +135,8 @@ try {
       orbitTouchCount: 0,
     });
   assertCondition(
-    config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER === 1.5 &&
-      touchRedDotRadius === 36 &&
+    config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER === 1 &&
+      touchRedDotRadius === 24 &&
       mouseRedDotRadius === 24 &&
       insideRoute === "red-dot-aim" &&
       outsideRoute === "orbit",
