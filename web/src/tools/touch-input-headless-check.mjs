@@ -40,6 +40,7 @@ try {
     strikePanel,
     orientation,
     actionBar,
+    aimParameters,
   ] = await Promise.all([
     vite.ssrLoadModule("/src/input-capability.ts"),
     vite.ssrLoadModule("/src/config.ts"),
@@ -47,6 +48,7 @@ try {
     vite.ssrLoadModule("/src/strike-panel.ts"),
     vite.ssrLoadModule("/src/orientation.ts"),
     vite.ssrLoadModule("/src/action-bar.ts"),
+    vite.ssrLoadModule("/src/aimparams.ts"),
   ]);
 
   assertCondition(
@@ -348,6 +350,35 @@ try {
   );
   console.log(
     `[통과 f] 액션 바 팝업: center=${centerPlacement.side}@(${centerPlacement.left},${centerPlacement.top}), right-edge=${rightEdgePlacement.side}@${rightEdgePlacement.left}, left-edge=${leftEdgePlacement.side}@${leftEdgePlacement.left}, bottom-top=${bottomEdgePlacement.top}, panel-flip=${panelFlipPlacement.side}@${panelFlipPlacement.left}, narrow-piece-avoid=(${narrowPieceAvoidPlacement.left},${narrowPieceAvoidPlacement.top})`,
+  );
+
+  const automaticStrikePoint = new Vector3(0.1, 0.2, 0.3);
+  const overrideStrikePoint = new Vector3(9, 8, 7);
+  const strikeRuntime = { strikePointOverride: null };
+  aimParameters.setStrikePointOverride(strikeRuntime, overrideStrikePoint);
+  const configuredOverride = strikeRuntime.strikePointOverride;
+  const classicStrikePoint =
+    aimParameters.resolveStrikeApplicationPoint(
+      false,
+      automaticStrikePoint,
+      configuredOverride,
+    );
+  const billiardsStrikePoint =
+    aimParameters.resolveStrikeApplicationPoint(
+      true,
+      automaticStrikePoint,
+      configuredOverride,
+    );
+  assertCondition(
+    classicStrikePoint.equals(automaticStrikePoint) &&
+      !classicStrikePoint.equals(overrideStrikePoint) &&
+      billiardsStrikePoint.equals(overrideStrikePoint) &&
+      classicStrikePoint !== automaticStrikePoint &&
+      billiardsStrikePoint !== overrideStrikePoint,
+    `모드별 타점 분리가 다릅니다: classic=${JSON.stringify(classicStrikePoint)}, billiards=${JSON.stringify(billiardsStrikePoint)}`,
+  );
+  console.log(
+    `[통과 g] 모드별 타점: classic=기본(${classicStrikePoint.toArray().join(",")}), billiards=override(${billiardsStrikePoint.toArray().join(",")})`,
   );
 } finally {
   await vite.close();

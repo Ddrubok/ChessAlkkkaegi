@@ -39,6 +39,7 @@ import {
   updateStrikePreview,
   setStrikePointOverride,
   clearStrikePointOverride,
+  resolveStrikeApplicationPoint,
   type AimParametersRuntime,
   type StrikeSolution,
 } from "./aimparams";
@@ -935,7 +936,7 @@ function commitActiveLaunch(runtime: InputRuntime): void {
   }
   const dotPoint =
     runtime.aimParametersRuntime.currentSolution?.applicationPoint;
-  if (dotPoint !== undefined) {
+  if (runtime.mode === "billiards" && dotPoint !== undefined) {
     const distance = dotPoint.distanceTo(request.applicationPoint);
     console.info(
       `[조준] 빨간 점-적용점 거리=${distance.toExponential(3)}`,
@@ -992,12 +993,8 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         return aim.direction.clone().normalize();
       },
       computeApplicationPoint: (runtime) => {
-        const override = runtime.aimParametersRuntime.strikePointOverride;
-        if (override !== null) {
-          return override.clone();
-        }
-        const pieceId = runtime.aimRuntime.activeAim?.pieceId ?? runtime.aimRuntime.selectedPieceId;
-        if (pieceId === null) {
+        const pieceId = runtime.aimRuntime.activeAim?.pieceId;
+        if (pieceId === undefined) {
           throw new Error("클래식 발사 적용점이 준비되지 않았습니다.");
         }
         const binding = runtime.physicsRuntime.pieces.get(pieceId);
@@ -1005,11 +1002,15 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         if (binding === undefined || mesh === undefined) {
           throw new Error(`${pieceId} 클래식 적용점 대상을 찾지 못했습니다.`);
         }
-        return computeStrikeApplicationPoint(
-          binding,
-          mesh,
-          runtime.aimParametersRuntime.tuningRuntime.settings
-            .strikeHeightRatio,
+        return resolveStrikeApplicationPoint(
+          false,
+          computeStrikeApplicationPoint(
+            binding,
+            mesh,
+            runtime.aimParametersRuntime.tuningRuntime.settings
+              .strikeHeightRatio,
+          ),
+          runtime.aimParametersRuntime.strikePointOverride,
         );
       },
       onAimBegin: (runtime, pieceId, event) => {
@@ -1030,13 +1031,16 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         }
         setAimApplicationPoint(
           runtime.aimRuntime,
-          runtime.aimParametersRuntime.strikePointOverride ??
+          resolveStrikeApplicationPoint(
+            false,
             computeStrikeApplicationPoint(
               binding,
               mesh,
               runtime.aimParametersRuntime.tuningRuntime.settings
                 .strikeHeightRatio,
             ),
+            runtime.aimParametersRuntime.strikePointOverride,
+          ),
         );
       },
       onAimCancel: () => {},
@@ -1093,6 +1097,7 @@ function updateModeToggle(runtime: InputRuntime): void {
  */
 function updateActionBar(runtime: InputRuntime): void {
   const selected =
+    runtime.mode === "billiards" &&
     runtime.aimRuntime.selectedPieceId !== null;
 
   runtime.actionBar.hidden = !selected;
@@ -1295,6 +1300,7 @@ export function switchInputMode(
   window.localStorage.setItem(INPUT_MODE_STORAGE_KEY, mode);
   runtime.policy.onModeChanged(mode);
   updateModeToggle(runtime);
+  updateActionBar(runtime);
   beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
 }
 
@@ -1376,6 +1382,7 @@ function handleCanvasPointerDown(
     return;
   }
   const canCharge =
+    runtime.mode === "billiards" &&
     selectedId !== null &&
     !runtime.strikeMode &&
     runtime.policy.canSelectPiece(selectedId) &&
@@ -1393,7 +1400,7 @@ function handleCanvasPointerDown(
     runtime.activePointerId = event.pointerId;
     runtime.activeCaptureElement = canvas;
     runtime.gesture = {
-      source: runtime.mode === "classic" ? "classic-canvas" : "red-dot",
+      source: "red-dot",
       startX: event.clientX,
       startY: event.clientY,
       maximumDistance: 0,
@@ -1401,14 +1408,15 @@ function handleCanvasPointerDown(
       slingshotBasis: null,
     };
     setAimPower(runtime.aimParametersRuntime, 0);
-    if (runtime.mode === "classic") {
-      runtime.strategy.onAimBegin(runtime, selectedId, event);
-    }
     canvas.setPointerCapture(event.pointerId);
     return;
   }
 
-  if (runtime.strikeMode && selectedId !== null) {
+  if (
+    runtime.mode === "billiards" &&
+    runtime.strikeMode &&
+    selectedId !== null
+  ) {
     event.preventDefault();
     event.stopImmediatePropagation();
     runtime.activePointerId = event.pointerId;
@@ -1438,6 +1446,30 @@ function handleCanvasPointerDown(
     isTouchPointerEvent(event)
   ) {
     selectablePieceId = findTouchFallbackPiece(runtime, event);
+  }
+  if (runtime.mode === "classic") {
+    if (selectablePieceId === null) {
+      // 빈 판은 기존 OrbitControls가 그대로 카메라 제스처로 처리한다.
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    runtime.sceneRuntime.controls.enabled = false;
+    runtime.state = "aiming";
+    runtime.activePointerId = event.pointerId;
+    runtime.activeCaptureElement = canvas;
+    runtime.gesture = {
+      source: "classic-canvas",
+      startX: event.clientX,
+      startY: event.clientY,
+      maximumDistance: 0,
+      candidatePieceId: selectablePieceId,
+      slingshotBasis: null,
+    };
+    canvas.setPointerCapture(event.pointerId);
+    runtime.strategy.onAimBegin(runtime, selectablePieceId, event);
+    playPieceClickSound();
+    return;
   }
 
   runtime.activePointerId = event.pointerId;
@@ -1485,10 +1517,6 @@ function handleCanvasPointerMove(
       runtime.aimRuntime,
       event.clientX,
       event.clientY,
-    );
-    setAimPower(
-      runtime.aimParametersRuntime,
-      runtime.aimRuntime.activeAim?.normalizedPower ?? 0,
     );
   } else if (gesture.source === "red-dot") {
     event.preventDefault();
@@ -1890,6 +1918,11 @@ export function createInputRuntime(
   updateActionBar(runtime);
   for (const button of actionBar.querySelectorAll("button")) {
     button.addEventListener("click", () => {
+      if (runtime.mode !== "billiards") {
+        // 클래식은 즉시 드래그 전용이라 숨은 동작 버튼을 강제로 눌러도 타점 모드에 들어가지 않는다.
+        runtime.strikeMode = false;
+        return;
+      }
       const action = button.dataset.action;
       if (action === "strike") {
         runtime.strikeMode = true;
@@ -2097,20 +2130,6 @@ export function updateInputRuntime(
       runtime.failureReason = reason;
       showAimError(runtime.aimParametersRuntime, reason);
     }
-  } else if (
-    runtime.mode === "classic" &&
-    runtime.aimRuntime.selectedPieceId !== null &&
-    !externalAimActive &&
-    runtime.state !== "charging"
-  ) {
-    try {
-      refreshBilliardsPreview(runtime);
-    } catch (error: unknown) {
-      const reason = formatInteractionError(error);
-      cancelInteraction(runtime, true);
-      runtime.failureReason = reason;
-      showAimError(runtime.aimParametersRuntime, reason);
-    }
   }
 
   const panelSelectedId = runtime.aimRuntime.selectedPieceId;
@@ -2133,10 +2152,12 @@ export function updateInputRuntime(
       runtime.strikeMode &&
       panelSelectedId !== null &&
       !externalAimActive,
-    runtime.aimParametersRuntime.strikePointOverride ??
-      runtime.aimParametersRuntime.currentSolution
-        ?.applicationPoint ??
-      null,
+    runtime.mode === "billiards"
+      ? (runtime.aimParametersRuntime.strikePointOverride ??
+        runtime.aimParametersRuntime.currentSolution
+          ?.applicationPoint ??
+        null)
+      : null,
     now,
   );
   updateActionBarPosition(runtime, now);
