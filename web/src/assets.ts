@@ -1,6 +1,7 @@
 import { BufferGeometry, Mesh } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { PIECE_TYPES, type PieceType } from "./config";
+import { resolveRuntimeAssetUrl } from "./portable-assets";
 
 export type ColliderPoint = [number, number, number];
 
@@ -180,9 +181,8 @@ function validateMeta(value: unknown): ChessSetMeta {
 export async function loadChessAssets(
   onProgress?: (event: ProgressEvent) => void,
 ): Promise<ChessAssets> {
-  const assetBaseUrl = `${import.meta.env.BASE_URL}assets/`;
-  const metaUrl = `${assetBaseUrl}chess-set.meta.json`;
-  const glbUrl = `${assetBaseUrl}chess-pieces.glb`;
+  const metaUrl = resolveRuntimeAssetUrl("chessMeta");
+  const glbUrl = resolveRuntimeAssetUrl("chessGlb");
   const loader = new GLTFLoader();
 
   const [metaResponse, gltf] = await Promise.all([
