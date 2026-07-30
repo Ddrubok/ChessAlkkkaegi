@@ -1,5 +1,10 @@
 import { fileURLToPath } from "node:url";
-import { Vector3 } from "three";
+import {
+  CylinderGeometry,
+  Mesh,
+  MeshBasicMaterial,
+  Vector3,
+} from "three";
 import { createServer } from "vite";
 
 const webRoot = fileURLToPath(new URL("../..", import.meta.url));
@@ -28,10 +33,11 @@ function nearlyEqual(actual, expected, tolerance = 1e-9) {
 }
 
 try {
-  const [capability, config, input] = await Promise.all([
+  const [capability, config, input, strikePanel] = await Promise.all([
     vite.ssrLoadModule("/src/input-capability.ts"),
     vite.ssrLoadModule("/src/config.ts"),
     vite.ssrLoadModule("/src/input.ts"),
+    vite.ssrLoadModule("/src/strike-panel.ts"),
   ]);
 
   assertCondition(
@@ -179,6 +185,70 @@ try {
   console.log(
     `[통과 c] 터치 슬링샷: pull=(90,0)→direction=(-1,0,0),power=${horizontalPull.normalizedPower.toFixed(3)},launch=${launchDecision.shouldLaunch}; 360px power=${clampedPull.normalizedPower.toFixed(3)}; cancel=${cancelRadius}px→launch=${cancelDecision.shouldLaunch},reselect=${cancelDecision.reselectPieceId}; mouseAim=${String(mouseAim)}`,
   );
+
+  const cylinderGeometry = new CylinderGeometry(1, 1, 2, 64);
+  const cylinderMaterial = new MeshBasicMaterial();
+  const cylinder = new Mesh(cylinderGeometry, cylinderMaterial);
+  cylinder.updateMatrixWorld(true);
+  const projection = {
+    center: new Vector3(0, 0, 0),
+    cameraRight: new Vector3(1, 0, 0),
+    worldUp: new Vector3(0, 1, 0),
+    viewDirection: new Vector3(0, 0, 1),
+    halfWidth: 1,
+    halfHeight: 1,
+    rayMargin: 3,
+  };
+  const centerHit = strikePanel.pickStrikePanelWorldPoint(
+    cylinder,
+    projection,
+    0,
+    0,
+  );
+  const rightHit = strikePanel.pickStrikePanelWorldPoint(
+    cylinder,
+    projection,
+    0.5,
+    0,
+  );
+  const highHit = strikePanel.pickStrikePanelWorldPoint(
+    cylinder,
+    projection,
+    0,
+    0.5,
+  );
+  const outsideHit = strikePanel.pickStrikePanelWorldPoint(
+    cylinder,
+    projection,
+    1.2,
+    0,
+  );
+  const projectedRight =
+    rightHit === null
+      ? null
+      : strikePanel.projectStrikePointToPanel(
+          rightHit,
+          projection,
+        );
+  assertCondition(
+    centerHit !== null &&
+      nearlyEqual(centerHit.x, 0) &&
+      nearlyEqual(centerHit.y, 0) &&
+      rightHit !== null &&
+      nearlyEqual(rightHit.x, 0.5) &&
+      highHit !== null &&
+      nearlyEqual(highHit.y, 0.5) &&
+      outsideHit === null &&
+      projectedRight !== null &&
+      nearlyEqual(projectedRight.u, 0.5) &&
+      nearlyEqual(projectedRight.v, 0),
+    `타점 패널 직교 매핑이 다릅니다: center=${JSON.stringify(centerHit)}, right=${JSON.stringify(rightHit)}, high=${JSON.stringify(highHit)}, outside=${JSON.stringify(outsideHit)}, projected=${JSON.stringify(projectedRight)}`,
+  );
+  console.log(
+    `[통과 d] 타점 패널 직교 매핑: center=(${centerHit.x.toFixed(3)},${centerHit.y.toFixed(3)}), +u x=${rightHit.x.toFixed(3)}, +v y=${highHit.y.toFixed(3)}, outside=${String(outsideHit)}, markerU=${projectedRight.u.toFixed(3)}`,
+  );
+  cylinderGeometry.dispose();
+  cylinderMaterial.dispose();
 } finally {
   await vite.close();
 }

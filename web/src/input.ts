@@ -55,6 +55,12 @@ import {
   type SceneRuntime,
 } from "./scene";
 import { playPieceClickSound } from "./sound";
+import {
+  createStrikePointPanel,
+  pickStrikePointFromPanel,
+  updateStrikePointPanel,
+  type StrikePointPanelRuntime,
+} from "./strike-panel";
 
 export type PointerState =
   | "idle"
@@ -201,6 +207,8 @@ export interface InputRuntime {
   actionBar: HTMLElement;
   // true이면 기물 표면 탭으로 타점을 지정한다.
   strikeMode: boolean;
+  // 3D 직접 클릭과 같은 override를 편집하는 확대 정면 패널 런타임이다.
+  strikePointPanel: StrikePointPanelRuntime;
 }
 
 // 탭과 카메라 공전 드래그를 같은 캔버스 포인터에서 구별하는 최대 이동 거리다.
@@ -1598,6 +1606,13 @@ export function createInputRuntime(
     actionBar.append(button);
   }
   sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
+  const overlayContainer =
+    sceneRuntime.renderer.domElement.parentElement;
+  if (overlayContainer === null) {
+    throw new Error("타점 패널을 붙일 게임 컨테이너가 없습니다.");
+  }
+  const strikePointPanel =
+    createStrikePointPanel(overlayContainer);
   const runtime: InputRuntime = {
     sceneRuntime,
     physicsRuntime,
@@ -1625,7 +1640,76 @@ export function createInputRuntime(
     modeToggle,
     actionBar,
     strikeMode: false,
+    strikePointPanel,
   };
+
+  for (const eventName of [
+    "pointerdown",
+    "pointermove",
+    "pointerup",
+    "pointercancel",
+  ]) {
+    strikePointPanel.root.addEventListener(eventName, (event) => {
+      event.stopPropagation();
+    });
+  }
+  strikePointPanel.canvas.addEventListener(
+    "pointerdown",
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (
+        runtime.mode !== "billiards" ||
+        !runtime.strikeMode
+      ) {
+        return;
+      }
+      const pieceId = runtime.aimRuntime.selectedPieceId;
+      const mesh =
+        pieceId === null
+          ? undefined
+          : runtime.sceneRuntime.pieceMeshes.get(pieceId);
+      if (mesh === undefined) {
+        return;
+      }
+      const point = pickStrikePointFromPanel(
+        runtime.strikePointPanel,
+        mesh,
+        event.clientX,
+        event.clientY,
+      );
+      if (point === null) {
+        return;
+      }
+      playPieceClickSound();
+      setStrikePointOverride(
+        runtime.aimParametersRuntime,
+        point,
+      );
+      try {
+        refreshBilliardsPreview(runtime);
+      } catch (error: unknown) {
+        const reason = formatInteractionError(error);
+        cancelInteraction(runtime, true);
+        runtime.failureReason = reason;
+        showAimError(runtime.aimParametersRuntime, reason);
+      }
+    },
+  );
+  strikePointPanel.resetButton.addEventListener("click", () => {
+    clearStrikePointOverride(runtime.aimParametersRuntime);
+    if (runtime.aimRuntime.selectedPieceId === null) {
+      return;
+    }
+    try {
+      refreshBilliardsPreview(runtime);
+    } catch (error: unknown) {
+      const reason = formatInteractionError(error);
+      cancelInteraction(runtime, true);
+      runtime.failureReason = reason;
+      showAimError(runtime.aimParametersRuntime, reason);
+    }
+  });
 
   for (const button of modeToggle.querySelectorAll("button")) {
     button.addEventListener("click", () => {
@@ -1860,6 +1944,33 @@ export function updateInputRuntime(
       showAimError(runtime.aimParametersRuntime, reason);
     }
   }
+
+  const panelSelectedId = runtime.aimRuntime.selectedPieceId;
+  const panelMesh =
+    panelSelectedId === null
+      ? null
+      : (runtime.sceneRuntime.pieceMeshes.get(panelSelectedId) ??
+        null);
+  const panelCameraDirection = new Vector3();
+  runtime.sceneRuntime.camera.getWorldDirection(
+    panelCameraDirection,
+  );
+  updateStrikePointPanel(
+    runtime.strikePointPanel,
+    runtime.sceneRuntime.renderer,
+    panelCameraDirection,
+    panelSelectedId,
+    panelMesh,
+    runtime.mode === "billiards" &&
+      runtime.strikeMode &&
+      panelSelectedId !== null &&
+      !externalAimActive,
+    runtime.aimParametersRuntime.strikePointOverride ??
+      runtime.aimParametersRuntime.currentSolution
+        ?.applicationPoint ??
+      null,
+    now,
+  );
 }
 
 /**
