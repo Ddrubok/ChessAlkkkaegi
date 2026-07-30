@@ -171,6 +171,9 @@ const INPUT_MODE_STORAGE_KEY = "chessAlkkagi.inputMode";
 // 판·구·빨간 점이 화면 경계에 붙지 않도록 프러스텀 제약을 안쪽으로 줄이는 배율이다.
 const CAMERA_CLOSE_FIT_MARGIN = 1.08;
 
+// ponytail: strike mode scales the adaptive distance by this factor for a closer look at the piece surface.
+const STRIKE_MODE_ZOOM_SCALE = 0.6;
+
 // GLTF accessor에서 만든 보수적 구 대신 실제 POSITION 정점 구를 geometry마다 한 번만 계산한다.
 const EXACT_BOUNDING_SPHERE_GEOMETRIES = new WeakSet<BufferGeometry>();
 
@@ -436,6 +439,12 @@ function beginCameraRestore(
     policy.mode === "classic" || !selected
       ? wholeBoardDistance
       : adaptiveDistance ?? CAM_MIN_DISTANCE;
+  // ponytail: zoom closer in strike mode before a strike point is picked, both modes.
+  const strikeZoom =
+    runtime.strikeMode &&
+    runtime.aimParametersRuntime.strikePointOverride === null
+      ? STRIKE_MODE_ZOOM_SCALE
+      : 1;
   runtime.adaptiveCloseDistance = adaptiveDistance;
   runtime.cameraTransition = {
     startedAt: performance.now(),
@@ -443,7 +452,7 @@ function beginCameraRestore(
     toTarget,
     fromSpherical,
     toSpherical: new Spherical(
-      desiredRadius,
+      desiredRadius * strikeZoom,
       desiredPhi,
       fromSpherical.theta,
     ),
@@ -541,7 +550,7 @@ function updateAdaptiveCloseDistance(runtime: InputRuntime): void {
   const spherical = new Spherical().setFromVector3(
     runtime.sceneRuntime.camera.position.clone().sub(controls.target),
   );
-  const nextDistance = computeAdaptiveCloseDistance(
+  let nextDistance = computeAdaptiveCloseDistance(
     runtime.sceneRuntime.camera,
     mesh,
     controls.target,
@@ -550,6 +559,10 @@ function updateAdaptiveCloseDistance(runtime: InputRuntime): void {
     spherical.phi,
     spherical.theta,
   );
+  // ponytail: zoom closer in strike mode before a strike point is picked.
+  if (runtime.strikeMode && runtime.aimParametersRuntime.strikePointOverride === null) {
+    nextDistance *= STRIKE_MODE_ZOOM_SCALE;
+  }
   const previousDistance = runtime.adaptiveCloseDistance;
   const followedPreviousMinimum =
     previousDistance === null ||
@@ -1187,6 +1200,7 @@ function handleCanvasPointerUp(
     const point = raycastSelectedPieceSurface(runtime, event);
     if (point !== null) {
       setStrikePointOverride(runtime.aimParametersRuntime, point);
+      beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
       try {
         refreshBilliardsPreview(runtime);
       } catch (error: unknown) {
@@ -1355,8 +1369,14 @@ export function createInputRuntime(
       const action = button.dataset.action;
       if (action === "strike") {
         runtime.strikeMode = true;
+        if (runtime.aimRuntime.selectedPieceId !== null) {
+          beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+        }
       } else if (action === "launch") {
         runtime.strikeMode = false;
+        if (runtime.aimRuntime.selectedPieceId !== null) {
+          beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+        }
         if (runtime.aimRuntime.selectedPieceId !== null) {
           try {
             refreshBilliardsPreview(runtime);
