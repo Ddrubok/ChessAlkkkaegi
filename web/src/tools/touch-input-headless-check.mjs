@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { Vector3 } from "three";
 import { createServer } from "vite";
 
 const webRoot = fileURLToPath(new URL("../..", import.meta.url));
@@ -17,6 +18,13 @@ function assertCondition(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+/**
+ * 부동소수 방향·세기가 기대값 오차 안인지 판정한다.
+ */
+function nearlyEqual(actual, expected, tolerance = 1e-9) {
+  return Math.abs(actual - expected) <= tolerance;
 }
 
 try {
@@ -83,6 +91,93 @@ try {
   );
   console.log(
     `[통과 b] 화면 좌표 폴백: touch=${touchPiece}@30px, mouse=${String(mousePiece)}, boundary=${boundaryPiece}@${radius}px, outside=${String(outsidePiece)}@${(radius + 0.001).toFixed(3)}px`,
+  );
+
+  const basis = {
+    right: new Vector3(1, 0, 0),
+    forward: new Vector3(0, 0, -1),
+  };
+  const horizontalPull = input.computeTouchSlingshotAim(
+    { pointerType: "touch", clientX: 190, clientY: 100 },
+    100,
+    100,
+    basis,
+  );
+  const clampedPull = input.computeTouchSlingshotAim(
+    { pointerType: "touch", clientX: 100, clientY: 460 },
+    100,
+    100,
+    basis,
+  );
+  const launchDecision = input.decideTouchSlingshotRelease(
+    horizontalPull,
+    null,
+  );
+  assertCondition(
+    horizontalPull !== null &&
+      nearlyEqual(horizontalPull.direction.x, -1) &&
+      nearlyEqual(horizontalPull.direction.y, 0) &&
+      nearlyEqual(horizontalPull.direction.z, 0) &&
+      nearlyEqual(horizontalPull.normalizedPower, 0.5) &&
+      !horizontalPull.cancelsLaunch &&
+      launchDecision.shouldLaunch === true &&
+      launchDecision.reselectPieceId === null &&
+      clampedPull !== null &&
+      nearlyEqual(clampedPull.direction.x, 0) &&
+      nearlyEqual(clampedPull.direction.y, 0) &&
+      nearlyEqual(clampedPull.direction.z, -1) &&
+      clampedPull.normalizedPower === 1,
+    `슬링샷 pull-back 방향·세기가 다릅니다: horizontal=${JSON.stringify(horizontalPull)}, clamped=${JSON.stringify(clampedPull)}`,
+  );
+
+  const cancelRadius =
+    config.TOUCH_SLINGSHOT_CANCEL_RADIUS_PIXELS;
+  const cancelAim = input.computeTouchSlingshotAim(
+    {
+      pointerType: "touch",
+      clientX: 100 + cancelRadius,
+      clientY: 100,
+    },
+    100,
+    100,
+    basis,
+  );
+  const tapCandidate = input.findNearestTouchPieceInScreenSpace(
+    { pointerType: "touch", clientX: 100, clientY: 100 },
+    [
+      {
+        pieceId: "white-knight-b1",
+        clientX: 110,
+        clientY: 100,
+      },
+    ],
+  );
+  const cancelDecision = input.decideTouchSlingshotRelease(
+    cancelAim,
+    tapCandidate,
+  );
+  const mouseAim = input.computeTouchSlingshotAim(
+    { pointerType: "mouse", clientX: 190, clientY: 100 },
+    100,
+    100,
+    basis,
+  );
+  const mouseDecision = input.decideTouchSlingshotRelease(
+    mouseAim,
+    tapCandidate,
+  );
+  assertCondition(
+    cancelRadius === 24 &&
+      cancelAim?.cancelsLaunch === true &&
+      cancelDecision.shouldLaunch === false &&
+      cancelDecision.reselectPieceId === "white-knight-b1" &&
+      mouseAim === null &&
+      mouseDecision.shouldLaunch === false &&
+      mouseDecision.reselectPieceId === null,
+    `슬링샷 취소·재선택·마우스 격리가 다릅니다: cancel=${JSON.stringify(cancelDecision)}, mouse=${JSON.stringify(mouseDecision)}`,
+  );
+  console.log(
+    `[통과 c] 터치 슬링샷: pull=(90,0)→direction=(-1,0,0),power=${horizontalPull.normalizedPower.toFixed(3)},launch=${launchDecision.shouldLaunch}; 360px power=${clampedPull.normalizedPower.toFixed(3)}; cancel=${cancelRadius}px→launch=${cancelDecision.shouldLaunch},reselect=${cancelDecision.reselectPieceId}; mouseAim=${String(mouseAim)}`,
   );
 } finally {
   await vite.close();

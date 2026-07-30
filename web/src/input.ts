@@ -22,6 +22,7 @@ import {
   updateAimPointer,
   updateDirectedAim,
   type AimRuntime,
+  type FrozenCameraBasis,
   type LaunchRequest,
 } from "./aim";
 import {
@@ -44,6 +45,7 @@ import {
   CAM_PITCH_MIN,
   MAX_DRAG_PIXELS,
   TOUCH_PIECE_HIT_RADIUS_PIXELS,
+  TOUCH_SLINGSHOT_CANCEL_RADIUS_PIXELS,
 } from "./config";
 import { isTouchPointerEvent } from "./input-capability";
 import type { PhysicsRuntime } from "./physics";
@@ -81,6 +83,22 @@ export interface ScreenSpacePointer {
   clientY: number;
 }
 
+export interface TouchSlingshotAim {
+  // 화면에서 당긴 반대편을 가리키도록 고정 카메라 축으로 변환한 월드 수평 방향이다.
+  direction: Vector3;
+  // 시작점과 현재점 거리에서 계산한 0~1 발사 세기다.
+  normalizedPower: number;
+  // 현재점이 시작점 취소 반경 안에 있어 릴리스 때 발사하지 않을지 나타낸다.
+  cancelsLaunch: boolean;
+}
+
+export interface TouchSlingshotReleaseDecision {
+  // 취소 반경 밖 릴리스가 기존 발사 커밋 경로로 이어질지 나타낸다.
+  shouldLaunch: boolean;
+  // 취소 탭이 다른 선택 가능 말에 닿았을 때 교체할 말 id다.
+  reselectPieceId: string | null;
+}
+
 interface CameraPolicy {
   // 모드 전환 뒤 같은 카메라 계약을 복원할 전략 식별자다.
   mode: InputMode;
@@ -105,13 +123,19 @@ interface CameraTransition {
 }
 
 interface PointerGesture {
-  // 하나의 상태 기계에서 기존 클래식, 카메라 제스처, 빨간 점 충전만 구분한다.
-  source: "classic-canvas" | "billiards-canvas" | "red-dot";
+  // 하나의 상태 기계에서 기존 입력과 터치 전용 슬링샷만 구분한다.
+  source:
+    | "classic-canvas"
+    | "billiards-canvas"
+    | "red-dot"
+    | "touch-slingshot";
   startX: number;
   startY: number;
   maximumDistance: number;
   // 포인터 시작 때의 최근접 교차만 탭 release까지 보존한다.
   candidatePieceId: string | null;
+  // 터치 슬링샷 동안 화면 드래그를 월드 방향으로 바꾸는 포인터다운 시점 카메라 축이다.
+  slingshotBasis: FrozenCameraBasis | null;
 }
 
 export interface LaunchQueueOutcome {
@@ -384,6 +408,57 @@ export function findNearestTouchPieceInScreenSpace(
 }
 
 /**
+ * 터치 화면 변위를 고정 카메라 축의 반대 방향과 기존 180px 세기 비율로 변환한다.
+ */
+export function computeTouchSlingshotAim(
+  event: ScreenSpacePointer,
+  anchorX: number,
+  anchorY: number,
+  basis: FrozenCameraBasis,
+): TouchSlingshotAim | null {
+  if (!isTouchPointerEvent(event)) {
+    return null;
+  }
+  const deltaX = event.clientX - anchorX;
+  const deltaY = event.clientY - anchorY;
+  const distance = Math.hypot(deltaX, deltaY);
+  const direction = basis.right
+    .clone()
+    .multiplyScalar(-deltaX)
+    .addScaledVector(basis.forward, deltaY);
+  if (direction.lengthSq() > 1e-12) {
+    direction.normalize();
+  } else {
+    direction.copy(basis.forward).normalize();
+  }
+  return {
+    direction,
+    normalizedPower: Math.min(distance / MAX_DRAG_PIXELS, 1),
+    cancelsLaunch:
+      distance <= TOUCH_SLINGSHOT_CANCEL_RADIUS_PIXELS,
+  };
+}
+
+/**
+ * 터치 슬링샷 릴리스가 발사인지 취소 탭 재선택인지 순수 값으로 결정한다.
+ */
+export function decideTouchSlingshotRelease(
+  aim: TouchSlingshotAim | null,
+  candidatePieceId: string | null,
+): TouchSlingshotReleaseDecision {
+  return aim === null || aim.cancelsLaunch
+    ? {
+        shouldLaunch: false,
+        reselectPieceId:
+          aim === null ? null : candidatePieceId,
+      }
+    : {
+        shouldLaunch: true,
+        reselectPieceId: null,
+      };
+}
+
+/**
  * 선택 가능한 말만 현재 카메라로 투영해 터치 중심 44px 안의 최근접 후보를 찾는다.
  */
 function findTouchFallbackPiece(
@@ -421,6 +496,21 @@ function findTouchFallbackPiece(
     });
   }
   return findNearestTouchPieceInScreenSpace(event, candidates);
+}
+
+/**
+ * 터치 시작점의 직접 교차를 우선하고 실패하면 M1의 44px 화면 폴백까지 적용한다.
+ */
+function findSelectableTouchPiece(
+  runtime: InputRuntime,
+  event: PointerEvent,
+): string | null {
+  const nearestPieceId = raycastNearestPiece(runtime, event);
+  return nearestPieceId !== null &&
+    runtime.selectablePieceIds.has(nearestPieceId) &&
+    runtime.policy.canSelectPiece(nearestPieceId)
+    ? nearestPieceId
+    : findTouchFallbackPiece(runtime, event);
 }
 
 /**
@@ -571,7 +661,10 @@ export function getBilliardsHorizontalDirection(
 /**
  * 현재 선택과 카메라에서 당구식 해법을 한 번 계산해 점·화살표·발사 캐시에 함께 반영한다.
  */
-function refreshBilliardsPreview(runtime: InputRuntime): void {
+function refreshBilliardsPreview(
+  runtime: InputRuntime,
+  horizontalOverride: Vector3 | null = null,
+): void {
   const pieceId = runtime.aimRuntime.selectedPieceId;
   if (pieceId === null) {
     return;
@@ -581,7 +674,10 @@ function refreshBilliardsPreview(runtime: InputRuntime): void {
   if (binding === undefined || mesh === undefined) {
     throw new Error(`${pieceId} 조준 미리보기 대상을 찾지 못했습니다.`);
   }
-  const horizontal = getBilliardsHorizontalDirection(runtime);
+  const horizontal =
+    horizontalOverride === null
+      ? getBilliardsHorizontalDirection(runtime)
+      : horizontalOverride.clone().normalize();
   if (runtime.aimRuntime.activeAim?.pieceId !== pieceId) {
     beginDirectedAim(runtime.aimRuntime, pieceId, horizontal, true);
   }
@@ -1079,6 +1175,35 @@ function handleCanvasPointerDown(
 
   const canvas = runtime.sceneRuntime.renderer.domElement;
   const selectedId = runtime.aimRuntime.selectedPieceId;
+  if (
+    runtime.mode === "billiards" &&
+    isTouchPointerEvent(event) &&
+    selectedId !== null &&
+    !runtime.strikeMode &&
+    runtime.policy.canSelectPiece(selectedId)
+  ) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    runtime.sceneRuntime.controls.enabled = false;
+    runtime.state = "charging";
+    runtime.activePointerId = event.pointerId;
+    runtime.activeCaptureElement = canvas;
+    runtime.gesture = {
+      source: "touch-slingshot",
+      startX: event.clientX,
+      startY: event.clientY,
+      maximumDistance: 0,
+      candidatePieceId: findSelectableTouchPiece(runtime, event),
+      slingshotBasis: freezeCameraBasis(
+        runtime.sceneRuntime.camera,
+      ),
+    };
+    setAimPower(runtime.aimParametersRuntime, 0);
+    runtime.strategy.onAimBegin(runtime, selectedId);
+    refreshBilliardsPreview(runtime);
+    canvas.setPointerCapture(event.pointerId);
+    return;
+  }
   const canCharge =
     selectedId !== null &&
     !runtime.strikeMode &&
@@ -1102,6 +1227,7 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectedId,
+      slingshotBasis: null,
     };
     setAimPower(runtime.aimParametersRuntime, 0);
     if (runtime.mode === "classic") {
@@ -1122,6 +1248,7 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectedId,
+      slingshotBasis: null,
     };
     canvas.setPointerCapture(event.pointerId);
     return;
@@ -1150,6 +1277,7 @@ function handleCanvasPointerDown(
     startY: event.clientY,
     maximumDistance: 0,
     candidatePieceId: selectablePieceId,
+    slingshotBasis: null,
   };
   canvas.setPointerCapture(event.pointerId);
 }
@@ -1206,6 +1334,25 @@ function handleCanvasPointerMove(
         runtime.aimParametersRuntime.normalizedPower,
       );
     }
+  } else if (
+    gesture.source === "touch-slingshot" &&
+    gesture.slingshotBasis !== null
+  ) {
+    event.preventDefault();
+    const aim = computeTouchSlingshotAim(
+      event,
+      gesture.startX,
+      gesture.startY,
+      gesture.slingshotBasis,
+    );
+    if (aim === null) {
+      return;
+    }
+    setAimPower(
+      runtime.aimParametersRuntime,
+      aim.normalizedPower,
+    );
+    refreshBilliardsPreview(runtime, aim.direction);
   }
 }
 
@@ -1249,6 +1396,61 @@ function handleCanvasPointerUp(
     } else {
       cancelInteraction(runtime, false);
     }
+    return;
+  }
+  if (
+    gesture.source === "touch-slingshot" &&
+    gesture.slingshotBasis !== null
+  ) {
+    event.preventDefault();
+    const aim = computeTouchSlingshotAim(
+      event,
+      gesture.startX,
+      gesture.startY,
+      gesture.slingshotBasis,
+    );
+    const decision = decideTouchSlingshotRelease(
+      aim,
+      gesture.candidatePieceId,
+    );
+    if (!decision.shouldLaunch || aim === null) {
+      const selectedPieceId =
+        runtime.aimRuntime.selectedPieceId;
+      if (decision.reselectPieceId !== null) {
+        playPieceClickSound();
+      }
+      cancelInteraction(runtime, false);
+      if (
+        decision.reselectPieceId !== null &&
+        decision.reselectPieceId !== selectedPieceId
+      ) {
+        selectPiece(runtime, decision.reselectPieceId);
+      } else if (selectedPieceId !== null) {
+        try {
+          refreshBilliardsPreview(runtime);
+        } catch (error: unknown) {
+          const reason = formatInteractionError(error);
+          cancelInteraction(runtime, true);
+          runtime.failureReason = reason;
+          showAimError(runtime.aimParametersRuntime, reason);
+        }
+      }
+      return;
+    }
+    setAimPower(
+      runtime.aimParametersRuntime,
+      aim.normalizedPower,
+    );
+    try {
+      refreshBilliardsPreview(runtime, aim.direction);
+    } catch (error: unknown) {
+      const reason = formatInteractionError(error);
+      cancelInteraction(runtime, false);
+      runtime.failureReason = reason;
+      showAimError(runtime.aimParametersRuntime, reason);
+      return;
+    }
+    commitActiveLaunch(runtime);
     return;
   }
   if (gesture.source === "classic-canvas") {
