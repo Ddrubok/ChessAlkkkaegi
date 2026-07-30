@@ -1,5 +1,6 @@
 import {
-  CARD_GRADE_EFFECTS,
+  CARD_GRADE_SIZE_EFFECTS,
+  CARD_GRADE_WEIGHT_FORCE_EFFECTS,
   GIANT_PAWN_SIZE_MULTIPLIER,
   PLAYER_MAX_SIZE_SCALE,
   STAGE_MAX_PIECE_SCALE,
@@ -17,16 +18,26 @@ export interface CardTuningSettings {
   debugForceGrade: CardGrade;
   // 실제 런 등급과 비교할 디버그 크기 카드 등급이다.
   debugSizeGrade: CardGrade;
-  // 일반 등급이 교체할 최종 효과 비율이다.
-  gradeEffect1: number;
-  // 중급 등급이 교체할 최종 효과 비율이다.
-  gradeEffect2: number;
-  // 상급 등급이 교체할 최종 효과 비율이다.
-  gradeEffect3: number;
-  // 최상급 등급이 교체할 최종 효과 비율이다.
-  gradeEffect4: number;
-  // 레전드 등급이 교체할 최종 효과 비율이다.
-  gradeEffect5: number;
+  // 중량·힘 일반 등급이 교체할 최종 효과 비율이다.
+  weightForceGradeEffect1: number;
+  // 중량·힘 중급 등급이 교체할 최종 효과 비율이다.
+  weightForceGradeEffect2: number;
+  // 중량·힘 상급 등급이 교체할 최종 효과 비율이다.
+  weightForceGradeEffect3: number;
+  // 중량·힘 최상급 등급이 교체할 최종 효과 비율이다.
+  weightForceGradeEffect4: number;
+  // 중량·힘 레전드 등급이 교체할 최종 효과 비율이다.
+  weightForceGradeEffect5: number;
+  // 크기 일반 등급이 교체할 최종 효과 비율이다.
+  sizeGradeEffect1: number;
+  // 크기 중급 등급이 교체할 최종 효과 비율이다.
+  sizeGradeEffect2: number;
+  // 크기 상급 등급이 교체할 최종 효과 비율이다.
+  sizeGradeEffect3: number;
+  // 크기 최상급 등급이 교체할 최종 효과 비율이다.
+  sizeGradeEffect4: number;
+  // 크기 레전드 등급이 교체할 최종 효과 비율이다.
+  sizeGradeEffect5: number;
   // 중량 카드의 등급 효과에 마지막으로 곱할 종류별 배수다.
   weightEffectMultiplier: number;
   // 힘 카드의 등급 효과에 마지막으로 곱할 종류별 배수다.
@@ -203,40 +214,80 @@ const NUMERIC_DEFINITIONS: Record<
     suffix: "등급",
     integer: true,
   },
-  gradeEffect1: {
-    label: "일반 등급 효과 · 즉시·다음 보드 공통",
+  weightForceGradeEffect1: {
+    label: "중량·힘 일반 등급 효과 · 즉시·다음 보드",
     min: 0,
     max: 1,
     step: 0.001,
     displayScale: 100,
     suffix: "%",
   },
-  gradeEffect2: {
-    label: "중급 등급 효과 · 즉시·다음 보드 공통",
+  weightForceGradeEffect2: {
+    label: "중량·힘 중급 등급 효과 · 즉시·다음 보드",
     min: 0,
     max: 1,
     step: 0.001,
     displayScale: 100,
     suffix: "%",
   },
-  gradeEffect3: {
-    label: "상급 등급 효과 · 즉시·다음 보드 공통",
+  weightForceGradeEffect3: {
+    label: "중량·힘 상급 등급 효과 · 즉시·다음 보드",
     min: 0,
     max: 1,
     step: 0.001,
     displayScale: 100,
     suffix: "%",
   },
-  gradeEffect4: {
-    label: "최상급 등급 효과 · 즉시·다음 보드 공통",
+  weightForceGradeEffect4: {
+    label: "중량·힘 최상급 등급 효과 · 즉시·다음 보드",
     min: 0,
     max: 1,
     step: 0.001,
     displayScale: 100,
     suffix: "%",
   },
-  gradeEffect5: {
-    label: "레전드 등급 효과 · 즉시·다음 보드 공통",
+  weightForceGradeEffect5: {
+    label: "중량·힘 레전드 등급 효과 · 즉시·다음 보드",
+    min: 0,
+    max: 1,
+    step: 0.001,
+    displayScale: 100,
+    suffix: "%",
+  },
+  sizeGradeEffect1: {
+    label: "크기 일반 등급 효과 · 다음 보드",
+    min: 0,
+    max: 1,
+    step: 0.001,
+    displayScale: 100,
+    suffix: "%",
+  },
+  sizeGradeEffect2: {
+    label: "크기 중급 등급 효과 · 다음 보드",
+    min: 0,
+    max: 1,
+    step: 0.001,
+    displayScale: 100,
+    suffix: "%",
+  },
+  sizeGradeEffect3: {
+    label: "크기 상급 등급 효과 · 다음 보드",
+    min: 0,
+    max: 1,
+    step: 0.001,
+    displayScale: 100,
+    suffix: "%",
+  },
+  sizeGradeEffect4: {
+    label: "크기 최상급 등급 효과 · 다음 보드",
+    min: 0,
+    max: 1,
+    step: 0.001,
+    displayScale: 100,
+    suffix: "%",
+  },
+  sizeGradeEffect5: {
+    label: "크기 레전드 등급 효과 · 다음 보드",
     min: 0,
     max: 1,
     step: 0.001,
@@ -278,7 +329,7 @@ const NUMERIC_DEFINITIONS: Record<
 };
 
 /**
- * 플래너의 1.3배 거대 폰 기본값을 포함해 저장과 초기화가 공유할 코드 기본값을 만든다.
+ * 플래너의 종류별 카드 표와 1.3배 거대 폰을 저장·초기화 공통 기본값으로 만든다.
  */
 export function createDefaultCardTuningSettings(
   giantPawnSizeMultiplier: number = GIANT_PAWN_SIZE_MULTIPLIER,
@@ -298,11 +349,21 @@ export function createDefaultCardTuningSettings(
     debugWeightGrade: 0,
     debugForceGrade: 0,
     debugSizeGrade: 0,
-    gradeEffect1: CARD_GRADE_EFFECTS[0],
-    gradeEffect2: CARD_GRADE_EFFECTS[1],
-    gradeEffect3: CARD_GRADE_EFFECTS[2],
-    gradeEffect4: CARD_GRADE_EFFECTS[3],
-    gradeEffect5: CARD_GRADE_EFFECTS[4],
+    weightForceGradeEffect1:
+      CARD_GRADE_WEIGHT_FORCE_EFFECTS[0],
+    weightForceGradeEffect2:
+      CARD_GRADE_WEIGHT_FORCE_EFFECTS[1],
+    weightForceGradeEffect3:
+      CARD_GRADE_WEIGHT_FORCE_EFFECTS[2],
+    weightForceGradeEffect4:
+      CARD_GRADE_WEIGHT_FORCE_EFFECTS[3],
+    weightForceGradeEffect5:
+      CARD_GRADE_WEIGHT_FORCE_EFFECTS[4],
+    sizeGradeEffect1: CARD_GRADE_SIZE_EFFECTS[0],
+    sizeGradeEffect2: CARD_GRADE_SIZE_EFFECTS[1],
+    sizeGradeEffect3: CARD_GRADE_SIZE_EFFECTS[2],
+    sizeGradeEffect4: CARD_GRADE_SIZE_EFFECTS[3],
+    sizeGradeEffect5: CARD_GRADE_SIZE_EFFECTS[4],
     weightEffectMultiplier: 1,
     forceEffectMultiplier: 1,
     sizeEffectMultiplier: 1,
@@ -322,12 +383,19 @@ export function createCardEffectTuning(
     debugWeightGrade: settings.debugWeightGrade,
     debugForceGrade: settings.debugForceGrade,
     debugSizeGrade: settings.debugSizeGrade,
-    gradeEffects: [
-      settings.gradeEffect1,
-      settings.gradeEffect2,
-      settings.gradeEffect3,
-      settings.gradeEffect4,
-      settings.gradeEffect5,
+    weightForceGradeEffects: [
+      settings.weightForceGradeEffect1,
+      settings.weightForceGradeEffect2,
+      settings.weightForceGradeEffect3,
+      settings.weightForceGradeEffect4,
+      settings.weightForceGradeEffect5,
+    ],
+    sizeGradeEffects: [
+      settings.sizeGradeEffect1,
+      settings.sizeGradeEffect2,
+      settings.sizeGradeEffect3,
+      settings.sizeGradeEffect4,
+      settings.sizeGradeEffect5,
     ],
     weightEffectMultiplier: settings.weightEffectMultiplier,
     forceEffectMultiplier: settings.forceEffectMultiplier,
@@ -1042,13 +1110,23 @@ export function createCardTuningRuntime(
       ],
     },
     {
-      title: "등급별 교체 효과 수치 · 즉시·다음 보드 공통",
+      title: "중량·힘 등급 효과 · 즉시·다음 보드",
       keys: [
-        "gradeEffect1",
-        "gradeEffect2",
-        "gradeEffect3",
-        "gradeEffect4",
-        "gradeEffect5",
+        "weightForceGradeEffect1",
+        "weightForceGradeEffect2",
+        "weightForceGradeEffect3",
+        "weightForceGradeEffect4",
+        "weightForceGradeEffect5",
+      ],
+    },
+    {
+      title: "크기 등급 효과 · 다음 보드",
+      keys: [
+        "sizeGradeEffect1",
+        "sizeGradeEffect2",
+        "sizeGradeEffect3",
+        "sizeGradeEffect4",
+        "sizeGradeEffect5",
       ],
     },
     {
@@ -1113,7 +1191,7 @@ export function createCardTuningRuntime(
   const compositionNote = document.createElement("p");
   compositionNote.className = "tuning-note";
   compositionNote.textContent =
-    "핫시트와 스테이지의 백 말에 적용됩니다. 힘은 즉시, 중량·크기·특수 카드는 다음 보드 설정부터 적용됩니다. 스테이지에서는 실제 런 카드와 디버그 카드 중 높은 등급이 이 곡선·종류별 배수를 사용합니다.";
+    "핫시트와 스테이지의 백 말에 적용됩니다. 힘은 즉시, 중량·크기·특수 카드는 다음 보드 설정부터 적용됩니다. 스테이지에서는 실제 런 카드와 디버그 카드 중 높은 등급이 카드 종류별 곡선과 최종 배수를 사용합니다.";
   const actions = document.createElement("div");
   actions.className = "tuning-actions";
   const relayoutButton = document.createElement("button");

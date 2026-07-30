@@ -179,6 +179,7 @@ try {
     cardsModule,
     configModule,
     layoutModule,
+    metaModule,
     physicsModule,
     sceneModule,
     stageModule,
@@ -190,6 +191,7 @@ try {
     vite.ssrLoadModule("/src/cards.ts"),
     vite.ssrLoadModule("/src/config.ts"),
     vite.ssrLoadModule("/src/layout.ts"),
+    vite.ssrLoadModule("/src/meta.ts"),
     vite.ssrLoadModule("/src/physics.ts"),
     vite.ssrLoadModule("/src/scene.ts"),
     vite.ssrLoadModule("/src/stage.ts"),
@@ -252,7 +254,8 @@ try {
   );
   panelSettings.debugForceGrade = 5;
   panelSettings.debugSizeGrade = 5;
-  panelSettings.gradeEffect5 = 0.5;
+  panelSettings.weightForceGradeEffect5 = 0.5;
+  panelSettings.sizeGradeEffect5 = 0.5;
   panelSettings.forceEffectMultiplier = 5;
   panelSettings.sizeEffectMultiplier = 5;
   panelSettings.giantPawnEnabled = true;
@@ -397,6 +400,8 @@ try {
   const gradeChangedSettings = {
     ...defaultPanelSettings,
     debugForceGrade: 2,
+    weightForceGradeEffect2: 0.18,
+    sizeGradeEffect2: 0.09,
   };
   const gradeSaveWarning =
     cardTuningModule.saveCardTuningSettings(
@@ -408,11 +413,15 @@ try {
       auditedStorage,
       giantPawnSizeMultiplier,
     );
-  const storageMultipliersStayedDefault =
+  const storageTablesRoundTripped =
     storedDefaults.weightEffectMultiplier === 1 &&
     storedDefaults.forceEffectMultiplier === 1 &&
     storedDefaults.sizeEffectMultiplier === 1 &&
+    storedDefaults.weightForceGradeEffect5 === 0.3 &&
+    storedDefaults.sizeGradeEffect5 === 0.15 &&
     gradeChangedLoad.settings.debugForceGrade === 2 &&
+    gradeChangedLoad.settings.weightForceGradeEffect2 === 0.18 &&
+    gradeChangedLoad.settings.sizeGradeEffect2 === 0.09 &&
     gradeChangedLoad.settings.weightEffectMultiplier === 1 &&
     gradeChangedLoad.settings.forceEffectMultiplier === 1 &&
     gradeChangedLoad.settings.sizeEffectMultiplier === 1;
@@ -496,7 +505,7 @@ try {
       onlineSpawnCount === 32 &&
       hotseatWhiteScale === configModule.PLAYER_MAX_SIZE_SCALE &&
       hotseatBlackScale === 1 &&
-      Math.abs(hotseatWhiteWeight - 0.105) < 1e-12 &&
+      Math.abs(hotseatWhiteWeight - 0.3) < 1e-12 &&
       hotseatBlackWeight === 0 &&
       hotseatSpawnCount === 28 &&
       Math.abs(hotseatPronePose.rotation.x - Math.SQRT1_2) <
@@ -507,10 +516,10 @@ try {
       corruptLoad.warning !== null &&
       defaultSaveWarning === null &&
       gradeSaveWarning === null &&
-      storageMultipliersStayedDefault &&
+      storageTablesRoundTripped &&
       relayoutPreservedState &&
-      Math.abs(relayoutApplied.weight - 0.05) < 1e-12 &&
-      Math.abs(relayoutApplied.size - 1.1) < 1e-12 &&
+      Math.abs(relayoutApplied.weight - 0.12) < 1e-12 &&
+      Math.abs(relayoutApplied.size - 1.15) < 1e-12 &&
       relayoutApplied.pieces === 28 &&
       Math.abs(
         relayoutApplied.proneRotationX - Math.SQRT1_2,
@@ -518,23 +527,41 @@ try {
     `카드 조절판 합성·핫시트 적용·온라인 차단·저장·다시 깔기 실패: play=${playGradeEffect}, panel=${panelGradeEffect}, multiplied=${multipliedWeightEffect}, composedGrade=${composedGrade}, hotseat=${hotseatWhiteScale}/${hotseatBlackScale}/${hotseatWhiteWeight}/${hotseatBlackWeight}/${hotseatSpawnCount}/${hotseatPronePose.rotation.x}, customGiant=${customGiantScale}, online=${onlineScale}/${onlineWeight}/${onlineForce}/${onlineSpawnCount}, corruptWarning=${corruptLoad.warning}, stored=${JSON.stringify(gradeChangedLoad.settings)}, relayout=${JSON.stringify(relayoutApplied)}, snapshot=${JSON.stringify(relayoutSnapshot)}`,
   );
   console.log(
-    `[통과 0] panelGrade4=${panelGradeEffect.toFixed(6)}=playGrade4, weight×1.5=${multipliedWeightEffect.toFixed(6)}, stageMaxGrade=${composedGrade}, hotseat(whiteSize/blackSize/whiteWeight/blackWeight/pieces/prone)=${hotseatWhiteScale.toFixed(2)}/${hotseatBlackScale.toFixed(2)}/${hotseatWhiteWeight.toFixed(3)}/${hotseatBlackWeight.toFixed(2)}/${hotseatSpawnCount}/true, customGiant=${customGiantScale.toFixed(2)}, online(size/weight/force/pieces)=${onlineScale.toFixed(2)}/${onlineWeight.toFixed(2)}/${onlineForce.toFixed(2)}/${onlineSpawnCount}, corruptFallback=true, storageMultipliers=1/1/1, relayout(stage/weight/size/pieces/prone/points)=${relayoutApplied.stageNumber}/${relayoutApplied.weight.toFixed(2)}/${relayoutApplied.size.toFixed(2)}/${relayoutApplied.pieces}/true/${relayoutSnapshot.points}`,
+    `[통과 0] panelGrade4=${panelGradeEffect.toFixed(6)}=playGrade4, weight×1.5=${multipliedWeightEffect.toFixed(6)}, stageMaxGrade=${composedGrade}, hotseat(whiteSize/blackSize/whiteWeight/blackWeight/pieces/prone)=${hotseatWhiteScale.toFixed(2)}/${hotseatBlackScale.toFixed(2)}/${hotseatWhiteWeight.toFixed(3)}/${hotseatBlackWeight.toFixed(2)}/${hotseatSpawnCount}/true, customGiant=${customGiantScale.toFixed(2)}, online(size/weight/force/pieces)=${onlineScale.toFixed(2)}/${onlineWeight.toFixed(2)}/${onlineForce.toFixed(2)}/${onlineSpawnCount}, corruptFallback=true, storageTables(weightForce2/size2)=18%/9%, multipliers=1/1/1, relayout(stage/weight/size/pieces/prone/points)=${relayoutApplied.stageNumber}/${relayoutApplied.weight.toFixed(2)}/${relayoutApplied.size.toFixed(2)}/${relayoutApplied.pieces}/true/${relayoutSnapshot.points}`,
   );
 
   const drawState = cardsModule.createRunCardState();
   const firstDraw = cardsModule.drawUpgradeCards(1, drawState);
   const repeatedDraw = cardsModule.drawUpgradeCards(1, drawState);
-  const gradeEffects = [1, 2, 3, 4, 5].map((grade) =>
-    cardsModule.computeCardGradeEffect(grade),
+  const weightForceGradeEffects = [1, 2, 3, 4, 5].map(
+    (grade) =>
+      cardsModule.computeCardGradeEffect(grade, "weight"),
+  );
+  const forceGradeEffects = [1, 2, 3, 4, 5].map((grade) =>
+    cardsModule.computeCardGradeEffect(grade, "force"),
+  );
+  const sizeGradeEffects = [1, 2, 3, 4, 5].map((grade) =>
+    cardsModule.computeCardGradeEffect(grade, "size"),
   );
   const replacementState = cardsModule.createRunCardState();
-  const replacementEffects = [];
+  const replacementWeightEffects = [];
   for (let grade = 1; grade <= 5; grade += 1) {
     cardsModule.applyCardPick(replacementState, "weight");
-    replacementEffects.push(
+    replacementWeightEffects.push(
       cardsModule.computeGeneralCardEffect(
         replacementState,
         "weight",
+      ),
+    );
+  }
+  const sizeReplacementState = cardsModule.createRunCardState();
+  const replacementSizeEffects = [];
+  for (let grade = 1; grade <= 5; grade += 1) {
+    cardsModule.applyCardPick(sizeReplacementState, "size");
+    replacementSizeEffects.push(
+      cardsModule.computeGeneralCardEffect(
+        sizeReplacementState,
+        "size",
       ),
     );
   }
@@ -552,13 +579,20 @@ try {
       firstDraw.length === 3 &&
       firstDraw[0].category === "general" &&
       firstDraw[1].category === "general" &&
-      JSON.stringify(gradeEffects) ===
-        JSON.stringify([0.01, 0.03, 0.05, 0.07, 0.1]) &&
-      JSON.stringify(replacementEffects) ===
-        JSON.stringify(gradeEffects) &&
+      JSON.stringify(weightForceGradeEffects) ===
+        JSON.stringify([0.05, 0.08, 0.12, 0.2, 0.3]) &&
+      JSON.stringify(forceGradeEffects) ===
+        JSON.stringify(weightForceGradeEffects) &&
+      JSON.stringify(sizeGradeEffects) ===
+        JSON.stringify([0.02, 0.04, 0.07, 0.11, 0.15]) &&
+      JSON.stringify(replacementWeightEffects) ===
+        JSON.stringify(weightForceGradeEffects) &&
+      JSON.stringify(replacementSizeEffects) ===
+        JSON.stringify(sizeGradeEffects) &&
       replacementState.weightGrade === 5 &&
+      sizeReplacementState.sizeGrade === 5 &&
       legendBlocked,
-    `등급 교체·레전드 상한·추첨 결정성 실패: draw=${firstDraw.map((card) => `${card.id}:${card.category}`).join(",")}, grades=${gradeEffects.join(",")}, replacements=${replacementEffects.join(",")}, blocked=${legendBlocked}`,
+    `종류별 등급 교체·레전드 상한·추첨 결정성 실패: draw=${firstDraw.map((card) => `${card.id}:${card.category}`).join(",")}, weightForce=${weightForceGradeEffects.join(",")}, force=${forceGradeEffects.join(",")}, size=${sizeGradeEffects.join(",")}, weightReplacement=${replacementWeightEffects.join(",")}, sizeReplacement=${replacementSizeEffects.join(",")}, blocked=${legendBlocked}`,
   );
 
   let thirdGeneral = 0;
@@ -648,7 +682,7 @@ try {
   const cappedPoolState = cardsModule.createRunCardState();
   cardsModule.applyCardPick(cappedPoolState, "giantPawn");
   cardsModule.applyCardPick(cappedPoolState, "proneStart");
-  const capTestEffectScale = 3;
+  const capTestEffectScale = 2;
   for (let grade = 0; grade < 4; grade += 1) {
     cardsModule.applyCardPick(
       cappedPoolState,
@@ -676,7 +710,7 @@ try {
     },
   );
   assertCondition(
-    defaultLegendScale === 1.1 &&
+    defaultLegendScale === 1.15 &&
       cappedScale === configModule.PLAYER_MAX_SIZE_SCALE &&
     JSON.stringify(cappedPool.map((card) => card.id)) ===
       JSON.stringify(["weight", "force"]) &&
@@ -684,7 +718,56 @@ try {
     `크기 상한 풀 제거 실패: defaultLegend=${defaultLegendScale}, tunedCap=${cappedScale}, pool=${cappedPool.map((card) => card.id).join(",")}, draw=${cappedDraw.map((card) => card.id).join(",")}`,
   );
   console.log(
-    `[통과 a] grades=${gradeEffects.map((effect) => `${Math.round(effect * 100)}%`).join("/")}, replacement=true, legendBlocked=${legendBlocked}; draw=${firstDraw.map((card) => card.id).join(",")}, firstTwo=general/general; third(${distributionDraws})=general:${thirdGeneral}/special:${thirdSpecial}; shortPool=${shortDraw.map((card) => card.id).join(",")}; defaultLegendScale=${defaultLegendScale.toFixed(2)}, tunedCapScale=${cappedScale.toFixed(2)}, cappedPool=${cappedPool.map((card) => card.id).join(",")}`,
+    `[통과 a] weightForce=${weightForceGradeEffects.map((effect) => `${Math.round(effect * 100)}%`).join("/")}, size=${sizeGradeEffects.map((effect) => `${Math.round(effect * 100)}%`).join("/")}, replacement=true, legendBlocked=${legendBlocked}; draw=${firstDraw.map((card) => card.id).join(",")}, firstTwo=general/general; third(${distributionDraws})=general:${thirdGeneral}/special:${thirdSpecial}; shortPool=${shortDraw.map((card) => card.id).join(",")}; defaultLegendScale=${defaultLegendScale.toFixed(2)}, tunedCapScale=${cappedScale.toFixed(2)}, cappedPool=${cappedPool.map((card) => card.id).join(",")}`,
+  );
+
+  const maximumSizeUpgrades =
+    metaModule.createDefaultPermanentUpgrades();
+  maximumSizeUpgrades.playerSizeLevel = 1;
+  const maximumSizeSpawnMeasurements = [];
+  for (const stageNumber of [1, 7, 9]) {
+    const runtime = await physicsModule.createPhysicsRuntime(
+      meta,
+      layoutModule.PIECE_INSTANCES,
+      boardHalfExtent,
+      {
+        gameMode: "stage",
+        stageNumber,
+        runCards: defaultLegendState,
+        permanentUpgrades: maximumSizeUpgrades,
+      },
+    );
+    const settle = physicsModule.preSettlePhysics(runtime);
+    const bindings = [...runtime.pieces.values()];
+    const sleeping = bindings.filter((binding) =>
+      binding.body.isSleeping(),
+    ).length;
+    const fallen = bindings.filter(
+      (binding) =>
+        binding.body.translation().y < configModule.FALL_OUT_Y,
+    );
+    const drift = measureMaximumSpawnDrift(runtime);
+    const whiteKingScale =
+      runtime.pieces.get("white-king-e1")?.uniformScale;
+    assertCondition(
+      runtime.pieces.size === 32 &&
+        sleeping === 32 &&
+        fallen.length === 0 &&
+        whiteKingScale === configModule.PLAYER_MAX_SIZE_SCALE,
+      `크기 레전드 15%+영구 5% 스폰 안전 실패: S${stageNumber}, pieces=${runtime.pieces.size}, sleeping=${sleeping}/32, fallen=${fallen.map((binding) => binding.instance.id).join(",") || "none"}, whiteKingScale=${whiteKingScale}`,
+    );
+    maximumSizeSpawnMeasurements.push({
+      stageNumber,
+      scale: whiteKingScale,
+      steps: settle.steps,
+      sleeping,
+      fallen: fallen.length,
+      maximumDrift: drift.maximumDrift,
+      maximumPieceId: drift.maximumPieceId,
+    });
+  }
+  console.log(
+    `[통과 a-상한] size=legend15%+permanent5%=${configModule.PLAYER_MAX_SIZE_SCALE.toFixed(2)}×: ${maximumSizeSpawnMeasurements.map((measurement) => `S${measurement.stageNumber} ${measurement.sleeping}/32,loss=${measurement.fallen},steps=${measurement.steps},drift=${measurement.maximumDrift.toFixed(6)}(${measurement.maximumPieceId})`).join(" | ")}`,
   );
 
   const giantState = cardsModule.createRunCardState();

@@ -1,6 +1,7 @@
 import {
   CARD_EFFECT_SCALE,
-  CARD_GRADE_EFFECTS,
+  CARD_GRADE_SIZE_EFFECTS,
+  CARD_GRADE_WEIGHT_FORCE_EFFECTS,
   PLAYER_MAX_SIZE_SCALE,
 } from "./config";
 import type { GameMode } from "./game-mode";
@@ -17,8 +18,22 @@ export interface CardEffectTuning {
   debugWeightGrade: CardGrade;
   // 실제 런 등급과 비교해 더 높은 쪽을 적용할 디버그 힘 카드 등급이다.
   debugForceGrade: CardGrade;
-  // 1~5등급을 최종 효과 비율로 바꾸는 조절 가능한 교체값 표다.
-  gradeEffects: readonly [number, number, number, number, number];
+  // 중량·힘 1~5등급을 최종 효과 비율로 바꾸는 조절 가능한 교체값 표다.
+  weightForceGradeEffects: readonly [
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  // 크기 1~5등급을 최종 효과 비율로 바꾸는 조절 가능한 교체값 표다.
+  sizeGradeEffects: readonly [
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
   // 계산된 크기 등급 효과에 마지막으로 곱할 카드 종류별 배수다.
   sizeEffectMultiplier: number;
   // 계산된 중량 등급 효과에 마지막으로 곱할 카드 종류별 배수다.
@@ -69,7 +84,8 @@ export const CARD_GRADE_LABELS = [
   "레전드",
 ] as const;
 
-const MAX_CARD_GRADE = CARD_GRADE_EFFECTS.length as CardGrade;
+const MAX_CARD_GRADE =
+  CARD_GRADE_WEIGHT_FORCE_EFFECTS.length as CardGrade;
 const GENERAL_THIRD_SLOT_PERCENT = 70;
 
 // 세 일반 강화는 개발자 해석에 따라 같은 풀에서 등급 성장하며 수치는 현재 등급 값으로 교체된다.
@@ -166,16 +182,30 @@ function validateCardEffectScale(cardEffectScale: number): void {
 }
 
 /**
- * 0~5 등급을 기획서 최종 수치로 바꾸며 이전 등급 값은 더하지 않는다.
+ * 카드 종류에 맞는 0~5 등급 교체표를 반환한다.
+ */
+function getDefaultCardGradeEffects(
+  cardId: GeneralCardId,
+): readonly number[] {
+  return cardId === "size"
+    ? CARD_GRADE_SIZE_EFFECTS
+    : CARD_GRADE_WEIGHT_FORCE_EFFECTS;
+}
+
+/**
+ * 0~5 등급을 카드 종류별 기획 수치로 바꾸며 이전 등급 값은 더하지 않는다.
  */
 export function computeCardGradeEffect(
   grade: CardGrade,
+  cardId: GeneralCardId,
   cardEffectScale: number = CARD_EFFECT_SCALE,
-  gradeEffects: readonly number[] = CARD_GRADE_EFFECTS,
+  gradeEffects: readonly number[] =
+    getDefaultCardGradeEffects(cardId),
 ): number {
   validateCardEffectScale(cardEffectScale);
   if (
-    gradeEffects.length !== CARD_GRADE_EFFECTS.length ||
+    CARD_GRADE_SIZE_EFFECTS.length !== MAX_CARD_GRADE ||
+    gradeEffects.length !== MAX_CARD_GRADE ||
     gradeEffects.some(
       (effect) => !Number.isFinite(effect) || effect < 0,
     )
@@ -222,6 +252,7 @@ export function computeGeneralCardEffect(
 ): number {
   return computeCardGradeEffect(
     getGeneralCardGrade(state, cardId),
+    cardId,
     cardEffectScale,
   );
 }
@@ -295,8 +326,13 @@ export function computeTunedGeneralCardEffect(
         cardId,
         tuning,
       ),
+      cardId,
       cardEffectScale,
-      tuning?.gradeEffects,
+      tuning === undefined
+        ? undefined
+        : cardId === "size"
+          ? tuning.sizeGradeEffects
+          : tuning.weightForceGradeEffects,
     ) * multiplier
   );
 }
@@ -410,9 +446,11 @@ function createDisplayedCard(
     state,
     card.id as GeneralCardId,
   ) + 1) as CardGrade;
-  const baseEffect = computeCardGradeEffect(nextGrade);
+  const cardId = card.id as GeneralCardId;
+  const baseEffect = computeCardGradeEffect(nextGrade, cardId);
   const actualEffect = computeCardGradeEffect(
     nextGrade,
+    cardId,
     cardEffectScale,
   );
   const effectText =

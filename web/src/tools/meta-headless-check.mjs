@@ -678,16 +678,22 @@ try {
     metaModule.clonePermanentUpgrades(
       purchaseRuntime.state.upgrades,
     );
-  const capsAreSixPercent = configModule.PIECE_TYPES.every(
+  const basicLevelEffects = [0, 1, 2, 3].map((level) =>
+    metaModule.computePermanentTierEffect("basic", level),
+  );
+  const advancedLevelEffects = [0, 1, 2, 3].map((level) =>
+    metaModule.computePermanentTierEffect("advanced", level),
+  );
+  const capsAreTwentyPercent = configModule.PIECE_TYPES.every(
     (type) =>
       metaModule.computePermanentForceBonus(
         completedUpgrades,
         type,
-      ) === 0.06 &&
+      ) === 0.2 &&
       metaModule.computePermanentWeightFraction(
         completedUpgrades,
         type,
-      ) === 0.06,
+      ) === 0.2,
   );
   assertCondition(
     !blockedBasicKing.purchased &&
@@ -707,10 +713,14 @@ try {
       metaModule.computePermanentUpgradeSpentPoints(
         purchaseRuntime.state.upgrades,
       ) === 322 &&
-      capsAreSixPercent &&
+      JSON.stringify(basicLevelEffects) ===
+        JSON.stringify([0, 0.01, 0.03, 0.06]) &&
+      JSON.stringify(advancedLevelEffects) ===
+        JSON.stringify([0, 0.05, 0.08, 0.14]) &&
+      capsAreTwentyPercent &&
       metaModule.computePermanentSizeFraction(
         completedUpgrades,
-      ) === 0.03,
+      ) === 0.05,
     `트리 구매·선행·상한 실패: state=${JSON.stringify(purchaseRuntime.state)}, blocked=${JSON.stringify({ blockedBasicKing, blockedSize, blockedAdvanced })}, size=${JSON.stringify({ purchasedSize, repeatedSize })}, max=${JSON.stringify(maximum)}`,
   );
   const persistedAfterPurchase = JSON.parse(
@@ -738,7 +748,28 @@ try {
     `전체 초기화 실패: refund=${refunded}, state=${JSON.stringify(purchaseRuntime.state)}, persisted=${JSON.stringify(persistedAfterReset)}`,
   );
   console.log(
-    `[통과 b] nodes=25, costs=${JSON.stringify(costs)}, total=322; prerequisites=blocked→unlocked; size=0/1(+3%, repeat blocked); caps=force/weight +6%; reset=free/refund ${refunded}/322`,
+    `[통과 b] nodes=25, costs=${JSON.stringify(costs)}, total=322; lookup basic=${basicLevelEffects.map((effect) => `${Math.round(effect * 100)}%`).join("/")} advanced=${advancedLevelEffects.map((effect) => `${Math.round(effect * 100)}%`).join("/")}; prerequisites=blocked→unlocked; size=0/1(+5%, repeat blocked); caps=force/weight +20%; reset=free/refund ${refunded}/322`,
+  );
+
+  const maximumForceCards = cardsModule.createRunCardState();
+  for (let grade = 0; grade < 5; grade += 1) {
+    cardsModule.applyCardPick(maximumForceCards, "force");
+  }
+  const maximumForceMultiplier =
+    cardsModule.computePlayerLaunchSpeedMultiplier(
+      "stage",
+      maximumForceCards,
+      metaModule.computePermanentForceBonus(
+        completedUpgrades,
+        "Pawn",
+      ),
+    );
+  assertCondition(
+    Math.abs(maximumForceMultiplier - 1.5) < 1e-12,
+    `최대 힘 조합이 다릅니다: multiplier=${maximumForceMultiplier}`,
+  );
+  console.log(
+    `[통과 b-force] 레전드 힘 30% + 영구 힘 20% = +50%, multiplier=${maximumForceMultiplier.toFixed(2)}, clamp=없음`,
   );
 
   const permanentUpgrades =
@@ -780,7 +811,7 @@ try {
       sizeOptions,
     );
   assertCondition(
-    whitePermanentScale === 1.03 &&
+    whitePermanentScale === 1.05 &&
       blackPermanentScale === 1,
     `전체 크기 적용 진영 실패: white=${whitePermanentScale}, black=${blackPermanentScale}`,
   );
@@ -846,22 +877,22 @@ try {
     power,
   );
   const pawnExpected =
-    power * configModule.MAX_LAUNCH_SPEED * 1.05;
+    power * configModule.MAX_LAUNCH_SPEED * 1.14;
   const rookExpected =
-    power * configModule.MAX_LAUNCH_SPEED * 1.03;
+    power * configModule.MAX_LAUNCH_SPEED * 1.06;
   const pawnError =
     Math.abs(pawnDeltaVelocity - pawnExpected) / pawnExpected;
   const rookError =
     Math.abs(rookDeltaVelocity - rookExpected) / rookExpected;
   assertCondition(
-    pawnMultiplier === 1.05 &&
-      rookMultiplier === 1.03 &&
+    Math.abs(pawnMultiplier - 1.14) < 1e-12 &&
+      Math.abs(rookMultiplier - 1.06) < 1e-12 &&
       pawnError < 0.01 &&
       rookError < 0.01,
     `종류별 힘 실패: pawn=${pawnDeltaVelocity}/${pawnExpected}, rook=${rookDeltaVelocity}/${rookExpected}`,
   );
   console.log(
-    `[통과 c] size white/black=${whitePermanentScale.toFixed(2)}/${blackPermanentScale.toFixed(2)}; Pawn level=5 multiplier=${pawnMultiplier.toFixed(6)}, Δv=${pawnDeltaVelocity.toFixed(6)}/${pawnExpected.toFixed(6)}, error=${(pawnError * 100).toFixed(6)}%; Rook level=3 multiplier=${rookMultiplier.toFixed(6)}, Δv=${rookDeltaVelocity.toFixed(6)}/${rookExpected.toFixed(6)}, error=${(rookError * 100).toFixed(6)}%`,
+    `[통과 c] size white/black=${whitePermanentScale.toFixed(2)}/${blackPermanentScale.toFixed(2)}; Pawn basic3+advanced2=14% multiplier=${pawnMultiplier.toFixed(6)}, Δv=${pawnDeltaVelocity.toFixed(6)}/${pawnExpected.toFixed(6)}, error=${(pawnError * 100).toFixed(6)}%; Rook basic3=6% multiplier=${rookMultiplier.toFixed(6)}, Δv=${rookDeltaVelocity.toFixed(6)}/${rookExpected.toFixed(6)}, error=${(rookError * 100).toFixed(6)}%`,
   );
 
   const weightUpgrades =
@@ -898,7 +929,7 @@ try {
     baseWeightMultiplier,
   );
   weightRuntime.world.step();
-  const expectedUpgradeFraction = 0.03 + 0.04;
+  const expectedUpgradeFraction = 0.08 + 0.11;
   const expectedMass =
     weightedPawn.originalHullMass *
     (1 + baseWeightMultiplier + expectedUpgradeFraction);
@@ -915,7 +946,7 @@ try {
     `합성 중량 실패: upgrade=${measuredUpgradeFraction}, mass=${actualMass}/${expectedMass}`,
   );
   console.log(
-    `[통과 d] tuning=${baseWeightMultiplier.toFixed(2)} + cardGrade2=0.03 + permanent(Pawn level4)=0.04, upgradeFraction=${measuredUpgradeFraction.toFixed(6)}, mass=${actualMass.toFixed(6)}/${expectedMass.toFixed(6)}, error=${(massError * 100).toFixed(6)}%`,
+    `[통과 d] tuning=${baseWeightMultiplier.toFixed(2)} + cardGrade2=0.08 + permanent(Pawn basic3+advanced1)=0.11, upgradeFraction=${measuredUpgradeFraction.toFixed(6)}, mass=${actualMass.toFixed(6)}/${expectedMass.toFixed(6)}, error=${(massError * 100).toFixed(6)}%`,
   );
 } finally {
   await vite.close();

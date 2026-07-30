@@ -188,13 +188,22 @@ export const GIANT_PAWN_SIZE_MULTIPLIER = 1.3;
 // 보드 격자에 물리적으로 들어가는 총 배율 상한이다. 초고스테이지에서 지그재그로도 안 들어가는 것을 막되 중량·힘 버프는 계속 누적한다.
 export const STAGE_MAX_PIECE_SCALE = 2.2;
 
-// 일반·중급·상급·최상급·레전드 강화 카드가 기존 수치를 교체할 최종 효과 비율표다.
-export const CARD_GRADE_EFFECTS = [
-  0.01,
-  0.03,
+// 업그레이드 레벨별 수치 변경 문서의 일반~레전드 중량·힘 카드 교체 효과 비율표다.
+export const CARD_GRADE_WEIGHT_FORCE_EFFECTS = [
   0.05,
+  0.08,
+  0.12,
+  0.2,
+  0.3,
+] as const;
+
+// 업그레이드 레벨별 수치 변경 문서의 일반~레전드 크기 카드 교체 효과 비율표다.
+export const CARD_GRADE_SIZE_EFFECTS = [
+  0.02,
+  0.04,
   0.07,
-  0.1,
+  0.11,
+  0.15,
 ] as const;
 
 // 크기·중량·힘 카드의 현재 등급 최종 효과에 공통으로 곱하는 로그라이트 성장 배율이다.
@@ -209,14 +218,25 @@ export const STAGE_RUN_LENGTH = 10;
 // 스테이지 N 클리어가 런 종료 정산액에 더하는 N배 포인트의 기본 단위다.
 export const STAGE_POINT_CONTRIBUTION_UNIT = 1;
 
-// 영구 힘·중량 강화 한 레벨이 원래 속도·hull 질량에 더하는 비율이다.
-export const PERMANENT_UPGRADE_STEP = 0.01;
+// 기획 문서의 기초 1~3레벨 총효과이며 레벨마다 더하지 않고 현재 레벨 값을 조회한다.
+export const PERMANENT_BASIC_LEVEL_EFFECTS = [
+  0.01,
+  0.03,
+  0.06,
+] as const;
+
+// 기획 문서의 심화 1~3레벨 총효과이며 기초 표의 현재 값과 합산한다는 확정 해석이다.
+export const PERMANENT_ADVANCED_LEVEL_EFFECTS = [
+  0.05,
+  0.08,
+  0.14,
+] as const;
 
 // 기초·심화 힘·중량 노드 하나에서 구매할 수 있는 최대 레벨이다.
 export const PERMANENT_UPGRADE_TIER_MAX_LEVEL = 3;
 
-// 중앙 전체 크기 노드가 플레이어의 모든 말 종류에 더하는 비율이다.
-export const PERMANENT_PLAYER_SIZE_STEP = 0.03;
+// 업그레이드 레벨별 수치 변경 문서에 따라 중앙 전체 크기 노드가 더하는 비율이다.
+export const PERMANENT_PLAYER_SIZE_STEP = 0.05;
 
 // 기초 일반 말 힘·중량 노드의 0→1, 1→2, 2→3 고정 비용이다.
 export const PERMANENT_BASIC_REGULAR_COSTS = [1, 3, 5] as const;
