@@ -37,6 +37,69 @@ body {
   touch-action: none;
 }
 
+/* 매치 중 coarse 포인터의 세로 화면에서만 게임 입력을 막고 회전을 안내한다. */
+.touch-orientation-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: none;
+  place-items: center;
+  align-content: center;
+  gap: 1.1rem;
+  padding: 2rem;
+  color: #f8f2e7;
+  background:
+    radial-gradient(circle at center, rgb(72 60 45 / 96%), rgb(23 20 16 / 99%));
+  text-align: center;
+  pointer-events: auto;
+}
+
+.touch-orientation-overlay strong {
+  font-size: clamp(1.2rem, 5vw, 1.8rem);
+  line-height: 1.4;
+}
+
+.touch-orientation-glyph {
+  position: relative;
+  width: 7rem;
+  height: 5rem;
+}
+
+.touch-orientation-phone {
+  position: absolute;
+  inset: 0.75rem 1.6rem;
+  border: 0.28rem solid #ffe7a3;
+  border-radius: 0.75rem;
+  transform: rotate(90deg);
+}
+
+.touch-orientation-phone::after {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: #ffe7a3;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.touch-orientation-arrow {
+  position: absolute;
+  right: -0.2rem;
+  bottom: -0.45rem;
+  color: #ffd54a;
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  .touch-match-active .touch-orientation-overlay {
+    display: grid;
+  }
+}
+
 .aim-power {
   position: absolute;
   z-index: 3;

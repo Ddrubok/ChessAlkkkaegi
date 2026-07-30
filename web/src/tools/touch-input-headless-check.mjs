@@ -33,12 +33,14 @@ function nearlyEqual(actual, expected, tolerance = 1e-9) {
 }
 
 try {
-  const [capability, config, input, strikePanel] = await Promise.all([
-    vite.ssrLoadModule("/src/input-capability.ts"),
-    vite.ssrLoadModule("/src/config.ts"),
-    vite.ssrLoadModule("/src/input.ts"),
-    vite.ssrLoadModule("/src/strike-panel.ts"),
-  ]);
+  const [capability, config, input, strikePanel, orientation] =
+    await Promise.all([
+      vite.ssrLoadModule("/src/input-capability.ts"),
+      vite.ssrLoadModule("/src/config.ts"),
+      vite.ssrLoadModule("/src/input.ts"),
+      vite.ssrLoadModule("/src/strike-panel.ts"),
+      vite.ssrLoadModule("/src/orientation.ts"),
+    ]);
 
   assertCondition(
     capability.isCoarsePointerEnvironment() === false &&
@@ -249,6 +251,20 @@ try {
   );
   cylinderGeometry.dispose();
   cylinderMaterial.dispose();
+
+  await orientation.requestLandscapeForMatch();
+  await orientation.releaseAfterMatch();
+  orientation.setMatchOrientationActive(true);
+  assertCondition(
+    !orientation.shouldShowPortraitGuidance(false, true, true) &&
+      !orientation.shouldShowPortraitGuidance(true, false, true) &&
+      !orientation.shouldShowPortraitGuidance(true, true, false) &&
+      orientation.shouldShowPortraitGuidance(true, true, true),
+    "회전 안내의 매치·coarse·세로 3중 조건이 다릅니다.",
+  );
+  console.log(
+    "[통과 e] 화면 방향: Node API no-op, match+coarse+portrait에서만 안내=true",
+  );
 } finally {
   await vite.close();
 }
