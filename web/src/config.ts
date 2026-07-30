@@ -7,8 +7,8 @@ export const WORLD_LENGTH_UNIT = 1;
 // 헤드리스 검증과 같은 적분 간격을 사용해 접지 안정성을 재현한다.
 export const FIXED_STEP = 1 / 120;
 
-// 2026-07-27 개발자 지시로 √10 배속을 버리고 실제 시간과 같은 속도로 굴린다.
-export const TIME_SCALE = 1;
+// 2026-07-30 개발자 지시로 기본 배속을 2배로 올린다. 스텝 순서는 그대로라 온라인 동기화에는 영향이 없다.
+export const TIME_SCALE = 2;
 
 // 종류별 볼록껍질 부피에서 현실적인 말 질량을 계산하기 위한 공통 밀도다.
 export const PIECE_DENSITY = 1.2;
