@@ -30,6 +30,10 @@ public class GameManager
     public void Save() { PlayerPrefs.Save(); }
 
     private ChessPiece _selected;
+    private ChessPiece _launched;
+    private float _ringOutTimer; // ponytail: let player watch the ring-out fall before ending turn.
+    // ponytail: strike point on board where drag began, relative to piece center drives spin.
+    private Vector3 _strikePoint;
     private Vector3 _aimStart;
     // ponytail: arrow-shaped aim. Thick shaft, thin head tip. Off until a piece is selected.
     private LineRenderer _aim;
@@ -73,12 +77,19 @@ public class GameManager
         // ponytail: wait until launched piece stops, then flip turn.
         if (_launched != null)
         {
-            bool stopped = _launched.Rigidbody.linearVelocity.sqrMagnitude < 0.01f;
-            bool grounded = _launched.Rigidbody.IsSleeping();
-            if (stopped || grounded)
+            // ponytail: ring-out path — piece already deactivated, let camera watch the fall ~1s then end.
+            if (!_launched.IsAlive)
             {
-                EndTurn();
+                _ringOutTimer += Time.deltaTime;
+                // ponytail: stop tracking once ringed out — just wait for the timer to end turn.
+                if (_ringOutTimer >= 1f) { _ringOutTimer = 0f; EndTurn(); }
+                return;
             }
+            TrackLaunched();
+            // ponytail: piece stopped on board — end turn now.
+            if (_launched.Rigidbody.linearVelocity.sqrMagnitude < 0.01f)
+                EndTurn();
+            else return; // piece still flying, block input
         }
         // ponytail: arrow shows only after a piece is selected, while dragging.
         if (_isDragging && _selected != null && MouseToBoard(out Vector3 cur))
@@ -113,6 +124,7 @@ public class GameManager
             else
             {
                 // phase 2: press to start aiming (pull-back flick).
+                _strikePoint = hit; _strikePoint.y = 0f;
                 _aimStart = hit; _aimStart.y = 0f;
                 _isDragging = true;
             }
@@ -144,7 +156,11 @@ public class GameManager
             float power = dragLen / MaxDrag;
             _aim.enabled = false;
             _selected.SetSelected(false);
-            LaunchPiece(_selected, dir, power);
+            Debug.Log($"[GameManager] Drag start={_aimStart} end={aimEnd} rawDir={_aimStart - aimEnd} dragLen={dragLen} power={power:F2}");
+            // ponytail: contact offset from center × launch dir = torque. Strike right, go forward → spin right.
+            Vector3 toContact = _strikePoint - _selected.transform.position; toContact.y = 0f;
+            float spin = Vector3.SignedAngle(toContact, dir, Vector3.up) * power * 0.5f;
+            LaunchPiece(_selected, dir, power, spin);
 
             _selected = null;
             _isDragging = false;
@@ -162,6 +178,20 @@ public class GameManager
         float dist = Mathf.Max(_boardSize, 1f) * 0.5f;
         cam.transform.position = p + new Vector3(0f, dist * 0.8f, sgn * dist * 0.8f);
         cam.transform.LookAt(p);
+    }
+
+    // ponytail: follow launched piece during flight so player sees the hit before turn flips.
+    private void TrackLaunched()
+    {
+        var cam = Camera.main;
+        if (cam == null || _launched == null) return;
+        Vector3 p = _launched.transform.position;
+        // ponytail: don't chase the piece below the board — clamp target to board surface.
+        p.y = Mathf.Max(p.y, _boardSurfaceY);
+        float dist = Mathf.Max(_boardSize, 1f) * 0.6f;
+        cam.transform.position = Vector3.Lerp(cam.transform.position, p + new Vector3(0f, dist, 0f), 0.1f);
+        cam.transform.LookAt(p);
+        Debug.Log($"[GameManager] Track pos={p} v={_launched.Rigidbody.linearVelocity}");
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -304,28 +334,36 @@ public class GameManager
 
     // ponytail: web-style velocity launch. power 0..1 * MaxLaunchSpeed.
     // ponytail: launch only. Turn flips when the piece stops or rings out, not on launch.
-    public void LaunchPiece(ChessPiece piece, Vector3 dir, float power)
+    public void LaunchPiece(ChessPiece piece, Vector3 dir, float power, float spin)
     {
         if (piece == null || !piece.IsAlive || piece.Team != _currentTurn) return;
 
         Vector3 v = dir.normalized * Mathf.Clamp01(power) * MaxLaunchSpeed;
-        piece.Launch(v);
+        // ponytail: only the launched piece goes dynamic. Others wake on collision via ChessPiece.OnCollisionEnter.
+        piece.Launch(v, spin);
+        Debug.Log($"[GameManager] LaunchPiece {piece.PieceType}({piece.Team}) power={power:F2} spin={spin:F1} dir={dir} dirNormalized={dir.normalized} worldDir={dir.normalized * Mathf.Clamp01(power) * MaxLaunchSpeed}");
         _launched = piece;
+    }
+
+    // ponytail: one guard in the shared function. Ring-out path waits via timer in Tick.
+    private void EndTurn()
+    {
+        if (_launched == null) return;
+        // ponytail: re-sleep all pieces for the next turn.
+        foreach (ChessPiece p in _pieces)
+            if (p.IsAlive) p.FreezePhysics();
+        _launched = null;
+        _currentTurn = (_currentTurn == ETeam.White) ? ETeam.Black : ETeam.White;
+        Managers.Message.Dispatch(EGlobalEvent.TurnChanged, new EventData<ETeam>(_currentTurn));
+        SetupCamera(_currentTurn);
     }
 
     private void OnPieceRingOut(EventData eventData)
     {
         var piece = (eventData as EventData<ChessPiece>)?.value;
-        if (piece != null)
-            Debug.Log($"[GameManager] Ring Out: {piece.PieceType} ({piece.Team})");
-        EndTurn();
-        CheckWinCondition();
-    }
-    private void OnPieceRingOut(EventData eventData)
-    {
-        var piece = (eventData as EventData<ChessPiece>)?.value;
-        if (piece != null)
-            Debug.Log($"[GameManager] Ring Out: {piece.PieceType} ({piece.Team})");
+        if (piece == null) return;
+        Debug.Log($"[GameManager] Ring Out: {piece.PieceType} ({piece.Team})");
+        // ponytail: don't end turn here — let Tick keep tracking the fall, then EndTurn when _launched clears.
         CheckWinCondition();
     }
 

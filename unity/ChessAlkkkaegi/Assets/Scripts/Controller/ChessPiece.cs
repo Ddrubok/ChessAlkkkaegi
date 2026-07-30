@@ -8,6 +8,7 @@ public class ChessPiece : BaseController
     public ETeam Team { get; private set; }
     public Rigidbody Rigidbody { get; private set; }
     public bool IsAlive { get; private set; } = true;
+    private bool _isLaunched;
 
     private const float RingOutY = -2f;
     private GameObject _outline;
@@ -26,8 +27,10 @@ public class ChessPiece : BaseController
         Rigidbody.centerOfMass = new Vector3(0f, -0.3f, 0f);
         Rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
         Rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
-        Rigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+        // ponytail: kinematic at rest = guaranteed no scatter. Launch switches all to dynamic for collisions.
+        Rigidbody.useGravity = false;
         Rigidbody.isKinematic = true;
+        Rigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
         var bc = GetComponent<Collider>();
         if (bc != null) bc.material = new PhysicsMaterial { staticFriction = 0.4f, dynamicFriction = 0.4f, bounciness = 0.1f };
@@ -120,13 +123,54 @@ public class ChessPiece : BaseController
     }
 
     // ponytail: velocity-set launch matching web version (power*maxSpeed). Mass-based impulse later.
-    public void Launch(Vector3 velocity)
+    // ponytail: strike-point offset drives Y-axis spin (Magnus). spin>0 = curve right, <0 = left.
+    public void Launch(Vector3 velocity, float spin)
     {
         if (!IsAlive) return;
-        Rigidbody.isKinematic = false;
+        _isLaunched = true;
+        ActivatePhysics();
         Rigidbody.linearVelocity = velocity;
+        Rigidbody.angularVelocity = new Vector3(0f, spin, 0f);
+        Debug.Log($"[ChessPiece] Launch {PieceType}({Team}) v={velocity} spin={spin} pos={transform.position}");
     }
 
-    // ponytail: no chain reaction. Only the launched piece moves; others stay kinematic. Alkkagi rule: one piece per turn.
-    private void OnCollisionEnter(Collision collision) { }
+    // ponytail: switch to dynamic + gravity. Called by Launch (launched piece) and OnCollisionEnter (hit piece).
+    public void ActivatePhysics()
+    {
+        Rigidbody.isKinematic = false;
+        Rigidbody.useGravity = true;
+        Rigidbody.linearVelocity = Vector3.zero;
+        Rigidbody.angularVelocity = Vector3.zero;
+    }
+
+    public void FreezePhysics()
+    {
+        Rigidbody.linearVelocity = Vector3.zero;
+        Rigidbody.angularVelocity = Vector3.zero;
+        Rigidbody.isKinematic = true;
+        Rigidbody.useGravity = false;
+        _isLaunched = false;
+    }
+
+    // ponytail: when a launched piece hits us, become dynamic + transfer impact velocity so we get knocked.
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (!IsAlive || _isLaunched) return;
+        var other = collision.gameObject.GetComponent<ChessPiece>();
+        if (other == null || !other._isLaunched) return;
+        // ponytail: wake this piece — dynamic + gravity, then physics solver pushes it.
+        ActivatePhysics();
+        Debug.Log($"[ChessPiece] Hit {PieceType}({Team}) by {other.PieceType}({other.Team}) impulse={collision.impulse}");
+    }
+
+    // ponytail: ring-out check. Fires PieceRingOut once, then deactivates.
+    public override void UpdateController()
+    {
+        if (IsAlive && transform.position.y < RingOutY)
+        {
+            IsAlive = false;
+            gameObject.SetActive(false);
+            Managers.Message.Dispatch(EGlobalEvent.PieceRingOut, new EventData<ChessPiece>(this));
+        }
+    }
 }
