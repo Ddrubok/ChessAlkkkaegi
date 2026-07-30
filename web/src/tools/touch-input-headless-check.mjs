@@ -38,7 +38,6 @@ try {
     config,
     input,
     strikePanel,
-    orientation,
     actionBar,
     aimParameters,
   ] = await Promise.all([
@@ -46,7 +45,6 @@ try {
     vite.ssrLoadModule("/src/config.ts"),
     vite.ssrLoadModule("/src/input.ts"),
     vite.ssrLoadModule("/src/strike-panel.ts"),
-    vite.ssrLoadModule("/src/orientation.ts"),
     vite.ssrLoadModule("/src/action-bar.ts"),
     vite.ssrLoadModule("/src/aimparams.ts"),
   ]);
@@ -137,8 +135,8 @@ try {
       orbitTouchCount: 0,
     });
   assertCondition(
-    config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER === 4 &&
-      touchRedDotRadius === 96 &&
+    config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER === 1.5 &&
+      touchRedDotRadius === 36 &&
       mouseRedDotRadius === 24 &&
       insideRoute === "red-dot-aim" &&
       outsideRoute === "orbit",
@@ -305,20 +303,6 @@ try {
   cylinderGeometry.dispose();
   cylinderMaterial.dispose();
 
-  await orientation.requestLandscapeForMatch();
-  await orientation.releaseAfterMatch();
-  orientation.setMatchOrientationActive(true);
-  assertCondition(
-    !orientation.shouldShowPortraitGuidance(false, true, true) &&
-      !orientation.shouldShowPortraitGuidance(true, false, true) &&
-      !orientation.shouldShowPortraitGuidance(true, true, false) &&
-      orientation.shouldShowPortraitGuidance(true, true, true),
-    "회전 안내의 매치·coarse·세로 3중 조건이 다릅니다.",
-  );
-  console.log(
-    "[통과 e] 화면 방향: Node API no-op, match+coarse+portrait에서만 안내=true",
-  );
-
   const viewport = {
     left: 0,
     top: 0,
@@ -393,7 +377,7 @@ try {
     `액션 바 배치가 다릅니다: center=${JSON.stringify(centerPlacement)}, right=${JSON.stringify(rightEdgePlacement)}, left=${JSON.stringify(leftEdgePlacement)}, bottom=${JSON.stringify(bottomEdgePlacement)}, panel=${JSON.stringify(panelFlipPlacement)}, narrow=${JSON.stringify(narrowPieceAvoidPlacement)}`,
   );
   console.log(
-    `[통과 f] 액션 바 팝업: center=${centerPlacement.side}@(${centerPlacement.left},${centerPlacement.top}), right-edge=${rightEdgePlacement.side}@${rightEdgePlacement.left}, left-edge=${leftEdgePlacement.side}@${leftEdgePlacement.left}, bottom-top=${bottomEdgePlacement.top}, panel-flip=${panelFlipPlacement.side}@${panelFlipPlacement.left}, narrow-piece-avoid=(${narrowPieceAvoidPlacement.left},${narrowPieceAvoidPlacement.top})`,
+    `[통과 e] 액션 바 팝업: center=${centerPlacement.side}@(${centerPlacement.left},${centerPlacement.top}), right-edge=${rightEdgePlacement.side}@${rightEdgePlacement.left}, left-edge=${leftEdgePlacement.side}@${leftEdgePlacement.left}, bottom-top=${bottomEdgePlacement.top}, panel-flip=${panelFlipPlacement.side}@${panelFlipPlacement.left}, narrow-piece-avoid=(${narrowPieceAvoidPlacement.left},${narrowPieceAvoidPlacement.top})`,
   );
 
   const automaticStrikePoint = new Vector3(0.1, 0.2, 0.3);
@@ -422,7 +406,7 @@ try {
     `모드별 타점 분리가 다릅니다: classic=${JSON.stringify(classicStrikePoint)}, billiards=${JSON.stringify(billiardsStrikePoint)}`,
   );
   console.log(
-    `[통과 g] 모드별 타점: classic=기본(${classicStrikePoint.toArray().join(",")}), billiards=override(${billiardsStrikePoint.toArray().join(",")})`,
+    `[통과 f] 모드별 타점: classic=기본(${classicStrikePoint.toArray().join(",")}), billiards=override(${billiardsStrikePoint.toArray().join(",")})`,
   );
 } finally {
   await vite.close();

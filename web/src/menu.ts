@@ -19,12 +19,6 @@ import {
   type PermanentUpgradeTier,
   type PermanentUpgradeTrack,
 } from "./meta";
-import {
-  ensureOrientationOverlay,
-  releaseAfterMatch,
-  requestLandscapeForMatch,
-  setMatchOrientationActive,
-} from "./orientation";
 
 export interface MainMenuRuntime {
   // 게임 화면 위를 덮고 모드 선택과 영구 강화 표를 보여 주는 메인 메뉴다.
@@ -279,7 +273,6 @@ export function setMainMenuReady(
  * 인게임 UI를 가리고 영구 메타가 보존된 메인 메뉴를 표시한다.
  */
 export function showMainMenu(runtime: MainMenuRuntime): void {
-  setMatchOrientationActive(false);
   runtime.visible = true;
   runtime.confirming = false;
   runtime.overlay.hidden = false;
@@ -297,7 +290,6 @@ export function showMainMenu(runtime: MainMenuRuntime): void {
 export function hideMainMenuAfterModeStart(
   runtime: MainMenuRuntime,
 ): void {
-  setMatchOrientationActive(true);
   runtime.busy = false;
   runtime.visible = false;
   runtime.overlay.hidden = true;
@@ -323,7 +315,6 @@ export async function returnToMainMenu(
   runtime.busy = true;
   try {
     await runtime.onReturnToMenu();
-    await releaseAfterMatch();
     showMainMenu(runtime);
   } finally {
     runtime.busy = false;
@@ -467,8 +458,6 @@ export function createMainMenu(
       ) {
         return;
       }
-      // 전체화면 API는 모드 버튼의 실제 사용자 제스처가 살아 있을 때 먼저 호출한다.
-      void requestLandscapeForMatch();
       runtime.busy = true;
       renderMainMenu(runtime);
       void runtime.onStartMode(mode).then(
@@ -476,8 +465,6 @@ export function createMainMenu(
           hideMainMenuAfterModeStart(runtime);
         },
         (error: unknown) => {
-          // 시작 실패로 메뉴에 남을 때 선행 전체화면 요청도 함께 되돌린다.
-          void releaseAfterMatch();
           const fullError =
             error instanceof Error
               ? (error.stack ?? error.message)
@@ -594,7 +581,6 @@ export function createMainMenu(
   });
 
   container.append(returnButton, overlay, confirmOverlay);
-  ensureOrientationOverlay(container);
   renderMainMenu(runtime);
   return runtime;
 }
