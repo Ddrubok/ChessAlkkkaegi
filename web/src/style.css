@@ -106,20 +106,23 @@ body {
   position: absolute;
   z-index: 5;
   top: 0.75rem;
-  right: 0.75rem;
+  right: auto;
+  left: 50%;
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 0.65rem;
   background: rgb(12 14 17 / 84%);
+  transform: translateX(-50%);
 }
 
 .return-menu-button {
   position: absolute;
   z-index: 5;
-  top: 3.75rem;
-  right: 0.75rem;
+  top: 0.75rem;
+  /* Y 패널의 0.75rem inset·약 1rem 스크롤바·0.5rem 여백을 피해 오른쪽 끝을 둔다. */
+  right: 2.25rem;
   padding: 0.55rem 0.8rem;
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 0.65rem;
@@ -129,7 +132,7 @@ body {
 }
 
 .online-resign-button {
-  right: 6.25rem;
+  right: 7.75rem;
 }
 
 .input-mode-toggle button,
@@ -882,12 +885,19 @@ body {
 
   .input-mode-toggle {
     top: 0.4rem;
-    right: 0.4rem;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .return-menu-button {
-    top: 3.4rem;
-    right: 0.4rem;
+    top: 0.4rem;
+    /* 좁은 화면의 0.4rem 패널 inset에도 같은 스크롤바 여유를 적용한다. */
+    right: 1.9rem;
+  }
+
+  .online-resign-button {
+    right: 7.4rem;
   }
 
   .strike-action-bar {
