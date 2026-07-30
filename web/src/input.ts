@@ -876,7 +876,8 @@ function updateModeToggle(runtime: InputRuntime): void {
  */
 function updateActionBar(runtime: InputRuntime): void {
   const selected =
-    runtime.aimRuntime.selectedPieceId !== null;
+    runtime.aimRuntime.selectedPieceId !== null &&
+    !runtime.policy.isExternalAimActive();
 
   runtime.actionBar.hidden = !selected;
   for (const button of runtime.actionBar.querySelectorAll("button")) {
@@ -886,6 +887,21 @@ function updateActionBar(runtime: InputRuntime): void {
         : !runtime.strikeMode;
     button.setAttribute("aria-pressed", String(active));
   }
+  if (!selected) {
+    return;
+  }
+  const target = getSelectedTarget(runtime);
+  const rect =
+    runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  const ndc = target.project(runtime.sceneRuntime.camera);
+  const x = (ndc.x * 0.5 + 0.5) * rect.width;
+  const y = (1 - (ndc.y * 0.5 + 0.5)) * rect.height;
+  const barWidth = runtime.actionBar.offsetWidth;
+  const barHeight = runtime.actionBar.offsetHeight;
+  const left = Math.min(Math.max(x + 14, 4), rect.width - barWidth - 4);
+  const top = Math.min(Math.max(y - barHeight / 2, 4), rect.height - barHeight - 4);
+  runtime.actionBar.style.left = `${left}px`;
+  runtime.actionBar.style.top = `${top}px`;
 }
 
 /**
@@ -1553,6 +1569,7 @@ export function updateInputRuntime(
       showAimError(runtime.aimParametersRuntime, reason);
     }
   }
+  updateActionBar(runtime);
 }
 
 /**

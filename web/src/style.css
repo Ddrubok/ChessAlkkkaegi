@@ -152,8 +152,6 @@ body {
 .strike-action-bar {
   position: absolute;
   z-index: 5;
-  top: 3.75rem;
-  right: 0.75rem;
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
@@ -853,11 +851,6 @@ body {
   }
 
   .return-menu-button {
-    top: 3.4rem;
-    right: 0.4rem;
-  }
-
-  .strike-action-bar {
     top: 3.4rem;
     right: 0.4rem;
   }
