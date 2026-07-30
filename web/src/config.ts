@@ -98,8 +98,8 @@ export const MAX_DRAG_PIXELS = 180;
 // 모바일 권장 터치 표적 44px(약 7~10mm)를 말 선택 중심점의 화면 반경으로 보장한다.
 export const TOUCH_PIECE_HIT_RADIUS_PIXELS = 44;
 
-// 터치 슬링샷을 시작점 가까이 되돌려 놓았을 때 발사 없이 취소하는 화면 반경이다.
-export const TOUCH_SLINGSHOT_CANCEL_RADIUS_PIXELS = 24;
+// 개발자 실기기 판정에 따라 터치 빨간 점 히트 반경을 데스크톱 반경의 4배로 넓힌다.
+export const TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER = 4;
 
 // 최대 세기에서 질량과 무관하게 목표로 하는 발사 직후 속도다.
 export const MAX_LAUNCH_SPEED = 11;

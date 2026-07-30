@@ -110,91 +110,89 @@ try {
     `[통과 b] 화면 좌표 폴백: touch=${touchPiece}@30px, mouse=${String(mousePiece)}, boundary=${boundaryPiece}@${radius}px, outside=${String(outsidePiece)}@${(radius + 0.001).toFixed(3)}px`,
   );
 
-  const basis = {
-    right: new Vector3(1, 0, 0),
-    forward: new Vector3(0, 0, -1),
-  };
-  const horizontalPull = input.computeTouchSlingshotAim(
-    { pointerType: "touch", clientX: 190, clientY: 100 },
-    100,
-    100,
-    basis,
-  );
-  const clampedPull = input.computeTouchSlingshotAim(
-    { pointerType: "touch", clientX: 100, clientY: 460 },
-    100,
-    100,
-    basis,
-  );
-  const launchDecision = input.decideTouchSlingshotRelease(
-    horizontalPull,
-    null,
-  );
+  const touchRedDotRadius =
+    input.getRedDotHitRadiusPixels({
+      pointerType: "touch",
+    });
+  const mouseRedDotRadius =
+    input.getRedDotHitRadiusPixels({
+      pointerType: "mouse",
+    });
+  const insideDistance = touchRedDotRadius;
+  const outsideDistance = touchRedDotRadius + 0.001;
+  const insideRoute =
+    input.decideBilliardsTouchPointerRoute({
+      hasSelectedPiece: true,
+      strikeMode: false,
+      redDotHit: insideDistance <= touchRedDotRadius,
+      activeInputPointer: false,
+      orbitTouchCount: 0,
+    });
+  const outsideRoute =
+    input.decideBilliardsTouchPointerRoute({
+      hasSelectedPiece: true,
+      strikeMode: false,
+      redDotHit: outsideDistance <= touchRedDotRadius,
+      activeInputPointer: false,
+      orbitTouchCount: 0,
+    });
   assertCondition(
-    horizontalPull !== null &&
-      nearlyEqual(horizontalPull.direction.x, -1) &&
-      nearlyEqual(horizontalPull.direction.y, 0) &&
-      nearlyEqual(horizontalPull.direction.z, 0) &&
-      nearlyEqual(horizontalPull.normalizedPower, 0.5) &&
-      !horizontalPull.cancelsLaunch &&
-      launchDecision.shouldLaunch === true &&
-      launchDecision.reselectPieceId === null &&
-      clampedPull !== null &&
-      nearlyEqual(clampedPull.direction.x, 0) &&
-      nearlyEqual(clampedPull.direction.y, 0) &&
-      nearlyEqual(clampedPull.direction.z, -1) &&
-      clampedPull.normalizedPower === 1,
-    `슬링샷 pull-back 방향·세기가 다릅니다: horizontal=${JSON.stringify(horizontalPull)}, clamped=${JSON.stringify(clampedPull)}`,
+    config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER === 4 &&
+      touchRedDotRadius === 96 &&
+      mouseRedDotRadius === 24 &&
+      insideRoute === "red-dot-aim" &&
+      outsideRoute === "orbit",
+    `빨간 점 터치 반경 또는 진입 경로가 다릅니다: multiplier=${config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER}, touch=${touchRedDotRadius}, mouse=${mouseRedDotRadius}, inside=${insideRoute}, outside=${outsideRoute}`,
   );
 
-  const cancelRadius =
-    config.TOUCH_SLINGSHOT_CANCEL_RADIUS_PIXELS;
-  const cancelAim = input.computeTouchSlingshotAim(
-    {
-      pointerType: "touch",
-      clientX: 100 + cancelRadius,
-      clientY: 100,
-    },
-    100,
-    100,
-    basis,
-  );
-  const tapCandidate = input.findNearestTouchPieceInScreenSpace(
-    { pointerType: "touch", clientX: 100, clientY: 100 },
-    [
-      {
-        pieceId: "white-knight-b1",
-        clientX: 110,
-        clientY: 100,
-      },
-    ],
-  );
-  const cancelDecision = input.decideTouchSlingshotRelease(
-    cancelAim,
-    tapCandidate,
-  );
-  const mouseAim = input.computeTouchSlingshotAim(
-    { pointerType: "mouse", clientX: 190, clientY: 100 },
-    100,
-    100,
-    basis,
-  );
-  const mouseDecision = input.decideTouchSlingshotRelease(
-    mouseAim,
-    tapCandidate,
-  );
+  const upwardPower =
+    input.computeRedDotPullPower(100, 40);
+  const halfPower =
+    input.computeRedDotPullPower(100, 190);
+  const clampedPower =
+    input.computeRedDotPullPower(100, 460);
   assertCondition(
-    cancelRadius === 24 &&
-      cancelAim?.cancelsLaunch === true &&
-      cancelDecision.shouldLaunch === false &&
-      cancelDecision.reselectPieceId === "white-knight-b1" &&
-      mouseAim === null &&
-      mouseDecision.shouldLaunch === false &&
-      mouseDecision.reselectPieceId === null,
-    `슬링샷 취소·재선택·마우스 격리가 다릅니다: cancel=${JSON.stringify(cancelDecision)}, mouse=${JSON.stringify(mouseDecision)}`,
+    upwardPower === 0 &&
+      !input.shouldLaunchRedDotPull(upwardPower) &&
+      nearlyEqual(halfPower, 0.5) &&
+      input.shouldLaunchRedDotPull(halfPower) &&
+      clampedPower === 1,
+    `빨간 점 아래 방향 충전이 다릅니다: upward=${upwardPower}, half=${halfPower}, clamped=${clampedPower}`,
+  );
+
+  const additionalAimFingerRoute =
+    input.decideBilliardsTouchPointerRoute({
+      hasSelectedPiece: true,
+      strikeMode: false,
+      redDotHit: false,
+      activeInputPointer: true,
+      orbitTouchCount: 0,
+    });
+  const strikeOrbitFirstRoute =
+    input.decideBilliardsTouchPointerRoute({
+      hasSelectedPiece: true,
+      strikeMode: true,
+      redDotHit: false,
+      activeInputPointer: false,
+      orbitTouchCount: 0,
+    });
+  const strikeOrbitSecondRoute =
+    input.decideBilliardsTouchPointerRoute({
+      hasSelectedPiece: true,
+      strikeMode: true,
+      // 두 번째 손가락이 빨간 점 위여도 이미 시작된 카메라 제스처가 우선한다.
+      redDotHit: true,
+      activeInputPointer: true,
+      orbitTouchCount: 1,
+    });
+  assertCondition(
+    additionalAimFingerRoute === "blocked" &&
+      strikeOrbitFirstRoute === "orbit" &&
+      strikeOrbitSecondRoute === "orbit",
+    `멀티터치 소유권이 다릅니다: aimExtra=${additionalAimFingerRoute}, strikeFirst=${strikeOrbitFirstRoute}, strikeSecond=${strikeOrbitSecondRoute}`,
   );
   console.log(
-    `[통과 c] 터치 슬링샷: pull=(90,0)→direction=(-1,0,0),power=${horizontalPull.normalizedPower.toFixed(3)},launch=${launchDecision.shouldLaunch}; 360px power=${clampedPull.normalizedPower.toFixed(3)}; cancel=${cancelRadius}px→launch=${cancelDecision.shouldLaunch},reselect=${cancelDecision.reselectPieceId}; mouseAim=${String(mouseAim)}`,
+    `[통과 c] 빨간 점 터치: radius=${touchRedDotRadius}px(${config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER}x), inside=${insideRoute}, outside=${outsideRoute}; upwardPower=${upwardPower.toFixed(3)}→launch=${input.shouldLaunchRedDotPull(upwardPower)}, down90=${halfPower.toFixed(3)}, down360=${clampedPower.toFixed(3)}; strikeOrbit=${strikeOrbitFirstRoute}→${strikeOrbitSecondRoute}, aimExtra=${additionalAimFingerRoute}`,
   );
 
   const cylinderGeometry = new CylinderGeometry(1, 1, 2, 64);
