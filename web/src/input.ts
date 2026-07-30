@@ -429,9 +429,15 @@ function beginCameraRestore(
           runtime.sceneRuntime.boardHalfExtent * 4,
         )
       : Math.max(wholeBoardDistance, adaptiveDistance ?? 0);
+  // ponytail: zoom closer in strike mode before a strike point is picked, both modes.
+  const strikeZoom =
+    runtime.strikeMode &&
+    runtime.aimParametersRuntime.strikePointOverride === null
+      ? STRIKE_MODE_ZOOM_SCALE
+      : 1;
   const minDistance =
     policy.mode === "classic"
-      ? wholeBoardDistance
+      ? wholeBoardDistance * strikeZoom
       : selected
         ? CAM_MIN_DISTANCE
         : wholeBoardDistance;
@@ -439,12 +445,6 @@ function beginCameraRestore(
     policy.mode === "classic" || !selected
       ? wholeBoardDistance
       : adaptiveDistance ?? CAM_MIN_DISTANCE;
-  // ponytail: zoom closer in strike mode before a strike point is picked, both modes.
-  const strikeZoom =
-    runtime.strikeMode &&
-    runtime.aimParametersRuntime.strikePointOverride === null
-      ? STRIKE_MODE_ZOOM_SCALE
-      : 1;
   runtime.adaptiveCloseDistance = adaptiveDistance;
   runtime.cameraTransition = {
     startedAt: performance.now(),
