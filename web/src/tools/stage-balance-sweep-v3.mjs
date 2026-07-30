@@ -2090,7 +2090,9 @@ try {
       }
       const selected = existing.selection.difficulty;
       const configured = {
-        aiJitterDegrees: config.AI_BASE_JITTER_DEGREES,
+        aiJitterDegrees:
+          config.AI_STAGE_DECISION_BANDS[0]
+            .maximumAimErrorDegrees,
         aiPowerMaximum: config.AI_BASE_POWER_MAX,
         buffStepScale: config.ENEMY_STAGE_BUFF_SCALE,
       };

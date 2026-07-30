@@ -257,6 +257,7 @@ function queueWhiteShot(
     collectPiecePositions(runtime.physicsRuntime, true),
     runtime.meta.cellSize,
     whiteShotCounter,
+    runtime.currentStage,
   );
   if (decision === null) {
     throw new Error(

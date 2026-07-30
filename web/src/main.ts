@@ -10,17 +10,33 @@ import { loadChessAssets } from "./assets";
 import {
   applyCardPick,
   cloneRunCardState,
+  computeEffectiveGeneralCardGrade,
   computePlayerLaunchSpeedMultiplier,
+  computeTunedGeneralCardEffect,
   createRunCardState,
   drawUpgradeCards,
+  isGiantPawnCardActive,
+  isProneStartCardActive,
   resetRunCardState,
   restoreRunCardState,
   type CardId,
 } from "./cards";
 import {
-  deriveBoardHalfExtent,
+  createCardEffectTuning,
+  createCardTuningRuntime,
+  jumpCardTuningStage,
+  relayoutCurrentCardTuningBoard,
+  setCardTuningGameMode,
+  updateCardTuningAppliedValues,
+  updateCardTuningStageNumber,
+  type CardTuningAppliedValues,
+} from "./card-tuning";
+import {
+  CARD_EFFECT_SCALE,
+  GIANT_PAWN_SIZE_MULTIPLIER,
   PIECE_TYPES,
   PLAYER_MAX_SIZE_SCALE,
+  STAGE_RUN_LENGTH,
 } from "./config";
 import {
   createGameModeRuntime,
@@ -43,6 +59,7 @@ import {
   hideMatchResult,
   showDisconnectedMatchEnd,
   showMatchResult,
+  showStageRunResult,
 } from "./match";
 import {
   createMainMenu,
@@ -53,20 +70,30 @@ import {
   setMainMenuReady,
 } from "./menu";
 import {
-  awardStageClearPoints,
   computePermanentForceBonus,
   createMetaRuntime,
+  createStageRunPointState,
+  discardStageRunPoints,
+  recordStageRunClear,
+  settleStageRunPoints,
+  shouldOfferStageClearCards,
 } from "./meta";
 import {
   createPhysicsRuntime,
   preSettlePhysics,
+  rebuildPhysicsBoard,
   resetPhysicsPieces,
 } from "./physics";
 import {
   createSceneRuntime,
+  rebuildSceneBoard,
   resetScenePieces,
   synchronizePieceMeshes,
 } from "./scene";
+import {
+  initializeSound,
+  resetPieceHitSoundTracking,
+} from "./sound";
 import {
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
@@ -84,7 +111,9 @@ import type {
 import type { OnlineSelfTestRuntime } from "./tools/online-selftest";
 import {
   computeEnemyStageStepValues,
+  computeEnemyStageSizeMultiplier,
   computeStageBuffs,
+  computeStageBoardHalfExtent,
   computeStagePieceScale,
   computeUpgradeWeightFraction,
   selectStageSpawnInstances,
@@ -113,15 +142,21 @@ const app: HTMLElement = appElement;
 /**
  * 렌더 보드와 물리 보드의 상면이 같은 y=0 계약을 지키는지 시작 전에 확인한다.
  */
-function assertBoardTops(renderTop: number, physicsTop: number): void {
+function assertBoardAgreement(
+  renderTop: number,
+  physicsTop: number,
+  renderHalfExtent: number,
+  physicsHalfExtent: number,
+): void {
   const tolerance = 1e-6;
   if (
     Math.abs(renderTop) > tolerance ||
     Math.abs(physicsTop) > tolerance ||
-    Math.abs(renderTop - physicsTop) > tolerance
+    Math.abs(renderTop - physicsTop) > tolerance ||
+    Math.abs(renderHalfExtent - physicsHalfExtent) > tolerance
   ) {
     throw new Error(
-      `보드 상면 불일치: 렌더 y=${renderTop}, 물리 y=${physicsTop}`,
+      `보드 렌더·물리 불일치: 렌더 y=${renderTop}, 물리 y=${physicsTop}, 렌더 반폭=${renderHalfExtent}, 물리 반폭=${physicsHalfExtent}`,
     );
   }
 }
@@ -150,11 +185,13 @@ async function bootstrap(): Promise<void> {
     "ChessAlkkagi 에셋을 불러오는 중입니다";
   // app을 비울 때 인라인 부트 노드를 함께 넘겨 같은 요소를 유지한다.
   app.replaceChildren(loadingPanel);
+  initializeSound();
   const metaRuntime = createMetaRuntime();
   let startModeAction:
     | ((mode: GameMode) => Promise<void>)
     | null = null;
   let returnToMenuAction: (() => Promise<void>) | null = null;
+  let confirmAbandonAction: (() => Promise<void>) | null = null;
   const menuRuntime = createMainMenu(
     app,
     metaRuntime,
@@ -169,6 +206,12 @@ async function bootstrap(): Promise<void> {
         throw new Error("메뉴 복귀 경로가 아직 준비되지 않았습니다.");
       }
       await returnToMenuAction();
+    },
+    async () => {
+      if (confirmAbandonAction === null) {
+        throw new Error("대국 포기 경로가 아직 준비되지 않았습니다.");
+      }
+      await confirmAbandonAction();
     },
   );
   const assets = await loadChessAssets((event) => {
@@ -208,7 +251,11 @@ async function bootstrap(): Promise<void> {
   if (PIECE_INSTANCES.length !== 32) {
     throw new Error(`시작 말 개수가 32개가 아니라 ${PIECE_INSTANCES.length}개입니다.`);
   }
-  const boardHalfExtent = deriveBoardHalfExtent(assets.meta.cellSize);
+  const boardHalfExtent = computeStageBoardHalfExtent(
+    assets.meta.cellSize,
+    "hotseat",
+    1,
+  );
   const sceneRuntime = createSceneRuntime(
     app,
     assets,
@@ -222,13 +269,23 @@ async function bootstrap(): Promise<void> {
     PIECE_INSTANCES,
     boardHalfExtent,
   );
-  assertBoardTops(sceneRuntime.boardTop, physicsRuntime.boardTop);
+  assertBoardAgreement(
+    sceneRuntime.boardTop,
+    physicsRuntime.boardTop,
+    sceneRuntime.boardHalfExtent,
+    physicsRuntime.boardHalfExtent,
+  );
   loadingPhase.textContent =
     "말의 시작 자세를 안정시키는 중입니다";
   preSettlePhysics(physicsRuntime);
+  resetPieceHitSoundTracking();
   synchronizePieceMeshes(sceneRuntime, physicsRuntime);
   loadingPanel.remove();
   const tuningRuntime = createTuningRuntime(app, physicsRuntime);
+  const cardTuningRuntime = createCardTuningRuntime(
+    app,
+    GIANT_PAWN_SIZE_MULTIPLIER,
+  );
   const aimRuntime = createAimRuntime(sceneRuntime);
   const aimParametersRuntime = createAimParametersRuntime(
     app,
@@ -241,6 +298,7 @@ async function bootstrap(): Promise<void> {
     tuningRuntime.settings,
   );
   const runCardState = createRunCardState();
+  const stageRunPoints = createStageRunPointState();
   let replayDevelopmentRuntime: ReplayDevelopmentRuntime | null =
     null;
   let gameModeRuntime: GameModeRuntime | null = null;
@@ -251,6 +309,26 @@ async function bootstrap(): Promise<void> {
     tuningRuntime.settings.enemyStageBuffScale;
   let appliedCardEffectScale =
     tuningRuntime.settings.cardEffectScale;
+  let appliedCardTuningValues: CardTuningAppliedValues = {
+    gameMode: "hotseat",
+    weightGrade: 0,
+    forceGrade: 0,
+    sizeGrade: 0,
+    boardWeightFraction: 0,
+    liveForceFraction: 0,
+    boardRegularSizeScale: 1,
+    boardGiantPawnScale: null,
+    spawnedPieceCount: physicsRuntime.pieces.size,
+    proneStartActive: false,
+  };
+  let pendingCardTuningValues: CardTuningAppliedValues = {
+    ...appliedCardTuningValues,
+  };
+  updateCardTuningAppliedValues(
+    cardTuningRuntime,
+    appliedCardTuningValues,
+    pendingCardTuningValues,
+  );
   const playerReadoutInstances = PIECE_TYPES.map((type) => {
     const instance = PIECE_INSTANCES.find(
       (candidate) =>
@@ -262,6 +340,20 @@ async function bootstrap(): Promise<void> {
     }
     return instance;
   });
+  const regularCardReadoutInstance =
+    playerReadoutInstances.find(
+      (instance) => instance.type !== "Pawn",
+    );
+  const pawnCardReadoutInstance =
+    playerReadoutInstances.find(
+      (instance) => instance.type === "Pawn",
+    );
+  if (
+    regularCardReadoutInstance === undefined ||
+    pawnCardReadoutInstance === undefined
+  ) {
+    throw new Error("카드 적용값 기준 백 일반 말과 폰을 찾지 못했습니다.");
+  }
   let onlineConnectionBlocked = false;
   const disconnectOverlay = document.createElement("section");
   disconnectOverlay.className = "match-result-overlay";
@@ -389,10 +481,13 @@ async function bootstrap(): Promise<void> {
         const launchRequest = {
           ...request,
           speedMultiplier: computePlayerLaunchSpeedMultiplier(
-            gameMode,
+            binding?.instance.side === "white"
+              ? gameMode
+              : "online",
             runCardState,
             permanentForceBonus,
             appliedCardEffectScale,
+            createCardEffectTuning(cardTuningRuntime.settings),
           ),
         };
         return gameMode === "online" &&
@@ -424,6 +519,130 @@ async function bootstrap(): Promise<void> {
   );
   readsAiTelegraphActive = () =>
     isAiTelegraphActive(aiRuntime);
+  const computePendingCardTuningValues = (
+    gameMode: GameMode,
+    stageNumber: number,
+  ): CardTuningAppliedValues => {
+    const cardTuning = createCardEffectTuning(
+      cardTuningRuntime.settings,
+    );
+    const cardEffectScale =
+      gameMode === "stage"
+        ? tuningRuntime.settings.cardEffectScale
+        : CARD_EFFECT_SCALE;
+    const stageOptions: StageSpawnOptions = {
+      gameMode,
+      stageNumber,
+      runCards:
+        gameMode === "stage" ? runCardState : undefined,
+      permanentUpgrades:
+        gameMode === "stage"
+          ? metaRuntime.state.upgrades
+          : undefined,
+      enemyBuffStepScale:
+        gameMode === "stage"
+          ? tuningRuntime.settings.enemyStageBuffScale
+          : undefined,
+      cardEffectScale:
+        gameMode === "stage" ? cardEffectScale : undefined,
+      cardTuning,
+    };
+    const giantPawnActive = isGiantPawnCardActive(
+      gameMode,
+      runCardState,
+      cardTuning,
+    );
+    return {
+      gameMode,
+      weightGrade: computeEffectiveGeneralCardGrade(
+        gameMode,
+        runCardState,
+        "weight",
+        cardTuning,
+      ),
+      forceGrade: computeEffectiveGeneralCardGrade(
+        gameMode,
+        runCardState,
+        "force",
+        cardTuning,
+      ),
+      sizeGrade: computeEffectiveGeneralCardGrade(
+        gameMode,
+        runCardState,
+        "size",
+        cardTuning,
+      ),
+      boardWeightFraction: computeTunedGeneralCardEffect(
+        gameMode,
+        runCardState,
+        "weight",
+        cardEffectScale,
+        cardTuning,
+      ),
+      liveForceFraction: computeTunedGeneralCardEffect(
+        gameMode,
+        runCardState,
+        "force",
+        cardEffectScale,
+        cardTuning,
+      ),
+      boardRegularSizeScale: computeStagePieceScale(
+        regularCardReadoutInstance,
+        assets.meta,
+        stageOptions,
+      ),
+      boardGiantPawnScale: giantPawnActive
+        ? computeStagePieceScale(
+            pawnCardReadoutInstance,
+            assets.meta,
+            stageOptions,
+          )
+        : null,
+      spawnedPieceCount: selectStageSpawnInstances(
+        PIECE_INSTANCES,
+        stageOptions,
+      ).length,
+      proneStartActive: isProneStartCardActive(
+        gameMode,
+        runCardState,
+        cardTuning,
+      ),
+    };
+  };
+  const refreshCardTuningLiveValues = (): void => {
+    const gameMode = appliedCardTuningValues.gameMode;
+    const stageNumber =
+      gameModeRuntime?.stageNumber ?? 1;
+    const cardTuning = createCardEffectTuning(
+      cardTuningRuntime.settings,
+    );
+    appliedCardTuningValues = {
+      ...appliedCardTuningValues,
+      gameMode,
+      forceGrade: computeEffectiveGeneralCardGrade(
+        gameMode,
+        runCardState,
+        "force",
+        cardTuning,
+      ),
+      liveForceFraction: computeTunedGeneralCardEffect(
+        gameMode,
+        runCardState,
+        "force",
+        appliedCardEffectScale,
+        cardTuning,
+      ),
+    };
+    pendingCardTuningValues =
+      computePendingCardTuningValues(gameMode, stageNumber);
+    updateCardTuningAppliedValues(
+      cardTuningRuntime,
+      appliedCardTuningValues,
+      pendingCardTuningValues,
+    );
+  };
+  cardTuningRuntime.settingsChangedHandler =
+    refreshCardTuningLiveValues;
   const resetBoard = async (
     requestedOptions?: StageSpawnOptions,
   ): Promise<void> => {
@@ -449,6 +668,9 @@ async function bootstrap(): Promise<void> {
         baseOptions.gameMode === "stage"
           ? tuningRuntime.settings.cardEffectScale
           : undefined,
+      cardTuning: createCardEffectTuning(
+        cardTuningRuntime.settings,
+      ),
     };
     const spawnInstances = selectStageSpawnInstances(
       PIECE_INSTANCES,
@@ -457,6 +679,29 @@ async function bootstrap(): Promise<void> {
     const expectedPieceCount = spawnInstances.length;
     resetAiMatch(aiRuntime);
     lockInputForMatchOver(inputRuntime);
+    const nextBoardHalfExtent = computeStageBoardHalfExtent(
+      assets.meta.cellSize,
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    );
+    rebuildPhysicsBoard(
+      physicsRuntime,
+      assets.meta,
+      nextBoardHalfExtent,
+      stageOptions,
+    );
+    rebuildSceneBoard(
+      sceneRuntime,
+      assets,
+      nextBoardHalfExtent,
+      stageOptions,
+    );
+    assertBoardAgreement(
+      sceneRuntime.boardTop,
+      physicsRuntime.boardTop,
+      sceneRuntime.boardHalfExtent,
+      physicsRuntime.boardHalfExtent,
+    );
     resetPhysicsPieces(
       physicsRuntime,
       assets.meta,
@@ -471,6 +716,7 @@ async function bootstrap(): Promise<void> {
     );
     reapplyTuningPhysicsSettings(tuningRuntime);
     preSettlePhysics(physicsRuntime);
+    resetPieceHitSoundTracking();
     synchronizePieceMeshes(sceneRuntime, physicsRuntime);
     resetTurnRuntime(turnRuntime);
     resetInputAfterMatch(inputRuntime, physicsRuntime.pieces.keys());
@@ -504,8 +750,88 @@ async function bootstrap(): Promise<void> {
       stageOptions.enemyBuffStepScale ??
       tuningRuntime.settings.enemyStageBuffScale;
     appliedCardEffectScale =
-      stageOptions.cardEffectScale ??
-      tuningRuntime.settings.cardEffectScale;
+      stageOptions.gameMode === "stage"
+        ? (stageOptions.cardEffectScale ??
+          tuningRuntime.settings.cardEffectScale)
+        : CARD_EFFECT_SCALE;
+    const appliedCardTuning = stageOptions.cardTuning;
+    if (appliedCardTuning === undefined) {
+      throw new Error("보드에 적용할 카드 조절값이 없습니다.");
+    }
+    const giantPawnActive = isGiantPawnCardActive(
+      stageOptions.gameMode,
+      runCardState,
+      appliedCardTuning,
+    );
+    const giantPawnBinding = giantPawnActive
+      ? [...physicsRuntime.pieces.values()].find(
+          (binding) =>
+            binding.instance.side === "white" &&
+            binding.instance.type === "Pawn",
+        )
+      : undefined;
+    appliedCardTuningValues = {
+      gameMode: stageOptions.gameMode,
+      weightGrade: computeEffectiveGeneralCardGrade(
+        stageOptions.gameMode,
+        runCardState,
+        "weight",
+        appliedCardTuning,
+      ),
+      forceGrade: computeEffectiveGeneralCardGrade(
+        stageOptions.gameMode,
+        runCardState,
+        "force",
+        appliedCardTuning,
+      ),
+      sizeGrade: computeEffectiveGeneralCardGrade(
+        stageOptions.gameMode,
+        runCardState,
+        "size",
+        appliedCardTuning,
+      ),
+      boardWeightFraction: computeTunedGeneralCardEffect(
+        stageOptions.gameMode,
+        runCardState,
+        "weight",
+        appliedCardEffectScale,
+        appliedCardTuning,
+      ),
+      liveForceFraction: computeTunedGeneralCardEffect(
+        stageOptions.gameMode,
+        runCardState,
+        "force",
+        appliedCardEffectScale,
+        appliedCardTuning,
+      ),
+      boardRegularSizeScale: computeStagePieceScale(
+        regularCardReadoutInstance,
+        assets.meta,
+        stageOptions,
+      ),
+      boardGiantPawnScale:
+        giantPawnBinding?.uniformScale ?? null,
+      spawnedPieceCount: physicsRuntime.pieces.size,
+      proneStartActive: isProneStartCardActive(
+        stageOptions.gameMode,
+        runCardState,
+        appliedCardTuning,
+      ),
+    };
+    pendingCardTuningValues =
+      computePendingCardTuningValues(
+        stageOptions.gameMode,
+        stageOptions.stageNumber,
+      );
+    updateCardTuningAppliedValues(
+      cardTuningRuntime,
+      appliedCardTuningValues,
+      pendingCardTuningValues,
+    );
+    updateCardTuningStageNumber(
+      cardTuningRuntime,
+      stageOptions.stageNumber,
+    );
     if (stageOptions.gameMode !== "stage") {
       updateTuningAppliedValues(tuningRuntime, {
         gameMode: stageOptions.gameMode,
@@ -551,7 +877,10 @@ async function bootstrap(): Promise<void> {
           enemyStepValues.forceStep * stageBuffs.forceSteps,
         enemyForceSteps: stageBuffs.forceSteps,
         enemySizeFraction:
-          enemyStepValues.sizeStep * stageBuffs.sizeSteps,
+          computeEnemyStageSizeMultiplier(
+            stageOptions.stageNumber,
+            tuningRuntime.settings.enemyStageBuffScale,
+          ) - 1,
         enemySizeSteps: stageBuffs.sizeSteps,
         enemyPawnTier: stageBuffs.pawnTier,
         playerWeightFractions: playerReadoutInstances.map(
@@ -584,18 +913,88 @@ async function bootstrap(): Promise<void> {
       `[대국] 다시 시작 완료: 백 선공, 물리 ${physicsRuntime.pieces.size}/${expectedPieceCount}, 렌더 ${sceneRuntime.pieceMeshes.size}/${expectedPieceCount}, 수면 ${sleepingCount}/${expectedPieceCount}`,
     );
   };
+  cardTuningRuntime.relayoutHandler = async (): Promise<void> => {
+    if (gameModeRuntime === null) {
+      throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+    }
+    if (gameModeRuntime.switching) {
+      throw new Error(
+        "대전 모드 전환 중에는 현재 판을 다시 깔 수 없습니다.",
+      );
+    }
+    await relayoutCurrentCardTuningBoard(
+      () => ({
+        gameMode: gameModeRuntime?.mode ?? "hotseat",
+        stageNumber: gameModeRuntime?.stageNumber ?? 1,
+        runCardsSignature: JSON.stringify(runCardState),
+        permanentUpgradesSignature: JSON.stringify(
+          metaRuntime.state.upgrades,
+        ),
+        points: metaRuntime.state.points,
+        stageRunPointsSignature: JSON.stringify(stageRunPoints),
+      }),
+      async (gameMode, stageNumber) => {
+        await resetBoard({ gameMode, stageNumber });
+      },
+    );
+  };
+  cardTuningRuntime.stageJumpHandler = async (
+    targetStageNumber: number,
+  ): Promise<void> => {
+    if (gameModeRuntime === null) {
+      throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+    }
+    if (gameModeRuntime.switching) {
+      throw new Error(
+        "대전 모드 전환 중에는 스테이지를 이동할 수 없습니다.",
+      );
+    }
+    await jumpCardTuningStage(
+      targetStageNumber,
+      () => ({
+        gameMode: gameModeRuntime?.mode ?? "hotseat",
+        stageNumber: gameModeRuntime?.stageNumber ?? 1,
+        runCardsSignature: JSON.stringify(runCardState),
+        permanentUpgradesSignature: JSON.stringify(
+          metaRuntime.state.upgrades,
+        ),
+        points: metaRuntime.state.points,
+        stageRunPointsSignature: JSON.stringify(stageRunPoints),
+      }),
+      (stageNumber) => {
+        if (gameModeRuntime === null) {
+          throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+        }
+        setStageNumber(gameModeRuntime, stageNumber);
+      },
+      (lastClearedStage) => {
+        // Y 패널 점프만 정상 승리 정산의 직전 단계 기준을 맞추며 일반 진행은 기존 기록 함수를 유지한다.
+        stageRunPoints.lastClearedStage = lastClearedStage;
+      },
+      async (gameMode, stageNumber) => {
+        await resetBoard({ gameMode, stageNumber });
+      },
+    );
+  };
   gameModeRuntime = createGameModeRuntime(async (mode) => {
     const previousMode = gameModeRuntime?.mode ?? "hotseat";
     const previousCards = cloneRunCardState(runCardState);
+    const previousLastClearedStage =
+      stageRunPoints.lastClearedStage;
     resetRunCardState(runCardState);
+    stageRunPoints.lastClearedStage = 0;
     setTurnGameMode(turnRuntime, mode);
     setTuningGameMode(tuningRuntime, mode);
+    setCardTuningGameMode(cardTuningRuntime, mode);
     try {
       await resetBoard({ gameMode: mode, stageNumber: 1 });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
+      stageRunPoints.lastClearedStage =
+        previousLastClearedStage;
       setTurnGameMode(turnRuntime, previousMode);
       setTuningGameMode(tuningRuntime, previousMode);
+      setCardTuningGameMode(cardTuningRuntime, previousMode);
       throw error;
     }
   });
@@ -723,6 +1122,30 @@ async function bootstrap(): Promise<void> {
     lockInputForMatchOver(inputRuntime);
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
+    if (gameMode === "stage") {
+      if (winner === "white") {
+        recordStageRunClear(stageRunPoints, completedStage);
+      }
+      const completedRun =
+        winner === "white" &&
+        completedStage === STAGE_RUN_LENGTH;
+      if (winner === "black" || completedRun) {
+        const payout = settleStageRunPoints(
+          metaRuntime,
+          stageRunPoints,
+        );
+        renderMainMenu(menuRuntime);
+        menuRuntime.returnButton.hidden = true;
+        showStageRunResult(
+          matchRuntime,
+          completedStage,
+          payout,
+          completedRun,
+          () => returnToMainMenu(menuRuntime),
+        );
+        return;
+      }
+    }
     const restartAfterResult = async (): Promise<void> => {
       if (gameMode === "online") {
         return;
@@ -752,19 +1175,19 @@ async function bootstrap(): Promise<void> {
       }
     };
     const upgradeCards =
-      gameMode === "stage" && winner === "white"
+      gameMode === "stage" &&
+      winner === "white" &&
+      shouldOfferStageClearCards(completedStage)
         ? drawUpgradeCards(
             completedStage,
             runCardState,
             tuningRuntime.settings.cardEffectScale,
           )
         : [];
-    if (gameMode === "stage" && winner === "white") {
-      awardStageClearPoints(metaRuntime);
-      renderMainMenu(menuRuntime);
-    }
     const selectUpgradeCard =
-      gameMode === "stage" && winner === "white"
+      gameMode === "stage" &&
+      winner === "white" &&
+      shouldOfferStageClearCards(completedStage)
         ? async (cardId: CardId): Promise<void> => {
             const previousStage =
               gameModeRuntime?.stageNumber ?? completedStage;
@@ -833,7 +1256,6 @@ async function bootstrap(): Promise<void> {
       aiRuntime,
       gameModeRuntime,
       tuningRuntime,
-      boardHalfExtent,
       (now) => {
         onlineRuntime?.update(now);
         onlineSelfTestRuntime?.updatePeers(now);
@@ -991,6 +1413,27 @@ async function bootstrap(): Promise<void> {
     hideDisconnectOverlay();
     await switchGameMode(gameModeRuntime, "hotseat", true);
     hideMatchResult(matchRuntime);
+  };
+  confirmAbandonAction = async (): Promise<void> => {
+    if (gameModeRuntime === null) {
+      throw new Error("대전 모드 상태가 준비되지 않았습니다.");
+    }
+    if (gameModeRuntime.mode !== "stage") {
+      await returnToMainMenu(menuRuntime);
+      return;
+    }
+    const abandonedStage = gameModeRuntime.stageNumber;
+    discardStageRunPoints(stageRunPoints);
+    turnRuntime.phase = "match-over";
+    lockInputForMatchOver(inputRuntime);
+    menuRuntime.returnButton.hidden = true;
+    showStageRunResult(
+      matchRuntime,
+      abandonedStage,
+      0,
+      false,
+      () => returnToMainMenu(menuRuntime),
+    );
   };
   if (
     new URLSearchParams(window.location.search).get("replay") === "1"

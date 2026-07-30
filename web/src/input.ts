@@ -50,6 +50,7 @@ import {
   restoreHiddenPieceMeshes,
   type SceneRuntime,
 } from "./scene";
+import { playPieceClickSound } from "./sound";
 
 export type PointerState =
   | "idle"
@@ -489,7 +490,7 @@ function refreshBilliardsPreview(runtime: InputRuntime): void {
   }
   const horizontal = getBilliardsHorizontalDirection(runtime);
   if (runtime.aimRuntime.activeAim?.pieceId !== pieceId) {
-    beginDirectedAim(runtime.aimRuntime, pieceId, horizontal);
+    beginDirectedAim(runtime.aimRuntime, pieceId, horizontal, true);
   }
   const solution = updateStrikePreview(
     runtime.aimParametersRuntime,
@@ -850,6 +851,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
           runtime.aimRuntime,
           pieceId,
           getBilliardsHorizontalDirection(runtime),
+          true,
         );
       },
       onAimCancel: (runtime) => {
@@ -1174,6 +1176,9 @@ function handleCanvasPointerUp(
   const tapped =
     gesture.maximumDistance <= TAP_MAX_DISTANCE_PIXELS;
   const candidatePieceId = gesture.candidatePieceId;
+  if (tapped && candidatePieceId !== null) {
+    playPieceClickSound();
+  }
   if (
     tapped &&
     runtime.strikeMode &&
@@ -1281,8 +1286,8 @@ export function createInputRuntime(
   modeToggle.setAttribute("role", "group");
   modeToggle.setAttribute("aria-label", "조작 모드");
   for (const [mode, label] of [
-    ["classic", "클래식"],
     ["billiards", "당구식"],
+    ["classic", "클래식"],
   ] as const) {
     const button = document.createElement("button");
     button.type = "button";
@@ -1610,7 +1615,7 @@ export function lockInputForMatchOver(runtime: InputRuntime): void {
   runtime.cameraTransition = null;
   runtime.heldCameraKeys.clear();
   for (const pulse of runtime.aimRuntime.pulses.values()) {
-    pulse.mesh.scale.setScalar(1);
+    pulse.mesh.scale.copy(pulse.baseScale);
   }
   runtime.aimRuntime.pulses.clear();
   runtime.sceneRuntime.controls.enabled = false;

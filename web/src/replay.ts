@@ -10,7 +10,6 @@ import {
 import {
   FIXED_STEP,
   MAX_SETTLE_SECONDS,
-  deriveBoardHalfExtent,
 } from "./config";
 import type { GameMode } from "./game-mode";
 import {
@@ -28,6 +27,7 @@ import {
   type PhysicsRuntime,
 } from "./physics";
 import type { SceneRuntime } from "./scene";
+import { computeStageBoardHalfExtent } from "./stage";
 import {
   capturePhysicsStateHash,
 } from "./state-hash";
@@ -533,7 +533,11 @@ async function createReplayWorld(
   const physicsRuntime = await createPhysicsRuntime(
     meta,
     PIECE_INSTANCES,
-    deriveBoardHalfExtent(meta.cellSize),
+    computeStageBoardHalfExtent(
+      meta.cellSize,
+      header.gameMode,
+      header.stage?.stageNumber ?? 1,
+    ),
     stageOptions,
   );
   preSettlePhysics(physicsRuntime);

@@ -97,7 +97,7 @@ async function createRecordingRuntime(
 /**
  * 실제 정착·낙하 제거·승자 경로가 끝날 때까지 고정 스텝을 진행한다.
  */
-function settleTurn(modules, runtime) {
+function settleTurn(modules, runtime, onStep) {
   const maximumSteps = Math.ceil(
     (modules.config.MAX_SETTLE_SECONDS * 2) /
       modules.config.FIXED_STEP,
@@ -116,6 +116,7 @@ function settleTurn(modules, runtime) {
       runtime.turnRuntime,
       modules.config.FIXED_STEP,
     );
+    onStep?.();
     steps += 1;
   }
   if (
@@ -217,6 +218,300 @@ async function recordScriptedTurn(
     runtime.recorder,
   );
   return steps;
+}
+
+/**
+ * 벽 재생 사례가 지정 말·방향·세기를 실제 recorder와 발사 경로로 기록하게 한다.
+ */
+async function recordDirectedTurn(
+  modules,
+  runtime,
+  pieceId,
+  direction,
+  normalizedPower,
+  onStep,
+) {
+  const binding =
+    runtime.physicsRuntime.pieces.get(pieceId);
+  assertCondition(
+    binding !== undefined,
+    `지정 기록 말 ${pieceId}가 없습니다.`,
+  );
+  assertCondition(
+    binding.instance.side ===
+      runtime.turnRuntime.currentSide,
+    `${pieceId}의 진영 ${binding.instance.side}이 현재 턴 ${runtime.turnRuntime.currentSide}과 다릅니다.`,
+  );
+  let speedMultiplier = 1;
+  if (runtime.stageOptions.gameMode === "stage") {
+    if (binding.instance.side === "white") {
+      const permanentBonus =
+        modules.meta.computePermanentForceBonus(
+          runtime.stageOptions.permanentUpgrades,
+          binding.instance.type,
+        );
+      speedMultiplier =
+        modules.cards.computePlayerLaunchSpeedMultiplier(
+          "stage",
+          runtime.stageOptions.runCards,
+          permanentBonus,
+        );
+    } else {
+      speedMultiplier =
+        modules.stage.computeStageAiSpeedMultiplier(
+          runtime.stageOptions,
+        );
+    }
+  }
+  const queued = modules.turn.queueTurnLaunch(
+    runtime.turnRuntime,
+    {
+      pieceId,
+      direction,
+      normalizedPower,
+      applicationPoint: binding.body.worldCom(),
+      speedMultiplier,
+    },
+  );
+  assertCondition(
+    queued.accepted,
+    `${pieceId} 지정 기록 발사가 거절됐습니다: ${queued.reason}`,
+  );
+  const steps = settleTurn(modules, runtime, onStep);
+  assertCondition(
+    runtime.turnRuntime.phase !== "match-over",
+    `${pieceId} 지정 기록 발사 뒤 대국이 예상보다 일찍 끝났습니다.`,
+  );
+  await modules.replay.readReplayRecording(
+    runtime.recorder,
+  );
+  return steps;
+}
+
+/**
+ * 백 Rook이 남쪽 조각에 반사된 뒤 다시 접촉해 파괴하는 스테이지 3 기록을 만든다.
+ */
+async function recordStageThreeWallDestruction(
+  modules,
+  meta,
+  source,
+) {
+  const runtime = await createRecordingRuntime(
+    modules,
+    meta,
+    source,
+  );
+  const wallId = "wall-south-1";
+  const settleSteps = [];
+  settleSteps.push(
+    await recordDirectedTurn(
+      modules,
+      runtime,
+      "white-rook-h1",
+      new Vector3(0.3, 0, -1).normalize(),
+      0.18,
+    ),
+  );
+  assertCondition(
+    !runtime.physicsRuntime.breakableWalls.has(wallId) &&
+      runtime.physicsRuntime.destroyedBreakableWallIds.has(
+        wallId,
+      ),
+    `${wallId}가 Rook의 분리 후 재접촉 두 번째 타격 뒤 파괴되지 않았습니다.`,
+  );
+  const recording =
+    await modules.replay.readReplayRecording(
+      runtime.recorder,
+    );
+  assertCondition(
+    recording.turns.length === 1,
+    `벽 파괴 기록이 1턴이 아니라 ${recording.turns.length}턴입니다.`,
+  );
+  return { recording, settleSteps, wallId };
+}
+
+/**
+ * 백 Pawn이 중앙 2×2 구멍으로 떨어져 제거되는 스테이지 5 기록을 만든다.
+ */
+async function recordStageFiveHoleFall(
+  modules,
+  meta,
+  source,
+) {
+  const runtime = await createRecordingRuntime(
+    modules,
+    meta,
+    source,
+  );
+  const pieceId = "white-pawn-d2";
+  const settleSteps = await recordDirectedTurn(
+    modules,
+    runtime,
+    pieceId,
+    new Vector3(0, 0, 1),
+    0.18,
+  );
+  assertCondition(
+    !runtime.physicsRuntime.pieces.has(pieceId),
+    `${pieceId}가 스테이지 5 중앙 구멍으로 떨어져 제거되지 않았습니다.`,
+  );
+  const recording =
+    await modules.replay.readReplayRecording(
+      runtime.recorder,
+    );
+  assertCondition(
+    recording.turns.length === 1,
+    `구멍 낙하 기록이 1턴이 아니라 ${recording.turns.length}턴입니다.`,
+  );
+  return { recording, settleSteps, pieceId };
+}
+
+/**
+ * 불파괴 중앙 벽 반사 뒤 흑 Rook이 모서리 출구로 나가는 스테이지 7 기록을 만든다.
+ */
+async function recordStageSevenPocketExit(
+  modules,
+  meta,
+  source,
+) {
+  const runtime = await createRecordingRuntime(
+    modules,
+    meta,
+    source,
+  );
+  const reflectedPieceId = "white-rook-a1";
+  const exitedPieceId = "black-rook-a8";
+  const settleSteps = [];
+  let reflectedMinimumZ = Number.POSITIVE_INFINITY;
+  settleSteps.push(
+    await recordDirectedTurn(
+      modules,
+      runtime,
+      reflectedPieceId,
+      new Vector3(0, 0, -1),
+      0.18,
+      () => {
+        const binding =
+          runtime.physicsRuntime.pieces.get(reflectedPieceId);
+        if (binding !== undefined) {
+          reflectedMinimumZ = Math.min(
+            reflectedMinimumZ,
+            binding.body.translation().z,
+          );
+        }
+      },
+    ),
+  );
+  const reflectedFinalZ =
+    runtime.physicsRuntime.pieces
+      .get(reflectedPieceId)
+      ?.body.translation().z ??
+    Number.NEGATIVE_INFINITY;
+  assertCondition(
+    runtime.physicsRuntime.pieces.has(reflectedPieceId) &&
+      reflectedMinimumZ <
+        -runtime.physicsRuntime.boardHalfExtent + 0.35 &&
+      reflectedFinalZ > reflectedMinimumZ + 0.05 &&
+      [...runtime.physicsRuntime.breakableWalls.values()].every(
+        (wall) =>
+          wall.definition.variant === "indestructible" &&
+          wall.hitCount === 0 &&
+          !wall.pendingDestruction,
+      ),
+    `${reflectedPieceId} 중앙 벽 반사 또는 불파괴 상태가 다릅니다: minZ=${reflectedMinimumZ}, finalZ=${reflectedFinalZ}`,
+  );
+  settleSteps.push(
+    await recordDirectedTurn(
+      modules,
+      runtime,
+      exitedPieceId,
+      new Vector3(1, 0, 1).normalize(),
+      0.3,
+    ),
+  );
+  assertCondition(
+    !runtime.physicsRuntime.pieces.has(exitedPieceId),
+    `${exitedPieceId}가 스테이지 7 모서리 출구로 제거되지 않았습니다.`,
+  );
+  const recording =
+    await modules.replay.readReplayRecording(
+      runtime.recorder,
+    );
+  assertCondition(
+    recording.turns.length === 2,
+    `포켓 벽 기록이 2턴이 아니라 ${recording.turns.length}턴입니다.`,
+  );
+  return {
+    recording,
+    settleSteps,
+    reflectedPieceId,
+    reflectedMinimumZ,
+    reflectedFinalZ,
+    exitedPieceId,
+  };
+}
+
+/**
+ * 백 Pawn이 a4 고정 원기둥에 정면 반사되는 스테이지 9 기록을 만든다.
+ */
+async function recordStageNinePinballReflection(
+  modules,
+  meta,
+  source,
+) {
+  const runtime = await createRecordingRuntime(
+    modules,
+    meta,
+    source,
+  );
+  const pieceId = "white-pawn-a2";
+  const obstacleId = "pinball-obstacle-2";
+  let maximumZ = Number.NEGATIVE_INFINITY;
+  const settleSteps = await recordDirectedTurn(
+    modules,
+    runtime,
+    pieceId,
+    new Vector3(0, 0, 1),
+    0.18,
+    () => {
+      const binding =
+        runtime.physicsRuntime.pieces.get(pieceId);
+      if (binding !== undefined) {
+        maximumZ = Math.max(
+          maximumZ,
+          binding.body.translation().z,
+        );
+      }
+    },
+  );
+  const finalZ =
+    runtime.physicsRuntime.pieces
+      .get(pieceId)
+      ?.body.translation().z ??
+    Number.NEGATIVE_INFINITY;
+  assertCondition(
+    runtime.physicsRuntime.pinballObstacles.has(obstacleId) &&
+      runtime.physicsRuntime.pieces.has(pieceId) &&
+      maximumZ > -0.6 &&
+      finalZ < maximumZ - 0.03,
+    `${pieceId}의 스테이지 9 원기둥 반사가 확인되지 않았습니다: obstacle=${runtime.physicsRuntime.pinballObstacles.has(obstacleId)}, maxZ=${maximumZ}, finalZ=${finalZ}`,
+  );
+  const recording =
+    await modules.replay.readReplayRecording(
+      runtime.recorder,
+    );
+  assertCondition(
+    recording.turns.length === 1,
+    `핀볼 반사 기록이 1턴이 아니라 ${recording.turns.length}턴입니다.`,
+  );
+  return {
+    recording,
+    settleSteps,
+    pieceId,
+    obstacleId,
+    maximumZ,
+    finalZ,
+  };
 }
 
 /**
@@ -355,6 +650,104 @@ try {
     `[통과 b] stage3 force 카드+Pawn 영구 강화 10턴: hashes=10/10, activeCards=${stageRecording.recording.header.stage.activeCardIds.join(",")}, Pawn=${JSON.stringify(stageRecording.recording.header.stage.permanentUpgrades.pieces.Pawn)}`,
   );
 
+  const wallRecording =
+    await recordStageThreeWallDestruction(
+      modules,
+      meta,
+      stageSource,
+    );
+  const wallReplay = await replay.replayRecording(
+    meta,
+    wallRecording.recording,
+  );
+  assertCondition(
+    wallReplay.matched &&
+      wallReplay.turns.length === 1,
+    `스테이지 3 벽 파괴 재생 불일치: ${JSON.stringify(wallReplay)}`,
+  );
+  console.log(
+    `[통과 c] stage3 벽 2회 접촉·파괴 1턴 기록→재생: wall=${wallRecording.wallId}, hashes=1/1, settleSteps=${wallRecording.settleSteps.join(",")}`,
+  );
+
+  const stageFiveSource = {
+    gameMode: "stage",
+    initialSide: "white",
+    stageNumber: 5,
+    runCards: cards.createRunCardState(),
+    permanentUpgrades:
+      metaModule.createDefaultPermanentUpgrades(),
+  };
+  const holeRecording = await recordStageFiveHoleFall(
+    modules,
+    meta,
+    stageFiveSource,
+  );
+  const holeReplay = await replay.replayRecording(
+    meta,
+    holeRecording.recording,
+  );
+  assertCondition(
+    holeReplay.matched &&
+      holeReplay.turns.length === 1,
+    `스테이지 5 구멍 낙하 재생 불일치: ${JSON.stringify(holeReplay)}`,
+  );
+  console.log(
+    `[통과 hole] stage5 ${holeRecording.pieceId} 중앙 구멍 낙하 1턴 기록→재생: hashes=1/1, settleSteps=${holeRecording.settleSteps}`,
+  );
+
+  const stageSevenSource = {
+    gameMode: "stage",
+    initialSide: "white",
+    stageNumber: 7,
+    runCards: cards.createRunCardState(),
+    permanentUpgrades:
+      metaModule.createDefaultPermanentUpgrades(),
+  };
+  const pocketRecording = await recordStageSevenPocketExit(
+    modules,
+    meta,
+    stageSevenSource,
+  );
+  const pocketReplay = await replay.replayRecording(
+    meta,
+    pocketRecording.recording,
+  );
+  assertCondition(
+    pocketReplay.matched &&
+      pocketReplay.turns.length === 2,
+    `스테이지 7 포켓 벽 재생 불일치: ${JSON.stringify(pocketReplay)}`,
+  );
+  console.log(
+    `[통과 pocket] stage7 ${pocketRecording.reflectedPieceId} 중앙 반사(minZ=${pocketRecording.reflectedMinimumZ.toFixed(6)}→finalZ=${pocketRecording.reflectedFinalZ.toFixed(6)})→${pocketRecording.exitedPieceId} 모서리 장외 2턴 기록→재생: hashes=2/2, settleSteps=${pocketRecording.settleSteps.join(",")}`,
+  );
+
+  const stageNineSource = {
+    gameMode: "stage",
+    initialSide: "white",
+    stageNumber: 9,
+    runCards: cards.createRunCardState(),
+    permanentUpgrades:
+      metaModule.createDefaultPermanentUpgrades(),
+  };
+  const pinballRecording =
+    await recordStageNinePinballReflection(
+      modules,
+      meta,
+      stageNineSource,
+    );
+  const pinballReplay = await replay.replayRecording(
+    meta,
+    pinballRecording.recording,
+  );
+  assertCondition(
+    pinballReplay.matched &&
+      pinballReplay.turns.length === 1,
+    `스테이지 9 원기둥 반사 재생 불일치: ${JSON.stringify(pinballReplay)}`,
+  );
+  console.log(
+    `[통과 pinball] stage9 ${pinballRecording.pieceId}→${pinballRecording.obstacleId} 반사(maxZ=${pinballRecording.maximumZ.toFixed(6)}→finalZ=${pinballRecording.finalZ.toFixed(6)}) 1턴 기록→재생: hashes=1/1, settleSteps=${pinballRecording.settleSteps}`,
+  );
+
   const tampered = replay.deserializeRecording(
     replay.serializeRecording(hotseat.recording),
   );
@@ -371,7 +764,7 @@ try {
     `세기 변조가 ${tamperedTurnIndex}번 턴에서 잡히지 않았습니다: ${JSON.stringify(tamperedReplay)}`,
   );
   console.log(
-    `[통과 c] power 변조 감지: expectedTurn=${tamperedTurnIndex}, firstMismatch=${tamperedReplay.firstMismatchTurn}`,
+    `[통과 d] power 변조 감지: expectedTurn=${tamperedTurnIndex}, firstMismatch=${tamperedReplay.firstMismatchTurn}`,
   );
 
   const compactTurn = replay.toCompactTurn(
@@ -385,7 +778,7 @@ try {
     "compact turn JSON 크기가 0바이트입니다.",
   );
   console.log(
-    `[통과 d] compact turn payload=${compactBytes} bytes, json=${compactJson}`,
+    `[통과 e] compact turn payload=${compactBytes} bytes, json=${compactJson}`,
   );
 } catch (error) {
   const fullError =

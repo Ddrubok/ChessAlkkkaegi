@@ -441,12 +441,16 @@ function applyPhysicsSetting(
 ): void {
   const { physicsRuntime, settings } = runtime;
   if (key === "friction") {
-    physicsRuntime.boardCollider.setFriction(settings.friction);
+    for (const collider of physicsRuntime.boardColliders) {
+      collider.setFriction(settings.friction);
+    }
     for (const binding of physicsRuntime.pieces.values()) {
       binding.collider.setFriction(settings.friction);
     }
   } else if (key === "restitution") {
-    physicsRuntime.boardCollider.setRestitution(settings.restitution);
+    for (const collider of physicsRuntime.boardColliders) {
+      collider.setRestitution(settings.restitution);
+    }
     for (const binding of physicsRuntime.pieces.values()) {
       binding.collider.setRestitution(settings.restitution);
     }
@@ -618,16 +622,21 @@ export function verifyTuningAfterStep(runtime: TuningRuntime): void {
       );
     }
   };
-  checkClose(
-    runtime.physicsRuntime.boardCollider.friction(),
-    settings.friction,
-    "보드 마찰",
-  );
-  checkClose(
-    runtime.physicsRuntime.boardCollider.restitution(),
-    settings.restitution,
-    "보드 반발",
-  );
+  for (const [
+    index,
+    collider,
+  ] of runtime.physicsRuntime.boardColliders.entries()) {
+    checkClose(
+      collider.friction(),
+      settings.friction,
+      `보드 ${index} 마찰`,
+    );
+    checkClose(
+      collider.restitution(),
+      settings.restitution,
+      `보드 ${index} 반발`,
+    );
+  }
   for (const binding of runtime.physicsRuntime.pieces.values()) {
     checkClose(
       binding.collider.friction(),

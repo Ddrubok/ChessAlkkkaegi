@@ -92,6 +92,58 @@ function measureWorldHeight(mesh) {
 }
 
 /**
+ * 두 월드 AABB의 여섯 경계 좌표 가운데 가장 큰 오차를 반환한다.
+ */
+function measureAabbError(actual, expected) {
+  return Math.max(
+    Math.abs(actual.min.x - expected.min.x),
+    Math.abs(actual.min.y - expected.min.y),
+    Math.abs(actual.min.z - expected.min.z),
+    Math.abs(actual.max.x - expected.max.x),
+    Math.abs(actual.max.y - expected.max.y),
+    Math.abs(actual.max.z - expected.max.z),
+  );
+}
+
+/**
+ * Rapier 볼록껍질의 로컬 축 길이를 원본 점 집합과 비교해 실제 균일 배율과 축간 오차를 잰다.
+ */
+function measureColliderUniformScale(binding, colliderPoints) {
+  const vertices = binding.collider.vertices();
+  const sourceMinimum = [Infinity, Infinity, Infinity];
+  const sourceMaximum = [-Infinity, -Infinity, -Infinity];
+  const colliderMinimum = [Infinity, Infinity, Infinity];
+  const colliderMaximum = [-Infinity, -Infinity, -Infinity];
+  for (const point of colliderPoints) {
+    for (let axis = 0; axis < 3; axis += 1) {
+      sourceMinimum[axis] = Math.min(sourceMinimum[axis], point[axis]);
+      sourceMaximum[axis] = Math.max(sourceMaximum[axis], point[axis]);
+    }
+  }
+  for (let index = 0; index < vertices.length; index += 3) {
+    for (let axis = 0; axis < 3; axis += 1) {
+      const value = vertices[index + axis];
+      colliderMinimum[axis] = Math.min(colliderMinimum[axis], value);
+      colliderMaximum[axis] = Math.max(colliderMaximum[axis], value);
+    }
+  }
+  const ratios = sourceMinimum.map((minimum, axis) => {
+    const sourceSpan = sourceMaximum[axis] - minimum;
+    const colliderSpan =
+      colliderMaximum[axis] - colliderMinimum[axis];
+    return colliderSpan / sourceSpan;
+  });
+  const average =
+    ratios.reduce((sum, value) => sum + value, 0) / ratios.length;
+  return {
+    average,
+    maximumAxisError: Math.max(
+      ...ratios.map((value) => Math.abs(value - average)),
+    ),
+  };
+}
+
+/**
  * 의도된 스폰 위치에서 사전 안정화 뒤 최대 수평 이동량을 잰다.
  */
 function measureMaximumSpawnDrift(runtime) {
@@ -121,17 +173,25 @@ function computeWorldUp(body) {
 
 try {
   const [
+    aimModule,
+    aimParametersModule,
+    cardTuningModule,
     cardsModule,
     configModule,
     layoutModule,
     physicsModule,
+    sceneModule,
     stageModule,
     turnModule,
   ] = await Promise.all([
+    vite.ssrLoadModule("/src/aim.ts"),
+    vite.ssrLoadModule("/src/aimparams.ts"),
+    vite.ssrLoadModule("/src/card-tuning.ts"),
     vite.ssrLoadModule("/src/cards.ts"),
     vite.ssrLoadModule("/src/config.ts"),
     vite.ssrLoadModule("/src/layout.ts"),
     vite.ssrLoadModule("/src/physics.ts"),
+    vite.ssrLoadModule("/src/scene.ts"),
     vite.ssrLoadModule("/src/stage.ts"),
     vite.ssrLoadModule("/src/turn.ts"),
   ]);
@@ -146,6 +206,319 @@ try {
   );
   const geometries = await loadPieceGeometries(
     configModule.PIECE_TYPES,
+  );
+  const giantPawnSizeMultiplier =
+    configModule.GIANT_PAWN_SIZE_MULTIPLIER;
+  const panelSettings =
+    cardTuningModule.createDefaultCardTuningSettings(
+      giantPawnSizeMultiplier,
+    );
+  panelSettings.debugWeightGrade = 4;
+  const panelProfile =
+    cardTuningModule.createCardEffectTuning(panelSettings);
+  const playGradeState = cardsModule.createRunCardState();
+  for (let grade = 0; grade < 4; grade += 1) {
+    cardsModule.applyCardPick(playGradeState, "weight");
+  }
+  const playGradeEffect = cardsModule.computeGeneralCardEffect(
+    playGradeState,
+    "weight",
+  );
+  const panelGradeEffect =
+    cardsModule.computeTunedGeneralCardEffect(
+      "hotseat",
+      cardsModule.createRunCardState(),
+      "weight",
+      1,
+      panelProfile,
+    );
+  panelSettings.weightEffectMultiplier = 1.5;
+  const multipliedProfile =
+    cardTuningModule.createCardEffectTuning(panelSettings);
+  const multipliedWeightEffect =
+    cardsModule.computeTunedGeneralCardEffect(
+      "stage",
+      playGradeState,
+      "weight",
+      1,
+      multipliedProfile,
+    );
+  cardsModule.applyCardPick(playGradeState, "weight");
+  const composedGrade = cardsModule.computeEffectiveGeneralCardGrade(
+    "stage",
+    playGradeState,
+    "weight",
+    multipliedProfile,
+  );
+  panelSettings.debugForceGrade = 5;
+  panelSettings.debugSizeGrade = 5;
+  panelSettings.gradeEffect5 = 0.5;
+  panelSettings.forceEffectMultiplier = 5;
+  panelSettings.sizeEffectMultiplier = 5;
+  panelSettings.giantPawnEnabled = true;
+  panelSettings.proneStartEnabled = true;
+  const extremeProfile =
+    cardTuningModule.createCardEffectTuning(panelSettings);
+  const emptyState = cardsModule.createRunCardState();
+  const whiteKingInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "white-king-e1",
+  );
+  assertCondition(
+    whiteKingInstance !== undefined,
+    "카드 조절 검증용 백 킹 인스턴스를 찾지 못했습니다.",
+  );
+  const onlineOptions = {
+    gameMode: "online",
+    stageNumber: 1,
+    cardTuning: extremeProfile,
+  };
+  const onlineScale = stageModule.computeStagePieceScale(
+    whiteKingInstance,
+    meta,
+    onlineOptions,
+  );
+  const onlineWeight = stageModule.computeUpgradeWeightFraction(
+    whiteKingInstance,
+    onlineOptions,
+  );
+  const onlineForce =
+    cardsModule.computePlayerLaunchSpeedMultiplier(
+      "online",
+      emptyState,
+      0,
+      1,
+      extremeProfile,
+    );
+  const onlineSpawnCount =
+    stageModule.selectStageSpawnInstances(
+      layoutModule.PIECE_INSTANCES,
+      onlineOptions,
+    ).length;
+  const blackKingInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "black-king-e8",
+  );
+  assertCondition(
+    blackKingInstance !== undefined,
+    "카드 조절 검증용 흑 킹 인스턴스를 찾지 못했습니다.",
+  );
+  const hotseatOptions = {
+    gameMode: "hotseat",
+    stageNumber: 1,
+    cardTuning: extremeProfile,
+  };
+  const hotseatWhiteScale = stageModule.computeStagePieceScale(
+    whiteKingInstance,
+    meta,
+    hotseatOptions,
+  );
+  const hotseatBlackScale = stageModule.computeStagePieceScale(
+    blackKingInstance,
+    meta,
+    hotseatOptions,
+  );
+  const hotseatWhiteWeight =
+    stageModule.computeUpgradeWeightFraction(
+      whiteKingInstance,
+      hotseatOptions,
+    );
+  const hotseatBlackWeight =
+    stageModule.computeUpgradeWeightFraction(
+      blackKingInstance,
+      hotseatOptions,
+    );
+  const hotseatSpawnCount =
+    stageModule.selectStageSpawnInstances(
+      layoutModule.PIECE_INSTANCES,
+      hotseatOptions,
+    ).length;
+  const hotseatPronePose = stageModule.computeStageSpawnPose(
+    whiteKingInstance,
+    meta,
+    hotseatOptions,
+  );
+  const specialSettings =
+    cardTuningModule.createDefaultCardTuningSettings(
+      giantPawnSizeMultiplier,
+    );
+  specialSettings.giantPawnEnabled = true;
+  specialSettings.giantPawnSizeMultiplier = 1.5;
+  const customGiantOptions = {
+    gameMode: "hotseat",
+    stageNumber: 1,
+    cardTuning:
+      cardTuningModule.createCardEffectTuning(specialSettings),
+  };
+  const whitePawnInstance = layoutModule.PIECE_INSTANCES.find(
+    (instance) => instance.id === "white-pawn-b2",
+  );
+  assertCondition(
+    whitePawnInstance !== undefined,
+    "거대 폰 배수 검증용 백 폰 인스턴스를 찾지 못했습니다.",
+  );
+  const customGiantScale = stageModule.computeStagePieceScale(
+    whitePawnInstance,
+    meta,
+    customGiantOptions,
+  );
+  const corruptStorage = {
+    getItem: () => "{손상",
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  const corruptLoad =
+    cardTuningModule.loadCardTuningSettings(
+      corruptStorage,
+      giantPawnSizeMultiplier,
+    );
+  const defaultPanelSettings =
+    cardTuningModule.createDefaultCardTuningSettings(
+      giantPawnSizeMultiplier,
+    );
+  const storedCardTuningValues = new Map();
+  const auditedStorage = {
+    getItem: (key) => storedCardTuningValues.get(key) ?? null,
+    setItem: (key, value) => {
+      storedCardTuningValues.set(key, value);
+    },
+    removeItem: (key) => {
+      storedCardTuningValues.delete(key);
+    },
+  };
+  const defaultSaveWarning =
+    cardTuningModule.saveCardTuningSettings(
+      auditedStorage,
+      defaultPanelSettings,
+    );
+  const storedDefaults = JSON.parse(
+    auditedStorage.getItem(
+      cardTuningModule.CARD_TUNING_STORAGE_KEY,
+    ),
+  );
+  const gradeChangedSettings = {
+    ...defaultPanelSettings,
+    debugForceGrade: 2,
+  };
+  const gradeSaveWarning =
+    cardTuningModule.saveCardTuningSettings(
+      auditedStorage,
+      gradeChangedSettings,
+    );
+  const gradeChangedLoad =
+    cardTuningModule.loadCardTuningSettings(
+      auditedStorage,
+      giantPawnSizeMultiplier,
+    );
+  const storageMultipliersStayedDefault =
+    storedDefaults.weightEffectMultiplier === 1 &&
+    storedDefaults.forceEffectMultiplier === 1 &&
+    storedDefaults.sizeEffectMultiplier === 1 &&
+    gradeChangedLoad.settings.debugForceGrade === 2 &&
+    gradeChangedLoad.settings.weightEffectMultiplier === 1 &&
+    gradeChangedLoad.settings.forceEffectMultiplier === 1 &&
+    gradeChangedLoad.settings.sizeEffectMultiplier === 1;
+
+  const relayoutSettings = {
+    ...defaultPanelSettings,
+    debugWeightGrade: 3,
+    debugSizeGrade: 5,
+    giantPawnEnabled: true,
+    proneStartEnabled: true,
+  };
+  const relayoutRunCards = cardsModule.createRunCardState();
+  cardsModule.applyCardPick(relayoutRunCards, "force");
+  const relayoutSnapshot = {
+    gameMode: "stage",
+    stageNumber: 4,
+    runCardsSignature: JSON.stringify(relayoutRunCards),
+    permanentUpgradesSignature: JSON.stringify({
+      preserved: true,
+    }),
+    points: 123,
+  };
+  let relayoutApplied = null;
+  await cardTuningModule.relayoutCurrentCardTuningBoard(
+    () => ({ ...relayoutSnapshot }),
+    async (gameMode, stageNumber) => {
+      const cardTuning =
+        cardTuningModule.createCardEffectTuning(
+          relayoutSettings,
+        );
+      const options = {
+        gameMode,
+        stageNumber,
+        runCards: relayoutRunCards,
+        cardTuning,
+      };
+      relayoutApplied = {
+        gameMode,
+        stageNumber,
+        weight: cardsModule.computeTunedGeneralCardEffect(
+          gameMode,
+          relayoutRunCards,
+          "weight",
+          1,
+          cardTuning,
+        ),
+        size: stageModule.computeStagePieceScale(
+          whiteKingInstance,
+          meta,
+          options,
+        ),
+        pieces: stageModule.selectStageSpawnInstances(
+          layoutModule.PIECE_INSTANCES,
+          options,
+        ).length,
+        proneRotationX: stageModule.computeStageSpawnPose(
+          whiteKingInstance,
+          meta,
+          options,
+        ).rotation.x,
+      };
+    },
+  );
+  const relayoutPreservedState =
+    relayoutApplied !== null &&
+    relayoutApplied.gameMode === relayoutSnapshot.gameMode &&
+    relayoutApplied.stageNumber === relayoutSnapshot.stageNumber &&
+    relayoutSnapshot.runCardsSignature ===
+      JSON.stringify(relayoutRunCards) &&
+    relayoutSnapshot.permanentUpgradesSignature ===
+      JSON.stringify({ preserved: true }) &&
+    relayoutSnapshot.points === 123;
+  assertCondition(
+    Math.abs(playGradeEffect - panelGradeEffect) < 1e-12 &&
+      Math.abs(multipliedWeightEffect - playGradeEffect * 1.5) <
+        1e-12 &&
+      composedGrade === 5 &&
+      onlineScale === 1 &&
+      onlineWeight === 0 &&
+      onlineForce === 1 &&
+      onlineSpawnCount === 32 &&
+      hotseatWhiteScale === configModule.PLAYER_MAX_SIZE_SCALE &&
+      hotseatBlackScale === 1 &&
+      Math.abs(hotseatWhiteWeight - 0.105) < 1e-12 &&
+      hotseatBlackWeight === 0 &&
+      hotseatSpawnCount === 28 &&
+      Math.abs(hotseatPronePose.rotation.x - Math.SQRT1_2) <
+        1e-12 &&
+      customGiantScale === 1.5 &&
+      JSON.stringify(corruptLoad.settings) ===
+        JSON.stringify(defaultPanelSettings) &&
+      corruptLoad.warning !== null &&
+      defaultSaveWarning === null &&
+      gradeSaveWarning === null &&
+      storageMultipliersStayedDefault &&
+      relayoutPreservedState &&
+      Math.abs(relayoutApplied.weight - 0.05) < 1e-12 &&
+      Math.abs(relayoutApplied.size - 1.1) < 1e-12 &&
+      relayoutApplied.pieces === 28 &&
+      Math.abs(
+        relayoutApplied.proneRotationX - Math.SQRT1_2,
+      ) < 1e-12,
+    `카드 조절판 합성·핫시트 적용·온라인 차단·저장·다시 깔기 실패: play=${playGradeEffect}, panel=${panelGradeEffect}, multiplied=${multipliedWeightEffect}, composedGrade=${composedGrade}, hotseat=${hotseatWhiteScale}/${hotseatBlackScale}/${hotseatWhiteWeight}/${hotseatBlackWeight}/${hotseatSpawnCount}/${hotseatPronePose.rotation.x}, customGiant=${customGiantScale}, online=${onlineScale}/${onlineWeight}/${onlineForce}/${onlineSpawnCount}, corruptWarning=${corruptLoad.warning}, stored=${JSON.stringify(gradeChangedLoad.settings)}, relayout=${JSON.stringify(relayoutApplied)}, snapshot=${JSON.stringify(relayoutSnapshot)}`,
+  );
+  console.log(
+    `[통과 0] panelGrade4=${panelGradeEffect.toFixed(6)}=playGrade4, weight×1.5=${multipliedWeightEffect.toFixed(6)}, stageMaxGrade=${composedGrade}, hotseat(whiteSize/blackSize/whiteWeight/blackWeight/pieces/prone)=${hotseatWhiteScale.toFixed(2)}/${hotseatBlackScale.toFixed(2)}/${hotseatWhiteWeight.toFixed(3)}/${hotseatBlackWeight.toFixed(2)}/${hotseatSpawnCount}/true, customGiant=${customGiantScale.toFixed(2)}, online(size/weight/force/pieces)=${onlineScale.toFixed(2)}/${onlineWeight.toFixed(2)}/${onlineForce.toFixed(2)}/${onlineSpawnCount}, corruptFallback=true, storageMultipliers=1/1/1, relayout(stage/weight/size/pieces/prone/points)=${relayoutApplied.stageNumber}/${relayoutApplied.weight.toFixed(2)}/${relayoutApplied.size.toFixed(2)}/${relayoutApplied.pieces}/true/${relayoutSnapshot.points}`,
   );
 
   const drawState = cardsModule.createRunCardState();
@@ -258,13 +631,6 @@ try {
     `짧은 풀이 남은 카드만 표시하지 않았습니다: ${shortDraw.map((card) => card.id).join(",")}`,
   );
 
-  const whiteKingInstance = layoutModule.PIECE_INSTANCES.find(
-    (instance) => instance.id === "white-king-e1",
-  );
-  assertCondition(
-    whiteKingInstance !== undefined,
-    "크기 상한 검사용 백 킹 인스턴스를 찾지 못했습니다.",
-  );
   const defaultLegendState = cardsModule.createRunCardState();
   for (let grade = 0; grade < 5; grade += 1) {
     cardsModule.applyCardPick(defaultLegendState, "size");
@@ -366,25 +732,238 @@ try {
   const giantPawnHeight = measureWorldHeight(
     giantMeshes.pieceMeshes.get(giantPawn.instance.id),
   );
-  const whiteKingHeight = measureWorldHeight(
-    giantMeshes.pieceMeshes.get(whiteKing.instance.id),
-  );
-  const giantHeightDifference = Math.abs(
-    giantPawnHeight - whiteKingHeight,
+  const expectedGiantPawnHeight =
+    meta.pieces.Pawn.bounds.y *
+    configModule.GIANT_PAWN_SIZE_MULTIPLIER;
+  const giantHeightError = Math.abs(
+    giantPawnHeight - expectedGiantPawnHeight,
   );
   const giantSettle = physicsModule.preSettlePhysics(giantRuntime);
+  sceneModule.synchronizePieceMeshes(giantMeshes, giantRuntime);
   const giantDrift = measureMaximumSpawnDrift(giantRuntime);
   const giantSleeping = [...giantRuntime.pieces.values()].filter(
     (binding) => binding.body.isSleeping(),
   ).length;
+  const giantPawnMesh = giantMeshes.pieceMeshes.get(
+    giantPawn.instance.id,
+  );
+  const giantRenderedBounds = new Box3().setFromObject(giantPawnMesh);
+  const giantComputedBounds = aimModule.computePieceWorldAabb(
+    giantPawn,
+    giantPawnMesh,
+  );
+  const giantAabbError = measureAabbError(
+    giantComputedBounds,
+    giantRenderedBounds,
+  );
+  const giantRenderedCenter =
+    giantRenderedBounds.getCenter(new Vector3());
+  const giantStrikePoint =
+    aimParametersModule.computeStrikeApplicationPoint(
+      giantPawn,
+      giantPawnMesh,
+      1,
+    );
+  const giantStrikeError =
+    giantStrikePoint.distanceTo(giantRenderedCenter);
+  const giantRenderedSize =
+    giantRenderedBounds.getSize(new Vector3());
+  const giantExpectedMarkerDiameter = Math.max(
+    giantRenderedSize.x,
+    giantRenderedSize.z,
+    0.35,
+  );
+  const giantMarkerDiameter =
+    aimModule.computePieceMarkerDiameter(giantComputedBounds);
+
+  const sizeCardOptions = {
+    gameMode: "stage",
+    stageNumber: 1,
+    runCards: defaultLegendState,
+  };
+  const sizeCardRuntime =
+    await physicsModule.createPhysicsRuntime(
+      meta,
+      layoutModule.PIECE_INSTANCES,
+      boardHalfExtent,
+      sizeCardOptions,
+    );
+  physicsModule.preSettlePhysics(sizeCardRuntime);
+  const sizeCardMeshes = createPieceMeshes(
+    sizeCardRuntime,
+    geometries,
+  );
+  const sizeCardKing = sizeCardRuntime.pieces.get(
+    "white-king-e1",
+  );
+  const sizeCardKingMesh = sizeCardMeshes.pieceMeshes.get(
+    "white-king-e1",
+  );
   assertCondition(
-    giantHeightDifference < 1e-3 &&
+    sizeCardKing !== undefined && sizeCardKingMesh !== undefined,
+    "크기 카드 AABB 검증용 백 킹을 찾지 못했습니다.",
+  );
+  const sizeCardRenderedBounds =
+    new Box3().setFromObject(sizeCardKingMesh);
+  const sizeCardComputedBounds =
+    aimModule.computePieceWorldAabb(
+      sizeCardKing,
+      sizeCardKingMesh,
+    );
+  const sizeCardAabbError = measureAabbError(
+    sizeCardComputedBounds,
+    sizeCardRenderedBounds,
+  );
+  const sizeCardRenderedCenter =
+    sizeCardRenderedBounds.getCenter(new Vector3());
+  const sizeCardStrikePoint =
+    aimParametersModule.computeStrikeApplicationPoint(
+      sizeCardKing,
+      sizeCardKingMesh,
+      1,
+    );
+  const sizeCardStrikeError =
+    sizeCardStrikePoint.distanceTo(sizeCardRenderedCenter);
+  const sizeCardRenderedSize =
+    sizeCardRenderedBounds.getSize(new Vector3());
+  const sizeCardExpectedMarkerDiameter = Math.max(
+    sizeCardRenderedSize.x,
+    sizeCardRenderedSize.z,
+    0.35,
+  );
+  const sizeCardMarkerDiameter =
+    aimModule.computePieceMarkerDiameter(sizeCardComputedBounds);
+
+  const pulseRuntime = {
+    sceneRuntime: giantMeshes,
+    pulses: new Map(),
+  };
+  const readGiantScaleSnapshot = () => {
+    const collider = measureColliderUniformScale(
+      giantPawn,
+      meta.pieces.Pawn.colliderPoints,
+    );
+    return {
+      mesh: giantPawnMesh.scale.x,
+      binding: giantPawn.uniformScale,
+      collider: collider.average,
+      colliderAxisError: collider.maximumAxisError,
+      visible: giantPawnMesh.visible,
+      sameMesh:
+        giantMeshes.pieceMeshes.get(giantPawn.instance.id) ===
+          giantPawnMesh &&
+        giantMeshes.scene.children.includes(giantPawnMesh),
+    };
+  };
+  const scaleBeforeLaunch = readGiantScaleSnapshot();
+  aimModule.startLaunchPulse(pulseRuntime, giantPawn.instance.id);
+  const giantTurn = turnModule.createTurnRuntime(
+    giantRuntime,
+    giantMeshes,
+    {
+      maxLaunchSpeed: configModule.MAX_LAUNCH_SPEED,
+      strikeHeightRatio: configModule.STRIKE_HEIGHT_RATIO,
+    },
+  );
+  const giantQueued = turnModule.queueTurnLaunch(giantTurn, {
+    pieceId: giantPawn.instance.id,
+    direction: new Vector3(0, 0, 1),
+    normalizedPower: 0.08,
+    applicationPoint:
+      aimParametersModule.computeStrikeApplicationPoint(
+        giantPawn,
+        giantPawnMesh,
+        configModule.STRIKE_HEIGHT_RATIO,
+      ),
+  });
+  assertCondition(
+    giantQueued.accepted,
+    `거대 폰 발사 큐 거절: ${giantQueued.reason}`,
+  );
+  turnModule.applyPendingLaunchBeforeStep(giantTurn);
+  giantRuntime.world.step();
+  turnModule.updateTurnAfterStep(
+    giantTurn,
+    configModule.FIXED_STEP,
+  );
+  sceneModule.synchronizePieceMeshes(giantMeshes, giantRuntime);
+  const scaleAtLaunchStep = readGiantScaleSnapshot();
+  const pulse = pulseRuntime.pulses.get(giantPawn.instance.id);
+  assertCondition(pulse !== undefined, "거대 폰 발사 펄스가 시작되지 않았습니다.");
+  aimModule.updateLaunchPulses(
+    pulseRuntime,
+    pulse.startedAt + 60,
+  );
+  const scaleAtPulsePeak = readGiantScaleSnapshot();
+  let giantLaunchSettleSteps = 1;
+  while (
+    giantTurn.phase === "settling" &&
+    giantLaunchSettleSteps < 10_000
+  ) {
+    giantRuntime.world.step();
+    turnModule.updateTurnAfterStep(
+      giantTurn,
+      configModule.FIXED_STEP,
+    );
+    giantLaunchSettleSteps += 1;
+  }
+  assertCondition(
+    giantTurn.phase !== "settling",
+    `거대 폰 발사가 10000 step 안에 정착하지 않았습니다.`,
+  );
+  aimModule.updateLaunchPulses(
+    pulseRuntime,
+    pulse.startedAt + 121,
+  );
+  sceneModule.synchronizePieceMeshes(giantMeshes, giantRuntime);
+  const scaleAfterSettle = readGiantScaleSnapshot();
+  assertCondition(
+    giantPawn.uniformScale ===
+      configModule.GIANT_PAWN_SIZE_MULTIPLIER &&
+      giantHeightError < 1e-3 &&
       giantSleeping === 28 &&
-      giantDrift.maximumDrift < 0.05,
-    `거대 폰 검증 실패: heightΔ=${giantHeightDifference}, sleeping=${giantSleeping}/28, maxDrift=${giantDrift.maximumDrift}`,
+      giantDrift.maximumDrift < 0.05 &&
+      giantAabbError < 1e-6 &&
+      sizeCardAabbError < 1e-6 &&
+      giantStrikeError < 1e-6 &&
+      sizeCardStrikeError < 1e-6 &&
+      Math.abs(
+        giantMarkerDiameter - giantExpectedMarkerDiameter,
+      ) < 1e-6 &&
+      Math.abs(
+        sizeCardMarkerDiameter - sizeCardExpectedMarkerDiameter,
+      ) < 1e-6 &&
+      Math.abs(
+        scaleBeforeLaunch.mesh - giantPawn.uniformScale,
+      ) < 1e-9 &&
+      Math.abs(
+        scaleAtLaunchStep.mesh - giantPawn.uniformScale,
+      ) < 1e-9 &&
+      Math.abs(
+        scaleAtPulsePeak.mesh -
+          giantPawn.uniformScale * 1.06,
+      ) < 1e-9 &&
+      Math.abs(
+        scaleAfterSettle.mesh - giantPawn.uniformScale,
+      ) < 1e-9 &&
+      [
+        scaleBeforeLaunch,
+        scaleAtLaunchStep,
+        scaleAtPulsePeak,
+        scaleAfterSettle,
+      ].every(
+        (snapshot) =>
+          Math.abs(
+            snapshot.collider - giantPawn.uniformScale,
+          ) < 1e-6 &&
+          snapshot.colliderAxisError < 1e-6 &&
+          snapshot.visible &&
+          snapshot.sameMesh,
+      ),
+    `거대 폰 AABB·발사 배율 검증 실패: scale=${giantPawn.uniformScale}, heightError=${giantHeightError}, sleeping=${giantSleeping}/28, maxDrift=${giantDrift.maximumDrift}, giantAabb=${giantAabbError}, sizeAabb=${sizeCardAabbError}, strike=${giantStrikeError}/${sizeCardStrikeError}, marker=${giantMarkerDiameter}/${giantExpectedMarkerDiameter},${sizeCardMarkerDiameter}/${sizeCardExpectedMarkerDiameter}, scales=${JSON.stringify({ before: scaleBeforeLaunch, launch: scaleAtLaunchStep, peak: scaleAtPulsePeak, settled: scaleAfterSettle })}`,
   );
   console.log(
-    `[통과 b] pieces=28, pawns=${whitePawnFiles.join(",")}, pawnHeight=${giantPawnHeight.toFixed(6)}, kingHeight=${whiteKingHeight.toFixed(6)}, |Δ|=${giantHeightDifference.toExponential(3)}, preSettle=${giantSettle.steps}, sleeping=${giantSleeping}/28, maxDrift=${giantDrift.maximumDrift.toFixed(6)} (${giantDrift.maximumPieceId})`,
+    `[통과 b] pieces=28, pawns=${whitePawnFiles.join(",")}, giantScale=${giantPawn.uniformScale.toFixed(6)}, pawnHeight=${giantPawnHeight.toFixed(6)}, expectedHeight=${expectedGiantPawnHeight.toFixed(6)}, error=${giantHeightError.toExponential(3)}, AABB giant=${giantAabbError.toExponential(3)} size=${sizeCardAabbError.toExponential(3)}, strike=${giantStrikeError.toExponential(3)}/${sizeCardStrikeError.toExponential(3)}, marker=${giantMarkerDiameter.toFixed(6)}/${sizeCardMarkerDiameter.toFixed(6)}, scale mesh(before/launch/peak/settled)=${scaleBeforeLaunch.mesh.toFixed(6)}/${scaleAtLaunchStep.mesh.toFixed(6)}/${scaleAtPulsePeak.mesh.toFixed(6)}/${scaleAfterSettle.mesh.toFixed(6)}, collider=${scaleBeforeLaunch.collider.toFixed(6)}/${scaleAtLaunchStep.collider.toFixed(6)}/${scaleAtPulsePeak.collider.toFixed(6)}/${scaleAfterSettle.collider.toFixed(6)}, visible=true, sameMesh=true, launchSettle=${giantLaunchSettleSteps}, preSettle=${giantSettle.steps}, sleeping=${giantSleeping}/28, maxDrift=${giantDrift.maximumDrift.toFixed(6)} (${giantDrift.maximumPieceId})`,
   );
 
   const stackedGiantState = cardsModule.createRunCardState();
@@ -471,8 +1050,18 @@ try {
     (binding) =>
       binding.body.translation().y < configModule.FALL_OUT_Y,
   );
+  const expectedStackedGiantScale =
+    (1 +
+      cardsModule.computeGeneralCardEffect(
+        stackedGiantState,
+        "size",
+        capTestEffectScale,
+      )) *
+    configModule.GIANT_PAWN_SIZE_MULTIPLIER;
   assertCondition(
-    stackedGiantScale === configModule.STAGE_MAX_PIECE_SCALE &&
+    Math.abs(
+      stackedGiantScale - expectedStackedGiantScale,
+    ) < 1e-12 &&
       stackedWhiteKingScale ===
         configModule.PLAYER_MAX_SIZE_SCALE &&
       stackedGiantFlare + 0.02 < meta.cellSize * 2 &&
@@ -482,7 +1071,7 @@ try {
     `거대 폰+크기 상한 보드 안전 실패: pawnScale=${stackedGiantScale}, regularScale=${stackedWhiteKingScale}, flare=${stackedGiantFlare}, sleeping=${stackedGiantSleeping}/28, maxDrift=${stackedGiantDrift.maximumDrift}, fallen=${stackedGiantFallen.length}`,
   );
   console.log(
-    `[통과 b-상한] giantPawn+sizeGrade4×3: pawnScale=${stackedGiantScale.toFixed(6)}, regularScale=${stackedWhiteKingScale.toFixed(6)}, flare+margin=${(stackedGiantFlare + 0.02).toFixed(6)}<twoCells=${(meta.cellSize * 2).toFixed(6)}, preSettle=${stackedGiantSettle.steps}, sleeping=${stackedGiantSleeping}/28, fallen=0, maxDrift=${stackedGiantDrift.maximumDrift.toFixed(6)} (${stackedGiantDrift.maximumPieceId})`,
+    `[통과 b-상한] giantPawn1.3×sizeCap: pawnScale=${stackedGiantScale.toFixed(6)}, regularScale=${stackedWhiteKingScale.toFixed(6)}, flare+margin=${(stackedGiantFlare + 0.02).toFixed(6)}<twoCells=${(meta.cellSize * 2).toFixed(6)}, preSettle=${stackedGiantSettle.steps}, sleeping=${stackedGiantSleeping}/28, fallen=0, maxDrift=${stackedGiantDrift.maximumDrift.toFixed(6)} (${stackedGiantDrift.maximumPieceId})`,
   );
 
   const proneState = cardsModule.createRunCardState();

@@ -18,7 +18,14 @@ import type {
   PhysicsRuntime,
   PieceBodyBinding,
 } from "./physics";
-import type { SceneRuntime } from "./scene";
+import {
+  applyPendingBreakableWallDestructions,
+  scanBreakableWallContacts,
+} from "./physics";
+import {
+  synchronizeBreakableWallMeshes,
+  type SceneRuntime,
+} from "./scene";
 import type { RuntimeTuningSettings } from "./tuning";
 
 export type TurnPhase =
@@ -143,6 +150,11 @@ export function collectGroundedPieceIds(
   const colliderOwners = new Map<number, string>();
   const neighbors = new Map<string, Set<string>>();
   const grounded = new Set<string>();
+  const boardColliderHandles = new Set(
+    runtime.physicsRuntime.boardColliders.map(
+      (collider) => collider.handle,
+    ),
+  );
   for (const binding of runtime.physicsRuntime.pieces.values()) {
     colliderOwners.set(binding.collider.handle, binding.instance.id);
     neighbors.set(binding.instance.id, new Set());
@@ -161,10 +173,7 @@ export function collectGroundedPieceIds(
         ) {
           return;
         }
-        if (
-          otherCollider.handle ===
-          runtime.physicsRuntime.boardCollider.handle
-        ) {
+        if (boardColliderHandles.has(otherCollider.handle)) {
           grounded.add(binding.instance.id);
           return;
         }
@@ -538,6 +547,13 @@ export function queueTurnLaunch(
 export function applyPendingLaunchBeforeStep(
   runtime: TurnRuntime,
 ): void {
+  applyPendingBreakableWallDestructions(
+    runtime.physicsRuntime,
+  );
+  synchronizeBreakableWallMeshes(
+    runtime.sceneRuntime,
+    runtime.physicsRuntime,
+  );
   const request = runtime.pendingLaunch;
   if (request === null) {
     return;
@@ -722,6 +738,11 @@ export function updateTurnAfterStep(
   fixedStep: number,
 ): void {
   runtime.physicsStepNumber += 1;
+  scanBreakableWallContacts(runtime.physicsRuntime);
+  synchronizeBreakableWallMeshes(
+    runtime.sceneRuntime,
+    runtime.physicsRuntime,
+  );
   removeFallenPieces(runtime);
   if (runtime.phase !== "settling") {
     return;

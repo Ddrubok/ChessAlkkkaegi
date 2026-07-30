@@ -29,6 +29,10 @@ import {
 } from "./config";
 import type { PieceBodyBinding } from "./physics";
 import type { SceneRuntime } from "./scene";
+import {
+  resetAimPowerSounds,
+  updateAimPowerSounds,
+} from "./sound";
 
 export interface FrozenCameraBasis {
   // 포인터를 누른 순간의 화면 가로축을 고정해 카메라 변화가 조준을 바꾸지 않게 한다.
@@ -63,11 +67,15 @@ export interface ActiveAim {
   showsPowerReadout: boolean;
   // 클래식 드래그는 항상 수평이라 고도 계기가 의미 없고 당구식에서만 표시한다.
   showsElevationGauge: boolean;
+  // 로컬 플레이어 드래그만 세기 임계 효과음을 내고 AI·원격 텔레그래프는 끄는 표시다.
+  tracksPowerSounds: boolean;
 }
 
 interface RenderPulse {
   // 공유 형상 대신 개별 렌더 크기만 바꾸기 위한 대상 메시다.
   mesh: Mesh;
+  // 확대 말도 펄스가 끝난 뒤 보드 설정 배율로 정확히 돌아가게 보존한 시작 배율이다.
+  baseScale: Vector3;
   // 실제 화면 시간으로 0.12초 펄스를 진행하기 위한 기준 시각이다.
   startedAt: number;
 }
@@ -882,7 +890,7 @@ function updateElevationGauge(
 }
 
 /**
- * 물리 자세와 단위 렌더 크기로 현재 말의 월드 AABB를 계산한다.
+ * 최신 물리 자세와 메시의 실제 렌더 배율로 현재 말의 월드 AABB를 계산한다.
  */
 export function computePieceWorldAabb(
   binding: PieceBodyBinding,
@@ -901,9 +909,20 @@ export function computePieceWorldAabb(
   const matrix = new Matrix4().compose(
     new Vector3(translation.x, translation.y, translation.z),
     new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w),
-    new Vector3(1, 1, 1),
+    mesh.scale,
   );
   return target.copy(localBounds).applyMatrix4(matrix);
+}
+
+/**
+ * 현재 월드 AABB의 수평 실제 크기를 선택 고리 지름으로 바꾸되 작은 말의 최소 가독성을 보존한다.
+ */
+export function computePieceMarkerDiameter(bounds: Box3): number {
+  return Math.max(
+    bounds.max.x - bounds.min.x,
+    bounds.max.z - bounds.min.z,
+    0.35,
+  );
 }
 
 /**
@@ -1125,6 +1144,7 @@ export function beginAim(
   startY: number,
   basis: FrozenCameraBasis,
   showsPowerReadout = true,
+  tracksPowerSounds = showsPowerReadout,
 ): void {
   selectAimPiece(runtime, pieceId);
   runtime.activeAim = {
@@ -1136,7 +1156,11 @@ export function beginAim(
     normalizedPower: 0,
     showsPowerReadout,
     showsElevationGauge: !showsPowerReadout,
+    tracksPowerSounds,
   };
+  if (tracksPowerSounds) {
+    resetAimPowerSounds();
+  }
   setAimGuideColor(runtime, new Color(0xffffff));
   setAimGuidesVisible(runtime, true);
   setBowstringVisible(runtime, false);
@@ -1152,6 +1176,7 @@ export function beginDirectedAim(
   runtime: AimRuntime,
   pieceId: string,
   direction: Vector3,
+  tracksPowerSounds = false,
 ): void {
   assertFiniteGuideVector("방향 조준 시작 방향", direction);
   if (direction.lengthSq() < 1e-12) {
@@ -1172,6 +1197,7 @@ export function beginDirectedAim(
       forward: normalizedDirection,
     },
     false,
+    tracksPowerSounds,
   );
 }
 
@@ -1197,6 +1223,9 @@ export function updateDirectedAim(
     Math.max(normalizedPower, 0),
     1,
   );
+  if (activeAim.tracksPowerSounds) {
+    updateAimPowerSounds(activeAim.normalizedPower);
+  }
   const color = new Color(0xffffff).lerp(
     new Color(0xff3b30),
     activeAim.normalizedPower,
@@ -1227,6 +1256,9 @@ export function updateAimPointer(
   const deltaY = clientY - activeAim.startY;
   const dragLength = Math.hypot(deltaX, deltaY);
   activeAim.normalizedPower = Math.min(dragLength / MAX_DRAG_PIXELS, 1);
+  if (activeAim.tracksPowerSounds) {
+    updateAimPowerSounds(activeAim.normalizedPower);
+  }
 
   // 화면 아래로 당기면 백 시점에서는 +z, 흑 시점에서는 -z로 발사되도록 카메라 forward의 부호를 유지한다.
   activeAim.direction
@@ -1272,6 +1304,9 @@ export function cancelAim(
   runtime: AimRuntime,
   clearSelection: boolean,
 ): void {
+  if (runtime.activeAim?.tracksPowerSounds === true) {
+    resetAimPowerSounds();
+  }
   runtime.activeAim = null;
   runtime.applicationPoint = null;
   setAimGuidesVisible(runtime, false);
@@ -1311,10 +1346,38 @@ export function startLaunchPulse(
   if (mesh === undefined) {
     return;
   }
+  const previousPulse = runtime.pulses.get(pieceId);
+  if (previousPulse !== undefined) {
+    mesh.scale.copy(previousPulse.baseScale);
+  }
   runtime.pulses.set(pieceId, {
     mesh,
+    baseScale: mesh.scale.clone(),
     startedAt: performance.now(),
   });
+}
+
+/**
+ * 발사 펄스의 화면 시간만 진행해 물리 step과 독립적으로 렌더 강조 배율을 갱신한다.
+ */
+export function updateLaunchPulses(
+  runtime: AimRuntime,
+  now: number,
+): void {
+  for (const [pieceId, pulse] of runtime.pulses) {
+    const progress =
+      (now - pulse.startedAt) / 1000 / LAUNCH_PULSE_SECONDS;
+    if (progress >= 1) {
+      pulse.mesh.scale.copy(pulse.baseScale);
+      runtime.pulses.delete(pieceId);
+      continue;
+    }
+    pulse.mesh.scale
+      .copy(pulse.baseScale)
+      .multiplyScalar(
+        1 + Math.sin(progress * Math.PI) * 0.06,
+      );
+  }
 }
 
 /**
@@ -1332,11 +1395,7 @@ export function updateAimVisuals(
     if (binding !== undefined && mesh !== undefined) {
       const bounds = computePieceWorldAabb(binding, mesh);
       const center = bounds.getCenter(new Vector3());
-      const markerDiameter = Math.max(
-        bounds.max.x - bounds.min.x,
-        bounds.max.z - bounds.min.z,
-        0.35,
-      );
+      const markerDiameter = computePieceMarkerDiameter(bounds);
       runtime.marker.position.set(center.x, bounds.min.y + 0.003, center.z);
       runtime.marker.scale.setScalar(markerDiameter / 0.42);
       runtime.marker.visible = true;
@@ -1463,14 +1522,5 @@ export function updateAimVisuals(
     }
   }
 
-  for (const [pieceId, pulse] of runtime.pulses) {
-    const progress =
-      (now - pulse.startedAt) / 1000 / LAUNCH_PULSE_SECONDS;
-    if (progress >= 1) {
-      pulse.mesh.scale.setScalar(1);
-      runtime.pulses.delete(pieceId);
-      continue;
-    }
-    pulse.mesh.scale.setScalar(1 + Math.sin(progress * Math.PI) * 0.06);
-  }
+  updateLaunchPulses(runtime, now);
 }

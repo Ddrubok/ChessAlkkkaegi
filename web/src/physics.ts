@@ -18,12 +18,33 @@ import {
 } from "./config";
 import type { PieceInstance } from "./layout";
 import {
+  computeBoardFloorRectangles,
+  computeBoardHoleRectangles,
+  createBoardFloorLayoutKey,
+  type BoardFloorRectangle,
+  type BoardHoleRectangle,
+} from "./holes";
+import {
+  computeStageBoardHalfExtent,
   computeStagePieceScale,
   computeStageSpawnPose,
   computeUpgradeWeightFraction,
   selectStageSpawnInstances,
   type StageSpawnOptions,
 } from "./stage";
+import {
+  computePinballObstacleDefinitions,
+  hasPinballObstacles,
+  type PinballObstacleDefinition,
+} from "./obstacles";
+import {
+  computeBreakableWallSegments,
+  computePocketKingBaseRadius,
+  computePocketWallSegments,
+  hasBreakableWalls,
+  hasPocketWalls,
+  type BreakableWallSegmentDefinition,
+} from "./walls";
 
 export interface PieceMassProperties {
   mass: number;
@@ -73,12 +94,62 @@ export interface PieceBodyBinding {
   upgradeAdditionalMass: number;
 }
 
+export interface BreakableWallPhysicsBinding {
+  // 물리·렌더가 같은 내구 변형과 벽 조각 상태를 참조하는 고정 배치 정의다.
+  definition: BreakableWallSegmentDefinition;
+  // 다음 fixed step 직전까지 반사를 유지하는 고정 강체다.
+  body: RAPIER.RigidBody;
+  // 말과의 실제 solver contact를 조회하는 박스 콜라이더다.
+  collider: RAPIER.Collider;
+  // 파괴 변형에서만 서로 다른 말과 재접촉을 합쳐 최대 두 번까지 누적하는 타격 수다.
+  hitCount: number;
+  // 파괴 변형에서 같은 말의 정지·슬라이딩 접촉을 중복 계수하지 않는 직전 접촉 집합이다.
+  touchingPieceIds: Set<string>;
+  // 파괴 변형의 두 번째 타격 반사가 끝난 뒤 다음 step 직전에 제거할 예약 상태다.
+  pendingDestruction: boolean;
+}
+
+export interface BreakableWallHit {
+  // 새 접촉을 만든 말의 결정적 식별자다.
+  pieceId: string;
+  // 새 접촉을 받은 벽 조각의 결정적 식별자다.
+  wallId: string;
+  // 이번 접촉까지 포함한 조각의 누적 타격 수다.
+  hitCount: number;
+}
+
+export interface PinballObstaclePhysicsBinding {
+  // 물리·렌더가 같은 셀·위치·치수를 참조하는 고정 원기둥 정의다.
+  definition: PinballObstacleDefinition;
+  // 발사나 충돌에도 움직이지 않는 고정 강체다.
+  body: RAPIER.RigidBody;
+  // 추가 힘 없이 실제 접촉 반사만 만드는 원기둥 콜라이더다.
+  collider: RAPIER.Collider;
+}
+
 export interface PhysicsRuntime {
   world: RAPIER.World;
   boardBody: RAPIER.RigidBody;
+  // 기존 단일 바닥 API와 호환할 대표 바닥 콜라이더다.
   boardCollider: RAPIER.Collider;
+  // 구멍 가장자리와 정확히 맞물려 실제 바닥을 이루는 모든 콜라이더다.
+  boardColliders: RAPIER.Collider[];
+  // 렌더 보드와 대조할 현재 물리 바닥 직사각형 목록이다.
+  boardFloorRectangles: BoardFloorRectangle[];
+  // 현재 스테이지에서 실제로 비워 둔 구멍 직사각형 목록이다.
+  boardHoleRectangles: BoardHoleRectangle[];
+  // 반폭이 같아도 스테이지 4→5에서 바닥을 재구축하도록 비교하는 값 기반 키다.
+  boardFloorLayoutKey: string;
   boardTop: number;
+  // 렌더 판과 매 리셋마다 일치 여부를 검사하는 현재 물리 바닥 반폭이다.
+  boardHalfExtent: number;
   pieces: Map<string, PieceBodyBinding>;
+  // 스테이지 3~8의 파괴·불파괴 변형을 같은 바디 생성 경로로 관리하는 외곽 벽 조각표다.
+  breakableWalls: Map<string, BreakableWallPhysicsBinding>;
+  // 다음 step 경계에서 제거된 조각을 렌더와 검증이 확인하는 id 집합이다.
+  destroyedBreakableWallIds: Set<string>;
+  // 스테이지 9에서만 존재하며 내구 상태 없이 순수 접촉만 만드는 고정 원기둥 연결표다.
+  pinballObstacles: Map<string, PinballObstaclePhysicsBinding>;
   // 같은 종류가 여러 개여도 디버그 표시와 로그는 한 번만 기록한다.
   massProperties: Map<PieceType, PieceMassProperties>;
 }
@@ -99,11 +170,313 @@ interface BodyCreationState {
   angularVelocity: SpawnTranslation;
 }
 
+interface PhysicsBoardBinding {
+  // 새 판 바닥을 소유하는 고정 강체다.
+  body: RAPIER.RigidBody;
+  // 고정 강체에 붙어 실제 접촉 범위를 만드는 직육면체 콜라이더다.
+  collider: RAPIER.Collider;
+  // 하나의 고정 바디에 붙어 구멍을 제외한 바닥 전체를 이루는 콜라이더들이다.
+  colliders: RAPIER.Collider[];
+  // 물리 콜라이더와 일대일 대응하는 바닥 직사각형 목록이다.
+  floorRectangles: BoardFloorRectangle[];
+  // 콜라이더를 만들지 않아 실제 낙하가 가능한 구멍 직사각형 목록이다.
+  holeRectangles: BoardHoleRectangle[];
+  // 같은 반폭의 서로 다른 스테이지 바닥을 구분하는 값 기반 키다.
+  layoutKey: string;
+  // 렌더 판의 y=0 상면과 비교할 물리 바닥 상면이다.
+  top: number;
+}
+
 // 첫 로딩과 핫시트 재시작에서는 스테이지 버프를 전혀 적용하지 않는다.
 const DEFAULT_STAGE_SPAWN_OPTIONS: StageSpawnOptions = {
   gameMode: "hotseat",
   stageNumber: 1,
 };
+
+/**
+ * 현재 월드에 지정 반폭의 고정 보드 바디와 콜라이더를 만든다.
+ */
+function createPhysicsBoard(
+  world: RAPIER.World,
+  meta: ChessSetMeta,
+  boardHalfExtent: number,
+  stageOptions: StageSpawnOptions,
+): PhysicsBoardBinding {
+  if (!Number.isFinite(boardHalfExtent) || boardHalfExtent <= 0) {
+    throw new Error(
+      `물리 보드 반폭 ${boardHalfExtent}가 유한한 양수가 아닙니다.`,
+    );
+  }
+  const boardCenterY = -meta.boardThickness / 2;
+  const body = world.createRigidBody(
+    RAPIER.RigidBodyDesc.fixed().setTranslation(0, boardCenterY, 0),
+  );
+  const holeRectangles = computeBoardHoleRectangles(
+    meta.cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const floorRectangles = computeBoardFloorRectangles(
+    boardHalfExtent,
+    holeRectangles,
+  );
+  const colliders = floorRectangles.map((rectangle) => {
+    const halfWidth = (rectangle.maxX - rectangle.minX) / 2;
+    const halfDepth = (rectangle.maxZ - rectangle.minZ) / 2;
+    return world.createCollider(
+      RAPIER.ColliderDesc.cuboid(
+        halfWidth,
+        meta.boardThickness / 2,
+        halfDepth,
+      )
+        .setTranslation(
+          (rectangle.minX + rectangle.maxX) / 2,
+          0,
+          (rectangle.minZ + rectangle.maxZ) / 2,
+        )
+        .setFriction(PIECE_FRICTION)
+        .setRestitution(PIECE_RESTITUTION),
+      body,
+    );
+  });
+  const collider = colliders[0];
+  if (collider === undefined) {
+    throw new Error("구멍 분할 뒤 물리 보드 바닥이 하나도 남지 않았습니다.");
+  }
+  return {
+    body,
+    collider,
+    colliders,
+    floorRectangles,
+    holeRectangles,
+    layoutKey: createBoardFloorLayoutKey(
+      boardHalfExtent,
+      floorRectangles,
+    ),
+    top: boardCenterY + meta.boardThickness / 2,
+  };
+}
+
+/**
+ * 내구 변형과 무관하게 하나의 벽 조각을 보드 상면에 고정하고 같은 마찰·반발을 적용한다.
+ */
+function createBreakableWallBody(
+  runtime: PhysicsRuntime,
+  definition: BreakableWallSegmentDefinition,
+): BreakableWallPhysicsBinding {
+  const body = runtime.world.createRigidBody(
+    RAPIER.RigidBodyDesc.fixed().setTranslation(
+      definition.center.x,
+      definition.center.y,
+      definition.center.z,
+    ),
+  );
+  const collider = runtime.world.createCollider(
+    RAPIER.ColliderDesc.cuboid(
+      definition.halfExtents.x,
+      definition.halfExtents.y,
+      definition.halfExtents.z,
+    )
+      .setFriction(PIECE_FRICTION)
+      .setRestitution(PIECE_RESTITUTION),
+    body,
+  );
+  return {
+    definition,
+    body,
+    collider,
+    hitCount: 0,
+    touchingPieceIds: new Set(),
+    pendingDestruction: false,
+  };
+}
+
+/**
+ * 기존 벽 바디와 타격 상태를 전부 버리고 현재 스테이지의 파괴·불파괴 벽을 처음 상태로 만든다.
+ */
+export function resetPhysicsBreakableWalls(
+  runtime: PhysicsRuntime,
+  meta: ChessSetMeta,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of runtime.breakableWalls.values()) {
+    runtime.world.removeRigidBody(binding.body);
+  }
+  runtime.breakableWalls.clear();
+  runtime.destroyedBreakableWallIds.clear();
+  const breakable = hasBreakableWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const pocket = hasPocketWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  if (!breakable && !pocket) {
+    return;
+  }
+  const definitions = breakable
+    ? computeBreakableWallSegments(
+        runtime.boardHalfExtent,
+        runtime.boardTop,
+        meta.cellSize,
+      )
+    : computePocketWallSegments(
+        runtime.boardHalfExtent,
+        runtime.boardTop,
+        computePocketKingBaseRadius(
+          meta.pieces.King.colliderPoints,
+          meta.pieces.King.bounds.y,
+        ),
+      );
+  for (const definition of definitions) {
+    runtime.breakableWalls.set(
+      definition.id,
+      createBreakableWallBody(runtime, definition),
+    );
+  }
+}
+
+/**
+ * 기존 핀볼 원기둥을 모두 버리고 스테이지 9에서만 같은 설정표로 여섯 개를 다시 만든다.
+ */
+export function resetPhysicsPinballObstacles(
+  runtime: PhysicsRuntime,
+  meta: ChessSetMeta,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of runtime.pinballObstacles.values()) {
+    runtime.world.removeRigidBody(binding.body);
+  }
+  runtime.pinballObstacles.clear();
+  if (
+    !hasPinballObstacles(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    return;
+  }
+  const definitions = computePinballObstacleDefinitions(
+    meta.cellSize,
+    runtime.boardTop,
+  );
+  for (const definition of definitions) {
+    const body = runtime.world.createRigidBody(
+      RAPIER.RigidBodyDesc.fixed().setTranslation(
+        definition.center.x,
+        definition.center.y,
+        definition.center.z,
+      ),
+    );
+    const collider = runtime.world.createCollider(
+      RAPIER.ColliderDesc.cylinder(
+        definition.halfHeight,
+        definition.radius,
+      )
+        .setFriction(PIECE_FRICTION)
+        .setRestitution(PIECE_RESTITUTION),
+      body,
+    );
+    runtime.pinballObstacles.set(definition.id, {
+      definition,
+      body,
+      collider,
+    });
+  }
+}
+
+/**
+ * 모든 말·벽 쌍의 solver contact를 id 순으로 훑어 거짓→참 전이만 타격으로 계수한다.
+ */
+export function scanBreakableWallContacts(
+  runtime: PhysicsRuntime,
+): BreakableWallHit[] {
+  const hits: BreakableWallHit[] = [];
+  const pieces = [...runtime.pieces.values()].sort((left, right) =>
+    left.instance.id < right.instance.id
+      ? -1
+      : left.instance.id > right.instance.id
+        ? 1
+        : 0,
+  );
+  const walls = [...runtime.breakableWalls.values()].sort(
+    (left, right) =>
+      left.definition.index - right.definition.index,
+  );
+  for (const wall of walls) {
+    if (wall.definition.variant !== "breakable") {
+      // 포켓 벽은 같은 접촉 스캔을 지나도 내구도·균열 상태를 절대 만들지 않는다.
+      wall.hitCount = 0;
+      wall.touchingPieceIds.clear();
+      wall.pendingDestruction = false;
+      continue;
+    }
+    if (wall.pendingDestruction) {
+      continue;
+    }
+    const currentTouchingPieceIds = new Set<string>();
+    for (const piece of pieces) {
+      let touching = false;
+      runtime.world.contactPair(
+        piece.collider,
+        wall.collider,
+        (manifold) => {
+          if (manifold.numSolverContacts() > 0) {
+            touching = true;
+          }
+        },
+      );
+      if (!touching) {
+        continue;
+      }
+      const pieceId = piece.instance.id;
+      currentTouchingPieceIds.add(pieceId);
+      if (!wall.touchingPieceIds.has(pieceId)) {
+        wall.hitCount += 1;
+        hits.push({
+          pieceId,
+          wallId: wall.definition.id,
+          hitCount: wall.hitCount,
+        });
+        if (wall.hitCount >= 2) {
+          wall.pendingDestruction = true;
+          break;
+        }
+      }
+    }
+    wall.touchingPieceIds = currentTouchingPieceIds;
+  }
+  return hits;
+}
+
+/**
+ * 직전 step에서 두 번째 타격을 받은 벽만 다음 step 직전에 제거해 반사 순서를 보장한다.
+ */
+export function applyPendingBreakableWallDestructions(
+  runtime: PhysicsRuntime,
+): string[] {
+  const destroyedIds: string[] = [];
+  const walls = [...runtime.breakableWalls.values()].sort(
+    (left, right) =>
+      left.definition.index - right.definition.index,
+  );
+  for (const wall of walls) {
+    if (wall.definition.variant !== "breakable") {
+      wall.hitCount = 0;
+      wall.pendingDestruction = false;
+      continue;
+    }
+    if (!wall.pendingDestruction) {
+      continue;
+    }
+    runtime.world.removeRigidBody(wall.body);
+    runtime.breakableWalls.delete(wall.definition.id);
+    runtime.destroyedBreakableWallIds.add(wall.definition.id);
+    destroyedIds.push(wall.definition.id);
+  }
+  return destroyedIds;
+}
 
 /**
  * Rapier가 계산한 질량·무게중심·주관성 모멘트가 물리 계산에 쓸 수 있는지 검증한다.
@@ -502,7 +875,7 @@ export function replacePieceBody(
 export async function createPhysicsRuntime(
   meta: ChessSetMeta,
   instances: readonly PieceInstance[],
-  boardHalfExtent: number,
+  requestedBoardHalfExtent: number,
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): Promise<PhysicsRuntime> {
   await RAPIER.init();
@@ -510,28 +883,39 @@ export async function createPhysicsRuntime(
   world.timestep = FIXED_STEP;
   world.lengthUnit = WORLD_LENGTH_UNIT;
 
-  const boardCenterY = -meta.boardThickness / 2;
-  const boardBody = world.createRigidBody(
-    RAPIER.RigidBodyDesc.fixed().setTranslation(0, boardCenterY, 0),
-  );
-  const boardCollider = world.createCollider(
-    RAPIER.ColliderDesc.cuboid(
-      boardHalfExtent,
-      meta.boardThickness / 2,
-      boardHalfExtent,
-    )
-      .setFriction(PIECE_FRICTION)
-      .setRestitution(PIECE_RESTITUTION),
-    boardBody,
+  // 스테이지 기록·측정 호출자가 이전 기본 반폭을 넘겨도 헤더의 모드·단계가 실제 물리 외곽의 단일 원본이다.
+  const boardHalfExtent =
+    stageOptions.gameMode === "stage"
+      ? computeStageBoardHalfExtent(
+          meta.cellSize,
+          stageOptions.gameMode,
+          stageOptions.stageNumber,
+        )
+      : requestedBoardHalfExtent;
+  const board = createPhysicsBoard(
+    world,
+    meta,
+    boardHalfExtent,
+    stageOptions,
   );
   const runtime: PhysicsRuntime = {
     world,
-    boardBody,
-    boardCollider,
-    boardTop: boardCenterY + meta.boardThickness / 2,
+    boardBody: board.body,
+    boardCollider: board.collider,
+    boardColliders: board.colliders,
+    boardFloorRectangles: board.floorRectangles,
+    boardHoleRectangles: board.holeRectangles,
+    boardFloorLayoutKey: board.layoutKey,
+    boardTop: board.top,
+    boardHalfExtent,
     pieces: new Map(),
+    breakableWalls: new Map(),
+    destroyedBreakableWallIds: new Set(),
+    pinballObstacles: new Map(),
     massProperties: new Map(),
   };
+  resetPhysicsBreakableWalls(runtime, meta, stageOptions);
+  resetPhysicsPinballObstacles(runtime, meta, stageOptions);
 
   const spawnInstances = selectStageSpawnInstances(
     instances,
@@ -542,6 +926,111 @@ export async function createPhysicsRuntime(
   }
   validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
   return runtime;
+}
+
+/**
+ * 말 바디를 한 step도 진행하지 않고 고정 바닥만 새 반폭으로 교체한다.
+ */
+export function rebuildPhysicsBoard(
+  runtime: PhysicsRuntime,
+  meta: ChessSetMeta,
+  boardHalfExtent: number,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  const nextHoleRectangles = computeBoardHoleRectangles(
+    meta.cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const nextFloorRectangles = computeBoardFloorRectangles(
+    boardHalfExtent,
+    nextHoleRectangles,
+  );
+  const nextLayoutKey = createBoardFloorLayoutKey(
+    boardHalfExtent,
+    nextFloorRectangles,
+  );
+  if (runtime.boardFloorLayoutKey === nextLayoutKey) {
+    return;
+  }
+  const piecePoses = new Map(
+    [...runtime.pieces].map(([pieceId, binding]) => {
+      const translation = binding.body.translation();
+      const rotation = binding.body.rotation();
+      return [
+        pieceId,
+        {
+          translation: {
+            x: translation.x,
+            y: translation.y,
+            z: translation.z,
+          },
+          rotation: {
+            x: rotation.x,
+            y: rotation.y,
+            z: rotation.z,
+            w: rotation.w,
+          },
+        },
+      ];
+    }),
+  );
+  runtime.world.removeRigidBody(runtime.boardBody);
+  const board = createPhysicsBoard(
+    runtime.world,
+    meta,
+    boardHalfExtent,
+    stageOptions,
+  );
+  runtime.boardBody = board.body;
+  runtime.boardCollider = board.collider;
+  runtime.boardColliders = board.colliders;
+  runtime.boardFloorRectangles = board.floorRectangles;
+  runtime.boardHoleRectangles = board.holeRectangles;
+  runtime.boardFloorLayoutKey = board.layoutKey;
+  runtime.boardTop = board.top;
+  runtime.boardHalfExtent = boardHalfExtent;
+  for (const [pieceId, pose] of piecePoses) {
+    const binding = runtime.pieces.get(pieceId);
+    if (binding === undefined) {
+      throw new Error(
+        `물리 보드 재구축 중 ${pieceId} 말 바디가 사라졌습니다.`,
+      );
+    }
+    const translation = binding.body.translation();
+    const rotation = binding.body.rotation();
+    if (
+      translation.x !== pose.translation.x ||
+      translation.y !== pose.translation.y ||
+      translation.z !== pose.translation.z ||
+      rotation.x !== pose.rotation.x ||
+      rotation.y !== pose.rotation.y ||
+      rotation.z !== pose.rotation.z ||
+      rotation.w !== pose.rotation.w
+    ) {
+      throw new Error(
+        `물리 보드 재구축이 ${pieceId} 말 자세를 변경했습니다.`,
+      );
+    }
+  }
+  const expectedBodyCount =
+    runtime.pieces.size +
+    runtime.breakableWalls.size +
+    runtime.pinballObstacles.size +
+    1;
+  const expectedColliderCount =
+    runtime.pieces.size +
+    runtime.breakableWalls.size +
+    runtime.pinballObstacles.size +
+    runtime.boardColliders.length;
+  if (
+    runtime.world.bodies.len() !== expectedBodyCount ||
+    runtime.world.colliders.len() !== expectedColliderCount
+  ) {
+    throw new Error(
+      `물리 보드 재구축 누수 검사 실패: 바디 ${runtime.world.bodies.len()}/${expectedBodyCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedColliderCount}`,
+    );
+  }
 }
 
 /**
@@ -590,6 +1079,8 @@ export function resetPhysicsPieces(
   }
   runtime.pieces.clear();
   runtime.massProperties.clear();
+  resetPhysicsBreakableWalls(runtime, meta, stageOptions);
+  resetPhysicsPinballObstacles(runtime, meta, stageOptions);
   const spawnInstances = selectStageSpawnInstances(
     instances,
     stageOptions,
@@ -598,14 +1089,23 @@ export function resetPhysicsPieces(
     createPieceBody(runtime, instance, meta, stageOptions);
   }
   validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
-  const expectedWorldCount = spawnInstances.length + 1;
+  const expectedBodyCount =
+    spawnInstances.length +
+    runtime.breakableWalls.size +
+    runtime.pinballObstacles.size +
+    1;
+  const expectedColliderCount =
+    spawnInstances.length +
+    runtime.breakableWalls.size +
+    runtime.pinballObstacles.size +
+    runtime.boardColliders.length;
   if (
     runtime.pieces.size !== spawnInstances.length ||
-    runtime.world.bodies.len() !== expectedWorldCount ||
-    runtime.world.colliders.len() !== expectedWorldCount
+    runtime.world.bodies.len() !== expectedBodyCount ||
+    runtime.world.colliders.len() !== expectedColliderCount
   ) {
     throw new Error(
-      `재시작 물리 연결 누수 검사 실패: 말 ${runtime.pieces.size}/${spawnInstances.length}, 바디 ${runtime.world.bodies.len()}/${expectedWorldCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedWorldCount}`,
+      `재시작 물리 연결 누수 검사 실패: 말 ${runtime.pieces.size}/${spawnInstances.length}, 바디 ${runtime.world.bodies.len()}/${expectedBodyCount}, 콜라이더 ${runtime.world.colliders.len()}/${expectedColliderCount}`,
     );
   }
 }

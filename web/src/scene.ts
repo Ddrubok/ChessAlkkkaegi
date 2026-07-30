@@ -2,6 +2,7 @@ import {
   BoxGeometry,
   CanvasTexture,
   Color,
+  CylinderGeometry,
   DirectionalLight,
   HemisphereLight,
   MathUtils,
@@ -18,7 +19,18 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { ChessAssets } from "./assets";
+import {
+  computeBoardRenderFloorRectangles,
+  computeBoardSurfaceLayout,
+  createBoardFloorGeometry,
+} from "./board";
 import { CAMERA_PITCH_DEG } from "./config";
+import {
+  computeBoardHoleRectangles,
+  createBoardFloorLayoutKey,
+  type BoardFloorRectangle,
+  type BoardHoleRectangle,
+} from "./holes";
 import type { PhysicsRuntime } from "./physics";
 import {
   getCellCenter,
@@ -31,15 +43,57 @@ import {
   selectStageSpawnInstances,
   type StageSpawnOptions,
 } from "./stage";
+import {
+  computePinballObstacleDefinitions,
+  hasPinballObstacles,
+  type PinballObstacleDefinition,
+} from "./obstacles";
+import {
+  computeBreakableWallSegments,
+  computePocketKingBaseRadius,
+  computePocketWallSegments,
+  hasBreakableWalls,
+  hasPocketWalls,
+  type BreakableWallSegmentDefinition,
+} from "./walls";
+
+export interface BreakableWallMeshBinding {
+  // 물리 조각과 같은 내구 변형·id·위치·크기를 제공하는 고정 배치 정의다.
+  definition: BreakableWallSegmentDefinition;
+  // 파괴 벽의 파란 띠 또는 불파괴 벽의 회백색 띠를 그리는 실제 박스 메시다.
+  mesh: Mesh;
+  // 파괴 변형에서만 같은 균열 텍스처를 매 프레임 다시 만들지 않는 마지막 표시 타격 수다.
+  shownHitCount: number;
+}
+
+export interface PinballObstacleMeshBinding {
+  // 물리 원기둥과 같은 셀·위치·치수를 제공하는 고정 배치 정의다.
+  definition: PinballObstacleDefinition;
+  // 공식 예시안의 작은 파란 원기둥을 그리는 실제 메시다.
+  mesh: Mesh;
+}
 
 export interface SceneRuntime {
   // 루프가 물리 자세를 개체별 렌더 메시로 복사하기 위한 연결표다.
   pieceMeshes: Map<string, Mesh>;
+  // 파괴 벽과 포켓 불파괴 벽을 같은 정의·메시 생성 경로로 동기화하는 연결표다.
+  breakableWallMeshes: Map<string, BreakableWallMeshBinding>;
+  // 스테이지 9의 고정 파란 원기둥을 리셋 때 함께 교체하는 연결표다.
+  pinballObstacleMeshes: Map<string, PinballObstacleMeshBinding>;
   scene: Scene;
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
   controls: OrbitControls;
+  // 기존 단일 보드 API와 호환할 첫 번째 바닥 메시다.
   boardMesh: Mesh;
+  // 구멍을 제외한 렌더 바닥 전체를 이루는 직사각형 메시들이다.
+  boardMeshes: Mesh[];
+  // 물리 바닥과 값 단위로 대조할 렌더 바닥 직사각형 목록이다.
+  boardFloorRectangles: BoardFloorRectangle[];
+  // 현재 렌더 보드에서 비워 둔 구멍 직사각형 목록이다.
+  boardHoleRectangles: BoardHoleRectangle[];
+  // 같은 반폭의 서로 다른 스테이지 보드를 구분하는 값 기반 키다.
+  boardFloorLayoutKey: string;
   boardTop: number;
   // 세로 화면에서도 보드 전체가 들어오도록 현재 종횡비에서 계산한 최소 거리다.
   minimumCameraDistance: number;
@@ -149,14 +203,8 @@ export function synchronizePieceMeshes(
   return maxSyncError;
 }
 
-// 여백과 8개 셀이 실제 0.25:1 비율로 그려지는 캔버스 해상도다.
-const BOARD_CANVAS_SIZE = 544;
-
-// 한 셀을 정수 픽셀로 그려 경계가 흐려지지 않게 하는 크기다.
+// 기본 판과 확대 여백 모두 한 셀에 같은 밀도의 텍셀을 배정하는 목표 해상도다.
 const BOARD_CELL_PIXELS = 64;
-
-// 물리 여백 0.25셀과 같은 비율을 만드는 캔버스 테두리 두께다.
-const BOARD_BORDER_PIXELS = 16;
 
 // 화면 가장자리에서 보드가 잘리지 않도록 투영 계산에 소량의 여백을 더한다.
 const CAMERA_FIT_MARGIN = 1.06;
@@ -248,28 +296,89 @@ export function fitCameraToBoard(runtime: SceneRuntime): void {
 }
 
 /**
- * 보드 여백과 8×8 무늬를 한 캔버스에 그려 시각 셀과 물리 셀의 크기를 일치시킨다.
+ * 새 외곽 목재 테두리 안쪽 전체에 기존 셀 크기와 위상이 이어지는 체크무늬를 그린다.
  */
-function createBoardTexture(): CanvasTexture {
+function createBoardTexture(
+  boardHalfExtent: number,
+  cellSize: number,
+  rectangle: Readonly<BoardFloorRectangle>,
+): CanvasTexture {
+  const layout = computeBoardSurfaceLayout(
+    cellSize,
+    boardHalfExtent,
+  );
+  const canvasWidth = Math.ceil(
+    ((rectangle.maxX - rectangle.minX) * BOARD_CELL_PIXELS) /
+      cellSize,
+  );
+  const canvasHeight = Math.ceil(
+    ((rectangle.maxZ - rectangle.minZ) * BOARD_CELL_PIXELS) /
+      cellSize,
+  );
   const canvas = document.createElement("canvas");
-  canvas.width = BOARD_CANVAS_SIZE;
-  canvas.height = BOARD_CANVAS_SIZE;
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
   const context = canvas.getContext("2d");
   if (context === null) {
     throw new Error("체스판 텍스처를 그릴 2D 캔버스를 만들지 못했습니다.");
   }
+  context.imageSmoothingEnabled = false;
 
   context.fillStyle = "#4b3023";
-  context.fillRect(0, 0, BOARD_CANVAS_SIZE, BOARD_CANVAS_SIZE);
-  for (let rank = 0; rank < 8; rank += 1) {
-    for (let file = 0; file < 8; file += 1) {
-      // 파일 x축을 뒤집은 텍스처 대응에서 a1은 홀수 패리티의 어두운 칸, h1은 밝은 칸이어야 한다.
-      context.fillStyle = (file + rank) % 2 === 1 ? "#7b4d35" : "#e3d2b2";
+  context.fillRect(0, 0, canvasWidth, canvasHeight);
+  const pixelsPerWorldUnitX =
+    canvasWidth / (rectangle.maxX - rectangle.minX);
+  const pixelsPerWorldUnitZ =
+    canvasHeight / (rectangle.maxZ - rectangle.minZ);
+  const firstCellIndex = Math.floor(
+    -layout.checkerHalfExtent / cellSize,
+  );
+  const lastCellIndex = Math.ceil(
+    layout.checkerHalfExtent / cellSize,
+  );
+  for (
+    let rankIndex = firstCellIndex;
+    rankIndex < lastCellIndex;
+    rankIndex += 1
+  ) {
+    for (
+      let fileIndex = firstCellIndex;
+      fileIndex < lastCellIndex;
+      fileIndex += 1
+    ) {
+      const minimumX = Math.max(
+        fileIndex * cellSize,
+        -layout.checkerHalfExtent,
+        rectangle.minX,
+      );
+      const maximumX = Math.min(
+        (fileIndex + 1) * cellSize,
+        layout.checkerHalfExtent,
+        rectangle.maxX,
+      );
+      const minimumZ = Math.max(
+        rankIndex * cellSize,
+        -layout.checkerHalfExtent,
+        rectangle.minZ,
+      );
+      const maximumZ = Math.min(
+        (rankIndex + 1) * cellSize,
+        layout.checkerHalfExtent,
+        rectangle.maxZ,
+      );
+      if (minimumX >= maximumX || minimumZ >= maximumZ) {
+        continue;
+      }
+      // 원점을 기준으로 이어지는 셀 인덱스를 써 기존 8×8 경계에도 위상 이음새를 만들지 않는다.
+      context.fillStyle =
+        ((fileIndex + rankIndex) & 1) === 1
+          ? "#7b4d35"
+          : "#e3d2b2";
       context.fillRect(
-        BOARD_BORDER_PIXELS + file * BOARD_CELL_PIXELS,
-        BOARD_BORDER_PIXELS + rank * BOARD_CELL_PIXELS,
-        BOARD_CELL_PIXELS,
-        BOARD_CELL_PIXELS,
+        (minimumX - rectangle.minX) * pixelsPerWorldUnitX,
+        (minimumZ - rectangle.minZ) * pixelsPerWorldUnitZ,
+        (maximumX - minimumX) * pixelsPerWorldUnitX,
+        (maximumZ - minimumZ) * pixelsPerWorldUnitZ,
       );
     }
   }
@@ -284,36 +393,243 @@ function createBoardTexture(): CanvasTexture {
 /**
  * BoxGeometry의 위쪽 면 그룹에만 체크무늬 재질을 배정해 옆면을 평평한 단색으로 둔다.
  */
-function createBoardMesh(
+function createBoardMeshes(
   boardHalfExtent: number,
   boardThickness: number,
-): Mesh {
-  const geometry = new BoxGeometry(
-    boardHalfExtent * 2,
-    boardThickness,
-    boardHalfExtent * 2,
+  cellSize: number,
+  stageOptions: StageSpawnOptions,
+): {
+  meshes: Mesh[];
+  floorRectangles: BoardFloorRectangle[];
+  holeRectangles: BoardHoleRectangle[];
+  layoutKey: string;
+} {
+  const holeRectangles = computeBoardHoleRectangles(
+    cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
   );
-  const sideMaterial = new MeshStandardMaterial({
-    color: 0x36251f,
-    roughness: 0.84,
+  const floorRectangles = computeBoardRenderFloorRectangles(
+    boardHalfExtent,
+    cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const meshes = floorRectangles.map((rectangle, index) => {
+    const geometry = createBoardFloorGeometry(
+      rectangle,
+      boardThickness,
+    );
+    const sideMaterial = new MeshStandardMaterial({
+      color: 0x36251f,
+      roughness: 0.84,
+    });
+    const topMaterial = new MeshStandardMaterial({
+      map: createBoardTexture(
+        boardHalfExtent,
+        cellSize,
+        rectangle,
+      ),
+      roughness: 0.72,
+    });
+    const materials = [
+      sideMaterial,
+      sideMaterial,
+      topMaterial,
+      sideMaterial,
+      sideMaterial,
+      sideMaterial,
+    ];
+    const board = new Mesh(geometry, materials);
+    board.name = `Board-${index}`;
+    board.position.set(
+      (rectangle.minX + rectangle.maxX) / 2,
+      -boardThickness / 2,
+      (rectangle.minZ + rectangle.maxZ) / 2,
+    );
+    board.receiveShadow = true;
+    return board;
   });
-  const topMaterial = new MeshStandardMaterial({
-    map: createBoardTexture(),
-    roughness: 0.72,
+  if (meshes.length === 0) {
+    throw new Error("구멍 분할 뒤 렌더 보드 바닥이 하나도 남지 않았습니다.");
+  }
+  return {
+    meshes,
+    floorRectangles,
+    holeRectangles,
+    layoutKey: createBoardFloorLayoutKey(
+      boardHalfExtent,
+      floorRectangles,
+    ),
+  };
+}
+
+/**
+ * 보드 한 조각의 지오메트리·재질·캔버스 텍스처를 누수 없이 해제한다.
+ */
+function disposeBoardMesh(mesh: Mesh): void {
+  mesh.geometry.dispose();
+  const materials = Array.isArray(mesh.material)
+    ? mesh.material
+    : [mesh.material];
+  for (const material of new Set(materials)) {
+    if (material instanceof MeshStandardMaterial) {
+      material.map?.dispose();
+    }
+    material.dispose();
+  }
+}
+
+/**
+ * 조각 순번만으로 같은 갈라짐을 만드는 작은 갈색 캔버스 텍스처를 생성한다.
+ */
+function createWallCrackTexture(segmentIndex: number): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (context === null) {
+    throw new Error("벽 균열 캔버스의 2D 문맥을 만들 수 없습니다.");
+  }
+  context.fillStyle = "#a06443";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  // 갈색 바탕에서도 한 번 맞은 상태를 즉시 읽을 수 있도록 밝은 목재색 균열을 유지한다.
+  context.strokeStyle = "#f2dfc9";
+  context.lineWidth = 4;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  let seed = ((segmentIndex + 1) * 2654435761) >>> 0;
+  context.beginPath();
+  context.moveTo(canvas.width * 0.5, 2);
+  for (let step = 1; step <= 6; step += 1) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const offset = ((seed >>> 16) / 0xffff - 0.5) * 30;
+    context.lineTo(
+      canvas.width * 0.5 + offset,
+      (canvas.height * step) / 7,
+    );
+  }
+  context.lineTo(canvas.width * 0.5, canvas.height - 2);
+  context.stroke();
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.magFilter = NearestFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * 한 벽 정의를 수정안의 목재 갈색 또는 이미지에서 채집한 회색 박스 메시로 만들어 등록한다.
+ */
+function addBreakableWallMesh(
+  scene: Scene,
+  wallMeshes: Map<string, BreakableWallMeshBinding>,
+  definition: BreakableWallSegmentDefinition,
+): void {
+  const geometry = new BoxGeometry(
+    definition.halfExtents.x * 2,
+    definition.halfExtents.y * 2,
+    definition.halfExtents.z * 2,
+  );
+  // 불파괴 벽 #6B6962는 PDF 회색 견본의 우세 픽셀에서 채집한 값이라 기획 확정 시 교체할 수 있다.
+  const material = new MeshStandardMaterial({
+    color:
+      definition.variant === "breakable"
+        ? 0xa06443
+        : 0x6b6962,
+    roughness: 0.7,
+    polygonOffset: true,
+    polygonOffsetFactor:
+      definition.sideIndex % 2 === 0 ? -1 : -2,
+    polygonOffsetUnits: -1,
   });
-  const materials = [
-    sideMaterial,
-    sideMaterial,
-    topMaterial,
-    sideMaterial,
-    sideMaterial,
-    sideMaterial,
-  ];
-  const board = new Mesh(geometry, materials);
-  board.name = "Board";
-  board.position.y = -boardThickness / 2;
-  board.receiveShadow = true;
-  return board;
+  const mesh = new Mesh(geometry, material);
+  mesh.name = definition.id;
+  mesh.position.set(
+    definition.center.x,
+    definition.center.y,
+    definition.center.z,
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  wallMeshes.set(definition.id, {
+    definition,
+    mesh,
+    shownHitCount: 0,
+  });
+}
+
+/**
+ * 벽 메시와 균열 텍스처가 소유한 GPU 자원을 함께 해제한다.
+ */
+function disposeBreakableWallMesh(
+  scene: Scene,
+  binding: BreakableWallMeshBinding,
+): void {
+  scene.remove(binding.mesh);
+  binding.mesh.geometry.dispose();
+  const materials = Array.isArray(binding.mesh.material)
+    ? binding.mesh.material
+    : [binding.mesh.material];
+  for (const material of materials) {
+    if (material instanceof MeshStandardMaterial) {
+      material.map?.dispose();
+    }
+    material.dispose();
+  }
+}
+
+/**
+ * 한 핀볼 정의를 물리 원기둥과 같은 치수의 수정안 회백색 메시로 만들어 등록한다.
+ */
+function addPinballObstacleMesh(
+  scene: Scene,
+  obstacleMeshes: Map<string, PinballObstacleMeshBinding>,
+  definition: PinballObstacleDefinition,
+): void {
+  const geometry = new CylinderGeometry(
+    definition.radius,
+    definition.radius,
+    definition.halfHeight * 2,
+    32,
+  );
+  const material = new MeshStandardMaterial({
+    color: 0xc2c7c9,
+    roughness: 0.58,
+    metalness: 0.04,
+  });
+  const mesh = new Mesh(geometry, material);
+  mesh.name = definition.id;
+  mesh.position.set(
+    definition.center.x,
+    definition.center.y,
+    definition.center.z,
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  obstacleMeshes.set(definition.id, {
+    definition,
+    mesh,
+  });
+}
+
+/**
+ * 핀볼 메시가 소유한 지오메트리와 재질을 씬에서 함께 해제한다.
+ */
+function disposePinballObstacleMesh(
+  scene: Scene,
+  binding: PinballObstacleMeshBinding,
+): void {
+  scene.remove(binding.mesh);
+  binding.mesh.geometry.dispose();
+  const materials = Array.isArray(binding.mesh.material)
+    ? binding.mesh.material
+    : [binding.mesh.material];
+  for (const material of materials) {
+    material.dispose();
+  }
 }
 
 /**
@@ -441,11 +757,75 @@ export function createSceneRuntime(
   sunlight.target.position.set(0, 0, 0);
   scene.add(sunlight, sunlight.target);
 
-  const boardMesh = createBoardMesh(
+  const board = createBoardMeshes(
     boardHalfExtent,
     assets.meta.boardThickness,
+    assets.meta.cellSize,
+    stageOptions,
   );
-  scene.add(boardMesh);
+  scene.add(...board.meshes);
+  const boardMesh = board.meshes[0];
+  if (boardMesh === undefined) {
+    throw new Error("대표 렌더 보드 메시가 없습니다.");
+  }
+  const boardTop =
+    boardMesh.position.y + assets.meta.boardThickness / 2;
+  const breakableWallMeshes = new Map<
+    string,
+    BreakableWallMeshBinding
+  >();
+  const breakable = hasBreakableWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const pocket = hasPocketWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  if (breakable || pocket) {
+    const definitions = breakable
+      ? computeBreakableWallSegments(
+          boardHalfExtent,
+          boardTop,
+          assets.meta.cellSize,
+        )
+      : computePocketWallSegments(
+          boardHalfExtent,
+          boardTop,
+          computePocketKingBaseRadius(
+            assets.meta.pieces.King.colliderPoints,
+            assets.meta.pieces.King.bounds.y,
+          ),
+        );
+    for (const definition of definitions) {
+      addBreakableWallMesh(
+        scene,
+        breakableWallMeshes,
+        definition,
+      );
+    }
+  }
+  const pinballObstacleMeshes = new Map<
+    string,
+    PinballObstacleMeshBinding
+  >();
+  if (
+    hasPinballObstacles(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    for (const definition of computePinballObstacleDefinitions(
+      assets.meta.cellSize,
+      boardTop,
+    )) {
+      addPinballObstacleMesh(
+        scene,
+        pinballObstacleMeshes,
+        definition,
+      );
+    }
+  }
 
   const whiteMaterial = new MeshStandardMaterial({
     color: 0xf1eadc,
@@ -476,13 +856,18 @@ export function createSceneRuntime(
 
   const runtime: SceneRuntime = {
     pieceMeshes,
+    breakableWallMeshes,
+    pinballObstacleMeshes,
     scene,
     camera,
     renderer,
     controls,
     boardMesh,
-    boardTop:
-      boardMesh.position.y + assets.meta.boardThickness / 2,
+    boardMeshes: board.meshes,
+    boardFloorRectangles: board.floorRectangles,
+    boardHoleRectangles: board.holeRectangles,
+    boardFloorLayoutKey: board.layoutKey,
+    boardTop,
     minimumCameraDistance: 0,
     boardHalfExtent,
     whitePieceMaterial: whiteMaterial,
@@ -526,6 +911,186 @@ export function createSceneRuntime(
 }
 
 /**
+ * 말 메시와 카메라 객체는 유지한 채 판 메시만 새 반폭으로 교체하고 현재 화면 맞춤값을 갱신한다.
+ */
+export function rebuildSceneBoard(
+  runtime: SceneRuntime,
+  assets: ChessAssets,
+  boardHalfExtent: number,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  const nextFloorRectangles = computeBoardRenderFloorRectangles(
+    boardHalfExtent,
+    assets.meta.cellSize,
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const nextLayoutKey = createBoardFloorLayoutKey(
+    boardHalfExtent,
+    nextFloorRectangles,
+  );
+  if (runtime.boardFloorLayoutKey === nextLayoutKey) {
+    return;
+  }
+  const previousBoards = runtime.boardMeshes;
+  const nextBoard = createBoardMeshes(
+    boardHalfExtent,
+    assets.meta.boardThickness,
+    assets.meta.cellSize,
+    stageOptions,
+  );
+  for (const previousBoard of previousBoards) {
+    runtime.scene.remove(previousBoard);
+    disposeBoardMesh(previousBoard);
+  }
+  runtime.scene.add(...nextBoard.meshes);
+  const representative = nextBoard.meshes[0];
+  if (representative === undefined) {
+    throw new Error("재구축한 대표 렌더 보드 메시가 없습니다.");
+  }
+  runtime.boardMesh = representative;
+  runtime.boardMeshes = nextBoard.meshes;
+  runtime.boardFloorRectangles = nextBoard.floorRectangles;
+  runtime.boardHoleRectangles = nextBoard.holeRectangles;
+  runtime.boardFloorLayoutKey = nextBoard.layoutKey;
+  runtime.boardTop =
+    representative.position.y + assets.meta.boardThickness / 2;
+  runtime.boardHalfExtent = boardHalfExtent;
+  fitCameraToBoard(runtime);
+}
+
+/**
+ * 이전 균열·파괴 상태를 버리고 현재 스테이지 보드 외곽의 벽 메시를 새로 만든다.
+ */
+export function resetSceneBreakableWalls(
+  runtime: SceneRuntime,
+  assets: ChessAssets,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of runtime.breakableWallMeshes.values()) {
+    disposeBreakableWallMesh(runtime.scene, binding);
+  }
+  runtime.breakableWallMeshes.clear();
+  const breakable = hasBreakableWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  const pocket = hasPocketWalls(
+    stageOptions.gameMode,
+    stageOptions.stageNumber,
+  );
+  if (!breakable && !pocket) {
+    return;
+  }
+  const definitions = breakable
+    ? computeBreakableWallSegments(
+        runtime.boardHalfExtent,
+        runtime.boardTop,
+        assets.meta.cellSize,
+      )
+    : computePocketWallSegments(
+        runtime.boardHalfExtent,
+        runtime.boardTop,
+        computePocketKingBaseRadius(
+          assets.meta.pieces.King.colliderPoints,
+          assets.meta.pieces.King.bounds.y,
+        ),
+      );
+  for (const definition of definitions) {
+    addBreakableWallMesh(
+      runtime.scene,
+      runtime.breakableWallMeshes,
+      definition,
+    );
+  }
+}
+
+/**
+ * 이전 핀볼 메시를 모두 버리고 스테이지 9에서만 설정표의 여섯 원기둥을 다시 만든다.
+ */
+export function resetScenePinballObstacles(
+  runtime: SceneRuntime,
+  assets: ChessAssets,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  for (const binding of runtime.pinballObstacleMeshes.values()) {
+    disposePinballObstacleMesh(runtime.scene, binding);
+  }
+  runtime.pinballObstacleMeshes.clear();
+  if (
+    !hasPinballObstacles(
+      stageOptions.gameMode,
+      stageOptions.stageNumber,
+    )
+  ) {
+    return;
+  }
+  for (const definition of computePinballObstacleDefinitions(
+    assets.meta.cellSize,
+    runtime.boardTop,
+  )) {
+    addPinballObstacleMesh(
+      runtime.scene,
+      runtime.pinballObstacleMeshes,
+      definition,
+    );
+  }
+}
+
+/**
+ * 첫 타격에는 결정적 균열을 붙이고 물리에서 제거된 조각은 같은 fixed-step 경계에 숨긴다.
+ */
+export function synchronizeBreakableWallMeshes(
+  runtime: SceneRuntime,
+  physicsRuntime: PhysicsRuntime,
+): void {
+  const wallMeshes = runtime.breakableWallMeshes;
+  if (wallMeshes === undefined) {
+    // 리플레이·헤드리스 검증의 최소 씬은 벽 렌더를 소유하지 않는다.
+    return;
+  }
+  for (const [wallId, binding] of [...wallMeshes]) {
+    const physicsBinding =
+      physicsRuntime.breakableWalls.get(wallId);
+    if (physicsBinding === undefined) {
+      disposeBreakableWallMesh(runtime.scene, binding);
+      wallMeshes.delete(wallId);
+      continue;
+    }
+    if (
+      binding.definition.variant === "breakable" &&
+      physicsBinding.hitCount >= 1 &&
+      binding.shownHitCount < 1
+    ) {
+      const previousMaterial = binding.mesh.material;
+      const crackMaterial = new MeshStandardMaterial({
+        map: createWallCrackTexture(
+          binding.definition.index,
+        ),
+        roughness: 0.7,
+        polygonOffset: true,
+        polygonOffsetFactor:
+          binding.definition.sideIndex % 2 === 0
+            ? -1
+            : -2,
+        polygonOffsetUnits: -1,
+      });
+      binding.mesh.material = crackMaterial;
+      const materials = Array.isArray(previousMaterial)
+        ? previousMaterial
+        : [previousMaterial];
+      for (const material of materials) {
+        if (material instanceof MeshStandardMaterial) {
+          material.map?.dispose();
+        }
+        material.dispose();
+      }
+      binding.shownHitCount = physicsBinding.hitCount;
+    }
+  }
+}
+
+/**
  * 기존 말 메시 참조를 씬과 연결표에서 모두 제거하고 표준 32개 메시를 다시 등록한다.
  */
 export function resetScenePieces(
@@ -534,6 +1099,8 @@ export function resetScenePieces(
   instances: readonly PieceInstance[],
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): void {
+  resetSceneBreakableWalls(runtime, assets, stageOptions);
+  resetScenePinballObstacles(runtime, assets, stageOptions);
   for (const mesh of runtime.pieceMeshes.values()) {
     runtime.scene.remove(mesh);
   }

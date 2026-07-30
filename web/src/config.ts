@@ -7,8 +7,8 @@ export const WORLD_LENGTH_UNIT = 1;
 // 헤드리스 검증과 같은 적분 간격을 사용해 접지 안정성을 재현한다.
 export const FIXED_STEP = 1 / 120;
 
-// 2026-07-27 개발자 지시로 √10 배속을 버리고 실제 시간과 같은 속도로 굴린다.
-export const TIME_SCALE = 1;
+// 2026-07-30 개발자 지시로 기본 배속을 2배로 올린다. 스텝 순서는 그대로라 온라인 동기화에는 영향이 없다.
+export const TIME_SCALE = 2;
 
 // 종류별 볼록껍질 부피에서 현실적인 말 질량을 계산하기 위한 공통 밀도다.
 export const PIECE_DENSITY = 1.2;
@@ -35,8 +35,62 @@ export const MAX_STEPS_PER_FRAME = 24;
 // 탭 복귀나 디버거 정지 뒤 과도한 물리 시간을 한꺼번에 처리하지 않게 한다.
 export const MAX_FRAME_DELTA = 0.25;
 
+// 로비와 대국에서 계속 재생하는 배경음이 효과음을 덮지 않도록 낮게 고정한 음량이다.
+export const SOUND_BGM_VOLUME = 0.18;
+
+// 버튼·세기·충돌 효과음을 같은 기준으로 재생하는 과하지 않은 고정 음량이다.
+export const SOUND_SFX_VOLUME = 0.45;
+
+// 말끼리 단순 접촉이나 정지 포개짐이 아닌 실제 충돌음으로 인정할 상대 선속도 하한이다.
+export const SOUND_HIT_MIN_RELATIVE_SPEED = 0.65;
+
+// 같은 말 쌍이 짧게 분리·재접촉해도 연타음이 나지 않게 하는 실제 시간 간격이다.
+export const SOUND_HIT_PAIR_COOLDOWN_MS = 180;
+
+// 여러 말이 동시에 부딪힐 때 한 프레임에 효과음이 겹쳐 폭주하지 않게 하는 전체 간격이다.
+export const SOUND_HIT_GLOBAL_COOLDOWN_MS = 70;
+
 // 말이 미끄러져 나갈 수 있는 평평한 여백을 셀 비율로 정의한다.
 export const BOARD_BORDER_CELLS = 0.25;
+
+// 공식 맵 디자인 문서의 2~10스테이지 판 전체 30% 확대를 렌더·물리 공통 배율로 고정한다.
+export const STAGE_BOARD_SCALE = 1.3;
+
+// 기획 해석을 되돌릴 때 한 상수로 셀 간격까지 확대할 수 있게 두되, 확정된 여백식 배치는 false다.
+export const STAGE_BOARD_EXPANSION_SCALES_CELLS = false;
+
+// 공식 맵 문서 45쪽의 한 변당 8조각 벽 구성을 확대 보드 외곽에도 그대로 적용한다.
+export const BREAKABLE_WALL_SEGMENTS_PER_SIDE = 8;
+
+// 공식 맵 문서의 당구장 벽과 같은 낮은 단차를 일반 발사는 반사하되 빠른 말은 넘을 수 있는 높이로 둔다.
+export const BREAKABLE_WALL_HEIGHT = 0.16;
+
+// 확대 보드 가장자리 안쪽에 놓이는 벽의 충돌 두께를 셀보다 충분히 얇게 유지한다.
+export const BREAKABLE_WALL_THICKNESS = 0.08;
+
+// 한 조각 파괴 시 Pawn은 지나가고 King은 이웃 조각에 걸리도록 인접 벽이 겹치는 길이를 셀 비율로 정한다.
+export const BREAKABLE_WALL_OVERLAP_CELLS = 0.75;
+
+// 맵 수정안 도면을 155px/월드 단위로 재어 각 벽 끝을 약 0.40만큼 비운 결과를 킹 밑동 지름의 2.4배 대각 출구 폭으로 해석한다.
+// 도면 이미지에서 유도한 값이라 기획자가 수치를 확정하면 이 상수만 교체한다.
+export const POCKET_WALL_EXIT_WIDTH_KING_DIAMETER_MULTIPLIER =
+  2.4;
+
+// 핀볼 맵 도면의 좌우 대칭 여섯 점을 셀 단위로 보존해 기획 수정 시 이 표만 바꾸게 한다.
+export const PINBALL_OBSTACLE_CELLS = [
+  { file: "c", rank: 6 },
+  { file: "f", rank: 6 },
+  { file: "a", rank: 4 },
+  { file: "h", rank: 4 },
+  { file: "c", rank: 3 },
+  { file: "e", rank: 3 },
+] as const;
+
+// 핀볼 도면의 작은 원형 점을 재현하면서 말이 사이로 지날 여유를 남기는 셀 대비 원기둥 지름이다.
+export const PINBALL_OBSTACLE_DIAMETER_CELLS = 0.35;
+
+// 일반 발사는 막되 공중에 뜬 말은 넘을 수 있도록 벽 단차보다 높게 둔 고정 원기둥 높이다.
+export const PINBALL_OBSTACLE_HEIGHT = 0.24;
 
 // 마우스와 한 손가락 모두 화면 크기에 과도하게 의존하지 않는 최대 세기 드래그 거리다.
 export const MAX_DRAG_PIXELS = 180;
@@ -50,8 +104,33 @@ export const AI_AIM_PREVIEW_DELAY = 0.25;
 // AI의 실제 세기를 0에서 최종값까지 기존 조준 색·활시위로 충전하는 실시간 초다.
 export const AI_AIM_CHARGE_SECONDS = 0.9;
 
-// 흑 AI 샷 카운터 해시가 방향에 더하는 기본 좌우 오차 상한 각도다.
-export const AI_BASE_JITTER_DEGREES = 5;
+// 스테이지 구간별 판단 방식과 좌우 조준 오차 상한을 기획서의 10/7/3/0도로 고정하는 표다.
+export const AI_STAGE_DECISION_BANDS = [
+  {
+    minimumStage: 1,
+    maximumStage: 3,
+    judgement: "random",
+    maximumAimErrorDegrees: 10,
+  },
+  {
+    minimumStage: 4,
+    maximumStage: 6,
+    judgement: "edge",
+    maximumAimErrorDegrees: 7,
+  },
+  {
+    minimumStage: 7,
+    maximumStage: 9,
+    judgement: "chain",
+    maximumAimErrorDegrees: 3,
+  },
+  {
+    minimumStage: 10,
+    maximumStage: 10,
+    judgement: "optimal",
+    maximumAimErrorDegrees: 0,
+  },
+] as const;
 
 // 흑 AI 거리 비례 세기가 내려갈 수 있는 기본 하한이다.
 export const AI_BASE_POWER_MIN = 0.35;
@@ -77,8 +156,22 @@ export const STAGE_WEIGHT_STEP = 0.1;
 // 3 이상 홀수 스테이지 한 단계마다 흑 AI 목표 발사 속도에 더하는 비율이다.
 export const STAGE_FORCE_STEP = 0.05;
 
-// 3의 배수 스테이지 한 단계마다 흑 말의 렌더와 콜라이더에 더하는 균일 배율이다.
-export const STAGE_SIZE_STEP = 0.03;
+// 플래너 최종 스테이지별 표를 그대로 옮긴 흑 말 일반 크기 배율이며 표 밖의 고스테이지는 마지막 값을 유지한다.
+export const STAGE_SIZE_MULTIPLIERS = [
+  1,
+  1,
+  1.05,
+  1.05,
+  1.1,
+  1.1,
+  1.15,
+  1.2,
+  1.25,
+  1.3,
+] as const;
+
+// 플래너 최종 결정에 따라 플레이어 카드와 AI 폰 티어가 공통으로 사용하는 원래 폰 대비 거대 폰 균일 배율이다.
+export const GIANT_PAWN_SIZE_MULTIPLIER = 1.3;
 
 // 보드 격자에 물리적으로 들어가는 총 배율 상한이다. 초고스테이지에서 지그재그로도 안 들어가는 것을 막되 중량·힘 버프는 계속 누적한다.
 export const STAGE_MAX_PIECE_SCALE = 2.2;
@@ -98,8 +191,11 @@ export const CARD_EFFECT_SCALE = 1;
 // 뒷줄 최악 인접쌍(퀸+킹) 받침 합 0.429 × s가 칸 간격 0.536 − 0.02 이하가 되는 실측 상한이다. 카드로 그 이상 쌓아도 백 일반 말은 여기서 멈춘다.
 export const PLAYER_MAX_SIZE_SCALE = 1.2;
 
-// 스테이지 하나를 클리어할 때 즉시 지급하고 저장하는 영구 메타 포인트다.
-export const STAGE_CLEAR_POINTS = 100;
+// 한 런이 완주로 끝나는 마지막 스테이지 번호다.
+export const STAGE_RUN_LENGTH = 10;
+
+// 스테이지 N 클리어가 런 종료 정산액에 더하는 N배 포인트의 기본 단위다.
+export const STAGE_POINT_CONTRIBUTION_UNIT = 1;
 
 // 영구 힘·중량 강화 한 레벨이 원래 속도·hull 질량에 더하는 비율이다.
 export const PERMANENT_UPGRADE_STEP = 0.01;
