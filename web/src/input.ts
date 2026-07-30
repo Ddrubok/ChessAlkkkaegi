@@ -900,8 +900,8 @@ function updateActionBar(runtime: InputRuntime): void {
   const y = (1 - (ndc.y * 0.5 + 0.5)) * rect.height;
   const barWidth = runtime.actionBar.offsetWidth;
   const barHeight = runtime.actionBar.offsetHeight;
-  const left = Math.min(Math.max(x + 14, 4), rect.width - barWidth - 4);
   const top = Math.min(Math.max(y - barHeight / 2, 4), rect.height - barHeight - 4);
+  const left = Math.min(Math.max(x + rect.width * 0.04 + 8, 4), rect.width - barWidth - 4);
   runtime.actionBar.style.left = `${left}px`;
   runtime.actionBar.style.top = `${top}px`;
 }
