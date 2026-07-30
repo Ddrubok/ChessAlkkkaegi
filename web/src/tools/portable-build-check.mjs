@@ -139,6 +139,25 @@ assertCondition(
   `portable HTML의 인라인 스크립트가 1개가 아닙니다: ${inlineScriptMatches.length}`,
 );
 const inlineJavascript = inlineScriptMatches[0][1];
+const inlineScriptOffset = inlineScriptMatches[0].index ?? -1;
+const appStartMatch = portableHtml.match(
+  /<main\b[^>]*\bid=["']app["'][^>]*>/u,
+);
+const appClosingOffset =
+  appStartMatch === null
+    ? -1
+    : portableHtml.indexOf(
+        "</main>",
+        (appStartMatch.index ?? 0) + appStartMatch[0].length,
+      );
+const closingBodyOffset = portableHtml.lastIndexOf("</body>");
+assertCondition(
+  appStartMatch !== null &&
+    appClosingOffset >= 0 &&
+    inlineScriptOffset > appClosingOffset &&
+    inlineScriptOffset < closingBodyOffset,
+  `portable 게임 스크립트 실행 순서가 잘못됐습니다: appEnd=${appClosingOffset}, script=${inlineScriptOffset}, bodyEnd=${closingBodyOffset}`,
+);
 const syntaxCheck = spawnSync(
   process.execPath,
   ["--check", "-"],
@@ -240,4 +259,7 @@ console.log(
 );
 console.log(
   `[통과 d] 인라인 JS 문법과 bootstrap 표식: nodeCheck=0, markers=${bootstrapMarkers.length}/${bootstrapMarkers.length}`,
+);
+console.log(
+  `[통과 e] 실행 순서: appEnd=${appClosingOffset}, script=${inlineScriptOffset}, bodyEnd=${closingBodyOffset}`,
 );

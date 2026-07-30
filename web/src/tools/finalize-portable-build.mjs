@@ -74,18 +74,29 @@ const [javascript, stylesheet] = await Promise.all([
 ]);
 const inlineJavascript =
   convertModuleMetadataForInlineScript(javascript);
+const inlineScriptTag =
+  `<script>${escapeInlineClosingTag(inlineJavascript, "script")}</script>`;
 
 html = html.replace(
   scriptMatch[0],
-  // 번들 안의 $`, $&, $'를 replacement 패턴으로 해석하지 않고 원문 그대로 넣는다.
-  () =>
-    `<script>${escapeInlineClosingTag(inlineJavascript, "script")}</script>`,
+  // head의 module 태그 자리에서는 제거해 classic 스크립트가 #app보다 먼저 실행되지 않게 한다.
+  () => "",
 );
 html = html.replace(
   stylesheetMatch[0],
   // CSS도 같은 조립 규칙을 적용해 이후 생성기에 $ 패턴이 생겨도 안전하게 유지한다.
   () => `<style>${escapeInlineClosingTag(stylesheet, "style")}</style>`,
 );
+const closingBodyIndex = html.lastIndexOf("</body>");
+if (closingBodyIndex < 0) {
+  throw new Error(
+    "portable 인라인 게임 스크립트를 배치할 </body>를 찾지 못했습니다.",
+  );
+}
+// module의 지연 실행과 같은 순서를 보장하도록 모든 body 마크업 뒤에 게임 코드를 둔다.
+html =
+  `${html.slice(0, closingBodyIndex)}${inlineScriptTag}\n` +
+  html.slice(closingBodyIndex);
 
 // Vite 중간 청크를 지우고 완성된 HTML 하나만 남겨 비개발자 전달 실수를 방지한다.
 for (const entry of await readdir(outputDirectory, {
