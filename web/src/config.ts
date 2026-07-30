@@ -95,6 +95,9 @@ export const PINBALL_OBSTACLE_HEIGHT = 0.24;
 // 마우스와 한 손가락 모두 화면 크기에 과도하게 의존하지 않는 최대 세기 드래그 거리다.
 export const MAX_DRAG_PIXELS = 180;
 
+// 모바일 권장 터치 표적 44px(약 7~10mm)를 말 선택 중심점의 화면 반경으로 보장한다.
+export const TOUCH_PIECE_HIT_RADIUS_PIXELS = 44;
+
 // 최대 세기에서 질량과 무관하게 목표로 하는 발사 직후 속도다.
 export const MAX_LAUNCH_SPEED = 11;
 

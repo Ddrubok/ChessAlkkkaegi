@@ -43,7 +43,9 @@ import {
   CAM_PITCH_MAX,
   CAM_PITCH_MIN,
   MAX_DRAG_PIXELS,
+  TOUCH_PIECE_HIT_RADIUS_PIXELS,
 } from "./config";
+import { isTouchPointerEvent } from "./input-capability";
 import type { PhysicsRuntime } from "./physics";
 import {
   hideAimOccluders,
@@ -60,6 +62,24 @@ export type PointerState =
   | "launch"
   | "cancel";
 export type InputMode = "classic" | "billiards";
+
+export interface ScreenSpacePieceCandidate {
+  // 선택 정책을 이미 통과한 말의 안정적인 런타임 식별자다.
+  pieceId: string;
+  // 월드 위치를 현재 카메라와 캔버스 영역으로 투영한 클라이언트 X 좌표다.
+  clientX: number;
+  // 월드 위치를 현재 카메라와 캔버스 영역으로 투영한 클라이언트 Y 좌표다.
+  clientY: number;
+}
+
+export interface ScreenSpacePointer {
+  // 이벤트별 마우스·터치 구분에 사용하는 브라우저 포인터 종류다.
+  pointerType: string;
+  // 터치 중심의 클라이언트 X 좌표다.
+  clientX: number;
+  // 터치 중심의 클라이언트 Y 좌표다.
+  clientY: number;
+}
 
 interface CameraPolicy {
   // 모드 전환 뒤 같은 카메라 계약을 복원할 전략 식별자다.
@@ -328,6 +348,79 @@ function raycastNearestPiece(
     false,
   );
   return intersections[0]?.object.name ?? null;
+}
+
+/**
+ * 터치일 때만 반경 안 후보 중 화면 거리가 가장 가까운 말을 고르며 동률은 id 순으로 고정한다.
+ */
+export function findNearestTouchPieceInScreenSpace(
+  event: ScreenSpacePointer,
+  candidates: readonly ScreenSpacePieceCandidate[],
+  radiusPixels = TOUCH_PIECE_HIT_RADIUS_PIXELS,
+): string | null {
+  if (!isTouchPointerEvent(event) || radiusPixels < 0) {
+    return null;
+  }
+  const radiusSquared = radiusPixels * radiusPixels;
+  let nearestPieceId: string | null = null;
+  let nearestDistanceSquared = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const distanceSquared =
+      (candidate.clientX - event.clientX) ** 2 +
+      (candidate.clientY - event.clientY) ** 2;
+    if (
+      distanceSquared > radiusSquared ||
+      distanceSquared > nearestDistanceSquared ||
+      (distanceSquared === nearestDistanceSquared &&
+        nearestPieceId !== null &&
+        candidate.pieceId >= nearestPieceId)
+    ) {
+      continue;
+    }
+    nearestPieceId = candidate.pieceId;
+    nearestDistanceSquared = distanceSquared;
+  }
+  return nearestPieceId;
+}
+
+/**
+ * 선택 가능한 말만 현재 카메라로 투영해 터치 중심 44px 안의 최근접 후보를 찾는다.
+ */
+function findTouchFallbackPiece(
+  runtime: InputRuntime,
+  event: PointerEvent,
+): string | null {
+  const rect =
+    runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    return null;
+  }
+  const camera = runtime.sceneRuntime.camera;
+  const worldPosition = new Vector3();
+  const projectedPosition = new Vector3();
+  const candidates: ScreenSpacePieceCandidate[] = [];
+  for (const pieceId of runtime.selectablePieceIds) {
+    if (!runtime.policy.canSelectPiece(pieceId)) {
+      continue;
+    }
+    const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
+    if (mesh === undefined) {
+      continue;
+    }
+    mesh.getWorldPosition(worldPosition);
+    projectedPosition.copy(worldPosition).project(camera);
+    if (projectedPosition.z < -1 || projectedPosition.z > 1) {
+      continue;
+    }
+    candidates.push({
+      pieceId,
+      clientX:
+        rect.left + ((projectedPosition.x + 1) / 2) * rect.width,
+      clientY:
+        rect.top + ((1 - projectedPosition.y) / 2) * rect.height,
+    });
+  }
+  return findNearestTouchPieceInScreenSpace(event, candidates);
 }
 
 /**
@@ -1035,12 +1128,19 @@ function handleCanvasPointerDown(
   }
 
   const nearestPieceId = raycastNearestPiece(runtime, event);
-  const selectablePieceId =
+  let selectablePieceId =
     nearestPieceId !== null &&
     runtime.selectablePieceIds.has(nearestPieceId) &&
     runtime.policy.canSelectPiece(nearestPieceId)
       ? nearestPieceId
       : null;
+  if (
+    selectablePieceId === null &&
+    runtime.mode === "billiards" &&
+    isTouchPointerEvent(event)
+  ) {
+    selectablePieceId = findTouchFallbackPiece(runtime, event);
+  }
 
   runtime.activePointerId = event.pointerId;
   runtime.activeCaptureElement = canvas;
