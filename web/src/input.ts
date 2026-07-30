@@ -49,6 +49,8 @@ import {
   CAM_PITCH_MAX,
   CAM_PITCH_MIN,
   MAX_DRAG_PIXELS,
+  TOUCH_MAX_DRAG_MIN_PIXELS,
+  TOUCH_MAX_DRAG_VIEWPORT_RATIO,
   TOUCH_PIECE_HIT_RADIUS_PIXELS,
   TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER,
 } from "./config";
@@ -146,6 +148,8 @@ interface PointerGesture {
   maximumDistance: number;
   // 포인터 시작 때의 최근접 교차만 탭 release까지 보존한다.
   candidatePieceId: string | null;
+  // 조준 시작 시 viewport로 고정한 이번 드래그의 최대 세기 거리다.
+  maxDragPixels: number;
 }
 
 export interface LaunchQueueOutcome {
@@ -449,14 +453,38 @@ export function getRedDotHitRadiusPixels(
 }
 
 /**
- * 빨간 점에서 아래로 당긴 성분만 기존 180px 세기 비율로 바꾼다.
+ * 터치는 현재 viewport 높이의 28%를 80~180px로 제한하고 마우스는 항상 180px를 쓴다.
+ */
+export function computeEffectiveMaxDragPixels(
+  event: Pick<ScreenSpacePointer, "pointerType">,
+  viewportHeight: number,
+): number {
+  if (!isTouchPointerEvent(event)) {
+    return MAX_DRAG_PIXELS;
+  }
+  return Math.min(
+    Math.max(
+      viewportHeight * TOUCH_MAX_DRAG_VIEWPORT_RATIO,
+      TOUCH_MAX_DRAG_MIN_PIXELS,
+    ),
+    MAX_DRAG_PIXELS,
+  );
+}
+
+/**
+ * 빨간 점에서 아래로 당긴 성분만 이번 드래그의 최대 거리 비율로 바꾼다.
  */
 export function computeRedDotPullPower(
   startY: number,
   currentY: number,
+  maxDragPixels = MAX_DRAG_PIXELS,
 ): number {
   const downwardPixels = Math.max(currentY - startY, 0);
-  return Math.min(downwardPixels / MAX_DRAG_PIXELS, 1);
+  const normalizedPower = downwardPixels / maxDragPixels;
+  // 시작 좌표와 소수 거리의 덧셈 오차로 최대점이 0.999…가 되는 경우만 정확히 1로 맞춘다.
+  return normalizedPower >= 1 - Number.EPSILON
+    ? 1
+    : Math.min(normalizedPower, 1);
 }
 
 /**
@@ -1399,6 +1427,10 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectedId,
+      maxDragPixels: computeEffectiveMaxDragPixels(
+        event,
+        window.innerHeight,
+      ),
     };
     setAimPower(runtime.aimParametersRuntime, 0);
     canvas.setPointerCapture(event.pointerId);
@@ -1421,6 +1453,7 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectedId,
+      maxDragPixels: MAX_DRAG_PIXELS,
     };
     canvas.setPointerCapture(event.pointerId);
     return;
@@ -1457,6 +1490,7 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectablePieceId,
+      maxDragPixels: MAX_DRAG_PIXELS,
     };
     canvas.setPointerCapture(event.pointerId);
     runtime.strategy.onAimBegin(runtime, selectablePieceId, event);
@@ -1473,6 +1507,7 @@ function handleCanvasPointerDown(
     startY: event.clientY,
     maximumDistance: 0,
     candidatePieceId: selectablePieceId,
+    maxDragPixels: MAX_DRAG_PIXELS,
   };
   if (isBilliardsTouch) {
     // 카메라 터치는 OrbitControls가 pointer capture를 소유하도록 입력 런타임은 관찰만 한다.
@@ -1522,6 +1557,7 @@ function handleCanvasPointerMove(
       computeRedDotPullPower(
         gesture.startY,
         event.clientY,
+        gesture.maxDragPixels,
       ),
     );
     const solution = runtime.preparedStrikeSolution;

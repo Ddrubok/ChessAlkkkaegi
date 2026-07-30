@@ -145,19 +145,65 @@ try {
     `빨간 점 터치 반경 또는 진입 경로가 다릅니다: multiplier=${config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER}, touch=${touchRedDotRadius}, mouse=${mouseRedDotRadius}, inside=${insideRoute}, outside=${outsideRoute}`,
   );
 
-  const upwardPower =
-    input.computeRedDotPullPower(100, 40);
-  const halfPower =
-    input.computeRedDotPullPower(100, 190);
-  const clampedPower =
-    input.computeRedDotPullPower(100, 460);
+  const smallTouchMaxDrag =
+    input.computeEffectiveMaxDragPixels(
+      { pointerType: "touch" },
+      400,
+    );
+  const largeTouchMaxDrag =
+    input.computeEffectiveMaxDragPixels(
+      { pointerType: "touch" },
+      1000,
+    );
+  const mouseMaxDrag =
+    input.computeEffectiveMaxDragPixels(
+      { pointerType: "mouse" },
+      400,
+    );
+  const upwardPower = input.computeRedDotPullPower(
+    100,
+    40,
+    smallTouchMaxDrag,
+  );
+  const smallHalfPower = input.computeRedDotPullPower(
+    100,
+    100 + smallTouchMaxDrag / 2,
+    smallTouchMaxDrag,
+  );
+  const smallFullPower = input.computeRedDotPullPower(
+    100,
+    100 + smallTouchMaxDrag,
+    smallTouchMaxDrag,
+  );
+  const mouseAtTouchFullDistance =
+    input.computeRedDotPullPower(
+      100,
+      100 + smallTouchMaxDrag,
+      mouseMaxDrag,
+    );
+  const mouseFullPower = input.computeRedDotPullPower(
+    100,
+    100 + mouseMaxDrag,
+    mouseMaxDrag,
+  );
   assertCondition(
-    upwardPower === 0 &&
+    config.TOUCH_MAX_DRAG_VIEWPORT_RATIO === 0.28 &&
+      config.TOUCH_MAX_DRAG_MIN_PIXELS === 80 &&
+      nearlyEqual(smallTouchMaxDrag, 112) &&
+      largeTouchMaxDrag === 180 &&
+      mouseMaxDrag === 180 &&
+      upwardPower === 0 &&
       !input.shouldLaunchRedDotPull(upwardPower) &&
-      nearlyEqual(halfPower, 0.5) &&
-      input.shouldLaunchRedDotPull(halfPower) &&
-      clampedPower === 1,
-    `빨간 점 아래 방향 충전이 다릅니다: upward=${upwardPower}, half=${halfPower}, clamped=${clampedPower}`,
+      nearlyEqual(smallHalfPower, 0.5) &&
+      input.shouldLaunchRedDotPull(smallHalfPower) &&
+      smallFullPower === 1 &&
+      nearlyEqual(
+        mouseAtTouchFullDistance,
+        smallTouchMaxDrag / 180,
+      ) &&
+      mouseAtTouchFullDistance < 1 &&
+      mouseFullPower === 1,
+    `viewport별 빨간 점 충전이 다릅니다: smallMax=${smallTouchMaxDrag}, largeMax=${largeTouchMaxDrag}, mouseMax=${mouseMaxDrag}, upward=${upwardPower}, smallHalf=${smallHalfPower}, smallFull=${smallFullPower}, mouseAt112=${mouseAtTouchFullDistance}, mouseFull=${mouseFullPower}`,
   );
 
   const additionalAimFingerRoute =
@@ -192,7 +238,7 @@ try {
     `멀티터치 소유권이 다릅니다: aimExtra=${additionalAimFingerRoute}, strikeFirst=${strikeOrbitFirstRoute}, strikeSecond=${strikeOrbitSecondRoute}`,
   );
   console.log(
-    `[통과 c] 빨간 점 터치: radius=${touchRedDotRadius}px(${config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER}x), inside=${insideRoute}, outside=${outsideRoute}; upwardPower=${upwardPower.toFixed(3)}→launch=${input.shouldLaunchRedDotPull(upwardPower)}, down90=${halfPower.toFixed(3)}, down360=${clampedPower.toFixed(3)}; strikeOrbit=${strikeOrbitFirstRoute}→${strikeOrbitSecondRoute}, aimExtra=${additionalAimFingerRoute}`,
+    `[통과 c] 빨간 점 터치: radius=${touchRedDotRadius}px(${config.TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER}x), inside=${insideRoute}, outside=${outsideRoute}; viewport400 max=${smallTouchMaxDrag.toFixed(3)}, 56px=${smallHalfPower.toFixed(3)}, 112px=${smallFullPower.toFixed(3)}; viewport1000 max=${largeTouchMaxDrag.toFixed(3)}; mouse max=${mouseMaxDrag.toFixed(3)}, at112=${mouseAtTouchFullDistance.toFixed(3)}; upward=${upwardPower.toFixed(3)}→launch=${input.shouldLaunchRedDotPull(upwardPower)}; strikeOrbit=${strikeOrbitFirstRoute}→${strikeOrbitSecondRoute}, aimExtra=${additionalAimFingerRoute}`,
   );
 
   const cylinderGeometry = new CylinderGeometry(1, 1, 2, 64);

@@ -92,8 +92,14 @@ export const PINBALL_OBSTACLE_DIAMETER_CELLS = 0.35;
 // 일반 발사는 막되 공중에 뜬 말은 넘을 수 있도록 벽 단차보다 높게 둔 고정 원기둥 높이다.
 export const PINBALL_OBSTACLE_HEIGHT = 0.24;
 
-// 마우스와 한 손가락 모두 화면 크기에 과도하게 의존하지 않는 최대 세기 드래그 거리다.
+// 데스크톱 마우스와 클래식 조작이 그대로 사용하는 최대 세기 드래그 거리다.
 export const MAX_DRAG_PIXELS = 180;
+
+// 실기기 가로 화면에서 손가락이 화면을 벗어나기 전에 최대 세기에 닿도록 높이의 28%를 쓴다.
+export const TOUCH_MAX_DRAG_VIEWPORT_RATIO = 0.28;
+
+// 매우 낮은 viewport에서도 터치 최대 세기 거리가 지나치게 민감해지지 않게 하는 하한이다.
+export const TOUCH_MAX_DRAG_MIN_PIXELS = 80;
 
 // 모바일 권장 터치 표적 44px(약 7~10mm)를 말 선택 중심점의 화면 반경으로 보장한다.
 export const TOUCH_PIECE_HIT_RADIUS_PIXELS = 44;
