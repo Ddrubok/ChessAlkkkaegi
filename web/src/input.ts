@@ -1268,8 +1268,8 @@ export function createInputRuntime(
   modeToggle.setAttribute("role", "group");
   modeToggle.setAttribute("aria-label", "조작 모드");
   for (const [mode, label] of [
-    ["classic", "클래식"],
     ["billiards", "당구식"],
+    ["classic", "클래식"],
   ] as const) {
     const button = document.createElement("button");
     button.type = "button";

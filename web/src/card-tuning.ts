@@ -108,7 +108,7 @@ export interface CardTuningRelayoutSnapshot {
   permanentUpgradesSignature: string;
   // 다시 깔기가 보상이나 구매를 일으키지 않았음을 비교할 메타 포인트다.
   points: number;
-  // 스테이지 이동이 건너뛴 보상을 만들지 않았음을 비교할 런 임시 정산 상태다.
+  // 다시 깔기 보존 또는 디버그 이동의 클리어 기준 갱신을 비교할 런 임시 정산 상태다.
   stageRunPointsSignature: string;
 }
 
@@ -505,12 +505,13 @@ export async function relayoutCurrentCardTuningBoard(
 }
 
 /**
- * 보드 리셋 전후에 단계만 의도대로 달라지고 런 상태 서명은 모두 보존됐는지 확인한다.
+ * 보드 리셋 전후에 단계와 임시 정산 기준만 의도대로 달라지고 나머지 런 상태는 보존됐는지 확인한다.
  */
 function matchesCardTuningJumpSnapshot(
   snapshot: CardTuningRelayoutSnapshot,
   reference: CardTuningRelayoutSnapshot,
   stageNumber: number,
+  expectedStageRunPointsSignature: string,
 ): boolean {
   return (
     snapshot.gameMode === "stage" &&
@@ -521,17 +522,18 @@ function matchesCardTuningJumpSnapshot(
       reference.permanentUpgradesSignature &&
     snapshot.points === reference.points &&
     snapshot.stageRunPointsSignature ===
-      reference.stageRunPointsSignature
+      expectedStageRunPointsSignature
   );
 }
 
 /**
- * 스테이지 모드에서 현재 단계 번호만 바꾼 뒤 기존 보드 리셋으로 실제 맵과 버프를 다시 만든다.
+ * 스테이지 모드에서 단계와 디버그 정산 기준을 함께 바꾼 뒤 기존 보드 리셋으로 실제 맵과 버프를 다시 만든다.
  */
 export async function jumpCardTuningStage(
   targetStageNumber: number,
   readSnapshot: () => CardTuningRelayoutSnapshot,
   setStageNumber: (stageNumber: number) => void,
+  setLastClearedStage: (stageNumber: number) => void,
   resetBoard: (
     gameMode: GameMode,
     stageNumber: number,
@@ -551,6 +553,8 @@ export async function jumpCardTuningStage(
   }
   setStageNumber(targetStageNumber);
   try {
+    // 디버그로 건너뛴 단계도 직전 단계까지 클리어한 것으로 맞춰 정상 승리 정산과 카드 흐름을 재사용한다.
+    setLastClearedStage(targetStageNumber - 1);
     await resetBoard("stage", targetStageNumber);
     const after = readSnapshot();
     if (
@@ -558,6 +562,9 @@ export async function jumpCardTuningStage(
         after,
         before,
         targetStageNumber,
+        JSON.stringify({
+          lastClearedStage: targetStageNumber - 1,
+        }),
       )
     ) {
       throw new Error(
@@ -568,6 +575,22 @@ export async function jumpCardTuningStage(
     try {
       // 실패한 리셋이 말·벽·렌더를 변형했을 수 있으므로 번호만 되돌리지 않고 원래 판을 처음부터 다시 만든다.
       setStageNumber(before.stageNumber);
+      // 대상 단계용 임시 정산 기준도 원래 값으로 되돌린 뒤 복구 보드를 검증한다.
+      const originalStageRunPoints = JSON.parse(
+        before.stageRunPointsSignature,
+      ) as { lastClearedStage?: unknown };
+      if (
+        !Number.isInteger(
+          originalStageRunPoints.lastClearedStage,
+        )
+      ) {
+        throw new Error(
+          `원래 임시 정산 상태가 올바르지 않습니다: ${before.stageRunPointsSignature}`,
+        );
+      }
+      setLastClearedStage(
+        originalStageRunPoints.lastClearedStage as number,
+      );
       await resetBoard("stage", before.stageNumber);
       const recovered = readSnapshot();
       if (
@@ -575,6 +598,7 @@ export async function jumpCardTuningStage(
           recovered,
           before,
           before.stageNumber,
+          before.stageRunPointsSignature,
         )
       ) {
         throw new Error(

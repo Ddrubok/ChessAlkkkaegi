@@ -967,6 +967,10 @@ async function bootstrap(): Promise<void> {
         }
         setStageNumber(gameModeRuntime, stageNumber);
       },
+      (lastClearedStage) => {
+        // Y 패널 점프만 정상 승리 정산의 직전 단계 기준을 맞추며 일반 진행은 기존 기록 함수를 유지한다.
+        stageRunPoints.lastClearedStage = lastClearedStage;
+      },
       async (gameMode, stageNumber) => {
         await resetBoard({ gameMode, stageNumber });
       },
