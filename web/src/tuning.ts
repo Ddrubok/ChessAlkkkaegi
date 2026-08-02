@@ -952,15 +952,6 @@ export function createTuningRuntime(
     onlineNotice,
     actions,
   );
-  window.addEventListener("keydown", (event) => {
-    const target = event.target;
-    if (
-      event.code === "KeyT" &&
-      !event.repeat &&
-      !(target instanceof HTMLInputElement)
-    ) {
-      panel.hidden = !panel.hidden;
-    }
-  });
+  // 손맛 조절판은 ?tune=1 개발 세션에서만 열린다. 게임 화면 단축키로는 열 수 없다.
   return runtime;
 }

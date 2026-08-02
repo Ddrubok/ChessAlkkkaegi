@@ -237,7 +237,10 @@ export function startGameLoop(
   overlay.setAttribute("role", "button");
   overlay.setAttribute("aria-expanded", "false");
   overlay.tabIndex = 0;
-  sceneRuntime.renderer.domElement.parentElement?.append(overlay);
+  // 계측 표시는 ?tune=1 개발 세션에서만 화면에 붙인다. 일반 플레이 화면에는 나타나지 않는다.
+  if (new URLSearchParams(window.location.search).get("tune") === "1") {
+    sceneRuntime.renderer.domElement.parentElement?.append(overlay);
+  }
 
   let lastFrameTime: number | null = null;
   let accumulator = 0;
