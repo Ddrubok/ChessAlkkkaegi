@@ -230,6 +230,8 @@ export class SupabaseMatchmaker {
     | null = null;
   private errorCallback: ((error: Error) => void) | null = null;
   private isCancelled = false;
+  private pendingIceCandidates: RTCIceCandidateInit[] = [];
+  private isConnectionEstablished = false;
 
   constructor(client: SupabaseClient, user: UserProfile) {
     this.client = client;
@@ -239,13 +241,15 @@ export class SupabaseMatchmaker {
   /**
    * 대기열 참가 및 자동 매칭 탐색 시작
    */
-  public startMatching(
+  public async startMatching(
     onStatus: (status: MatchmakingStatus) => void,
     onReady: (transport: OnlineTransport, mySide: PieceSide, matchId: string, opponent: { id: string; nickname: string; mmr: number }) => void,
     onError: (error: Error) => void,
-  ): void {
-    this.cleanup();
+  ): Promise<void> {
+    await this.cleanup();
     this.isCancelled = false;
+    this.isConnectionEstablished = false;
+    this.pendingIceCandidates = [];
     this.statusCallback = onStatus;
     this.matchReadyCallback = onReady;
     this.errorCallback = onError;
@@ -265,7 +269,7 @@ export class SupabaseMatchmaker {
       .on("presence", { event: "sync" }, () => this.evaluateQueue())
       .on("presence", { event: "join" }, () => this.evaluateQueue())
       .on("broadcast", { event: "webrtc-signal" }, ({ payload }) => {
-        this.handleIncomingSignal(payload as SignalMessage);
+        void this.handleIncomingSignal(payload as SignalMessage);
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
@@ -292,7 +296,7 @@ export class SupabaseMatchmaker {
    * Expanding Queue 매칭 적합도 검사
    */
   private evaluateQueue(): void {
-    if (!this.channel || this.activeMatchId || this.isCancelled) return;
+    if (!this.channel || this.activeMatchId || this.isCancelled || this.isConnectionEstablished) return;
 
     const presenceState = this.channel.presenceState<PresencePayload>();
     const now = Date.now();
@@ -318,7 +322,7 @@ export class SupabaseMatchmaker {
           const cleanGuest = candidate.id.replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
           const matchId = `match-${cleanHost}-${cleanGuest}-${Date.now().toString(36)}`;
 
-          this.initiateMatch(matchId, this.user.id, candidate.id, candidate);
+          void this.initiateMatch(matchId, this.user.id, candidate.id, candidate);
         } else {
           // Guest는 Host로부터 match-proposal 시그널이 오기를 대기
           this.updateStatus("searching", `상대 발견 대기 중 (${candidate.nickname})...`, waitTimeSeconds, allowedMmrDiff);
@@ -386,23 +390,46 @@ export class SupabaseMatchmaker {
           );
           await this.setupGuestWebRTC(signal.hostId, signal.matchId);
         }
-      } else if (signal.type === "offer" && signal.matchId === this.activeMatchId) {
-        if (!this.isHost && this.peerConnection) {
-          this.updateStatus("signaling", "P2P 연결 수립 중 (Answer 전송)...");
-          await this.peerConnection.setRemoteDescription({
-            type: "offer",
-            sdp: signal.sdp,
-          });
-          const answer = await this.peerConnection.createAnswer();
-          await this.peerConnection.setLocalDescription(answer);
+      } else if (signal.type === "offer") {
+        // match-proposal보다 offer가 먼저 오거나 동시에 온 경우 자동 자가 치유
+        if (!this.activeMatchId) {
+          this.activeMatchId = signal.matchId;
+          this.isHost = false;
+          const presenceState = this.channel?.presenceState<PresencePayload>() || {};
+          const hostPresence = presenceState[signal.fromId]?.[0];
+          this.opponentProfile = {
+            id: signal.fromId,
+            nickname: hostPresence?.nickname || "상대 플레이어",
+            mmr: hostPresence?.mmr || 1200,
+          };
+        }
 
-          await this.sendSignal({
-            type: "answer",
-            matchId: this.activeMatchId,
-            fromId: this.user.id,
-            toId: signal.fromId,
-            sdp: answer.sdp || "",
-          });
+        if (!this.isHost) {
+          if (!this.peerConnection) {
+            await this.setupGuestWebRTC(signal.fromId, signal.matchId);
+          }
+
+          if (this.peerConnection) {
+            this.updateStatus("signaling", "P2P 연결 수립 중 (Answer 전송)...");
+            await this.peerConnection.setRemoteDescription({
+              type: "offer",
+              sdp: signal.sdp,
+            });
+
+            // 버퍼링된 조기 ICE Candidate 적용
+            await this.flushPendingIceCandidates();
+
+            const answer = await this.peerConnection.createAnswer();
+            await this.peerConnection.setLocalDescription(answer);
+
+            await this.sendSignal({
+              type: "answer",
+              matchId: this.activeMatchId || signal.matchId,
+              fromId: this.user.id,
+              toId: signal.fromId,
+              sdp: answer.sdp || "",
+            });
+          }
         }
       } else if (signal.type === "answer" && signal.matchId === this.activeMatchId) {
         if (this.isHost && this.peerConnection) {
@@ -411,14 +438,36 @@ export class SupabaseMatchmaker {
             type: "answer",
             sdp: signal.sdp,
           });
+
+          // 버퍼링된 조기 ICE Candidate 적용
+          await this.flushPendingIceCandidates();
         }
-      } else if (signal.type === "ice" && signal.matchId === this.activeMatchId) {
-        if (this.peerConnection && signal.candidate) {
-          await this.peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+      } else if (signal.type === "ice" && (signal.matchId === this.activeMatchId || !this.activeMatchId)) {
+        if (signal.candidate) {
+          if (this.peerConnection && this.peerConnection.remoteDescription) {
+            await this.peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+          } else {
+            // remoteDescription 설정 전이면 큐에 보관
+            this.pendingIceCandidates.push(signal.candidate);
+          }
         }
       }
     } catch (err: any) {
       console.warn("시그널링 처리 오류:", err);
+    }
+  }
+
+  private async flushPendingIceCandidates(): Promise<void> {
+    if (!this.peerConnection || !this.peerConnection.remoteDescription) return;
+    while (this.pendingIceCandidates.length > 0) {
+      const cand = this.pendingIceCandidates.shift();
+      if (cand) {
+        try {
+          await this.peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+        } catch (e) {
+          console.warn("지연된 ICE 후보 추가 실패:", e);
+        }
+      }
     }
   }
 
@@ -435,7 +484,7 @@ export class SupabaseMatchmaker {
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        this.sendSignal({
+        void this.sendSignal({
           type: "ice",
           matchId,
           fromId: this.user.id,
@@ -445,9 +494,13 @@ export class SupabaseMatchmaker {
       }
     };
 
-    dc.onopen = () => {
+    if (dc.readyState === "open") {
       this.onConnectionEstablished(pc, dc, "white", matchId);
-    };
+    } else {
+      dc.onopen = () => {
+        this.onConnectionEstablished(pc, dc, "white", matchId);
+      };
+    }
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -471,7 +524,7 @@ export class SupabaseMatchmaker {
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        this.sendSignal({
+        void this.sendSignal({
           type: "ice",
           matchId,
           fromId: this.user.id,
@@ -484,9 +537,13 @@ export class SupabaseMatchmaker {
     pc.ondatachannel = (event) => {
       const dc = event.channel;
       this.dataChannel = dc;
-      dc.onopen = () => {
+      if (dc.readyState === "open") {
         this.onConnectionEstablished(pc, dc, "black", matchId);
-      };
+      } else {
+        dc.onopen = () => {
+          this.onConnectionEstablished(pc, dc, "black", matchId);
+        };
+      }
     };
   }
 
@@ -499,13 +556,18 @@ export class SupabaseMatchmaker {
     mySide: PieceSide,
     matchId: string,
   ): void {
+    if (this.isConnectionEstablished) return;
+    this.isConnectionEstablished = true;
+
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);
       this.evalTimer = null;
     }
 
     // 대기열에서 본인 상태 언트랙
-    this.channel?.untrack();
+    try {
+      this.channel?.untrack();
+    } catch {}
 
     this.updateStatus("connected", "P2P 연결 성공! 게임을 시작합니다.");
 
@@ -543,7 +605,7 @@ export class SupabaseMatchmaker {
   }
 
   private handleError(err: Error): void {
-    this.cleanup();
+    void this.cleanup();
     this.updateStatus("error", err.message);
     if (this.errorCallback) {
       this.errorCallback(err);
@@ -555,21 +617,21 @@ export class SupabaseMatchmaker {
    */
   public cancel(): void {
     this.isCancelled = true;
-    this.cleanup();
+    void this.cleanup();
     this.updateStatus("cancelled", "매칭이 취소되었습니다.");
   }
 
-  private cleanup(): void {
+  private async cleanup(): Promise<void> {
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);
       this.evalTimer = null;
     }
     if (this.channel) {
       try {
-        this.channel.untrack();
+        await this.channel.untrack();
       } catch {}
       try {
-        this.client.removeChannel(this.channel);
+        await this.client.removeChannel(this.channel);
       } catch {}
       this.channel = null;
     }
@@ -588,6 +650,7 @@ export class SupabaseMatchmaker {
     this.activeMatchId = null;
     this.opponentProfile = null;
     this.isHost = false;
+    this.pendingIceCandidates = [];
   }
 
   /**
