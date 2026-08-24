@@ -246,6 +246,9 @@ const ACTION_BAR_POSITION_INTERVAL_MS = 100;
 // 판·구·빨간 점이 화면 경계에 붙지 않도록 프러스텀 제약을 안쪽으로 줄이는 배율이다.
 const CAMERA_CLOSE_FIT_MARGIN = 1.08;
 
+// ponytail: strike mode scales the adaptive distance by this factor for a closer look at the piece surface.
+const STRIKE_MODE_ZOOM_SCALE = 0.6;
+
 // GLTF accessor에서 만든 보수적 구 대신 실제 POSITION 정점 구를 geometry마다 한 번만 계산한다.
 const EXACT_BOUNDING_SPHERE_GEOMETRIES = new WeakSet<BufferGeometry>();
 
@@ -367,10 +370,16 @@ function containsClientPoint(
 }
 
 /**
- * 숫자 직접 입력 중 WASD를 조작 키로 가로채지 않도록 포커스 대상을 판정한다.
+ * 텍스트/숫자 직접 입력 중 WASD나 방향키를 조작 키로 가로채지 않도록 포커스 대상을 판정한다.
  */
-function isNumericInputTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLInputElement && target.type === "number";
+function isTextInputTarget(target: EventTarget | null): boolean {
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+    return true;
+  }
+  if (target instanceof HTMLElement && target.isContentEditable) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -651,9 +660,15 @@ function beginCameraRestore(
           runtime.sceneRuntime.boardHalfExtent * 4,
         )
       : Math.max(wholeBoardDistance, adaptiveDistance ?? 0);
+  // ponytail: zoom closer in strike mode before a strike point is picked, both modes.
+  const strikeZoom =
+    runtime.strikeMode &&
+    runtime.aimParametersRuntime.strikePointOverride === null
+      ? STRIKE_MODE_ZOOM_SCALE
+      : 1;
   const minDistance =
     policy.mode === "classic"
-      ? wholeBoardDistance
+      ? wholeBoardDistance * strikeZoom
       : selected
         ? CAM_MIN_DISTANCE
         : wholeBoardDistance;
@@ -668,7 +683,7 @@ function beginCameraRestore(
     toTarget,
     fromSpherical,
     toSpherical: new Spherical(
-      desiredRadius,
+      desiredRadius * strikeZoom,
       desiredPhi,
       fromSpherical.theta,
     ),
@@ -772,7 +787,7 @@ function updateAdaptiveCloseDistance(runtime: InputRuntime): void {
   const spherical = new Spherical().setFromVector3(
     runtime.sceneRuntime.camera.position.clone().sub(controls.target),
   );
-  const nextDistance = computeAdaptiveCloseDistance(
+  let nextDistance = computeAdaptiveCloseDistance(
     runtime.sceneRuntime.camera,
     mesh,
     controls.target,
@@ -781,6 +796,10 @@ function updateAdaptiveCloseDistance(runtime: InputRuntime): void {
     spherical.phi,
     spherical.theta,
   );
+  // ponytail: zoom closer in strike mode before a strike point is picked.
+  if (runtime.strikeMode && runtime.aimParametersRuntime.strikePointOverride === null) {
+    nextDistance *= STRIKE_MODE_ZOOM_SCALE;
+  }
   const previousDistance = runtime.adaptiveCloseDistance;
   const followedPreviousMinimum =
     previousDistance === null ||
@@ -1126,6 +1145,21 @@ function updateActionBar(runtime: InputRuntime): void {
         : !runtime.strikeMode;
     button.setAttribute("aria-pressed", String(active));
   }
+  if (!selected) {
+    return;
+  }
+  const target = getSelectedTarget(runtime);
+  const rect =
+    runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  const ndc = target.project(runtime.sceneRuntime.camera);
+  const x = (ndc.x * 0.5 + 0.5) * rect.width;
+  const y = (1 - (ndc.y * 0.5 + 0.5)) * rect.height;
+  const barWidth = runtime.actionBar.offsetWidth;
+  const barHeight = runtime.actionBar.offsetHeight;
+  const top = Math.min(Math.max(y - barHeight / 2, 4), rect.height - barHeight - 4);
+  const left = Math.min(Math.max(x + rect.width * 0.04 + 8, 4), rect.width - barWidth - 4);
+  runtime.actionBar.style.left = `${left}px`;
+  runtime.actionBar.style.top = `${top}px`;
 }
 
 /**
@@ -1645,6 +1679,7 @@ function handleCanvasPointerUp(
     const point = raycastSelectedPieceSurface(runtime, event);
     if (point !== null) {
       setStrikePointOverride(runtime.aimParametersRuntime, point);
+      beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
       try {
         refreshBilliardsPreview(runtime);
       } catch (error: unknown) {
@@ -1900,8 +1935,14 @@ export function createInputRuntime(
       const action = button.dataset.action;
       if (action === "strike") {
         runtime.strikeMode = true;
+        if (runtime.aimRuntime.selectedPieceId !== null) {
+          beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+        }
       } else if (action === "launch") {
         runtime.strikeMode = false;
+        if (runtime.aimRuntime.selectedPieceId !== null) {
+          beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+        }
         if (runtime.aimRuntime.selectedPieceId !== null) {
           try {
             refreshBilliardsPreview(runtime);
@@ -1950,6 +1991,9 @@ export function createInputRuntime(
   canvas.addEventListener("lostpointercapture", cancelPointer);
 
   window.addEventListener("keydown", (event) => {
+    if (isTextInputTarget(event.target)) {
+      return;
+    }
     if (runtime.policy.isInputBlocked()) {
       if (
         event.code === "Escape" ||
@@ -1964,10 +2008,7 @@ export function createInputRuntime(
       cancelInteraction(runtime, false);
       return;
     }
-    if (
-      !CAMERA_KEY_CODES.has(event.code) ||
-      isNumericInputTarget(event.target)
-    ) {
+    if (!CAMERA_KEY_CODES.has(event.code)) {
       return;
     }
     if (
