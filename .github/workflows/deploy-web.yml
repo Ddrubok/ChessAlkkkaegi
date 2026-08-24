@@ -41,6 +41,9 @@ jobs:
 
       # build 스크립트가 tsc 검사까지 수행하므로 타입 오류는 여기서 걸린다.
       - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://yoajmckkrpgvcljrffww.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_dGhcuP6U2Qa9OaTlNOzrQg_yNU34WfL' }}
 
       - uses: actions/configure-pages@v5
 

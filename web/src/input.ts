@@ -295,10 +295,16 @@ function containsClientPoint(
 }
 
 /**
- * 숫자 직접 입력 중 WASD를 조작 키로 가로채지 않도록 포커스 대상을 판정한다.
+ * 텍스트/숫자 직접 입력 중 WASD나 방향키를 조작 키로 가로채지 않도록 포커스 대상을 판정한다.
  */
-function isNumericInputTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLInputElement && target.type === "number";
+function isTextInputTarget(target: EventTarget | null): boolean {
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+    return true;
+  }
+  if (target instanceof HTMLElement && target.isContentEditable) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -1419,6 +1425,9 @@ export function createInputRuntime(
   canvas.addEventListener("lostpointercapture", cancelPointer);
 
   window.addEventListener("keydown", (event) => {
+    if (isTextInputTarget(event.target)) {
+      return;
+    }
     if (runtime.policy.isInputBlocked()) {
       if (
         event.code === "Escape" ||
@@ -1433,10 +1442,7 @@ export function createInputRuntime(
       cancelInteraction(runtime, false);
       return;
     }
-    if (
-      !CAMERA_KEY_CODES.has(event.code) ||
-      isNumericInputTarget(event.target)
-    ) {
+    if (!CAMERA_KEY_CODES.has(event.code)) {
       return;
     }
     if (

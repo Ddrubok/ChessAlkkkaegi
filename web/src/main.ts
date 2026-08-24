@@ -52,13 +52,17 @@ import {
   lockInputForMatchOver,
   resetInputAfterMatch,
 } from "./input";
-import { PIECE_INSTANCES } from "./layout";
+import {
+  type PieceSide,
+  PIECE_INSTANCES,
+} from "./layout";
 import { startGameLoop } from "./loop";
 import {
   createMatchRuntime,
   hideMatchResult,
   showDisconnectedMatchEnd,
   showMatchResult,
+  type MatchWinner,
   showStageRunResult,
 } from "./match";
 import {
@@ -107,8 +111,13 @@ import type {
 import type {
   OnlineRematchStatus,
   OnlineRuntime,
+  OnlineTransport,
 } from "./online";
 import type { OnlineSelfTestRuntime } from "./tools/online-selftest";
+import { SupabaseMatchUi } from "./supabase-match-ui";
+import { SupabaseMatchmaker } from "./supabase-matchmaker";
+import { getSupabaseClient } from "./supabase-client";
+import type { UserProfile } from "./supabase-auth";
 import {
   computeEnemyStageStepValues,
   computeEnemyStageSizeMultiplier,
@@ -305,6 +314,9 @@ async function bootstrap(): Promise<void> {
   let onlineRuntime: OnlineRuntime | null = null;
   let onlineSelfTestRuntime: OnlineSelfTestRuntime | null =
     null;
+  let activeMatchOpponent: { id: string; nickname: string; mmr: number } | null =
+    null;
+  let activeMyProfile: UserProfile | null = null;
   let appliedEnemyBuffStepScale =
     tuningRuntime.settings.enemyStageBuffScale;
   let appliedCardEffectScale =
@@ -1215,9 +1227,70 @@ async function bootstrap(): Promise<void> {
             }
           }
         : null;
+    const recordOnlineMatchSettlement = async (matchWinner: MatchWinner): Promise<void> => {
+      if (gameMode !== "online" || !activeMatchOpponent || !activeMyProfile) {
+        return;
+      }
+      const sb = getSupabaseClient();
+      if (!sb) return;
+
+      const mySide = onlineRuntime?.mySide ?? "white";
+      const whiteIsWinner = matchWinner === "white";
+      const isWhite = mySide === "white";
+      const winnerId = isWhite === whiteIsWinner ? activeMyProfile.id : activeMatchOpponent.id;
+      const loserId = isWhite === whiteIsWinner ? activeMatchOpponent.id : activeMyProfile.id;
+
+      try {
+        let deltaRes = await SupabaseMatchmaker.recordMatchResult(sb, {
+          winnerId,
+          loserId,
+          isDraw: false,
+          whitePlayerId: isWhite ? activeMyProfile.id : activeMatchOpponent.id,
+          blackPlayerId: isWhite ? activeMatchOpponent.id : activeMyProfile.id,
+          whiteIsWinner,
+        });
+
+        const isMeWinner = matchWinner === mySide;
+        let myDelta = isMeWinner ? 16 : -16;
+
+        if (deltaRes) {
+          myDelta = isMeWinner ? deltaRes.winnerDelta : deltaRes.loserDelta;
+        } else {
+          // 로컬 Elo 계산 폴백
+          const myMmr = activeMyProfile.mmr;
+          const oppMmr = activeMatchOpponent.mmr;
+          const expected = 1.0 / (1.0 + Math.pow(10, (oppMmr - myMmr) / 400));
+          const score = isMeWinner ? 1.0 : 0.0;
+          myDelta = Math.round(32 * (score - expected));
+        }
+
+        activeMyProfile.mmr = Math.max(100, activeMyProfile.mmr + myDelta);
+        if (isMeWinner) {
+          activeMyProfile.wins += 1;
+        } else {
+          activeMyProfile.losses += 1;
+        }
+        localStorage.setItem("ca_local_mmr", String(activeMyProfile.mmr));
+        localStorage.setItem("ca_local_wins", String(activeMyProfile.wins));
+        localStorage.setItem("ca_local_losses", String(activeMyProfile.losses));
+
+        const deltaStr = myDelta >= 0 ? `+${myDelta}` : `${myDelta}`;
+        matchRuntime.resultDetails.hidden = false;
+        matchRuntime.resultDetails.innerHTML = `
+          <div style="margin-top:8px; font-size:14px; color:#94a3b8;">
+            상대: <strong style="color:#f8fafc;">${activeMatchOpponent?.nickname}</strong> (${activeMatchOpponent?.mmr})<br/>
+            MMR 변동: <strong style="color:${myDelta >= 0 ? "#22c55e" : "#ef4444"}; font-size:16px;">${deltaStr}</strong> (현재: ${activeMyProfile.mmr})
+          </div>
+        `;
+      } catch (err) {
+        console.warn("MMR 정산 예외:", err);
+      }
+    };
+
     // 온라인 결과 화면에서는 메뉴 이외의 대국 조작을 다시 열 수 없게 한다.
     if (gameMode === "online") {
       onlineResignButton.hidden = true;
+      void recordOnlineMatchSettlement(winner);
     }
     showMatchResult(
       matchRuntime,
@@ -1272,14 +1345,66 @@ async function bootstrap(): Promise<void> {
     }
     if (mode === "online") {
       onlineSelfTestRuntime?.destroy();
-      const {
-        createOnlineRuntime,
-        openOnlineLobby,
-      } = await import("./online");
-      const session = await openOnlineLobby(menuRuntime.overlay);
+      const { createOnlineRuntime, openOnlineLobby } = await import("./online");
+
+      const session = await new Promise<{
+        transport: OnlineTransport;
+        mySide: PieceSide;
+        matchId: string;
+        rejoining: boolean;
+        opponent: { id: string; nickname: string; mmr: number } | null;
+        myProfile: UserProfile | null;
+        finishLobby: () => void;
+      }>((resolve, reject) => {
+        const matchUiContainer = document.createElement("div");
+        menuRuntime.overlay.appendChild(matchUiContainer);
+
+        const matchUi = new SupabaseMatchUi(matchUiContainer, {
+          onMatchStarted: async (transport, mySide, matchId, opponent, myProfile) => {
+            resolve({
+              transport,
+              mySide,
+              matchId,
+              rejoining: false,
+              opponent,
+              myProfile,
+              finishLobby: () => {
+                matchUiContainer.remove();
+              },
+            });
+          },
+          onOpenManualP2P: async () => {
+            matchUiContainer.remove();
+            try {
+              const manualSession = await openOnlineLobby(menuRuntime.overlay);
+              resolve({
+                transport: manualSession.link,
+                mySide: manualSession.mySide,
+                matchId: manualSession.matchId,
+                rejoining: manualSession.rejoining,
+                opponent: null,
+                myProfile: null,
+                finishLobby: manualSession.finishLobby,
+              });
+            } catch (err) {
+              reject(err);
+            }
+          },
+          onClose: () => {
+            matchUiContainer.remove();
+            reject(new Error("대국 로비를 닫았습니다."));
+          },
+        });
+
+        void matchUi.renderLobby();
+      });
+
+      activeMatchOpponent = session.opponent;
+      activeMyProfile = session.myProfile;
+
       onlineRuntime?.close();
       onlineRuntime = createOnlineRuntime(
-        session.link,
+        session.transport,
         turnRuntime,
         aimRuntime,
         session.mySide,
@@ -1298,13 +1423,60 @@ async function bootstrap(): Promise<void> {
             renderRematchControls(null);
             onlineResignButton.hidden = false;
           },
-          onResigned: (resignedSide) => {
+          onResigned: async (resignedSide) => {
             hideDisconnectOverlay();
             onlineResignButton.hidden = true;
             turnRuntime.phase = "match-over";
             lockInputForMatchOver(inputRuntime);
-            const winner =
-              resignedSide === "white" ? "black" : "white";
+            const winner = resignedSide === "white" ? "black" : "white";
+
+            // Elo MMR 정산
+            if (activeMatchOpponent && activeMyProfile) {
+              const sb = getSupabaseClient();
+              if (sb) {
+                const whiteIsWinner = winner === "white";
+                const isWhite = session.mySide === "white";
+                const winnerId = isWhite === whiteIsWinner ? activeMyProfile.id : activeMatchOpponent.id;
+                const loserId = isWhite === whiteIsWinner ? activeMatchOpponent.id : activeMyProfile.id;
+                void SupabaseMatchmaker.recordMatchResult(sb, {
+                  winnerId,
+                  loserId,
+                  isDraw: false,
+                  whitePlayerId: isWhite ? activeMyProfile.id : activeMatchOpponent.id,
+                  blackPlayerId: isWhite ? activeMatchOpponent.id : activeMyProfile.id,
+                  whiteIsWinner,
+                }).then((deltaRes) => {
+                  const isMeWinner = winner === session.mySide;
+                  let myDelta = isMeWinner ? 16 : -16;
+                  if (deltaRes) {
+                    myDelta = isMeWinner ? deltaRes.winnerDelta : deltaRes.loserDelta;
+                  } else if (activeMyProfile && activeMatchOpponent) {
+                    const myMmr = activeMyProfile.mmr;
+                    const oppMmr = activeMatchOpponent.mmr;
+                    const expected = 1.0 / (1.0 + Math.pow(10, (oppMmr - myMmr) / 400));
+                    const score = isMeWinner ? 1.0 : 0.0;
+                    myDelta = Math.round(32 * (score - expected));
+                  }
+                  if (activeMyProfile) {
+                    activeMyProfile.mmr = Math.max(100, activeMyProfile.mmr + myDelta);
+                    if (isMeWinner) activeMyProfile.wins += 1;
+                    else activeMyProfile.losses += 1;
+                    localStorage.setItem("ca_local_mmr", String(activeMyProfile.mmr));
+                    localStorage.setItem("ca_local_wins", String(activeMyProfile.wins));
+                    localStorage.setItem("ca_local_losses", String(activeMyProfile.losses));
+                  }
+                  const deltaStr = myDelta >= 0 ? `+${myDelta}` : `${myDelta}`;
+                  matchRuntime.resultDetails.hidden = false;
+                  matchRuntime.resultDetails.innerHTML = `
+                    <div style="margin-top:8px; font-size:14px; color:#94a3b8;">
+                      상대: <strong style="color:#f8fafc;">${activeMatchOpponent?.nickname}</strong> (${activeMatchOpponent?.mmr})<br/>
+                      MMR 변동: <strong style="color:${myDelta >= 0 ? "#22c55e" : "#ef4444"}; font-size:16px;">${deltaStr}</strong> (현재: ${activeMyProfile?.mmr})
+                    </div>
+                  `;
+                });
+              }
+            }
+
             showMatchResult(
               matchRuntime,
               winner,
@@ -1326,9 +1498,7 @@ async function bootstrap(): Promise<void> {
       onlineResignButton.hidden = false;
       try {
         await switchGameMode(gameModeRuntime, "online", true);
-        onlineRuntime.startMatch({
-          rejoining: session.rejoining,
-        });
+        onlineRuntime.startMatch({ rejoining: session.rejoining });
         ensureGameLoopStarted();
         await onlineRuntime.waitUntilReady();
         session.finishLobby();
