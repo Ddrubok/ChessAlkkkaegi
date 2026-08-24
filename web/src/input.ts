@@ -11,6 +11,11 @@ import {
   Vector3,
 } from "three";
 import {
+  computeActionBarPlacement,
+  type ActionBarAnchor,
+  type ActionBarRect,
+} from "./action-bar";
+import {
   beginAim,
   beginDirectedAim,
   cancelAim,
@@ -33,6 +38,7 @@ import {
   updateStrikePreview,
   setStrikePointOverride,
   clearStrikePointOverride,
+  resolveStrikeApplicationPoint,
   type AimParametersRuntime,
   type StrikeSolution,
 } from "./aimparams";
@@ -43,7 +49,12 @@ import {
   CAM_PITCH_MAX,
   CAM_PITCH_MIN,
   MAX_DRAG_PIXELS,
+  TOUCH_MAX_DRAG_MIN_PIXELS,
+  TOUCH_MAX_DRAG_VIEWPORT_RATIO,
+  TOUCH_PIECE_HIT_RADIUS_PIXELS,
+  TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER,
 } from "./config";
+import { isTouchPointerEvent } from "./input-capability";
 import type { PhysicsRuntime } from "./physics";
 import {
   hideAimOccluders,
@@ -51,6 +62,12 @@ import {
   type SceneRuntime,
 } from "./scene";
 import { playPieceClickSound } from "./sound";
+import {
+  createStrikePointPanel,
+  pickStrikePointFromPanel,
+  updateStrikePointPanel,
+  type StrikePointPanelRuntime,
+} from "./strike-panel";
 
 export type PointerState =
   | "idle"
@@ -60,6 +77,42 @@ export type PointerState =
   | "launch"
   | "cancel";
 export type InputMode = "classic" | "billiards";
+
+export interface ScreenSpacePieceCandidate {
+  // 선택 정책을 이미 통과한 말의 안정적인 런타임 식별자다.
+  pieceId: string;
+  // 월드 위치를 현재 카메라와 캔버스 영역으로 투영한 클라이언트 X 좌표다.
+  clientX: number;
+  // 월드 위치를 현재 카메라와 캔버스 영역으로 투영한 클라이언트 Y 좌표다.
+  clientY: number;
+}
+
+export interface ScreenSpacePointer {
+  // 이벤트별 마우스·터치 구분에 사용하는 브라우저 포인터 종류다.
+  pointerType: string;
+  // 터치 중심의 클라이언트 X 좌표다.
+  clientX: number;
+  // 터치 중심의 클라이언트 Y 좌표다.
+  clientY: number;
+}
+
+export type BilliardsTouchPointerRoute =
+  | "red-dot-aim"
+  | "orbit"
+  | "blocked";
+
+export interface BilliardsTouchPointerContext {
+  // 선택된 말이 있어 빨간 점 조준을 시작할 수 있는지 나타낸다.
+  hasSelectedPiece: boolean;
+  // 타점 선택 중에는 모든 캔버스 터치를 카메라에 양보한다.
+  strikeMode: boolean;
+  // 현재 터치가 확대된 빨간 점 화면 반경 안에 있는지 나타낸다.
+  redDotHit: boolean;
+  // 입력 런타임이 이미 조준 포인터 또는 탭 후보를 추적 중인지 나타낸다.
+  activeInputPointer: boolean;
+  // OrbitControls가 소유한 현재 터치 포인터 수다.
+  orbitTouchCount: number;
+}
 
 interface CameraPolicy {
   // 모드 전환 뒤 같은 카메라 계약을 복원할 전략 식별자다.
@@ -85,13 +138,18 @@ interface CameraTransition {
 }
 
 interface PointerGesture {
-  // 하나의 상태 기계에서 기존 클래식, 카메라 제스처, 빨간 점 충전만 구분한다.
-  source: "classic-canvas" | "billiards-canvas" | "red-dot";
+  // 하나의 상태 기계에서 클래식·당구식 탭·빨간 점 충전을 구분한다.
+  source:
+    | "classic-canvas"
+    | "billiards-canvas"
+    | "red-dot";
   startX: number;
   startY: number;
   maximumDistance: number;
   // 포인터 시작 때의 최근접 교차만 탭 release까지 보존한다.
   candidatePieceId: string | null;
+  // 조준 시작 시 viewport로 고정한 이번 드래그의 최대 세기 거리다.
+  maxDragPixels: number;
 }
 
 export interface LaunchQueueOutcome {
@@ -140,6 +198,8 @@ export interface InputRuntime {
   activePointerId: number | null;
   activeCaptureElement: HTMLElement | null;
   gesture: PointerGesture | null;
+  // OrbitControls가 소유한 터치 집합을 추적해 추가 손가락이 조준으로 전환되지 않게 한다.
+  orbitTouchPointerIds: Set<number>;
   cameraTransition: CameraTransition | null;
   preparedStrikeSolution: StrikeSolution | null;
   // 수평 성분이 퇴화할 때 직전 유효 방위를 유지해 높은 피치에서도 방향을 안정시킨다.
@@ -155,8 +215,20 @@ export interface InputRuntime {
   modeToggle: HTMLElement;
   // 담돌받기 / 타점선택 앙션 바.
   actionBar: HTMLElement;
+  // 마지막 팝업 위치 계산에 사용한 선택 말 id다.
+  actionBarSelectedPieceId: string | null;
+  // 카메라 이동 중 DOM 위치 쓰기를 제한하는 마지막 계산 시각이다.
+  actionBarLastPositionedAt: number;
+  // 0.5px 미만 흔들림을 DOM에 다시 쓰지 않기 위한 마지막 X 좌표다.
+  actionBarLastLeft: number | null;
+  // 0.5px 미만 흔들림을 DOM에 다시 쓰지 않기 위한 마지막 Y 좌표다.
+  actionBarLastTop: number | null;
+  // 타점 패널 표시 전환 때 즉시 재배치하기 위한 직전 표시 상태다.
+  actionBarPanelWasVisible: boolean;
   // true이면 기물 표면 탭으로 타점을 지정한다.
   strikeMode: boolean;
+  // 3D 직접 클릭과 같은 override를 편집하는 확대 정면 패널 런타임이다.
+  strikePointPanel: StrikePointPanelRuntime;
 }
 
 // 탭과 카메라 공전 드래그를 같은 캔버스 포인터에서 구별하는 최대 이동 거리다.
@@ -167,6 +239,9 @@ const RED_DOT_HIT_RADIUS_PIXELS = 24;
 
 // 모드 선택을 새로고침 뒤에도 유지하는 브라우저 저장 키다.
 const INPUT_MODE_STORAGE_KEY = "chessAlkkagi.inputMode";
+
+// M3 패널과 같은 100ms 상한으로 카메라 공전 중 팝업 DOM 갱신을 제한한다.
+const ACTION_BAR_POSITION_INTERVAL_MS = 100;
 
 // 판·구·빨간 점이 화면 경계에 붙지 않도록 프러스텀 제약을 안쪽으로 줄이는 배율이다.
 const CAMERA_CLOSE_FIT_MARGIN = 1.08;
@@ -340,6 +415,156 @@ function raycastNearestPiece(
 }
 
 /**
+ * 터치일 때만 반경 안 후보 중 화면 거리가 가장 가까운 말을 고르며 동률은 id 순으로 고정한다.
+ */
+export function findNearestTouchPieceInScreenSpace(
+  event: ScreenSpacePointer,
+  candidates: readonly ScreenSpacePieceCandidate[],
+  radiusPixels = TOUCH_PIECE_HIT_RADIUS_PIXELS,
+): string | null {
+  if (!isTouchPointerEvent(event) || radiusPixels < 0) {
+    return null;
+  }
+  const radiusSquared = radiusPixels * radiusPixels;
+  let nearestPieceId: string | null = null;
+  let nearestDistanceSquared = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const distanceSquared =
+      (candidate.clientX - event.clientX) ** 2 +
+      (candidate.clientY - event.clientY) ** 2;
+    if (
+      distanceSquared > radiusSquared ||
+      distanceSquared > nearestDistanceSquared ||
+      (distanceSquared === nearestDistanceSquared &&
+        nearestPieceId !== null &&
+        candidate.pieceId >= nearestPieceId)
+    ) {
+      continue;
+    }
+    nearestPieceId = candidate.pieceId;
+    nearestDistanceSquared = distanceSquared;
+  }
+  return nearestPieceId;
+}
+
+/**
+ * 터치만 데스크톱 빨간 점 반경의 4배를 사용하고 마우스 판정은 그대로 유지한다.
+ */
+export function getRedDotHitRadiusPixels(
+  event: Pick<ScreenSpacePointer, "pointerType">,
+): number {
+  return (
+    RED_DOT_HIT_RADIUS_PIXELS *
+    (isTouchPointerEvent(event)
+      ? TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER
+      : 1)
+  );
+}
+
+/**
+ * 터치는 현재 viewport 높이의 28%를 80~180px로 제한하고 마우스는 항상 180px를 쓴다.
+ */
+export function computeEffectiveMaxDragPixels(
+  event: Pick<ScreenSpacePointer, "pointerType">,
+  viewportHeight: number,
+): number {
+  if (!isTouchPointerEvent(event)) {
+    return MAX_DRAG_PIXELS;
+  }
+  return Math.min(
+    Math.max(
+      viewportHeight * TOUCH_MAX_DRAG_VIEWPORT_RATIO,
+      TOUCH_MAX_DRAG_MIN_PIXELS,
+    ),
+    MAX_DRAG_PIXELS,
+  );
+}
+
+/**
+ * 빨간 점에서 아래로 당긴 성분만 이번 드래그의 최대 거리 비율로 바꾼다.
+ */
+export function computeRedDotPullPower(
+  startY: number,
+  currentY: number,
+  maxDragPixels = MAX_DRAG_PIXELS,
+): number {
+  const downwardPixels = Math.max(currentY - startY, 0);
+  const normalizedPower = downwardPixels / maxDragPixels;
+  // 시작 좌표와 소수 거리의 덧셈 오차로 최대점이 0.999…가 되는 경우만 정확히 1로 맞춘다.
+  return normalizedPower >= 1 - Number.EPSILON
+    ? 1
+    : Math.min(normalizedPower, 1);
+}
+
+/**
+ * 0보다 큰 아래 방향 충전만 실제 발사로 이어지게 한다.
+ */
+export function shouldLaunchRedDotPull(
+  normalizedPower: number,
+): boolean {
+  return normalizedPower > 0;
+}
+
+/**
+ * 당구식 터치 한 개를 조준·카메라·추가 포인터 차단 중 어디에 넘길지 결정한다.
+ */
+export function decideBilliardsTouchPointerRoute(
+  context: BilliardsTouchPointerContext,
+): BilliardsTouchPointerRoute {
+  if (context.orbitTouchCount > 0) {
+    return "orbit";
+  }
+  if (context.activeInputPointer) {
+    return "blocked";
+  }
+  return context.hasSelectedPiece &&
+    !context.strikeMode &&
+    context.redDotHit
+    ? "red-dot-aim"
+    : "orbit";
+}
+
+/**
+ * 선택 가능한 말만 현재 카메라로 투영해 터치 중심 44px 안의 최근접 후보를 찾는다.
+ */
+function findTouchFallbackPiece(
+  runtime: InputRuntime,
+  event: PointerEvent,
+): string | null {
+  const rect =
+    runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    return null;
+  }
+  const camera = runtime.sceneRuntime.camera;
+  const worldPosition = new Vector3();
+  const projectedPosition = new Vector3();
+  const candidates: ScreenSpacePieceCandidate[] = [];
+  for (const pieceId of runtime.selectablePieceIds) {
+    if (!runtime.policy.canSelectPiece(pieceId)) {
+      continue;
+    }
+    const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
+    if (mesh === undefined) {
+      continue;
+    }
+    mesh.getWorldPosition(worldPosition);
+    projectedPosition.copy(worldPosition).project(camera);
+    if (projectedPosition.z < -1 || projectedPosition.z > 1) {
+      continue;
+    }
+    candidates.push({
+      pieceId,
+      clientX:
+        rect.left + ((projectedPosition.x + 1) / 2) * rect.width,
+      clientY:
+        rect.top + ((1 - projectedPosition.y) / 2) * rect.height,
+    });
+  }
+  return findNearestTouchPieceInScreenSpace(event, candidates);
+}
+
+/**
  * 현재 선택 말의 몸 원점이 아닌 월드 AABB 중심을 당구식 공전 중심으로 구한다.
  */
 export function getSelectedTarget(runtime: InputRuntime): Vector3 {
@@ -493,7 +718,10 @@ export function getBilliardsHorizontalDirection(
 /**
  * 현재 선택과 카메라에서 당구식 해법을 한 번 계산해 점·화살표·발사 캐시에 함께 반영한다.
  */
-function refreshBilliardsPreview(runtime: InputRuntime): void {
+function refreshBilliardsPreview(
+  runtime: InputRuntime,
+  horizontalOverride: Vector3 | null = null,
+): void {
   const pieceId = runtime.aimRuntime.selectedPieceId;
   if (pieceId === null) {
     return;
@@ -503,7 +731,10 @@ function refreshBilliardsPreview(runtime: InputRuntime): void {
   if (binding === undefined || mesh === undefined) {
     throw new Error(`${pieceId} 조준 미리보기 대상을 찾지 못했습니다.`);
   }
-  const horizontal = getBilliardsHorizontalDirection(runtime);
+  const horizontal =
+    horizontalOverride === null
+      ? getBilliardsHorizontalDirection(runtime)
+      : horizontalOverride.clone().normalize();
   if (runtime.aimRuntime.activeAim?.pieceId !== pieceId) {
     beginDirectedAim(runtime.aimRuntime, pieceId, horizontal, true);
   }
@@ -660,6 +891,7 @@ function cancelInteraction(
   if (clearSelection) {
     runtime.adaptiveCloseDistance = null;
     runtime.strikeMode = false;
+    runtime.orbitTouchPointerIds.clear();
     clearStrikePointOverride(runtime.aimParametersRuntime);
     updateActionBar(runtime);
   }
@@ -739,7 +971,7 @@ function commitActiveLaunch(runtime: InputRuntime): void {
   }
   const dotPoint =
     runtime.aimParametersRuntime.currentSolution?.applicationPoint;
-  if (dotPoint !== undefined) {
+  if (runtime.mode === "billiards" && dotPoint !== undefined) {
     const distance = dotPoint.distanceTo(request.applicationPoint);
     console.info(
       `[조준] 빨간 점-적용점 거리=${distance.toExponential(3)}`,
@@ -796,12 +1028,8 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         return aim.direction.clone().normalize();
       },
       computeApplicationPoint: (runtime) => {
-        const override = runtime.aimParametersRuntime.strikePointOverride;
-        if (override !== null) {
-          return override.clone();
-        }
-        const pieceId = runtime.aimRuntime.activeAim?.pieceId ?? runtime.aimRuntime.selectedPieceId;
-        if (pieceId === null) {
+        const pieceId = runtime.aimRuntime.activeAim?.pieceId;
+        if (pieceId === undefined) {
           throw new Error("클래식 발사 적용점이 준비되지 않았습니다.");
         }
         const binding = runtime.physicsRuntime.pieces.get(pieceId);
@@ -809,11 +1037,15 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         if (binding === undefined || mesh === undefined) {
           throw new Error(`${pieceId} 클래식 적용점 대상을 찾지 못했습니다.`);
         }
-        return computeStrikeApplicationPoint(
-          binding,
-          mesh,
-          runtime.aimParametersRuntime.tuningRuntime.settings
-            .strikeHeightRatio,
+        return resolveStrikeApplicationPoint(
+          false,
+          computeStrikeApplicationPoint(
+            binding,
+            mesh,
+            runtime.aimParametersRuntime.tuningRuntime.settings
+              .strikeHeightRatio,
+          ),
+          runtime.aimParametersRuntime.strikePointOverride,
         );
       },
       onAimBegin: (runtime, pieceId, event) => {
@@ -834,13 +1066,16 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         }
         setAimApplicationPoint(
           runtime.aimRuntime,
-          runtime.aimParametersRuntime.strikePointOverride ??
+          resolveStrikeApplicationPoint(
+            false,
             computeStrikeApplicationPoint(
               binding,
               mesh,
               runtime.aimParametersRuntime.tuningRuntime.settings
                 .strikeHeightRatio,
             ),
+            runtime.aimParametersRuntime.strikePointOverride,
+          ),
         );
       },
       onAimCancel: () => {},
@@ -897,10 +1132,12 @@ function updateModeToggle(runtime: InputRuntime): void {
  */
 function updateActionBar(runtime: InputRuntime): void {
   const selected =
-    runtime.aimRuntime.selectedPieceId !== null &&
-    !runtime.policy.isExternalAimActive();
+    runtime.mode === "billiards" &&
+    runtime.aimRuntime.selectedPieceId !== null;
 
   runtime.actionBar.hidden = !selected;
+  // 선택·동작 전환 직후 다음 입력 프레임에서 위치를 반드시 다시 계산한다.
+  runtime.actionBarLastPositionedAt = Number.NEGATIVE_INFINITY;
   for (const button of runtime.actionBar.querySelectorAll("button")) {
     const active =
       button.dataset.action === "strike"
@@ -923,6 +1160,149 @@ function updateActionBar(runtime: InputRuntime): void {
   const left = Math.min(Math.max(x + rect.width * 0.04 + 8, 4), rect.width - barWidth - 4);
   runtime.actionBar.style.left = `${left}px`;
   runtime.actionBar.style.top = `${top}px`;
+}
+
+/**
+ * 선택 말의 월드 AABB 여덟 꼭짓점을 화면으로 투영해 중심과 겹침 금지 외곽을 만든다.
+ */
+function projectActionBarAnchor(
+  runtime: InputRuntime,
+  mesh: Mesh,
+  viewport: ActionBarRect,
+): ActionBarAnchor | null {
+  if (mesh.geometry.boundingBox === null) {
+    mesh.geometry.computeBoundingBox();
+  }
+  const bounds = mesh.geometry.boundingBox;
+  if (bounds === null) {
+    return null;
+  }
+  mesh.updateWorldMatrix(true, false);
+  const camera = runtime.sceneRuntime.camera;
+  const projected = new Vector3();
+  let left = Number.POSITIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const x of [bounds.min.x, bounds.max.x]) {
+    for (const y of [bounds.min.y, bounds.max.y]) {
+      for (const z of [bounds.min.z, bounds.max.z]) {
+        projected
+          .set(x, y, z)
+          .applyMatrix4(mesh.matrixWorld)
+          .project(camera);
+        const clientX =
+          viewport.left +
+          ((projected.x + 1) / 2) *
+            (viewport.right - viewport.left);
+        const clientY =
+          viewport.top +
+          ((1 - projected.y) / 2) *
+            (viewport.bottom - viewport.top);
+        left = Math.min(left, clientX);
+        top = Math.min(top, clientY);
+        right = Math.max(right, clientX);
+        bottom = Math.max(bottom, clientY);
+      }
+    }
+  }
+  if (![left, top, right, bottom].every(Number.isFinite)) {
+    return null;
+  }
+  return {
+    x: (left + right) / 2,
+    y: (top + bottom) / 2,
+    pieceRect: { left, top, right, bottom },
+  };
+}
+
+/**
+ * 선택·카메라·패널 변화만 100ms 간격으로 반영해 액션 바를 말 옆에 고정한다.
+ */
+function updateActionBarPosition(
+  runtime: InputRuntime,
+  now: number,
+): void {
+  const pieceId = runtime.aimRuntime.selectedPieceId;
+  if (pieceId === null || runtime.actionBar.hidden) {
+    runtime.actionBarSelectedPieceId = null;
+    return;
+  }
+  const panelVisible = !runtime.strikePointPanel.root.hidden;
+  const selectionChanged =
+    runtime.actionBarSelectedPieceId !== pieceId;
+  const panelVisibilityChanged =
+    runtime.actionBarPanelWasVisible !== panelVisible;
+  if (
+    !selectionChanged &&
+    !panelVisibilityChanged &&
+    now - runtime.actionBarLastPositionedAt <
+      ACTION_BAR_POSITION_INTERVAL_MS
+  ) {
+    return;
+  }
+  const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
+  if (mesh === undefined) {
+    return;
+  }
+  const canvasRect =
+    runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  const viewport: ActionBarRect = {
+    left: canvasRect.left,
+    top: canvasRect.top,
+    right: canvasRect.right,
+    bottom: canvasRect.bottom,
+  };
+  const anchor = projectActionBarAnchor(runtime, mesh, viewport);
+  const popupRect = runtime.actionBar.getBoundingClientRect();
+  if (
+    anchor === null ||
+    popupRect.width <= 0 ||
+    popupRect.height <= 0
+  ) {
+    return;
+  }
+  const panelClientRect = panelVisible
+    ? runtime.strikePointPanel.root.getBoundingClientRect()
+    : null;
+  const panelRect: ActionBarRect | null =
+    panelClientRect === null
+      ? null
+      : {
+          left: panelClientRect.left,
+          top: panelClientRect.top,
+          right: panelClientRect.right,
+          bottom: panelClientRect.bottom,
+        };
+  const placement = computeActionBarPlacement(
+    viewport,
+    anchor,
+    { width: popupRect.width, height: popupRect.height },
+    panelRect,
+  );
+  const offsetParentRect =
+    runtime.actionBar.offsetParent instanceof HTMLElement
+      ? runtime.actionBar.offsetParent.getBoundingClientRect()
+      : { left: 0, top: 0 };
+  const localLeft = placement.left - offsetParentRect.left;
+  const localTop = placement.top - offsetParentRect.top;
+  if (
+    runtime.actionBarLastLeft === null ||
+    runtime.actionBarLastTop === null ||
+    Math.abs(localLeft - runtime.actionBarLastLeft) >= 0.5 ||
+    Math.abs(localTop - runtime.actionBarLastTop) >= 0.5 ||
+    selectionChanged ||
+    panelVisibilityChanged
+  ) {
+    runtime.actionBar.style.left = `${localLeft}px`;
+    runtime.actionBar.style.top = `${localTop}px`;
+    runtime.actionBar.dataset.side = placement.side;
+    runtime.actionBarLastLeft = localLeft;
+    runtime.actionBarLastTop = localTop;
+  }
+  runtime.actionBarSelectedPieceId = pieceId;
+  runtime.actionBarPanelWasVisible = panelVisible;
+  runtime.actionBarLastPositionedAt = now;
 }
 
 /**
@@ -970,6 +1350,7 @@ export function switchInputMode(
   window.localStorage.setItem(INPUT_MODE_STORAGE_KEY, mode);
   runtime.policy.onModeChanged(mode);
   updateModeToggle(runtime);
+  updateActionBar(runtime);
   beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
 }
 
@@ -989,6 +1370,51 @@ function handleCanvasPointerDown(
     // AI 조준 중에는 선택만 무시하고 이벤트를 막지 않아 OrbitControls 공전은 계속 허용한다.
     return;
   }
+  const canvas = runtime.sceneRuntime.renderer.domElement;
+  const selectedId = runtime.aimRuntime.selectedPieceId;
+  const isBilliardsTouch =
+    runtime.mode === "billiards" &&
+    isTouchPointerEvent(event);
+  const selectedCanAim =
+    selectedId !== null &&
+    runtime.policy.canSelectPiece(selectedId);
+  const touchRoute = isBilliardsTouch
+    ? decideBilliardsTouchPointerRoute({
+        hasSelectedPiece: selectedCanAim,
+        strikeMode: runtime.strikeMode,
+        redDotHit:
+          selectedCanAim &&
+          isRedDotHit(
+            runtime.aimParametersRuntime,
+            event.clientX,
+            event.clientY,
+            getRedDotHitRadiusPixels(event),
+          ),
+        activeInputPointer:
+          runtime.activePointerId !== null,
+        orbitTouchCount:
+          runtime.orbitTouchPointerIds.size,
+      })
+    : null;
+  if (
+    touchRoute === "orbit" &&
+    runtime.orbitTouchPointerIds.size > 0
+  ) {
+    // OrbitControls가 시작한 멀티터치에는 새 손가락도 그대로 넘기고 탭 후보만 폐기한다.
+    runtime.orbitTouchPointerIds.add(event.pointerId);
+    if (runtime.gesture?.source === "billiards-canvas") {
+      runtime.gesture.candidatePieceId = null;
+      runtime.gesture.maximumDistance =
+        Number.POSITIVE_INFINITY;
+    }
+    return;
+  }
+  if (touchRoute === "blocked") {
+    // 빨간 점 조준 중 추가 손가락은 카메라까지 전달하지 않아 두 입력 소유자가 섞이지 않게 한다.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
   if (runtime.state === "charging") {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -996,15 +1422,6 @@ function handleCanvasPointerDown(
     return;
   }
   if (runtime.activePointerId !== null) {
-    if (
-      runtime.mode === "billiards" &&
-      runtime.gesture?.source === "billiards-canvas" &&
-      event.pointerType === "touch"
-    ) {
-      runtime.gesture.candidatePieceId = null;
-      runtime.gesture.maximumDistance = Number.POSITIVE_INFINITY;
-      return;
-    }
     event.preventDefault();
     event.stopImmediatePropagation();
     return;
@@ -1019,18 +1436,18 @@ function handleCanvasPointerDown(
     return;
   }
 
-  const canvas = runtime.sceneRuntime.renderer.domElement;
-  const selectedId = runtime.aimRuntime.selectedPieceId;
   const canCharge =
-    selectedId !== null &&
+    runtime.mode === "billiards" &&
+    selectedCanAim &&
     !runtime.strikeMode &&
-    runtime.policy.canSelectPiece(selectedId) &&
-    isRedDotHit(
-      runtime.aimParametersRuntime,
-      event.clientX,
-      event.clientY,
-      RED_DOT_HIT_RADIUS_PIXELS,
-    );
+    (touchRoute === "red-dot-aim" ||
+      (!isBilliardsTouch &&
+        isRedDotHit(
+          runtime.aimParametersRuntime,
+          event.clientX,
+          event.clientY,
+          getRedDotHitRadiusPixels(event),
+        )));
   if (canCharge) {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -1039,21 +1456,27 @@ function handleCanvasPointerDown(
     runtime.activePointerId = event.pointerId;
     runtime.activeCaptureElement = canvas;
     runtime.gesture = {
-      source: runtime.mode === "classic" ? "classic-canvas" : "red-dot",
+      source: "red-dot",
       startX: event.clientX,
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectedId,
+      maxDragPixels: computeEffectiveMaxDragPixels(
+        event,
+        window.innerHeight,
+      ),
     };
     setAimPower(runtime.aimParametersRuntime, 0);
-    if (runtime.mode === "classic") {
-      runtime.strategy.onAimBegin(runtime, selectedId, event);
-    }
     canvas.setPointerCapture(event.pointerId);
     return;
   }
 
-  if (runtime.strikeMode && selectedId !== null) {
+  if (
+    runtime.mode === "billiards" &&
+    runtime.strikeMode &&
+    selectedId !== null &&
+    !isBilliardsTouch
+  ) {
     event.preventDefault();
     event.stopImmediatePropagation();
     runtime.activePointerId = event.pointerId;
@@ -1064,29 +1487,68 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectedId,
+      maxDragPixels: MAX_DRAG_PIXELS,
     };
     canvas.setPointerCapture(event.pointerId);
     return;
   }
 
   const nearestPieceId = raycastNearestPiece(runtime, event);
-  const selectablePieceId =
+  let selectablePieceId =
     nearestPieceId !== null &&
     runtime.selectablePieceIds.has(nearestPieceId) &&
     runtime.policy.canSelectPiece(nearestPieceId)
       ? nearestPieceId
       : null;
+  if (
+    selectablePieceId === null &&
+    runtime.mode === "billiards" &&
+    isTouchPointerEvent(event)
+  ) {
+    selectablePieceId = findTouchFallbackPiece(runtime, event);
+  }
+  if (runtime.mode === "classic") {
+    if (selectablePieceId === null) {
+      // 빈 판은 기존 OrbitControls가 그대로 카메라 제스처로 처리한다.
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    runtime.sceneRuntime.controls.enabled = false;
+    runtime.state = "aiming";
+    runtime.activePointerId = event.pointerId;
+    runtime.activeCaptureElement = canvas;
+    runtime.gesture = {
+      source: "classic-canvas",
+      startX: event.clientX,
+      startY: event.clientY,
+      maximumDistance: 0,
+      candidatePieceId: selectablePieceId,
+      maxDragPixels: MAX_DRAG_PIXELS,
+    };
+    canvas.setPointerCapture(event.pointerId);
+    runtime.strategy.onAimBegin(runtime, selectablePieceId, event);
+    playPieceClickSound();
+    return;
+  }
 
   runtime.activePointerId = event.pointerId;
-  runtime.activeCaptureElement = canvas;
+  runtime.activeCaptureElement =
+    isBilliardsTouch ? null : canvas;
   runtime.gesture = {
     source: "billiards-canvas",
     startX: event.clientX,
     startY: event.clientY,
     maximumDistance: 0,
     candidatePieceId: selectablePieceId,
+    maxDragPixels: MAX_DRAG_PIXELS,
   };
-  canvas.setPointerCapture(event.pointerId);
+  if (isBilliardsTouch) {
+    // 카메라 터치는 OrbitControls가 pointer capture를 소유하도록 입력 런타임은 관찰만 한다.
+    runtime.orbitTouchPointerIds.add(event.pointerId);
+  } else {
+    canvas.setPointerCapture(event.pointerId);
+  }
 }
 
 /**
@@ -1122,16 +1584,15 @@ function handleCanvasPointerMove(
       event.clientX,
       event.clientY,
     );
-    setAimPower(
-      runtime.aimParametersRuntime,
-      runtime.aimRuntime.activeAim?.normalizedPower ?? 0,
-    );
   } else if (gesture.source === "red-dot") {
     event.preventDefault();
-    const downwardPixels = Math.max(event.clientY - gesture.startY, 0);
     setAimPower(
       runtime.aimParametersRuntime,
-      downwardPixels / MAX_DRAG_PIXELS,
+      computeRedDotPullPower(
+        gesture.startY,
+        event.clientY,
+        gesture.maxDragPixels,
+      ),
     );
     const solution = runtime.preparedStrikeSolution;
     if (solution !== null) {
@@ -1151,6 +1612,14 @@ function handleCanvasPointerUp(
   runtime: InputRuntime,
   event: PointerEvent,
 ): void {
+  if (
+    isTouchPointerEvent(event) &&
+    runtime.orbitTouchPointerIds.delete(event.pointerId) &&
+    event.pointerId !== runtime.activePointerId
+  ) {
+    // 보조 카메라 손가락은 OrbitControls만 마무리하고 입력 탭 판정에는 참여하지 않는다.
+    return;
+  }
   if (runtime.policy.isInputBlocked()) {
     event.preventDefault();
     return;
@@ -1169,7 +1638,11 @@ function handleCanvasPointerUp(
   }
   if (gesture.source === "red-dot") {
     event.preventDefault();
-    if (runtime.aimParametersRuntime.normalizedPower > 0) {
+    if (
+      shouldLaunchRedDotPull(
+        runtime.aimParametersRuntime.normalizedPower,
+      )
+    ) {
       try {
         // 마지막 키 적분 뒤 카메라에서 다시 계산해 포인터다운 때가 아닌 릴리스 순간 방향을 발사 요청에 넣는다.
         refreshBilliardsPreview(runtime);
@@ -1332,6 +1805,13 @@ export function createInputRuntime(
     actionBar.append(button);
   }
   sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
+  const overlayContainer =
+    sceneRuntime.renderer.domElement.parentElement;
+  if (overlayContainer === null) {
+    throw new Error("타점 패널을 붙일 게임 컨테이너가 없습니다.");
+  }
+  const strikePointPanel =
+    createStrikePointPanel(overlayContainer);
   const runtime: InputRuntime = {
     sceneRuntime,
     physicsRuntime,
@@ -1348,6 +1828,7 @@ export function createInputRuntime(
     activePointerId: null,
     activeCaptureElement: null,
     gesture: null,
+    orbitTouchPointerIds: new Set(),
     cameraTransition: null,
     preparedStrikeSolution: null,
     lastValidAzimuth: sceneRuntime.controls.getAzimuthalAngle(),
@@ -1358,8 +1839,82 @@ export function createInputRuntime(
     adaptiveCloseDistance: null,
     modeToggle,
     actionBar,
+    actionBarSelectedPieceId: null,
+    actionBarLastPositionedAt: Number.NEGATIVE_INFINITY,
+    actionBarLastLeft: null,
+    actionBarLastTop: null,
+    actionBarPanelWasVisible: false,
     strikeMode: false,
+    strikePointPanel,
   };
+
+  for (const eventName of [
+    "pointerdown",
+    "pointermove",
+    "pointerup",
+    "pointercancel",
+  ]) {
+    strikePointPanel.root.addEventListener(eventName, (event) => {
+      event.stopPropagation();
+    });
+  }
+  strikePointPanel.canvas.addEventListener(
+    "pointerdown",
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (
+        runtime.mode !== "billiards" ||
+        !runtime.strikeMode
+      ) {
+        return;
+      }
+      const pieceId = runtime.aimRuntime.selectedPieceId;
+      const mesh =
+        pieceId === null
+          ? undefined
+          : runtime.sceneRuntime.pieceMeshes.get(pieceId);
+      if (mesh === undefined) {
+        return;
+      }
+      const point = pickStrikePointFromPanel(
+        runtime.strikePointPanel,
+        mesh,
+        event.clientX,
+        event.clientY,
+      );
+      if (point === null) {
+        return;
+      }
+      playPieceClickSound();
+      setStrikePointOverride(
+        runtime.aimParametersRuntime,
+        point,
+      );
+      try {
+        refreshBilliardsPreview(runtime);
+      } catch (error: unknown) {
+        const reason = formatInteractionError(error);
+        cancelInteraction(runtime, true);
+        runtime.failureReason = reason;
+        showAimError(runtime.aimParametersRuntime, reason);
+      }
+    },
+  );
+  strikePointPanel.resetButton.addEventListener("click", () => {
+    clearStrikePointOverride(runtime.aimParametersRuntime);
+    if (runtime.aimRuntime.selectedPieceId === null) {
+      return;
+    }
+    try {
+      refreshBilliardsPreview(runtime);
+    } catch (error: unknown) {
+      const reason = formatInteractionError(error);
+      cancelInteraction(runtime, true);
+      runtime.failureReason = reason;
+      showAimError(runtime.aimParametersRuntime, reason);
+    }
+  });
 
   for (const button of modeToggle.querySelectorAll("button")) {
     button.addEventListener("click", () => {
@@ -1372,6 +1927,11 @@ export function createInputRuntime(
   updateActionBar(runtime);
   for (const button of actionBar.querySelectorAll("button")) {
     button.addEventListener("click", () => {
+      if (runtime.mode !== "billiards") {
+        // 클래식은 즉시 드래그 전용이라 숨은 동작 버튼을 강제로 눌러도 타점 모드에 들어가지 않는다.
+        runtime.strikeMode = false;
+        return;
+      }
       const action = button.dataset.action;
       if (action === "strike") {
         runtime.strikeMode = true;
@@ -1413,6 +1973,12 @@ export function createInputRuntime(
     handleCanvasPointerUp(runtime, event),
   );
   const cancelPointer = (event?: PointerEvent): void => {
+    if (
+      event !== undefined &&
+      isTouchPointerEvent(event)
+    ) {
+      runtime.orbitTouchPointerIds.delete(event.pointerId);
+    }
     if (
       runtime.activePointerId !== null &&
       (event === undefined ||
@@ -1585,22 +2151,37 @@ export function updateInputRuntime(
       runtime.failureReason = reason;
       showAimError(runtime.aimParametersRuntime, reason);
     }
-  } else if (
-    runtime.mode === "classic" &&
-    runtime.aimRuntime.selectedPieceId !== null &&
-    !externalAimActive &&
-    runtime.state !== "charging"
-  ) {
-    try {
-      refreshBilliardsPreview(runtime);
-    } catch (error: unknown) {
-      const reason = formatInteractionError(error);
-      cancelInteraction(runtime, true);
-      runtime.failureReason = reason;
-      showAimError(runtime.aimParametersRuntime, reason);
-    }
   }
-  updateActionBar(runtime);
+
+  const panelSelectedId = runtime.aimRuntime.selectedPieceId;
+  const panelMesh =
+    panelSelectedId === null
+      ? null
+      : (runtime.sceneRuntime.pieceMeshes.get(panelSelectedId) ??
+        null);
+  const panelCameraDirection = new Vector3();
+  runtime.sceneRuntime.camera.getWorldDirection(
+    panelCameraDirection,
+  );
+  updateStrikePointPanel(
+    runtime.strikePointPanel,
+    runtime.sceneRuntime.renderer,
+    panelCameraDirection,
+    panelSelectedId,
+    panelMesh,
+    runtime.mode === "billiards" &&
+      runtime.strikeMode &&
+      panelSelectedId !== null &&
+      !externalAimActive,
+    runtime.mode === "billiards"
+      ? (runtime.aimParametersRuntime.strikePointOverride ??
+        runtime.aimParametersRuntime.currentSolution
+          ?.applicationPoint ??
+        null)
+      : null,
+    now,
+  );
+  updateActionBarPosition(runtime, now);
 }
 
 /**

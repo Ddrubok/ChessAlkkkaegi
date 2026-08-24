@@ -1,7 +1,6 @@
 import {
   PERMANENT_PLAYER_SIZE_COST,
   PERMANENT_PLAYER_SIZE_STEP,
-  PERMANENT_UPGRADE_STEP,
   PERMANENT_UPGRADE_TIER_MAX_LEVEL,
   type PieceType,
 } from "./config";
@@ -9,6 +8,7 @@ import type { GameMode } from "./game-mode";
 import {
   computePermanentUpgradeSpentPoints,
   computePermanentUpgradeCost,
+  computePermanentTierEffect,
   getPermanentTierUpgradeLevel,
   isPermanentSizeUpgradeUnlocked,
   isPermanentUpgradeUnlocked,
@@ -110,7 +110,7 @@ function appendUpgradeRow(
   row.innerHTML = `
     <strong>${TIER_LABELS[tier]} · ${PIECE_LABELS[type]} · ${TRACK_LABELS[track]}</strong>
     <span>${level}/3</span>
-    <span>+${(level * PERMANENT_UPGRADE_STEP * 100).toFixed(0)}%</span>
+    <span>+${(computePermanentTierEffect(tier, level) * 100).toFixed(0)}%</span>
     <span>${unlocked ? (cost === null ? "최대" : `${cost} P`) : "잠김"}</span>
   `;
   const purchaseButton = document.createElement("button");
@@ -182,7 +182,7 @@ function appendSizeUpgradeRow(
     renderMainMenu(runtime);
     status.textContent =
       result.purchased
-        ? "플레이어 전체 말 크기 +3% 강화를 구매했습니다."
+        ? "플레이어 전체 말 크기 +5% 강화를 구매했습니다."
         : (result.reason ?? "");
   });
   row.append(purchaseButton);

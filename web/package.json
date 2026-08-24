@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:portable": "tsc --noEmit && vite build --mode portable && node src/tools/finalize-portable-build.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

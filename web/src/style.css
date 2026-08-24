@@ -162,6 +162,7 @@ body {
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 0.65rem;
   background: rgb(12 14 17 / 84%);
+  pointer-events: none;
 }
 
 .strike-action-bar button {
@@ -171,6 +172,7 @@ body {
   color: #f8f2e7;
   background: rgb(255 255 255 / 7%);
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .strike-action-bar button[aria-pressed="true"] {
@@ -181,6 +183,86 @@ body {
 
 .strike-action-bar[hidden] {
   display: none;
+}
+
+@media (pointer: coarse) {
+  .strike-action-bar button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+.strike-point-panel {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  left: 0.75rem;
+  display: grid;
+  width: min(11rem, 32vh);
+  gap: 0.45rem;
+  padding: 0.6rem;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 0.75rem;
+  color: #f8f2e7;
+  background: rgb(12 14 17 / 92%);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 35%);
+  transform: translateY(-50%);
+}
+
+.strike-point-panel.is-coarse {
+  width: min(14rem, 42vw, 46vh);
+}
+
+.strike-point-panel[hidden] {
+  display: none;
+}
+
+.strike-point-panel strong {
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.strike-point-panel-viewport {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 0.55rem;
+  background: #111820;
+}
+
+.strike-point-panel-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.strike-point-panel-marker {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid #ffd54a;
+  border-radius: 50%;
+  background: rgb(255 59 48 / 72%);
+  box-shadow: 0 0 0.4rem rgb(0 0 0 / 80%);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.strike-point-panel-marker[hidden] {
+  display: none;
+}
+
+.strike-point-panel button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 0.45rem;
+  color: #f8f2e7;
+  background: rgb(255 255 255 / 7%);
+  cursor: pointer;
 }
 
 .return-menu-button:disabled {
@@ -897,6 +979,10 @@ body {
 
   .online-resign-button {
     right: 7.4rem;
+  }
+
+  .strike-point-panel {
+    left: 0.4rem;
   }
 
   .aim-parameters,
