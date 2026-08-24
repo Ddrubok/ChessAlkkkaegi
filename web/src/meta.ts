@@ -1,11 +1,12 @@
 import {
+  PERMANENT_ADVANCED_LEVEL_EFFECTS,
   PERMANENT_ADVANCED_REGULAR_COSTS,
   PERMANENT_ADVANCED_ROYAL_COSTS,
+  PERMANENT_BASIC_LEVEL_EFFECTS,
   PERMANENT_BASIC_REGULAR_COSTS,
   PERMANENT_BASIC_ROYAL_COSTS,
   PERMANENT_PLAYER_SIZE_COST,
   PERMANENT_PLAYER_SIZE_STEP,
-  PERMANENT_UPGRADE_STEP,
   PERMANENT_UPGRADE_TIER_MAX_LEVEL,
   PIECE_TYPES,
   STAGE_POINT_CONTRIBUTION_UNIT,
@@ -42,7 +43,7 @@ export interface PermanentUpgrades {
   schemaVersion: typeof PERMANENT_UPGRADE_SCHEMA_VERSION;
   // 여섯 말 종류의 기초·심화 힘·중량 레벨을 보존하는 트리 원본이다.
   pieces: Record<PieceType, PermanentPieceUpgrades>;
-  // 플레이어가 소유한 모든 말 종류에 +3% 크기를 적용하는 중앙 0/1 관문이다.
+  // 플레이어가 소유한 모든 말 종류에 +5% 크기를 적용하는 중앙 0/1 관문이다.
   playerSizeLevel: 0 | 1;
 }
 
@@ -496,29 +497,69 @@ export function getPermanentUpgradeLevel(
 }
 
 /**
- * 한 종류 백 말의 최종 영구 힘을 기존 가산 발사 속도 비율로 바꾼다.
+ * 기초·심화의 현재 레벨을 해당 구간 총효과 표에서 조회한다.
+ */
+export function computePermanentTierEffect(
+  tier: PermanentUpgradeTier,
+  level: number,
+): number {
+  if (
+    !Number.isInteger(level) ||
+    level < 0 ||
+    level > PERMANENT_UPGRADE_TIER_MAX_LEVEL
+  ) {
+    throw new Error(
+      `${tier} 영구 강화 레벨 ${level}이 0~3 정수가 아닙니다.`,
+    );
+  }
+  if (level === 0) {
+    return 0;
+  }
+  const table =
+    tier === "basic"
+      ? PERMANENT_BASIC_LEVEL_EFFECTS
+      : PERMANENT_ADVANCED_LEVEL_EFFECTS;
+  return table[level - 1];
+}
+
+/**
+ * 한 말 종류·트랙의 기초와 심화 총효과를 합산한다.
+ */
+function computePermanentTrackEffect(
+  upgrades: Readonly<PermanentUpgrades>,
+  type: PieceType,
+  track: PermanentUpgradeTrack,
+): number {
+  return (
+    computePermanentTierEffect(
+      "basic",
+      upgrades.pieces[type].basic[track],
+    ) +
+    computePermanentTierEffect(
+      "advanced",
+      upgrades.pieces[type].advanced[track],
+    )
+  );
+}
+
+/**
+ * 한 종류 백 말의 최종 영구 힘을 기초·심화 현재 레벨 총효과의 합으로 반환한다.
  */
 export function computePermanentForceBonus(
   upgrades: Readonly<PermanentUpgrades>,
   type: PieceType,
 ): number {
-  return (
-    getPermanentUpgradeLevel(upgrades, type, "force") *
-    PERMANENT_UPGRADE_STEP
-  );
+  return computePermanentTrackEffect(upgrades, type, "force");
 }
 
 /**
- * 한 종류 백 말의 최종 영구 중량을 기존 가산 hull 질량 비율로 바꾼다.
+ * 한 종류 백 말의 최종 영구 중량을 기초·심화 현재 레벨 총효과의 합으로 반환한다.
  */
 export function computePermanentWeightFraction(
   upgrades: Readonly<PermanentUpgrades>,
   type: PieceType,
 ): number {
-  return (
-    getPermanentUpgradeLevel(upgrades, type, "weight") *
-    PERMANENT_UPGRADE_STEP
-  );
+  return computePermanentTrackEffect(upgrades, type, "weight");
 }
 
 /**

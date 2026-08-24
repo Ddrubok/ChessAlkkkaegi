@@ -101,6 +101,19 @@ export function computeStrikeApplicationPoint(
 }
 
 /**
+ * 타점 UI를 허용한 모드만 사용자 override를 쓰고 클래식은 항상 기본 높이점을 복사한다.
+ */
+export function resolveStrikeApplicationPoint(
+  allowOverride: boolean,
+  automaticPoint: Vector3,
+  overridePoint: Vector3 | null,
+): Vector3 {
+  return allowOverride && overridePoint !== null
+    ? overridePoint.clone()
+    : automaticPoint.clone();
+}
+
+/**
  * 카메라 피치와 고정 중심 타격점을 하나의 계산으로 방향·적용점·예상 속도에 변환한다.
  */
 export function computeStrikeSolution(
@@ -133,13 +146,15 @@ export function computeStrikeSolution(
     .normalize();
 
   const worldCom = binding.body.worldCom();
-  const applicationPoint =
-    runtime.strikePointOverride ??
+  const applicationPoint = resolveStrikeApplicationPoint(
+    true,
     computeStrikeApplicationPoint(
       binding,
       mesh,
       runtime.tuningRuntime.settings.strikeHeightRatio,
-    );
+    ),
+    runtime.strikePointOverride,
+  );
   const initialSpeed =
     MathUtils.clamp(normalizedPower, 0, 1) *
     runtime.tuningRuntime.settings.maxLaunchSpeed;

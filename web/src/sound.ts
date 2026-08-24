@@ -6,6 +6,7 @@ import {
   SOUND_SFX_VOLUME,
 } from "./config";
 import type { PhysicsRuntime } from "./physics";
+import { resolveRuntimeAssetUrl } from "./portable-assets";
 
 type SoundEffectId =
   | "button"
@@ -61,20 +62,21 @@ interface SoundRuntime {
 }
 
 // GitHub Pages 하위 경로 배포에서도 깨지지 않도록 에셋 로더와 같은 BASE_URL 기준으로 주소를 만든다.
-const SOUND_ASSET_BASE_URL = `${import.meta.env.BASE_URL}assets/sound/`;
-
 const SOUND_EFFECT_URLS: Readonly<
   Record<SoundEffectId, string>
 > = {
-  button: `${SOUND_ASSET_BASE_URL}buttonclick_sound.mp3`,
-  hit: `${SOUND_ASSET_BASE_URL}hit_sound.mp3`,
-  wood: `${SOUND_ASSET_BASE_URL}wood_hit_sound.mp3`,
-  rock: `${SOUND_ASSET_BASE_URL}rock_hit_sound.mp3`,
-  iron: `${SOUND_ASSET_BASE_URL}iron_hit_sound.mp3`,
-  power10: `${SOUND_ASSET_BASE_URL}power_10.mp3`,
-  power50: `${SOUND_ASSET_BASE_URL}power_50.mp3`,
-  power90: `${SOUND_ASSET_BASE_URL}power_90.mp3`,
+  button: resolveRuntimeAssetUrl("button"),
+  hit: resolveRuntimeAssetUrl("hit"),
+  wood: resolveRuntimeAssetUrl("wood"),
+  rock: resolveRuntimeAssetUrl("rock"),
+  iron: resolveRuntimeAssetUrl("iron"),
+  power10: resolveRuntimeAssetUrl("power10"),
+  power50: resolveRuntimeAssetUrl("power50"),
+  power90: resolveRuntimeAssetUrl("power90"),
 };
+
+// BGM도 효과음과 같은 빌드별 주소 해석을 거쳐 화면 전환 동안 하나의 요소로 유지한다.
+const BGM_URL = resolveRuntimeAssetUrl("bgm");
 
 // 모듈 하나가 메뉴와 대국 전체에서 같은 BGM·버퍼·제한 상태를 공유한다.
 let soundRuntime: SoundRuntime | null = null;
@@ -213,7 +215,7 @@ export function initializeSound(): void {
     return;
   }
   const context = new window.AudioContext();
-  const bgm = new Audio(`${SOUND_ASSET_BASE_URL}bgm1.mp3`);
+  const bgm = new Audio(BGM_URL);
   bgm.loop = true;
   bgm.preload = "auto";
   bgm.volume = SOUND_BGM_VOLUME;
