@@ -413,7 +413,7 @@ export class SupabaseMatchUi {
     parentCard.appendChild(modalOverlay);
 
     this.matchmaker = new SupabaseMatchmaker(this.client, this.profile);
-    this.matchmaker.startMatching(
+    void this.matchmaker.startMatching(
       (status: MatchmakingStatus) => {
         const timerEl = modalOverlay.querySelector("#matching-timer");
         const rangeEl = modalOverlay.querySelector("#matching-range");
