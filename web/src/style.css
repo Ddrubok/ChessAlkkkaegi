@@ -105,34 +105,42 @@ body {
 .input-mode-toggle {
   position: absolute;
   z-index: 5;
-  top: 0.75rem;
-  right: auto;
-  left: 50%;
+  top: 1rem;
+  left: 1rem;
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 0.65rem;
   background: rgb(12 14 17 / 84%);
-  transform: translateX(-50%);
 }
 
 .return-menu-button {
   position: absolute;
   z-index: 5;
-  top: 0.75rem;
-  /* Y 패널의 0.75rem inset·약 1rem 스크롤바·0.5rem 여백을 피해 오른쪽 끝을 둔다. */
-  right: 2.25rem;
-  padding: 0.55rem 0.8rem;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.45rem 0.75rem;
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 0.65rem;
   color: #f8f2e7;
   background: rgb(12 14 17 / 84%);
   cursor: pointer;
+  font-size: 0.85rem;
 }
 
 .online-resign-button {
-  right: 7.75rem;
+  position: absolute;
+  z-index: 5;
+  top: 1rem;
+  right: 6.5rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgb(239 68 68 / 40%);
+  border-radius: 0.65rem;
+  color: #fca5a5;
+  background: rgb(127 29 29 / 70%);
+  cursor: pointer;
+  font-size: 0.85rem;
 }
 
 .input-mode-toggle button,

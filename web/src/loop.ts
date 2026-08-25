@@ -224,7 +224,7 @@ export function startGameLoop(
   aiRuntime: AiRuntime,
   gameModeRuntime: GameModeRuntime,
   tuningRuntime: TuningRuntime,
-  updateOnlineRuntime: (now: number) => void = () => {},
+  updateOnlineRuntime: (now: number, frameDelta: number) => void = () => {},
   readOnlineDebugStatus: () =>
     | OnlineLoopDebugStatus
     | null = () => null,
@@ -337,7 +337,7 @@ export function startGameLoop(
       );
       updateTurnCamera(turnRuntime, now);
       updateAiRuntime(aiRuntime, now);
-      updateOnlineRuntime(now);
+      updateOnlineRuntime(now, 0);
       updateInputRuntime(inputRuntime, now);
       if (
         turnRuntime.phase !== "camera-rotating" &&
@@ -367,12 +367,19 @@ export function startGameLoop(
     const rawFrameDelta = Math.max((now - lastFrameTime) / 1000, 0);
     const frameDelta = Math.min(rawFrameDelta, MAX_FRAME_DELTA);
     lastFrameTime = now;
+
+    // 기물 발사 후 5초 경과 시점부터 점진적 시간 가속 (최대 4.5배속)
+    let settleAcceleration = 1.0;
+    if (turnRuntime.phase === "settling" && turnRuntime.settleSeconds > 5.0) {
+      settleAcceleration = Math.min(4.5, 1.0 + (turnRuntime.settleSeconds - 5.0) * 0.7);
+    }
+    const activeTimeScale = tuningRuntime.settings.timeScale * settleAcceleration;
+
     if (rawFrameDelta > MAX_FRAME_DELTA) {
       droppedSimulatedSeconds +=
-        (rawFrameDelta - MAX_FRAME_DELTA) *
-        tuningRuntime.settings.timeScale;
+        (rawFrameDelta - MAX_FRAME_DELTA) * activeTimeScale;
     }
-    accumulator += frameDelta * tuningRuntime.settings.timeScale;
+    accumulator += frameDelta * activeTimeScale;
 
     let stepCount = 0;
     while (
@@ -436,7 +443,7 @@ export function startGameLoop(
     );
     updateTurnCamera(turnRuntime, now);
     updateAiRuntime(aiRuntime, now);
-    updateOnlineRuntime(now);
+    updateOnlineRuntime(now, frameDelta);
     updateInputRuntime(inputRuntime, now);
     if (
       turnRuntime.phase !== "camera-rotating" &&
