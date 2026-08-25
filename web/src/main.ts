@@ -1,4 +1,5 @@
 import "./style.css";
+import { Vector3 } from "three";
 import {
   createAiRuntime,
   isAiTelegraphActive,
@@ -57,6 +58,7 @@ import {
   PIECE_INSTANCES,
 } from "./layout";
 import { startGameLoop } from "./loop";
+import { createTurnHud } from "./turn-hud";
 import {
   createMatchRuntime,
   hideMatchResult,
@@ -317,6 +319,41 @@ async function bootstrap(): Promise<void> {
   let activeMatchOpponent: { id: string; nickname: string; mmr: number } | null =
     null;
   let activeMyProfile: UserProfile | null = null;
+
+  const handleTurnTimeout = (): void => {
+    if (turnRuntime.phase !== "ready") return;
+
+    // 현재 턴인 진영의 살아있는 말 중 하나 찾기
+    const myPieces = [...physicsRuntime.pieces.values()].filter(
+      (p) => p.instance.side === turnRuntime.currentSide && !turnRuntime.pendingRemovalIds.has(p.instance.id),
+    );
+    if (myPieces.length === 0) return;
+
+    const chosenPiece = myPieces[0];
+    const trans = chosenPiece.body.translation();
+    const forwardZ = turnRuntime.currentSide === "white" ? -1 : 1;
+
+    const timeoutLaunchRequest = {
+      pieceId: chosenPiece.instance.id,
+      direction: new Vector3(0, 0, forwardZ),
+      normalizedPower: 0.02,
+      applicationPoint: new Vector3(trans.x, trans.y + 0.1, trans.z),
+      speedMultiplier: 1,
+    };
+
+    if (gameModeRuntime?.mode === "online" && onlineRuntime) {
+      onlineRuntime.queueLocalLaunch(timeoutLaunchRequest);
+    } else {
+      queueTurnLaunch(turnRuntime, timeoutLaunchRequest);
+    }
+  };
+
+  const turnHud = createTurnHud(app, turnRuntime, {
+    getGameMode: () => gameModeRuntime?.mode ?? "hotseat",
+    getMySide: () => onlineRuntime?.mySide ?? null,
+    isMenuVisible: () => !menuRuntime.overlay.hidden,
+    onTimeoutLaunch: handleTurnTimeout,
+  });
   let appliedEnemyBuffStepScale =
     tuningRuntime.settings.enemyStageBuffScale;
   let appliedCardEffectScale =
@@ -1329,7 +1366,8 @@ async function bootstrap(): Promise<void> {
       aiRuntime,
       gameModeRuntime,
       tuningRuntime,
-      (now) => {
+      (now, frameDelta) => {
+        turnHud.update(now, frameDelta);
         onlineRuntime?.update(now);
         onlineSelfTestRuntime?.updatePeers(now);
       },
