@@ -776,3 +776,42 @@ export function shouldOfferStageClearCards(
   }
   return completedStage < STAGE_RUN_LENGTH;
 }
+
+export const META_MAX_STAGE_STORAGE_KEY = "chessAlkkagi.meta.maxStage";
+
+/**
+ * 영구 저장된 최대 클리어 스테이지(0~10)를 가져온다. (기본값: 0)
+ */
+export function getMaxClearedStage(storage: MetaStorage | null): number {
+  if (storage === null) {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(META_MAX_STAGE_STORAGE_KEY);
+      const num = raw ? parseInt(raw, 10) : 0;
+      return Number.isFinite(num) && num >= 0 ? Math.min(STAGE_RUN_LENGTH, num) : 0;
+    }
+    return 0;
+  }
+  const raw = storage.getItem(META_MAX_STAGE_STORAGE_KEY);
+  if (raw === null) return 0;
+  const num = parseInt(raw, 10);
+  return Number.isFinite(num) && num >= 0 ? Math.min(STAGE_RUN_LENGTH, num) : 0;
+}
+
+/**
+ * 새로 클리어한 스테이지를 반영하여 최대 클리어 스테이지를 영구 저장한다.
+ */
+export function saveMaxClearedStage(
+  storage: MetaStorage | null,
+  clearedStage: number,
+): void {
+  const current = getMaxClearedStage(storage);
+  if (clearedStage > current) {
+    const nextVal = Math.min(STAGE_RUN_LENGTH, clearedStage);
+    if (storage !== null) {
+      storage.setItem(META_MAX_STAGE_STORAGE_KEY, String(nextVal));
+    }
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(META_MAX_STAGE_STORAGE_KEY, String(nextVal));
+    }
+  }
+}

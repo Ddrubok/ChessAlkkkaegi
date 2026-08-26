@@ -22,7 +22,7 @@ import {
 import type { ReplayTurnRecord } from "./replay";
 import { capturePhysicsStateHash } from "./state-hash";
 import {
-  beginCurrentTurnCameraRotation,
+  alignTurnCameraToPerspective,
   applyPendingLaunchBeforeStep,
   canSelectTurnPiece,
   queueTurnLaunch,
@@ -45,6 +45,8 @@ export interface OnlineReadyMessage {
   side: PieceSide;
   // 입력을 열기 전에 양쪽 표준 시작 월드가 같은지 확인하는 원시 상태 해시다.
   stateHash: string;
+  // 온라인 전략 모드에서 분배한 기물별 스탯 덱이다.
+  strategyDeck?: import("./strategy-deck").StrategyDeck | null;
 }
 
 export interface OnlineTurnMessage
@@ -187,6 +189,11 @@ export interface OnlineRuntimeHooks {
   onRematchStateChange?: (status: OnlineRematchStatus) => void;
   // 턴 0 해시까지 일치해 새 대국 입력이 열렸음을 화면 계층에 알린다.
   onRematchStarted?: (matchId: string) => void;
+  // 양측의 전략 덱이 동기화되었을 때 호출된다.
+  onStrategyDecksReady?: (
+    whiteDeck: import("./strategy-deck").StrategyDeck | null,
+    blackDeck: import("./strategy-deck").StrategyDeck | null,
+  ) => void;
 }
 
 export interface OnlinePeerSession {
@@ -212,6 +219,8 @@ export interface OnlineLobbyOptions {
 export interface OnlineRuntimeOptions {
   // 두 피어가 ready와 resume에서 반드시 일치시킬 매치 식별자다.
   matchId?: string;
+  // 로컬 플레이어의 전략 덱 스탯이다.
+  localStrategyDeck?: import("./strategy-deck").StrategyDeck | null;
 }
 
 export interface OnlineStartOptions {
@@ -259,6 +268,10 @@ export interface OnlineRuntime {
   isHost: boolean;
   // 새 연결이 같은 대국인지 검증하는 불변 매치 식별자다.
   matchId: string;
+  // 백 진영 플레이어의 전략 덱 스탯이다.
+  whiteStrategyDeck: import("./strategy-deck").StrategyDeck | null;
+  // 흑 진영 플레이어의 전략 덱 스탯이다.
+  blackStrategyDeck: import("./strategy-deck").StrategyDeck | null;
   // 표준 보드 재생성과 턴 후크 연결이 끝났는지 나타낸다.
   localReady: boolean;
   // 상대의 ready 메시지를 받았는지 나타낸다.
@@ -393,6 +406,7 @@ export function parseOnlineMessage(
         matchId: parseMatchId(source.matchId, "온라인 ready"),
         side: source.side,
         stateHash: source.stateHash,
+        strategyDeck: source.strategyDeck as import("./strategy-deck").StrategyDeck | null | undefined,
       };
     }
     case "turn": {
@@ -409,7 +423,8 @@ export function parseOnlineMessage(
         source.normalizedPower > 1 ||
         typeof source.speedMultiplier !== "number" ||
         !Number.isFinite(source.speedMultiplier) ||
-        source.speedMultiplier !== 1
+        source.speedMultiplier <= 0 ||
+        source.speedMultiplier > 5
       ) {
         throw new Error("온라인 turn 필수 값이 유효하지 않습니다.");
       }
@@ -878,6 +893,8 @@ export function createOnlineRuntime(
     mySide,
     isHost,
     matchId,
+    whiteStrategyDeck: mySide === "white" ? options.localStrategyDeck ?? null : null,
+    blackStrategyDeck: mySide === "black" ? options.localStrategyDeck ?? null : null,
     localReady: false,
     remoteReady: false,
     active: false,
@@ -997,8 +1014,7 @@ export function createOnlineRuntime(
       };
       setLaunchAcceptedHandler(turnRuntime, launchHandler);
       setTurnSettledHandler(turnRuntime, settledHandler);
-      setTurnCameraPerspectiveSide(turnRuntime, mySide);
-      beginCurrentTurnCameraRotation(turnRuntime);
+      alignTurnCameraToPerspective(turnRuntime, mySide);
       if (rejoiningSession) {
         runtime.localReady = true;
         lastResumeSentAt = performance.now();
@@ -1408,8 +1424,7 @@ export function createOnlineRuntime(
     pendingWork = pendingWork
       .then(async () => {
         await prepareRematch(nextMatchId);
-        setTurnCameraPerspectiveSide(turnRuntime, mySide);
-        beginCurrentTurnCameraRotation(turnRuntime);
+        alignTurnCameraToPerspective(turnRuntime, mySide);
         const state = await capturePhysicsStateHash(
           turnRuntime.physicsRuntime,
         );
@@ -1506,6 +1521,7 @@ export function createOnlineRuntime(
         (() => {
           throw new Error("온라인 ready를 보낼 로컬 상태 해시가 없습니다.");
         })(),
+      strategyDeck: options.localStrategyDeck ?? null,
     };
     currentTransport.send(message);
     lastReadySentAt = now;
@@ -1691,10 +1707,29 @@ export function createOnlineRuntime(
           }
           runtime.remoteReady = true;
           remoteReadyHash = message.stateHash;
+          const remoteDeck = message.strategyDeck ?? null;
+          if (mySide === "white") {
+            runtime.whiteStrategyDeck = options.localStrategyDeck ?? null;
+            runtime.blackStrategyDeck = remoteDeck;
+          } else {
+            runtime.whiteStrategyDeck = remoteDeck;
+            runtime.blackStrategyDeck = options.localStrategyDeck ?? null;
+          }
+          if (hooks.onStrategyDecksReady) {
+            hooks.onStrategyDecksReady(
+              runtime.whiteStrategyDeck,
+              runtime.blackStrategyDeck,
+            );
+          }
           updateActiveState();
           return;
         }
         case "turn": {
+          if (turnRuntime.phase === "camera-rotating") {
+            turnRuntime.cameraRotation = null;
+            turnRuntime.phase = "ready";
+            turnRuntime.sceneRuntime.controls.enabled = true;
+          }
           if (
             !runtime.active ||
             message.turnIndex !== runtime.nextTurnIndex ||
@@ -1704,7 +1739,7 @@ export function createOnlineRuntime(
             runtime.remoteTelegraph !== null
           ) {
             throw new Error(
-              `${message.turnIndex}번 상대 turn의 순서·진영·단계가 맞지 않습니다.`,
+              `${message.turnIndex}번 상대 turn의 순서·진영·단계가 맞지 않습니다. (phase=${turnRuntime.phase}, currentSide=${turnRuntime.currentSide}, msgSide=${message.side})`,
             );
           }
           const binding =
