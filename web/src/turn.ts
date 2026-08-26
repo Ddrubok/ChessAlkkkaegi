@@ -243,6 +243,22 @@ function beginTurnCameraRotation(runtime: TurnRuntime): void {
     desiredAzimuth - fromAzimuth + Math.PI,
     Math.PI * 2,
   ) - Math.PI;
+
+  // 온라인 대전 중에는 각 플레이어가 자신의 진영 시점을 고정 유지하므로 턴 교대 시 회전하지 않는다.
+  if (runtime.gameMode === "online") {
+    runtime.cameraRotation = null;
+    runtime.phase = "ready";
+    controls.enabled = true;
+    return;
+  }
+
+  // 동일 방위 유지 시 회전을 건너뛰고 즉시 ready 상태로 전환한다.
+  if (Math.abs(shortestDelta) < 0.001 && runtime.turnCameraMode !== "billiards") {
+    runtime.cameraRotation = null;
+    runtime.phase = "ready";
+    controls.enabled = true;
+    return;
+  }
   const startedAt = performance.now();
   runtime.cameraRotation = {
     startedAt,
@@ -390,6 +406,42 @@ export function setTurnCameraPerspectiveSide(
   side: PieceSide | null,
 ): void {
   runtime.cameraPerspectiveSide = side;
+}
+
+/**
+ * 온라인 대전 시 카메라를 플레이어 본인의 진영 시점으로 즉시 맞춘다.
+ */
+export function alignTurnCameraToPerspective(
+  runtime: TurnRuntime,
+  side: PieceSide,
+): void {
+  runtime.cameraPerspectiveSide = side;
+  const controls = runtime.sceneRuntime.controls;
+  if (!controls || typeof controls.update !== "function" || !controls.target) {
+    runtime.cameraRotation = null;
+    runtime.phase = "ready";
+    return;
+  }
+  const distance = runtime.sceneRuntime.minimumCameraDistance;
+  const minPolarAngle = controls.minPolarAngle ?? MathUtils.degToRad(20);
+  const maxPolarAngle = controls.maxPolarAngle ?? MathUtils.degToRad(80);
+  const phi = MathUtils.clamp(
+    Math.PI / 2 - MathUtils.degToRad(CAMERA_PITCH_DEG),
+    minPolarAngle,
+    maxPolarAngle,
+  );
+  const azimuth = side === "white" ? Math.PI : 0;
+
+  controls.target.set(0, 0, 0);
+  runtime.sceneRuntime.camera.position
+    .setFromSpherical(new Spherical(distance, phi, azimuth))
+    .add(controls.target);
+  runtime.sceneRuntime.camera.lookAt(controls.target);
+  controls.update();
+
+  runtime.cameraRotation = null;
+  runtime.phase = "ready";
+  controls.enabled = true;
 }
 
 /**

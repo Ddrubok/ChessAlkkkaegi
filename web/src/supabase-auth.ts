@@ -4,9 +4,17 @@ export interface UserProfile {
   id: string;
   nickname: string;
   mmr: number;
+  classicMmr: number;
+  strategyMmr: number;
   wins: number;
   losses: number;
   draws: number;
+  classicWins: number;
+  classicDraws: number;
+  classicLosses: number;
+  strategyWins: number;
+  strategyDraws: number;
+  strategyLosses: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -85,32 +93,122 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
   }
 
   if (existing) {
-    return {
+    const localClassicMmr = localStorage.getItem("ca_local_classic_mmr") ? Number(localStorage.getItem("ca_local_classic_mmr")) : null;
+    const dbClassicMmr = existing.classic_mmr !== null && existing.classic_mmr !== undefined ? Number(existing.classic_mmr) : (existing.mmr !== null && existing.mmr !== undefined ? Number(existing.mmr) : null);
+    const classicMmr = localClassicMmr ?? dbClassicMmr ?? 1200;
+
+    const localStrategyMmr = localStorage.getItem("ca_local_strategy_mmr") ? Number(localStorage.getItem("ca_local_strategy_mmr")) : null;
+    const dbStrategyMmr = existing.strategy_mmr !== null && existing.strategy_mmr !== undefined ? Number(existing.strategy_mmr) : (existing.mmr !== null && existing.mmr !== undefined ? Number(existing.mmr) : null);
+    const strategyMmr = localStrategyMmr ?? dbStrategyMmr ?? 1200;
+
+    const localClassicWins = localStorage.getItem("ca_local_classic_wins") ? Number(localStorage.getItem("ca_local_classic_wins")) : null;
+    const classicWins = localClassicWins ?? Number(existing.classic_wins ?? 0);
+
+    const localClassicDraws = localStorage.getItem("ca_local_classic_draws") ? Number(localStorage.getItem("ca_local_classic_draws")) : null;
+    const classicDraws = localClassicDraws ?? Number(existing.classic_draws ?? 0);
+
+    const localClassicLosses = localStorage.getItem("ca_local_classic_losses") ? Number(localStorage.getItem("ca_local_classic_losses")) : null;
+    const classicLosses = localClassicLosses ?? Number(existing.classic_losses ?? 0);
+
+    const localStrategyWins = localStorage.getItem("ca_local_strategy_wins") ? Number(localStorage.getItem("ca_local_strategy_wins")) : null;
+    const strategyWins = localStrategyWins ?? Number(existing.strategy_wins ?? 0);
+
+    const localStrategyDraws = localStorage.getItem("ca_local_strategy_draws") ? Number(localStorage.getItem("ca_local_strategy_draws")) : null;
+    const strategyDraws = localStrategyDraws ?? Number(existing.strategy_draws ?? 0);
+
+    const localStrategyLosses = localStorage.getItem("ca_local_strategy_losses") ? Number(localStorage.getItem("ca_local_strategy_losses")) : null;
+    const strategyLosses = localStrategyLosses ?? Number(existing.strategy_losses ?? 0);
+
+    const totalWins = classicWins + strategyWins;
+    const totalDraws = classicDraws + strategyDraws;
+    const totalLosses = classicLosses + strategyLosses;
+
+    // 로컬 스토리지에 동기화 저장
+    localStorage.setItem("ca_local_classic_mmr", String(classicMmr));
+    localStorage.setItem("ca_local_strategy_mmr", String(strategyMmr));
+    localStorage.setItem("ca_local_mmr", String(classicMmr));
+    localStorage.setItem("ca_local_classic_wins", String(classicWins));
+    localStorage.setItem("ca_local_classic_draws", String(classicDraws));
+    localStorage.setItem("ca_local_classic_losses", String(classicLosses));
+    localStorage.setItem("ca_local_strategy_wins", String(strategyWins));
+    localStorage.setItem("ca_local_strategy_draws", String(strategyDraws));
+    localStorage.setItem("ca_local_strategy_losses", String(strategyLosses));
+    localStorage.setItem("ca_local_wins", String(totalWins));
+    localStorage.setItem("ca_local_draws", String(totalDraws));
+    localStorage.setItem("ca_local_losses", String(totalLosses));
+    if (existing.nickname) {
+      localStorage.setItem(NICKNAME_STORAGE_KEY, existing.nickname);
+    }
+
+    const synchronizedProfile: UserProfile = {
       id: existing.id,
       nickname: existing.nickname,
-      mmr: Number(existing.mmr ?? 1200),
-      wins: Number(existing.wins ?? 0),
-      losses: Number(existing.losses ?? 0),
-      draws: Number(existing.draws ?? 0),
+      mmr: classicMmr,
+      classicMmr,
+      strategyMmr,
+      wins: totalWins,
+      losses: totalLosses,
+      draws: totalDraws,
+      classicWins,
+      classicDraws,
+      classicLosses,
+      strategyWins,
+      strategyDraws,
+      strategyLosses,
       createdAt: existing.created_at,
       updatedAt: existing.updated_at,
     };
+
+    // DB에 최신 상태 백그라운드 동기화
+    void client.from("profiles").upsert({
+      id: synchronizedProfile.id,
+      nickname: synchronizedProfile.nickname,
+      mmr: classicMmr,
+      classic_mmr: classicMmr,
+      strategy_mmr: strategyMmr,
+      wins: totalWins,
+      losses: totalLosses,
+      draws: totalDraws,
+      classic_wins: classicWins,
+      classic_draws: classicDraws,
+      classic_losses: classicLosses,
+      strategy_wins: strategyWins,
+      strategy_draws: strategyDraws,
+      strategy_losses: strategyLosses,
+    });
+
+    return synchronizedProfile;
   }
 
   // 신규 프로필 생성
   const savedNick = localStorage.getItem(NICKNAME_STORAGE_KEY) || generateRandomNickname();
-  const savedMmr = Number(localStorage.getItem("ca_local_mmr") || 1200);
-  const savedWins = Number(localStorage.getItem("ca_local_wins") || 0);
-  const savedLosses = Number(localStorage.getItem("ca_local_losses") || 0);
-  const savedDraws = Number(localStorage.getItem("ca_local_draws") || 0);
+  const savedClassicMmr = Number(localStorage.getItem("ca_local_classic_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
+  const savedStrategyMmr = Number(localStorage.getItem("ca_local_strategy_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
+  const savedClassicWins = Number(localStorage.getItem("ca_local_classic_wins") || 0);
+  const savedClassicDraws = Number(localStorage.getItem("ca_local_classic_draws") || 0);
+  const savedClassicLosses = Number(localStorage.getItem("ca_local_classic_losses") || 0);
+  const savedStrategyWins = Number(localStorage.getItem("ca_local_strategy_wins") || 0);
+  const savedStrategyDraws = Number(localStorage.getItem("ca_local_strategy_draws") || 0);
+  const savedStrategyLosses = Number(localStorage.getItem("ca_local_strategy_losses") || 0);
+  const savedWins = savedClassicWins + savedStrategyWins;
+  const savedDraws = savedClassicDraws + savedStrategyDraws;
+  const savedLosses = savedClassicLosses + savedStrategyLosses;
 
   const initialProfile: UserProfile = {
     id: user.id,
     nickname: savedNick,
-    mmr: savedMmr,
+    mmr: savedClassicMmr,
+    classicMmr: savedClassicMmr,
+    strategyMmr: savedStrategyMmr,
     wins: savedWins,
     losses: savedLosses,
     draws: savedDraws,
+    classicWins: savedClassicWins,
+    classicDraws: savedClassicDraws,
+    classicLosses: savedClassicLosses,
+    strategyWins: savedStrategyWins,
+    strategyDraws: savedStrategyDraws,
+    strategyLosses: savedStrategyLosses,
   };
 
   try {
@@ -121,13 +219,23 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
       .single();
 
     if (!insertErr && created) {
+      const classicMmr = Number(created.classic_mmr ?? created.mmr ?? 1200);
+      const strategyMmr = Number(created.strategy_mmr ?? created.mmr ?? 1200);
       return {
         id: created.id,
         nickname: created.nickname,
-        mmr: Number(created.mmr ?? 1200),
-        wins: Number(created.wins ?? 0),
-        losses: Number(created.losses ?? 0),
-        draws: Number(created.draws ?? 0),
+        mmr: classicMmr,
+        classicMmr,
+        strategyMmr,
+        wins: Number(created.wins ?? savedWins),
+        losses: Number(created.losses ?? savedLosses),
+        draws: Number(created.draws ?? savedDraws),
+        classicWins: Number(created.classic_wins ?? savedClassicWins),
+        classicDraws: Number(created.classic_draws ?? savedClassicDraws),
+        classicLosses: Number(created.classic_losses ?? savedClassicLosses),
+        strategyWins: Number(created.strategy_wins ?? savedStrategyWins),
+        strategyDraws: Number(created.strategy_draws ?? savedStrategyDraws),
+        strategyLosses: Number(created.strategy_losses ?? savedStrategyLosses),
         createdAt: created.created_at,
         updatedAt: created.updated_at,
       };
@@ -185,9 +293,17 @@ export async function signUpWithEmail(
     id: authUser.id,
     nickname: cleanNick,
     mmr: 1200,
+    classicMmr: 1200,
+    strategyMmr: 1200,
     wins: 0,
     losses: 0,
     draws: 0,
+    classicWins: 0,
+    classicDraws: 0,
+    classicLosses: 0,
+    strategyWins: 0,
+    strategyDraws: 0,
+    strategyLosses: 0,
   };
 
   await client
@@ -197,9 +313,17 @@ export async function signUpWithEmail(
   localStorage.setItem(NICKNAME_STORAGE_KEY, cleanNick);
   localStorage.setItem("ca_guest_user_uuid", authUser.id);
   localStorage.setItem("ca_local_mmr", "1200");
+  localStorage.setItem("ca_local_classic_mmr", "1200");
+  localStorage.setItem("ca_local_strategy_mmr", "1200");
   localStorage.setItem("ca_local_wins", "0");
   localStorage.setItem("ca_local_losses", "0");
   localStorage.setItem("ca_local_draws", "0");
+  localStorage.setItem("ca_local_classic_wins", "0");
+  localStorage.setItem("ca_local_classic_draws", "0");
+  localStorage.setItem("ca_local_classic_losses", "0");
+  localStorage.setItem("ca_local_strategy_wins", "0");
+  localStorage.setItem("ca_local_strategy_draws", "0");
+  localStorage.setItem("ca_local_strategy_losses", "0");
 
   return { success: true, user: newProfile };
 }
@@ -291,7 +415,7 @@ export async function fetchTopRankings(
 ): Promise<UserProfile[]> {
   const { data, error } = await client
     .from("profiles")
-    .select("id, nickname, mmr, wins, losses, draws")
+    .select("id, nickname, mmr, classic_mmr, strategy_mmr, wins, losses, draws, classic_wins, classic_draws, classic_losses, strategy_wins, strategy_draws, strategy_losses")
     .order("mmr", { ascending: false })
     .limit(limit);
 
@@ -300,12 +424,30 @@ export async function fetchTopRankings(
     return [];
   }
 
-  return data.map((item) => ({
-    id: item.id,
-    nickname: item.nickname,
-    mmr: Number(item.mmr),
-    wins: Number(item.wins),
-    losses: Number(item.losses),
-    draws: Number(item.draws),
-  }));
+  return data.map((item) => {
+    const classicMmr = Number(item.classic_mmr ?? item.mmr ?? 1200);
+    const strategyMmr = Number(item.strategy_mmr ?? item.mmr ?? 1200);
+    const classicWins = Number(item.classic_wins ?? 0);
+    const classicDraws = Number(item.classic_draws ?? 0);
+    const classicLosses = Number(item.classic_losses ?? 0);
+    const strategyWins = Number(item.strategy_wins ?? 0);
+    const strategyDraws = Number(item.strategy_draws ?? 0);
+    const strategyLosses = Number(item.strategy_losses ?? 0);
+    return {
+      id: item.id,
+      nickname: item.nickname,
+      mmr: classicMmr,
+      classicMmr,
+      strategyMmr,
+      wins: Number(item.wins ?? (classicWins + strategyWins)),
+      losses: Number(item.losses ?? (classicLosses + strategyLosses)),
+      draws: Number(item.draws ?? (classicDraws + strategyDraws)),
+      classicWins,
+      classicDraws,
+      classicLosses,
+      strategyWins,
+      strategyDraws,
+      strategyLosses,
+    };
+  });
 }

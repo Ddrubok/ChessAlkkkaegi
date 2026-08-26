@@ -33,6 +33,7 @@ export interface MatchmakingStatus {
 }
 
 export interface MatchResultPayload {
+  mode: "classic" | "strategy";
   winnerId: string | null;
   loserId: string | null;
   isDraw: boolean;
@@ -233,9 +234,12 @@ export class SupabaseMatchmaker {
   private pendingIceCandidates: RTCIceCandidateInit[] = [];
   private isConnectionEstablished = false;
 
-  constructor(client: SupabaseClient, user: UserProfile) {
+  private queueMode: "classic" | "strategy";
+
+  constructor(client: SupabaseClient, user: UserProfile, queueMode: "classic" | "strategy" = "classic") {
     this.client = client;
     this.user = user;
+    this.queueMode = queueMode;
   }
 
   /**
@@ -257,7 +261,19 @@ export class SupabaseMatchmaker {
 
     this.updateStatus("joining-queue", "매치메이킹 대기열에 접속 중...");
 
-    const channelName = "ca-matchmaking-room";
+    const currentMmr = this.queueMode === "strategy" ? (this.user.strategyMmr ?? this.user.mmr) : (this.user.classicMmr ?? this.user.mmr);
+    const channelName = `ca-matchmaking-${this.queueMode}`;
+    
+    // Supabase 클라이언트에 남아있는 이전 채널 인스턴스 정리
+    const existingChannels = this.client.getChannels();
+    for (const ch of existingChannels) {
+      if (ch.topic === `realtime:${channelName}`) {
+        try {
+          await this.client.removeChannel(ch);
+        } catch {}
+      }
+    }
+
     this.channel = this.client.channel(channelName, {
       config: {
         presence: { key: this.user.id },
@@ -277,7 +293,7 @@ export class SupabaseMatchmaker {
           await this.channel?.track({
             id: this.user.id,
             nickname: this.user.nickname,
-            mmr: this.user.mmr,
+            mmr: currentMmr,
             joinedAt: this.startTime,
           } satisfies PresencePayload);
 
@@ -303,6 +319,8 @@ export class SupabaseMatchmaker {
     const waitTimeSeconds = Math.max(0, Math.floor((now - this.startTime) / 1000));
     const allowedMmrDiff = Math.min(1000, 50 + waitTimeSeconds * 10);
 
+    const currentMmr = this.queueMode === "strategy" ? (this.user.strategyMmr ?? this.user.mmr) : (this.user.classicMmr ?? this.user.mmr);
+
     this.updateStatus("searching", `상대 탐색 중... (MMR ±${allowedMmrDiff})`, waitTimeSeconds, allowedMmrDiff);
 
     // 대기열 내의 후보 탐색
@@ -314,7 +332,7 @@ export class SupabaseMatchmaker {
       if (candidate.id === this.user.id) continue;
       if (candidate.targetMatchId) continue; // 이미 다른 매칭 진행 중
 
-      const mmrDiff = Math.abs(this.user.mmr - candidate.mmr);
+      const mmrDiff = Math.abs(currentMmr - candidate.mmr);
       if (mmrDiff <= allowedMmrDiff) {
         // 매칭 성사 결정: 오직 UUID가 더 작은 Host만 initiateMatch를 주도적으로 실행
         if (this.user.id < candidate.id) {

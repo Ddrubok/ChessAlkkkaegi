@@ -126,6 +126,66 @@ async function preloadSoundEffect(
   }
 }
 
+export interface SoundSettings {
+  masterVolume: number; // 0.0 ~ 1.0
+  bgmVolume: number;    // 0.0 ~ 1.0
+  sfxVolume: number;    // 0.0 ~ 1.0
+  muted: boolean;
+}
+
+const SOUND_SETTINGS_STORAGE_KEY = "chessAlkkagi.soundSettings";
+
+let currentSoundSettings: SoundSettings = loadSoundSettings();
+
+function loadSoundSettings(): SoundSettings {
+  const defaults: SoundSettings = {
+    masterVolume: 1.0,
+    bgmVolume: 0.6,
+    sfxVolume: 0.8,
+    muted: false,
+  };
+  if (typeof localStorage === "undefined") return defaults;
+  try {
+    const raw = localStorage.getItem(SOUND_SETTINGS_STORAGE_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    return {
+      masterVolume: typeof parsed.masterVolume === "number" ? Math.max(0, Math.min(1, parsed.masterVolume)) : 1.0,
+      bgmVolume: typeof parsed.bgmVolume === "number" ? Math.max(0, Math.min(1, parsed.bgmVolume)) : 0.6,
+      sfxVolume: typeof parsed.sfxVolume === "number" ? Math.max(0, Math.min(1, parsed.sfxVolume)) : 0.8,
+      muted: Boolean(parsed.muted),
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+export function getSoundSettings(): SoundSettings {
+  return { ...currentSoundSettings };
+}
+
+export function updateSoundSettings(patch: Partial<SoundSettings>): SoundSettings {
+  currentSoundSettings = {
+    ...currentSoundSettings,
+    ...patch,
+  };
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(SOUND_SETTINGS_STORAGE_KEY, JSON.stringify(currentSoundSettings));
+    } catch {}
+  }
+  applySoundSettings();
+  return { ...currentSoundSettings };
+}
+
+export function applySoundSettings(): void {
+  if (soundRuntime === null) return;
+  const effectiveBgm = currentSoundSettings.muted
+    ? 0
+    : SOUND_BGM_VOLUME * currentSoundSettings.masterVolume * currentSoundSettings.bgmVolume;
+  soundRuntime.bgm.volume = Math.max(0, Math.min(1, effectiveBgm));
+}
+
 /**
  * 준비된 효과음 버퍼를 독립 소스로 재생해 겹치는 UI 반응도 서로 끊지 않게 한다.
  */
@@ -146,7 +206,10 @@ function playSoundEffect(id: SoundEffectId): void {
     const source = runtime.context.createBufferSource();
     const gain = runtime.context.createGain();
     source.buffer = buffer;
-    gain.gain.value = SOUND_SFX_VOLUME;
+    const effectiveSfx = currentSoundSettings.muted
+      ? 0
+      : SOUND_SFX_VOLUME * currentSoundSettings.masterVolume * currentSoundSettings.sfxVolume;
+    gain.gain.value = Math.max(0, Math.min(1, effectiveSfx));
     source.connect(gain);
     gain.connect(runtime.context.destination);
     source.start();
@@ -540,3 +603,133 @@ export function scanLivePieceHitSounds(
   );
   playSoundEffect(strongestCandidate.soundId);
 }
+
+/**
+ * 소리 볼륨 조절 및 음소거 설정 팝업 모달을 띄운다.
+ */
+export function openSoundSettingsModal(parentContainer?: HTMLElement): void {
+  const container = parentContainer ?? document.body;
+  const existing = document.querySelector(".sound-settings-modal");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.className = "sound-settings-modal";
+  modal.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  `;
+
+  const settings = getSoundSettings();
+
+  const card = document.createElement("div");
+  card.style.cssText = `
+    width: 100%;
+    max-width: 380px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    color: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  `;
+
+  card.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
+      <h3 style="margin:0; font-size:17px; font-weight:700; color:#f8fafc;">사운드 설정</h3>
+      <button id="sound-modal-close" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer; padding:4px 8px;">✕</button>
+    </div>
+
+    <!-- 전체 음소거 토글 -->
+    <div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #334155;">
+      <div>
+        <div style="font-size:14px; font-weight:700; color:#f8fafc;">전체 음소거</div>
+        <div style="font-size:12px; color:#94a3b8;">모든 BGM과 효과음을 끕니다</div>
+      </div>
+      <input type="checkbox" id="sound-mute-toggle" ${settings.muted ? "checked" : ""} style="width:20px; height:20px; cursor:pointer; accent-color:#3b82f6;" />
+    </div>
+
+    <!-- 마스터 볼륨 -->
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
+        <span>마스터 볼륨</span>
+        <span id="master-val" style="color:#38bdf8;">${Math.round(settings.masterVolume * 100)}%</span>
+      </div>
+      <input type="range" id="sound-master-slider" min="0" max="100" value="${Math.round(settings.masterVolume * 100)}" style="width:100%; accent-color:#3b82f6; cursor:pointer;" />
+    </div>
+
+    <!-- BGM 볼륨 -->
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
+        <span>배경음악 (BGM)</span>
+        <span id="bgm-val" style="color:#38bdf8;">${Math.round(settings.bgmVolume * 100)}%</span>
+      </div>
+      <input type="range" id="sound-bgm-slider" min="0" max="100" value="${Math.round(settings.bgmVolume * 100)}" style="width:100%; accent-color:#3b82f6; cursor:pointer;" />
+    </div>
+
+    <!-- SFX 볼륨 -->
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
+        <span>효과음 (SFX)</span>
+        <span id="sfx-val" style="color:#38bdf8;">${Math.round(settings.sfxVolume * 100)}%</span>
+      </div>
+      <input type="range" id="sound-sfx-slider" min="0" max="100" value="${Math.round(settings.sfxVolume * 100)}" style="width:100%; accent-color:#3b82f6; cursor:pointer;" />
+    </div>
+
+    <button id="sound-modal-confirm" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-top:4px;">
+      설정 완료
+    </button>
+  `;
+
+  modal.appendChild(card);
+  container.appendChild(modal);
+
+  const muteToggle = card.querySelector("#sound-mute-toggle") as HTMLInputElement;
+  const masterSlider = card.querySelector("#sound-master-slider") as HTMLInputElement;
+  const bgmSlider = card.querySelector("#sound-bgm-slider") as HTMLInputElement;
+  const sfxSlider = card.querySelector("#sound-sfx-slider") as HTMLInputElement;
+
+  const masterVal = card.querySelector("#master-val") as HTMLElement;
+  const bgmVal = card.querySelector("#bgm-val") as HTMLElement;
+  const sfxVal = card.querySelector("#sfx-val") as HTMLElement;
+
+  muteToggle.addEventListener("change", () => {
+    updateSoundSettings({ muted: muteToggle.checked });
+  });
+
+  masterSlider.addEventListener("input", () => {
+    const val = Number(masterSlider.value) / 100;
+    masterVal.textContent = `${masterSlider.value}%`;
+    updateSoundSettings({ masterVolume: val });
+  });
+
+  bgmSlider.addEventListener("input", () => {
+    const val = Number(bgmSlider.value) / 100;
+    bgmVal.textContent = `${bgmSlider.value}%`;
+    updateSoundSettings({ bgmVolume: val });
+  });
+
+  sfxSlider.addEventListener("input", () => {
+    const val = Number(sfxSlider.value) / 100;
+    sfxVal.textContent = `${sfxSlider.value}%`;
+    updateSoundSettings({ sfxVolume: val });
+  });
+
+  const closeModal = () => modal.remove();
+  card.querySelector("#sound-modal-close")?.addEventListener("click", closeModal);
+  card.querySelector("#sound-modal-confirm")?.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+}
+

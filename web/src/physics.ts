@@ -1109,3 +1109,27 @@ export function resetPhysicsPieces(
     );
   }
 }
+
+/**
+ * 온라인 전략 대전 시 양 플레이어의 전략 덱(중량 스탯)을 물리 바디에 일괄 적용한다.
+ */
+export function applyStrategyDecksToPhysics(
+  runtime: PhysicsRuntime,
+  whiteDeck: import("./strategy-deck").StrategyDeck | null,
+  blackDeck: import("./strategy-deck").StrategyDeck | null,
+): void {
+  for (const binding of runtime.pieces.values()) {
+    const deck = binding.instance.side === "white" ? whiteDeck : blackDeck;
+    const weightStat = deck ? deck[binding.instance.type]?.weight ?? 0 : 0;
+    const additionalMass = binding.originalHullMass * (weightStat * 0.02);
+
+    binding.body.setAdditionalMassProperties(
+      additionalMass,
+      { x: 0, y: binding.localPieceHeight * 0.06, z: 0 },
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0, w: 1 },
+      false,
+    );
+    binding.upgradeAdditionalMass = additionalMass;
+  }
+}
