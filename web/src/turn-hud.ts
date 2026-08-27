@@ -26,22 +26,9 @@ export function createTurnHud(
 ): TurnHudRuntime {
   const container = document.createElement("div");
   container.className = "turn-hud-container";
-  container.style.cssText = `
-    position: absolute;
-    top: 14px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    z-index: 10;
-    pointer-events: none;
-    user-select: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  `;
 
   const mainBadge = document.createElement("div");
+  mainBadge.className = "turn-hud-badge";
   mainBadge.style.cssText = `
     background: rgba(15, 23, 42, 0.9);
     backdrop-filter: blur(12px);
