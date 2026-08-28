@@ -28,6 +28,7 @@ import {
   type UserProfile,
 } from "./supabase-auth";
 import { getSupabaseClient } from "./supabase-client";
+import { AdManager } from "./ad-manager";
 
 export interface MainMenuRuntime {
   overlay: HTMLElement;
@@ -408,6 +409,7 @@ export function showMainMenu(runtime: MainMenuRuntime): void {
   runtime.confirmOverlay.hidden = true;
   runtime.returnButton.hidden = true;
   renderMainMenu(runtime);
+  void AdManager.showBanner();
   runtime.overlay
     .querySelector<HTMLButtonElement>("[data-game-mode]")
     ?.focus();

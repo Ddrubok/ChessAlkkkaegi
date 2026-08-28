@@ -1,5 +1,6 @@
 import "./style.css";
 import { Vector3 } from "three";
+import { AdManager } from "./ad-manager";
 import {
   createAiRuntime,
   isAiTelegraphActive,
@@ -1427,6 +1428,7 @@ async function bootstrap(): Promise<void> {
         onlineRuntime?.getRematchStatus() ?? null,
       );
     }
+    void AdManager.showBanner();
   });
   let gameLoopStarted = false;
   const ensureGameLoopStarted = (): void => {
@@ -1457,6 +1459,7 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
+    void AdManager.hideBanner();
     if (mode === "stage" && typeof selectedStage === "number") {
       setStageNumber(gameModeRuntime, selectedStage);
     }
@@ -1582,6 +1585,7 @@ async function bootstrap(): Promise<void> {
             );
 
             await recordOnlineMatchSettlement(winner);
+            void AdManager.showBanner();
           },
         },
         {
@@ -1677,6 +1681,7 @@ async function bootstrap(): Promise<void> {
     hideDisconnectOverlay();
     await switchGameMode(gameModeRuntime, "hotseat", true);
     hideMatchResult(matchRuntime);
+    void AdManager.showBanner();
   };
   confirmAbandonAction = async (): Promise<void> => {
     if (gameModeRuntime === null) {
@@ -1691,6 +1696,7 @@ async function bootstrap(): Promise<void> {
     turnRuntime.phase = "match-over";
     lockInputForMatchOver(inputRuntime);
     menuRuntime.returnButton.hidden = true;
+    void AdManager.showBanner();
     showStageRunResult(
       matchRuntime,
       abandonedStage,
@@ -1757,6 +1763,8 @@ async function bootstrap(): Promise<void> {
     );
   }
   setMainMenuReady(menuRuntime, true);
+  await AdManager.init();
+  await AdManager.showBanner();
 }
 
 void bootstrap().catch((error: unknown) => {
