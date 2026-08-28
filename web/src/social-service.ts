@@ -225,6 +225,7 @@ export class SocialService {
     userId: string,
     mode: "classic" | "strategy" = "classic",
   ): Promise<MyRankResult | null> {
+    if (!userId || userId === "local_guest") return null;
     const sb = getSupabaseClient();
     if (!sb) return null;
 
@@ -238,9 +239,9 @@ export class SocialService {
       if (!error && Array.isArray(data) && data.length > 0) {
         const item = data[0] as Record<string, unknown>;
         return {
-          rank: Number(item.my_rank ?? 0),
-          mmr: Number(item.my_mmr ?? 1000),
-          totalPlayers: Number(item.total_players ?? 0),
+          rank: Number(item.my_rank ?? 1),
+          mmr: Number(item.my_mmr ?? 1200),
+          totalPlayers: Number(item.total_players ?? 1),
         };
       }
 
@@ -248,12 +249,23 @@ export class SocialService {
       const mmrCol = mode === "classic" ? "classic_mmr" : "strategy_mmr";
       const { data: me } = await sb
         .from("profiles")
-        .select(mmrCol)
+        .select(`id, ${mmrCol}`)
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
-      if (!me) return null;
-      const myMmr = Number((me as Record<string, unknown>)[mmrCol] ?? 1000);
+      if (!me) {
+        if (this.myProfile && this.myProfile.id === userId) {
+          const myMmr = mode === "classic" ? (this.myProfile.classicMmr ?? this.myProfile.mmr ?? 1200) : (this.myProfile.strategyMmr ?? this.myProfile.mmr ?? 1200);
+          return {
+            rank: 1,
+            mmr: myMmr,
+            totalPlayers: 1,
+          };
+        }
+        return null;
+      }
+
+      const myMmr = Number((me as Record<string, unknown>)[mmrCol] ?? 1200);
 
       const { count: higherCount } = await sb
         .from("profiles")
@@ -267,10 +279,18 @@ export class SocialService {
       return {
         rank: (higherCount ?? 0) + 1,
         mmr: myMmr,
-        totalPlayers: totalCount ?? 1,
+        totalPlayers: Math.max((higherCount ?? 0) + 1, totalCount ?? 1),
       };
     } catch (err) {
       console.error("getMyRank error:", err);
+      if (this.myProfile && this.myProfile.id === userId) {
+        const myMmr = mode === "classic" ? (this.myProfile.classicMmr ?? this.myProfile.mmr ?? 1200) : (this.myProfile.strategyMmr ?? this.myProfile.mmr ?? 1200);
+        return {
+          rank: 1,
+          mmr: myMmr,
+          totalPlayers: 1,
+        };
+      }
       return null;
     }
   }
