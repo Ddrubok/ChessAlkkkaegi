@@ -121,7 +121,8 @@ body {
   position: absolute;
   z-index: 5;
   top: 1rem;
-  left: 1rem;
+  right: calc(50% + 115px);
+  left: auto;
   display: flex;
   gap: 0.25rem;
   padding: 0.25rem;
@@ -130,11 +131,27 @@ body {
   background: rgb(12 14 17 / 84%);
 }
 
+.online-resign-button {
+  position: absolute;
+  z-index: 5;
+  top: 1rem;
+  left: calc(50% + 115px);
+  right: auto;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgb(239 68 68 / 40%);
+  border-radius: 0.65rem;
+  color: #fca5a5;
+  background: rgb(127 29 29 / 70%);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
 .return-menu-button {
   position: absolute;
   z-index: 5;
   top: 1rem;
-  right: 1rem;
+  left: calc(50% + 115px + 4.0rem);
+  right: auto;
   padding: 0.45rem 0.75rem;
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 0.65rem;
@@ -144,18 +161,8 @@ body {
   font-size: 0.85rem;
 }
 
-.online-resign-button {
-  position: absolute;
-  z-index: 5;
-  top: 1rem;
-  right: 5.5rem;
-  padding: 0.45rem 0.75rem;
-  border: 1px solid rgb(239 68 68 / 40%);
-  border-radius: 0.65rem;
-  color: #fca5a5;
-  background: rgb(127 29 29 / 70%);
-  cursor: pointer;
-  font-size: 0.85rem;
+.online-resign-button[hidden] ~ .return-menu-button {
+  left: calc(50% + 115px);
 }
 
 .input-mode-toggle button,
@@ -219,7 +226,7 @@ body {
   position: absolute;
   z-index: 6;
   top: 50%;
-  left: 0.75rem;
+  left: max(calc(160px + 20px), calc(50% - 20rem));
   display: grid;
   width: min(11rem, 32vh);
   gap: 0.45rem;
@@ -297,7 +304,7 @@ body {
 .tuning-panel {
   position: absolute;
   z-index: 4;
-  right: 0.75rem;
+  right: calc(160px + 24px);
   width: min(23rem, calc(100vw - 1.5rem));
   padding: 0.8rem;
   border: 1px solid rgb(255 255 255 / 14%);
@@ -315,13 +322,13 @@ body {
 .tuning-panel {
   top: 0.75rem;
   right: auto;
-  left: 0.75rem;
+  left: calc(160px + 24px);
   max-height: calc(100vh - 1.5rem);
   overflow: auto;
 }
 
 .card-tuning-panel {
-  right: 0.75rem;
+  right: calc(160px + 24px);
   left: auto;
   width: min(28rem, calc(100vw - 1.5rem));
 }
@@ -1114,3 +1121,154 @@ body {
     font-size: 0.66rem;
   }
 }
+
+/* ==========================================================================
+   광고 배너 (AdSense / AdMob) 레이아웃 및 Mock 스타일
+   ========================================================================== */
+
+.ad-container {
+  z-index: 15;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+/* PC 좌우 사이드바 배너 (160x600) */
+.pc-side-ad {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 160px;
+  height: 600px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.ad-container {
+  z-index: 40;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+/* PC 좌우 사이드바 배너 (160x600) */
+.pc-side-ad {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 160px;
+  height: 600px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.pc-side-ad.left-ad {
+  left: 12px;
+}
+
+.pc-side-ad.right-ad {
+  right: 12px;
+}
+
+/* 모바일 전용 하단 배너 (Adaptive Banner 50px) */
+.mobile-ad-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  z-index: 50;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+/* 개발/테스트 모드용 Mock UI */
+.mock-ad-box {
+  background: #111827;
+  border: 1px dashed #4b5563;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  text-align: center;
+  box-sizing: border-box;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.mock-ad-label {
+  background: #374151;
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.mock-ad-desc {
+  font-size: 12px;
+  color: #e5e7eb;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.mock-ad-sub {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+@media (max-width: 1024px) {
+  .pc-side-ad {
+    display: none !important;
+  }
+
+  .input-mode-toggle {
+    left: 0.75rem;
+  }
+
+  .return-menu-button {
+    right: 0.75rem;
+  }
+
+  .online-resign-button {
+    right: 5.5rem;
+  }
+
+  .strike-point-panel {
+    left: 0.75rem;
+  }
+
+  .aim-parameters {
+    right: 0.75rem;
+  }
+
+  .tuning-panel {
+    left: 0.75rem;
+  }
+
+  .card-tuning-panel {
+    right: 0.75rem;
+  }
+
+  .main-menu-overlay {
+    padding-bottom: 60px !important;
+  }
+
+  .match-result-overlay {
+    padding-bottom: 60px !important;
+  }
+}
+
