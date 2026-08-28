@@ -849,7 +849,9 @@ function selectPiece(
   selectAimPiece(runtime.aimRuntime, pieceId);
   setAimPower(runtime.aimParametersRuntime, 0);
   runtime.strikeMode = false;
-  clearStrikePointOverride(runtime.aimParametersRuntime);
+  if (pieceId === null) {
+    clearStrikePointOverride(runtime.aimParametersRuntime);
+  }
   updateActionBar(runtime);
   runtime.state =
     pieceId !== null
@@ -1863,13 +1865,16 @@ export function createInputRuntime(
     (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (
-        runtime.mode !== "billiards" ||
-        !runtime.strikeMode
-      ) {
-        return;
+      let pieceId = runtime.aimRuntime.selectedPieceId;
+      if (pieceId === null) {
+        const firstWhite = [...runtime.physicsRuntime.pieces.values()].find(
+          (b) => b.instance.side === "white",
+        );
+        if (firstWhite !== undefined) {
+          pieceId = firstWhite.instance.id;
+          selectAimPiece(runtime.aimRuntime, pieceId);
+        }
       }
-      const pieceId = runtime.aimRuntime.selectedPieceId;
       const mesh =
         pieceId === null
           ? undefined
@@ -1892,7 +1897,9 @@ export function createInputRuntime(
         point,
       );
       try {
-        refreshBilliardsPreview(runtime);
+        if (runtime.mode === "billiards") {
+          refreshBilliardsPreview(runtime);
+        }
       } catch (error: unknown) {
         const reason = formatInteractionError(error);
         cancelInteraction(runtime, true);

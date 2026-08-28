@@ -1,5 +1,6 @@
 import type { PieceSide } from "./layout";
 import type { TurnRuntime } from "./turn";
+import { tutorialManager } from "./tutorial";
 
 export interface TurnHudRuntime {
   element: HTMLElement;
@@ -30,15 +31,14 @@ export function createTurnHud(
   const mainBadge = document.createElement("div");
   mainBadge.className = "turn-hud-badge";
   mainBadge.style.cssText = `
-    background: rgba(15, 23, 42, 0.9);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    border-radius: 12px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 10px;
     padding: 6px 14px;
     display: flex;
     align-items: center;
     gap: 10px;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   `;
 
   const sideIndicator = document.createElement("div");
@@ -136,9 +136,21 @@ export function createTurnHud(
 
     // 턴 인디케이터 텍스트 및 스타일 갱신
     const isOnline = gameMode === "online";
+    const isTutorial = gameMode === "tutorial";
     const isMyTurn = isOnline ? mySide === currentSide : true;
 
-    if (isOnline) {
+    if (isTutorial) {
+      if (tutorialManager.currentStep < 5) {
+        timerWrapper.style.display = "none";
+        sideIndicator.innerHTML = `<span style="color:#38bdf8;">연습 모드</span> <span style="color:#94a3b8; font-size:12px;">(시간 무제한)</span>`;
+        mainBadge.style.borderColor = "rgba(56, 189, 248, 0.3)";
+      } else {
+        timerWrapper.style.display = "flex";
+        sideIndicator.innerHTML = `<span style="color:#22c55e;">실전 연습</span> <span style="color:#94a3b8; font-size:12px;">(20초 제한)</span>`;
+        mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
+      }
+    } else if (isOnline) {
+      timerWrapper.style.display = "flex";
       if (isMyTurn) {
         sideIndicator.innerHTML = `<span style="color:#22c55e;">내 턴</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "백" : "흑"})</span>`;
         mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
@@ -147,13 +159,14 @@ export function createTurnHud(
         mainBadge.style.borderColor = "rgba(56, 189, 248, 0.3)";
       }
     } else {
+      timerWrapper.style.display = "flex";
       const sideName = currentSide === "white" ? "백(선공)" : "흑(후공)";
       sideIndicator.innerHTML = `<span style="color:${currentSide === "white" ? "#f8fafc" : "#94a3b8"};">${sideName}</span>`;
       mainBadge.style.borderColor = currentSide === "white" ? "rgba(248, 250, 252, 0.3)" : "rgba(148, 163, 184, 0.3)";
     }
 
-    // 타이머 카운트다운 (ready 상태에서만 진행)
-    if (turnRuntime.phase === "ready") {
+    // 타이머 카운트다운 (ready 상태에서만 진행, 튜토리얼 1~4단계에서는 멈춤)
+    if (turnRuntime.phase === "ready" && (!isTutorial || tutorialManager.currentStep === 5)) {
       remainingSeconds = Math.max(0, remainingSeconds - frameDelta);
 
       // 타임아웃 발생 처리

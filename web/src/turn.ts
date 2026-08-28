@@ -97,6 +97,8 @@ export interface TurnRuntime {
   cameraPerspectiveSide: PieceSide | null;
   // 직전 발사 말에만 CCD를 유지하고 정착하면 즉시 해제하기 위한 id다.
   ccdPieceId: string | null;
+  // 타점 패널에서 기본 중심이 아닌 커스텀 타점으로 발사되었는지 여부
+  lastLaunchHasCustomStrike: boolean;
   // 발사 강도와 라이브 물리값을 재생성 없이 참조하는 런타임 설정이다.
   tuningSettings: RuntimeTuningSettings;
 }
@@ -374,6 +376,7 @@ export function createTurnRuntime(
     gameMode: "hotseat",
     cameraPerspectiveSide: null,
     ccdPieceId: null,
+    lastLaunchHasCustomStrike: false,
     tuningSettings,
   };
 }
@@ -663,6 +666,11 @@ export function applyPendingLaunchBeforeStep(
       : 0;
   runtime.lastLaunchPower = request.normalizedPower;
   runtime.lastLaunchInitialSpeed = deltaVelocity.length();
+  runtime.lastLaunchHasCustomStrike =
+    Math.hypot(
+      applicationPoint.x - preLaunchPosition.x,
+      applicationPoint.z - preLaunchPosition.z,
+    ) > 0.04;
 
   const rotation = preLaunchRotation;
   const upDot = MathUtils.clamp(
