@@ -494,9 +494,9 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     // 1. 미로그인 상태: 로그인 / 회원가입 / 게스트 로그인 뷰
     // -------------------------------------------------------------
     panel.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">${I18nManager.t("lobby.title")}</h1>
-        <div style="display:flex; gap:6px; flex-shrink:0;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+        <h1 id="main-menu-title" style="font-size:22px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc; flex-shrink:0;">${I18nManager.t("lobby.title")}</h1>
+        <div style="display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto;">
           <button id="menu-ranking-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
             🏆 ${I18nManager.t("common.ranking_btn")}
           </button>
@@ -708,9 +708,9 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   // 2. 로그인 완료 상태: 유저 정보 + 게임 모드 선택 뷰
   // -------------------------------------------------------------
   panel.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">${I18nManager.t("lobby.title")}</h1>
-      <div style="display:flex; gap:6px; flex-shrink:0;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+      <h1 id="main-menu-title" style="font-size:22px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc; flex-shrink:0;">${I18nManager.t("lobby.title")}</h1>
+      <div style="display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto;">
         <button id="menu-ranking-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
           🏆 ${I18nManager.t("common.ranking_btn")}
         </button>
@@ -745,12 +745,12 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       </div>
     </div>
 
-    <!-- 게임 모드 선택 목록 -->
-    <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:flex; flex-direction:column; gap:10px; width:100%;">
-      <button type="button" data-game-mode="tutorial" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#059669; color:white;">${I18nManager.t("lobby.mode_tutorial")}</button>
-      <button type="button" data-game-mode="stage" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#2563eb; color:white;">${I18nManager.t("lobby.mode_stage")}</button>
-      <button type="button" data-game-mode="online" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#7c3aed; color:white;">${I18nManager.t("lobby.mode_online")}</button>
-      <button type="button" data-game-mode="hotseat" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px;">${I18nManager.t("lobby.mode_2p")}</button>
+    <!-- 게임 모드 선택 목록 (모바일 친화적 2x2 그리드) -->
+    <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; width:100%; box-sizing:border-box;">
+      <button type="button" data-game-mode="tutorial" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#059669; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_tutorial")}</button>
+      <button type="button" data-game-mode="stage" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#2563eb; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_stage")}</button>
+      <button type="button" data-game-mode="online" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#7c3aed; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_online")}</button>
+      <button type="button" data-game-mode="hotseat" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_2p")}</button>
     </div>
     <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:14px; font-size:13px;"></p>
   `;
