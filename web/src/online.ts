@@ -944,11 +944,11 @@ export function createOnlineRuntime(
     <div style="display:flex; align-items:center; gap:4px;">
       <span style="color:#22c55e; font-size:9px;">●</span> <span id="hud-ping-val" style="color:#f8fafc;">-- ms</span>
     </div>
-    <div id="hud-mode-val" style="font-size:10px; font-weight:800; color:#38bdf8; text-transform:lowercase; line-height:1.1; margin-top:1px;">s</div>
+    <div id="hud-mode-val" style="font-size:10px; font-weight:800; color:#38bdf8; text-transform:lowercase; line-height:1.1; margin-top:1px;">st</div>
   `;
   document.body.appendChild(pingBadge);
 
-  let currentModeCode = "s"; // 기본 stun = s
+  let currentModeCode = "st"; // 기본 stun = st
 
   const updatePingHud = (rttMs: number) => {
     let dotColor = "#22c55e"; // 🟢 < 60ms
@@ -974,11 +974,13 @@ export function createOnlineRuntime(
       try {
         if (currentTransport.getTransportType) {
           const type = await currentTransport.getTransportType();
-          // STUN = s, TURN = t, Supabase = s
+          // STUN = st, TURN = tu, Supabase = sup
           if (type === "turn") {
-            currentModeCode = "t";
+            currentModeCode = "tu";
+          } else if (type === "supabase") {
+            currentModeCode = "sup";
           } else {
-            currentModeCode = "s";
+            currentModeCode = "st";
           }
           const modeEl = pingBadge.querySelector("#hud-mode-val") as HTMLElement;
           if (modeEl) {
