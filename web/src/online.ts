@@ -915,35 +915,11 @@ export function createOnlineRuntime(
   const deriveRematchMatchId = (offerId: string): string =>
     parseMatchId(`rematch-${offerId}`, "재대결");
 
-  // 실시간 Ping HUD 뱃지 UI 생성 (메뉴 버튼과 동일한 크기 및 스타일)
+  // 실시간 Ping HUD 뱃지 UI 생성 (메뉴 버튼 아래 배치)
   const pingBadge = document.createElement("div");
   pingBadge.className = "online-ping-hud";
-  pingBadge.style.cssText = `
-    position: fixed;
-    top: 14px;
-    right: 86px;
-    z-index: 50;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    background: rgba(15, 23, 42, 0.88);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 0.65rem;
-    padding: 0.45rem 0.75rem;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #f8f2e7;
-    backdrop-filter: blur(4px);
-    pointer-events: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    box-sizing: border-box;
-    height: 34px;
-    min-width: 66px;
-    text-align: center;
-  `;
   pingBadge.innerHTML = `
-    <span style="color:#22c55e; font-size:10px; line-height:1;">●</span>
+    <span style="color:#22c55e; font-size:9px; line-height:1;">●</span>
     <span id="hud-ping-val" style="color:#f8fafc; font-variant-numeric:tabular-nums;">-- ms</span>
   `;
   document.body.appendChild(pingBadge);
