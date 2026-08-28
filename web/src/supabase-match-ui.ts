@@ -20,6 +20,10 @@ import {
 import type { PieceSide } from "./layout";
 import type { OnlineTransport } from "./online";
 import { I18nManager } from "./i18n";
+import { createStrategyStatAdapter } from "./strategy-stat-adapter";
+import { PieceStatWorkbench, bindWorkbenchModal } from "./piece-stat-workbench";
+import type { PiecePreviewServices } from "./piece-preview-renderer";
+import type { PieceType } from "./config";
 
 export interface SupabaseMatchUiCallbacks {
   onMatchStarted: (
@@ -42,13 +46,20 @@ export class SupabaseMatchUi {
   private profile: UserProfile | null = null;
   private matchmaker: SupabaseMatchmaker | null = null;
   private userEmail: string | null = null;
+  private workbench: PieceStatWorkbench | null = null;
+  private selectedPiece: PieceType = "Pawn";
+  private activePvpMode: "classic" | "strategy" = "classic";
+  private unsubscribeLanguage: () => void;
+  private unbindModal: (() => void) | null = null;
+  private disposed = false;
+  private renderVersion = 0;
 
-  constructor(container: HTMLElement, callbacks: SupabaseMatchUiCallbacks, initialProfile: UserProfile | null = null) {
+  constructor(container: HTMLElement, callbacks: SupabaseMatchUiCallbacks, initialProfile: UserProfile | null = null, private readonly previewServices: PiecePreviewServices | null = null) {
     this.container = container;
     this.callbacks = callbacks;
     this.profile = initialProfile;
 
-    I18nManager.subscribe(() => {
+    this.unsubscribeLanguage = I18nManager.subscribe(() => {
       if (this.container.children.length > 0 && !this.matchmaker) {
         void this.renderLobby();
       }
@@ -59,42 +70,30 @@ export class SupabaseMatchUi {
    * 온라인 매칭 로비 UI 렌더링
    */
   public async renderLobby(): Promise<void> {
+    if (this.disposed) return;
+    const version = ++this.renderVersion;
+    this.disposeWorkbench();
+    this.unbindModal?.(); this.unbindModal = null;
     this.container.innerHTML = "";
     this.client = getSupabaseClient();
 
     const root = document.createElement("div");
-    root.className = "supabase-match-lobby";
-    root.style.cssText = `
-      position: absolute;
-      inset: 0;
-      background: #0f172a;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      color: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding: 20px;
-      box-sizing: border-box;
-    `;
-
+    root.className = "supabase-match-lobby piece-stat-modal";
+    root.style.zIndex = "9999";
+    root.setAttribute("aria-label", I18nManager.t("online.title"));
     const card = document.createElement("div");
-    card.style.cssText = `
-      width: 100%;
-      max-width: 460px;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-      position: relative;
-    `;
+    card.className = "piece-stat-modal-card";
+    const attach = () => {
+      root.append(card); this.container.append(root);
+      this.unbindModal = bindWorkbenchModal(root, () => {
+        const matchingCancel = root.querySelector<HTMLButtonElement>(".matching-modal-overlay button");
+        const authClose = root.querySelector<HTMLButtonElement>("#auth-close-btn");
+        if (matchingCancel) matchingCancel.click();
+        else if (authClose) authClose.click();
+        else { this.cancelSearch(); this.destroy(); this.callbacks.onClose(); }
+      });
+    };
 
-    // 헤더 영역
     const header = document.createElement("div");
     header.style.cssText = `
       display: flex;
@@ -121,6 +120,7 @@ export class SupabaseMatchUi {
     `;
     closeBtn.onclick = () => {
       this.cancelSearch();
+      this.destroy();
       this.callbacks.onClose();
     };
     header.appendChild(closeBtn);
@@ -129,13 +129,13 @@ export class SupabaseMatchUi {
     // Supabase 설정 미등록 시 설정 안내 폼 표시
     if (!this.client) {
       this.renderConfigForm(card);
-      root.appendChild(card);
-      this.container.appendChild(root);
+      attach();
       return;
     }
 
     // 계정 상태 바 (이메일 로그인 vs 게스트)
     this.userEmail = await getSessionEmail(this.client);
+    if (this.disposed || version !== this.renderVersion) return;
     const authBar = document.createElement("div");
     authBar.style.cssText = `
       display: flex;
@@ -205,6 +205,7 @@ export class SupabaseMatchUi {
 
     try {
       this.profile = await getOrCreateUserProfile(this.client);
+      if (this.disposed || version !== this.renderVersion) return;
       this.renderProfileCard(profileSection, this.profile);
     } catch (err: any) {
       if (this.profile) {
@@ -218,47 +219,44 @@ export class SupabaseMatchUi {
       }
     }
 
+    if (this.disposed || version !== this.renderVersion) return;
+
     // 클래식 vs 전략 랭크 탭
     const modeTabs = document.createElement("div");
     modeTabs.style.cssText = "display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;";
     
-    let activePvpMode: "classic" | "strategy" = "classic";
-
-    const defaultStrategyDeck = {
-      Pawn: { force: 0, weight: 0 },
-      Knight: { force: 0, weight: 0 },
-      Bishop: { force: 0, weight: 0 },
-      Rook: { force: 0, weight: 0 },
-      Queen: { force: 0, weight: 0 },
-      King: { force: 0, weight: 0 },
-    };
-    let strategyDeck = defaultStrategyDeck;
-    try {
-      const saved = localStorage.getItem("ca_strategy_deck");
-      if (saved) strategyDeck = JSON.parse(saved);
-    } catch {}
+    const adapter = createStrategyStatAdapter({
+      onMatch: async deck => {
+        if (!this.profile || !this.client) throw new Error("Online profile is not ready.");
+        await this.openMatchingModal(card, deck, "strategy");
+      },
+    });
 
     const actionContainer = document.createElement("div");
     actionContainer.style.cssText = "display:flex; flex-direction:column; gap:12px;";
 
     const renderActionArea = () => {
+      this.disposeWorkbench();
+      card.dataset.workbench = String(this.activePvpMode === "strategy");
       modeTabs.innerHTML = `
-        <button id="pvp-tab-classic" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activePvpMode === "classic" ? "#2563eb" : "transparent"}; color:${activePvpMode === "classic" ? "#fff" : "#94a3b8"};">${I18nManager.t("online.classic_tab")}</button>
-        <button id="pvp-tab-strategy" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activePvpMode === "strategy" ? "#7c3aed" : "transparent"}; color:${activePvpMode === "strategy" ? "#fff" : "#94a3b8"};">${I18nManager.t("online.strategy_tab")}</button>
+        <button id="pvp-tab-classic" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${this.activePvpMode === "classic" ? "#2563eb" : "transparent"}; color:${this.activePvpMode === "classic" ? "#fff" : "#94a3b8"};">${I18nManager.t("online.classic_tab")}</button>
+        <button id="pvp-tab-strategy" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${this.activePvpMode === "strategy" ? "#7c3aed" : "transparent"}; color:${this.activePvpMode === "strategy" ? "#fff" : "#94a3b8"};">${I18nManager.t("online.strategy_tab")}</button>
       `;
 
       modeTabs.querySelector("#pvp-tab-classic")?.addEventListener("click", () => {
-        activePvpMode = "classic";
+        this.activePvpMode = "classic";
         renderActionArea();
+        modeTabs.querySelector<HTMLButtonElement>("#pvp-tab-classic")?.focus();
       });
       modeTabs.querySelector("#pvp-tab-strategy")?.addEventListener("click", () => {
-        activePvpMode = "strategy";
+        this.activePvpMode = "strategy";
         renderActionArea();
+        modeTabs.querySelector<HTMLButtonElement>("#pvp-tab-strategy")?.focus();
       });
 
       actionContainer.innerHTML = "";
 
-      if (activePvpMode === "classic") {
+      if (this.activePvpMode === "classic") {
         const searchBtn = document.createElement("button");
         searchBtn.textContent = I18nManager.t("online.find_classic");
         searchBtn.style.cssText = `
@@ -278,136 +276,8 @@ export class SupabaseMatchUi {
         };
         actionContainer.appendChild(searchBtn);
       } else {
-        // 전략 덱 세팅 창
-        const deckBox = document.createElement("div");
-        deckBox.style.cssText = "background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px;";
-
-        const calcSpent = () => {
-          let spent = 0;
-          for (const key of Object.keys(strategyDeck) as (keyof typeof strategyDeck)[]) {
-            spent += strategyDeck[key].force + strategyDeck[key].weight;
-          }
-          return spent;
-        };
-
-        const deckHeader = document.createElement("div");
-        deckHeader.style.cssText = "display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:700;";
-        const spent = calcSpent();
-        deckHeader.innerHTML = `
-          <span style="color:#cbd5e1;">${I18nManager.t("online.strategy_stat_dist")}</span>
-          <span style="color:${spent === 10 ? "#22c55e" : "#fbbf24"};">${I18nManager.t("online.allocated_points", { spent })}</span>
-        `;
-        deckBox.appendChild(deckHeader);
-
-        const pieceKeyMap: Record<keyof typeof strategyDeck, string> = {
-          Pawn: "lobby.piece_pawn",
-          Knight: "lobby.piece_knight",
-          Bishop: "lobby.piece_bishop",
-          Rook: "lobby.piece_rook",
-          Queen: "lobby.piece_queen",
-          King: "lobby.piece_king",
-        };
-
-        const rowsGrid = document.createElement("div");
-        rowsGrid.style.cssText = "display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto; padding-right:4px;";
-
-        for (const pieceKey of Object.keys(pieceKeyMap) as (keyof typeof strategyDeck)[]) {
-          const row = document.createElement("div");
-          row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:6px 10px; border-radius:6px; font-size:12px;";
-          
-          const label = document.createElement("span");
-          label.style.cssText = "font-weight:600; width:60px;";
-          label.textContent = I18nManager.t(pieceKeyMap[pieceKey]);
-
-          const controls = document.createElement("div");
-          controls.style.cssText = "display:flex; align-items:center; gap:8px;";
-
-          // Force control
-          const forceBox = document.createElement("div");
-          forceBox.style.cssText = "display:flex; align-items:center; gap:3px;";
-          forceBox.innerHTML = `<span style="color:#f59e0b; font-weight:700;">${I18nManager.t("lobby.stat_force")}</span>`;
-          const forceMinus = document.createElement("button");
-          forceMinus.textContent = "-";
-          forceMinus.style.cssText = "width:20px; height:20px; background:#334155; color:white; border:none; border-radius:3px; cursor:pointer;";
-          const forceVal = document.createElement("span");
-          forceVal.textContent = String(strategyDeck[pieceKey].force);
-          forceVal.style.cssText = "font-weight:700; min-width:14px; text-align:center;";
-          const forcePlus = document.createElement("button");
-          forcePlus.textContent = "+";
-          forcePlus.style.cssText = "width:20px; height:20px; background:#334155; color:white; border:none; border-radius:3px; cursor:pointer;";
-
-          forceMinus.onclick = () => {
-            if (strategyDeck[pieceKey].force > 0) {
-              strategyDeck[pieceKey].force -= 1;
-              localStorage.setItem("ca_strategy_deck", JSON.stringify(strategyDeck));
-              renderActionArea();
-            }
-          };
-          forcePlus.onclick = () => {
-            if (calcSpent() < 10 && strategyDeck[pieceKey].force < 4) {
-              strategyDeck[pieceKey].force += 1;
-              localStorage.setItem("ca_strategy_deck", JSON.stringify(strategyDeck));
-              renderActionArea();
-            }
-          };
-          forceBox.append(forceMinus, forceVal, forcePlus);
-
-          // Weight control
-          const weightBox = document.createElement("div");
-          weightBox.style.cssText = "display:flex; align-items:center; gap:3px;";
-          weightBox.innerHTML = `<span style="color:#38bdf8; font-weight:700;">${I18nManager.t("lobby.stat_weight")}</span>`;
-          const weightMinus = document.createElement("button");
-          weightMinus.textContent = "-";
-          weightMinus.style.cssText = "width:20px; height:20px; background:#334155; color:white; border:none; border-radius:3px; cursor:pointer;";
-          const weightVal = document.createElement("span");
-          weightVal.textContent = String(strategyDeck[pieceKey].weight);
-          weightVal.style.cssText = "font-weight:700; min-width:14px; text-align:center;";
-          const weightPlus = document.createElement("button");
-          weightPlus.textContent = "+";
-          weightPlus.style.cssText = "width:20px; height:20px; background:#334155; color:white; border:none; border-radius:3px; cursor:pointer;";
-
-          weightMinus.onclick = () => {
-            if (strategyDeck[pieceKey].weight > 0) {
-              strategyDeck[pieceKey].weight -= 1;
-              localStorage.setItem("ca_strategy_deck", JSON.stringify(strategyDeck));
-              renderActionArea();
-            }
-          };
-          weightPlus.onclick = () => {
-            if (calcSpent() < 10 && strategyDeck[pieceKey].weight < 4) {
-              strategyDeck[pieceKey].weight += 1;
-              localStorage.setItem("ca_strategy_deck", JSON.stringify(strategyDeck));
-              renderActionArea();
-            }
-          };
-          weightBox.append(weightMinus, weightVal, weightPlus);
-
-          controls.append(forceBox, weightBox);
-          row.append(label, controls);
-          rowsGrid.appendChild(row);
-        }
-
-        deckBox.appendChild(rowsGrid);
-        actionContainer.appendChild(deckBox);
-
-        const searchStrategyBtn = document.createElement("button");
-        searchStrategyBtn.textContent = I18nManager.t("online.find_strategy");
-        searchStrategyBtn.style.cssText = `
-          background: #7c3aed;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          padding: 14px 20px;
-          font-size: 15px;
-          font-weight: 700;
-          cursor: pointer;
-        `;
-        searchStrategyBtn.onclick = () => {
-          if (this.profile && this.client) {
-            this.openMatchingModal(card, strategyDeck, "strategy");
-          }
-        };
-        actionContainer.appendChild(searchStrategyBtn);
+        this.workbench = new PieceStatWorkbench(adapter, { selectedPiece: this.selectedPiece, previewServices: this.previewServices });
+        actionContainer.append(this.workbench.element);
       }
 
       const manualBtn = document.createElement("button");
@@ -424,6 +294,7 @@ export class SupabaseMatchUi {
       `;
       manualBtn.onclick = () => {
         this.cancelSearch();
+        this.destroy();
         this.callbacks.onOpenManualP2P();
       };
       actionContainer.appendChild(manualBtn);
@@ -433,8 +304,7 @@ export class SupabaseMatchUi {
     card.appendChild(modeTabs);
     card.appendChild(actionContainer);
 
-    root.appendChild(card);
-    this.container.appendChild(root);
+    attach();
   }
 
   /**
@@ -513,6 +383,7 @@ export class SupabaseMatchUi {
     try {
       this.profile = await getOrCreateUserProfile(this.client);
     } catch {}
+    if (this.disposed || !parentCard.isConnected || parentCard.querySelector(".matching-modal-overlay")) return;
 
     const modalOverlay = document.createElement("div");
     modalOverlay.className = "matching-modal-overlay";
@@ -552,13 +423,23 @@ export class SupabaseMatchUi {
       cursor: pointer;
       margin-top: 10px;
     `;
+    const background = [...parentCard.children] as HTMLElement[];
+    const closeMatching = () => {
+      background.forEach(element => { element.inert = false; });
+      unbindMatching();
+      modalOverlay.remove();
+    };
     cancelBtn.onclick = () => {
       this.cancelSearch();
-      modalOverlay.remove();
+      closeMatching();
     };
 
     modalOverlay.appendChild(cancelBtn);
     parentCard.appendChild(modalOverlay);
+    background.forEach(element => { element.inert = true; });
+    const unbindMatching = bindWorkbenchModal(modalOverlay, () => cancelBtn.click());
+    modalOverlay.setAttribute("aria-label", I18nManager.t("online.searching_opponent", { mode: modeName }));
+    parentCard.scrollTop = 0;
 
     this.matchmaker = new SupabaseMatchmaker(this.client, this.profile, matchMode);
     void this.matchmaker.startMatching(
@@ -580,6 +461,8 @@ export class SupabaseMatchUi {
         const oppEl = modalOverlay.querySelector("#matching-opponent");
         const sideStr = mySide === "white" ? I18nManager.t("ingame.turn_white") : I18nManager.t("ingame.turn_black");
         if (oppEl) oppEl.textContent = I18nManager.t("online.match_ready", { side: sideStr });
+        closeMatching();
+        this.destroy();
         this.container.innerHTML = "";
         if (this.profile) {
           await this.callbacks.onMatchStarted(transport, mySide, matchId, opponent, this.profile, strategyDeck, matchMode);
@@ -587,9 +470,21 @@ export class SupabaseMatchUi {
       },
       (error) => {
         alert(`매칭 실패: ${error.message}`);
-        modalOverlay.remove();
+        closeMatching();
       },
     );
+  }
+
+  private disposeWorkbench(): void {
+    if (this.workbench) this.selectedPiece = this.workbench.selection;
+    this.workbench?.dispose(); this.workbench = null;
+  }
+
+  public destroy(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.disposeWorkbench(); this.unsubscribeLanguage();
+    this.unbindModal?.(); this.unbindModal = null;
   }
 
   private cancelSearch(): void {

@@ -1,3 +1,4 @@
+import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import RAPIER from "@dimforge/rapier3d-compat";
 import type {
   ChessSetMeta,
@@ -1121,7 +1122,7 @@ export function applyStrategyDecksToPhysics(
   for (const binding of runtime.pieces.values()) {
     const deck = binding.instance.side === "white" ? whiteDeck : blackDeck;
     const weightStat = deck ? deck[binding.instance.type]?.weight ?? 0 : 0;
-    const additionalMass = binding.originalHullMass * (weightStat * 0.02);
+    const additionalMass = binding.originalHullMass * (weightStat * STRATEGY_STAT_STEP);
 
     binding.body.setAdditionalMassProperties(
       additionalMass,

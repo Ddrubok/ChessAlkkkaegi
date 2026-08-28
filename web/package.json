@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "build:portable": "tsc --noEmit && vite build --mode portable && node src/tools/finalize-portable-build.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:piece-stats": "node src/tools/strategy-deck-headless-check.mjs && node src/tools/piece-stat-adapter-headless-check.mjs && node src/tools/piece-preview-contract-check.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.2",

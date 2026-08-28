@@ -1,4 +1,5 @@
 import "./style.css";
+import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
 import { tutorialManager } from "./tutorial";
@@ -284,6 +285,7 @@ async function bootstrap(): Promise<void> {
   );
 
   loadingPhase.textContent = "물리 월드를 준비하는 중입니다";
+  menuRuntime.piecePreviewServices = { renderer: sceneRuntime.renderer, assets };
   const physicsRuntime = await createPhysicsRuntime(
     assets.meta,
     PIECE_INSTANCES,
@@ -676,7 +678,7 @@ async function bootstrap(): Promise<void> {
               ? onlineRuntime.whiteStrategyDeck
               : onlineRuntime.blackStrategyDeck;
           const forceStat = deck ? deck[binding.instance.type]?.force ?? 0 : 0;
-          speedMultiplier = 1 + forceStat * 0.02;
+          speedMultiplier = 1 + forceStat * STRATEGY_STAT_STEP;
         }
         const launchRequest = {
           ...request,
@@ -1551,6 +1553,7 @@ async function bootstrap(): Promise<void> {
                 myProfile,
                 strategyDeck,
                 finishLobby: () => {
+                  matchUi.destroy();
                   matchUiContainer.remove();
                 },
               });
@@ -1579,6 +1582,7 @@ async function bootstrap(): Promise<void> {
             },
           },
           menuRuntime.userProfile,
+          menuRuntime.piecePreviewServices,
         );
 
         void matchUi.renderLobby();

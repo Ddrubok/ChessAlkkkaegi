@@ -1,24 +1,9 @@
-import {
-  PERMANENT_PLAYER_SIZE_COST,
-  PERMANENT_PLAYER_SIZE_STEP,
-  PERMANENT_UPGRADE_TIER_MAX_LEVEL,
-  type PieceType,
-} from "./config";
+import type { PieceType } from "./config";
 import type { GameMode } from "./game-mode";
-import {
-  computePermanentUpgradeCost,
-  computePermanentTierEffect,
-  getPermanentTierUpgradeLevel,
-  isPermanentSizeUpgradeUnlocked,
-  isPermanentUpgradeUnlocked,
-  purchasePermanentUpgrade,
-  purchasePermanentSizeUpgrade,
-  resetPermanentUpgrades,
-  getMaxClearedStage,
-  type MetaRuntime,
-  type PermanentUpgradeTier,
-  type PermanentUpgradeTrack,
-} from "./meta";
+import { getMaxClearedStage, type MetaRuntime } from "./meta";
+import { createPermanentResearchAdapter } from "./permanent-research-adapter";
+import { PieceStatWorkbench, bindWorkbenchModal } from "./piece-stat-workbench";
+import type { PiecePreviewServices } from "./piece-preview-renderer";
 import { openSettingsModal } from "./settings-modal";
 import { openRankingModal } from "./ranking-modal";
 import { openFriendsModal } from "./friends-modal";
@@ -40,6 +25,8 @@ export interface MainMenuRuntime {
   returnButton: HTMLButtonElement;
   confirmOverlay: HTMLElement;
   metaRuntime: MetaRuntime;
+  piecePreviewServices: PiecePreviewServices | null;
+  closePveLobby?: () => void;
   ready: boolean;
   busy: boolean;
   visible: boolean;
@@ -51,148 +38,6 @@ export interface MainMenuRuntime {
   onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
 }
 
-const getPieceLabel = (type: PieceType): string => {
-  const keyMap: Record<PieceType, string> = {
-    Pawn: "lobby.piece_pawn",
-    Rook: "lobby.piece_rook",
-    Knight: "lobby.piece_knight",
-    Bishop: "lobby.piece_bishop",
-    Queen: "lobby.piece_queen",
-    King: "lobby.piece_king",
-  };
-  return I18nManager.t(keyMap[type]);
-};
-
-const getTrackLabel = (track: PermanentUpgradeTrack): string => {
-  return track === "force" ? I18nManager.t("lobby.stat_force") : I18nManager.t("lobby.stat_weight");
-};
-
-const getTierLabel = (tier: PermanentUpgradeTier): string => {
-  return tier === "basic" ? I18nManager.t("lobby.upgrade_basic") : I18nManager.t("lobby.upgrade_advanced");
-};
-
-const TREE_PIECE_ORDER = [
-  "Pawn",
-  "Knight",
-  "King",
-  "Rook",
-  "Bishop",
-  "Queen",
-] as const satisfies readonly PieceType[];
-
-/**
- * 기초·심화 힘·중량 구매 행 하나를 현재 선행 조건과 비용으로 만든다.
- */
-function appendUpgradeRow(
-  runtime: MainMenuRuntime,
-  rows: HTMLElement,
-  status: HTMLElement,
-  tier: PermanentUpgradeTier,
-  type: PieceType,
-  track: PermanentUpgradeTrack,
-): void {
-  const level = getPermanentTierUpgradeLevel(
-    runtime.metaRuntime.state.upgrades,
-    tier,
-    type,
-    track,
-  );
-  const unlocked = isPermanentUpgradeUnlocked(
-    runtime.metaRuntime.state.upgrades,
-    tier,
-    type,
-  );
-  const atMaximum =
-    level >= PERMANENT_UPGRADE_TIER_MAX_LEVEL;
-  const cost = atMaximum
-    ? null
-    : computePermanentUpgradeCost(tier, type, level);
-  const row = document.createElement("div");
-  row.className = "permanent-upgrade-row";
-  row.dataset.locked = String(!unlocked);
-  row.innerHTML = `
-    <strong>${getTierLabel(tier)} · ${getPieceLabel(type)} · ${getTrackLabel(track)}</strong>
-    <span>${level}/3</span>
-    <span>+${(computePermanentTierEffect(tier, level) * 100).toFixed(0)}%</span>
-    <span>${unlocked ? (cost === null ? I18nManager.t("lobby.upgrade_max") : `${cost} P`) : I18nManager.t("lobby.upgrade_locked")}</span>
-  `;
-  const purchaseButton = document.createElement("button");
-  purchaseButton.type = "button";
-  purchaseButton.textContent = atMaximum ? I18nManager.t("lobby.upgrade_max") : I18nManager.t("lobby.upgrade_buy");
-  purchaseButton.disabled =
-    runtime.busy ||
-    !unlocked ||
-    atMaximum ||
-    (cost !== null && runtime.metaRuntime.state.points < cost);
-  purchaseButton.addEventListener("click", () => {
-    if (runtime.busy) {
-      return;
-    }
-    const result = purchasePermanentUpgrade(
-      runtime.metaRuntime,
-      tier,
-      type,
-      track,
-    );
-    renderMainMenu(runtime);
-    status.textContent =
-      result.purchased
-        ? `${getTierLabel(tier)} ${getPieceLabel(type)} ${getTrackLabel(track)}`
-        : (result.reason ?? "");
-  });
-  row.append(purchaseButton);
-  rows.append(row);
-}
-
-/**
- * 중앙 전체 크기 0/1 관문을 현재 기초 완료 상태로 만든다.
- */
-function appendSizeUpgradeRow(
-  runtime: MainMenuRuntime,
-  rows: HTMLElement,
-  status: HTMLElement,
-): void {
-  const level = runtime.metaRuntime.state.upgrades.playerSizeLevel;
-  const unlocked = isPermanentSizeUpgradeUnlocked(
-    runtime.metaRuntime.state.upgrades,
-  );
-  const row = document.createElement("div");
-  row.className =
-    "permanent-upgrade-row permanent-upgrade-size-row";
-  row.dataset.locked = String(!unlocked);
-  row.innerHTML = `
-    <strong>${I18nManager.t("lobby.upgrade_size_title")}</strong>
-    <span>${level}/1</span>
-    <span>${I18nManager.t("lobby.upgrade_size_effect", { val: (PERMANENT_PLAYER_SIZE_STEP * 100).toFixed(0) })}</span>
-    <span>${unlocked ? (level === 1 ? I18nManager.t("lobby.upgrade_size_bought") : `${PERMANENT_PLAYER_SIZE_COST} P`) : I18nManager.t("lobby.upgrade_size_need_basic")}</span>
-  `;
-  const purchaseButton = document.createElement("button");
-  purchaseButton.type = "button";
-  purchaseButton.textContent = level === 1 ? I18nManager.t("lobby.upgrade_size_bought") : I18nManager.t("lobby.upgrade_buy");
-  purchaseButton.disabled =
-    runtime.busy ||
-    !unlocked ||
-    level === 1 ||
-    runtime.metaRuntime.state.points <
-      PERMANENT_PLAYER_SIZE_COST;
-  purchaseButton.addEventListener("click", () => {
-    if (runtime.busy) {
-      return;
-    }
-    const result = purchasePermanentSizeUpgrade(
-      runtime.metaRuntime,
-    );
-    renderMainMenu(runtime);
-    status.textContent =
-      result.purchased
-        ? I18nManager.t("lobby.upgrade_size_title")
-        : (result.reason ?? "");
-  });
-  row.append(purchaseButton);
-  rows.append(row);
-}
-
-
 /**
  * PVE 로비 모달 (스테이지 선택 + 영구 강화 테크트리)을 연다.
  */
@@ -201,47 +46,35 @@ export function openPveLobbyModal(
   onStartStage: (stage: number) => Promise<void>,
 ): void {
   const modal = document.createElement("div");
-  modal.className = "pve-lobby-modal";
-  modal.style.cssText = `
-    position: absolute;
-    inset: 0;
-    background: #0f172a;
-    z-index: 50;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    box-sizing: border-box;
-    color: #f8fafc;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  `;
-
+  runtime.closePveLobby?.();
+  modal.className = "pve-lobby-modal piece-stat-modal";
+  modal.setAttribute("aria-label", I18nManager.t("lobby.stage_modal_title"));
   const card = document.createElement("div");
-  card.style.cssText = `
-    width: 100%;
-    max-width: 640px;
-    max-height: 90vh;
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    overflow: hidden;
-  `;
+  card.className = "piece-stat-modal-card";
+  const adapter = createPermanentResearchAdapter(runtime.metaRuntime);
+  let workbench: PieceStatWorkbench | null = null;
+  let selectedPiece: PieceType = "Pawn";
+  const close = () => {
+    workbench?.dispose(); workbench = null;
+    modal.remove(); runtime.closePveLobby = undefined;
+    renderMainMenu(runtime); unbindModal();
+    runtime.overlay.querySelector<HTMLButtonElement>('[data-game-mode="stage"]')?.focus();
+  };
+  const unbindModal = bindWorkbenchModal(modal, close);
+  runtime.closePveLobby = close;
 
   let activeTab: "stages" | "upgrades" = "stages";
   let selectedStage = 1;
 
   const renderContent = () => {
+    if (workbench) selectedPiece = workbench.selection;
+    workbench?.dispose(); workbench = null;
+    card.dataset.workbench = String(activeTab === "upgrades");
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
         <h2 style="margin:0; font-size:18px; font-weight:700;">${I18nManager.t("lobby.stage_modal_title")}</h2>
         <div style="display:flex; align-items:center; gap:12px;">
-          <span style="font-size:13px; color:#38bdf8; font-weight:600;">${I18nManager.t("lobby.stage_points_held", { points: runtime.metaRuntime.state.points })}</span>
+          <span id="pve-points-held" style="font-size:13px; color:#38bdf8; font-weight:600;">${I18nManager.t("lobby.stage_points_held", { points: runtime.metaRuntime.state.points })}</span>
           <button id="pve-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">${I18nManager.t("common.close")}</button>
         </div>
       </div>
@@ -251,17 +84,19 @@ export function openPveLobbyModal(
         <button id="tab-upgrades" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "upgrades" ? "#3b82f6" : "transparent"}; color:${activeTab === "upgrades" ? "#fff" : "#94a3b8"};">${I18nManager.t("lobby.stage_tab_upgrades")}</button>
       </div>
 
-      <div id="pve-tab-body" style="flex:1; overflow-y:auto; min-height:280px; max-height:460px; padding-right:4px;"></div>
+      <div id="pve-tab-body"></div>
     `;
 
-    card.querySelector("#pve-close-btn")?.addEventListener("click", () => modal.remove());
+    card.querySelector("#pve-close-btn")?.addEventListener("click", close);
     card.querySelector("#tab-stages")?.addEventListener("click", () => {
       activeTab = "stages";
       renderContent();
+      card.querySelector<HTMLButtonElement>("#tab-stages")?.focus();
     });
     card.querySelector("#tab-upgrades")?.addEventListener("click", () => {
       activeTab = "upgrades";
       renderContent();
+      card.querySelector<HTMLButtonElement>("#tab-upgrades")?.focus();
     });
 
     const body = card.querySelector("#pve-tab-body") as HTMLElement;
@@ -326,60 +161,19 @@ export function openPveLobbyModal(
       body.appendChild(startBox);
 
       startBox.querySelector("#pve-start-btn")?.addEventListener("click", async () => {
-        modal.remove();
+        close();
         await onStartStage(selectedStage);
       });
     } else {
-      // 영구 강화 탭
-      const upgradeContainer = document.createElement("div");
-      upgradeContainer.style.cssText = "display:flex; flex-direction:column; gap:10px;";
-      
-      const statusText = document.createElement("div");
-      statusText.style.cssText = "font-size:12px; color:#38bdf8; min-height:16px;";
-      upgradeContainer.appendChild(statusText);
-
-      const rowsWrapper = document.createElement("div");
-      rowsWrapper.className = "permanent-upgrade-panel";
-      rowsWrapper.innerHTML = `
-        <div class="permanent-upgrade-heading" aria-hidden="true" style="margin-bottom:8px;">
-          <span>${I18nManager.t("lobby.upgrade_col_piece")}</span>
-          <span>${I18nManager.t("lobby.upgrade_col_level")}</span>
-          <span>${I18nManager.t("lobby.upgrade_col_effect")}</span>
-          <span>${I18nManager.t("lobby.upgrade_col_cost")}</span>
-          <span>${I18nManager.t("lobby.upgrade_col_buy")}</span>
-        </div>
-        <div id="pve-upgrade-rows"></div>
-      `;
-      upgradeContainer.appendChild(rowsWrapper);
-
-      const rows = rowsWrapper.querySelector("#pve-upgrade-rows") as HTMLElement;
-
-      for (const tier of ["basic", "advanced"] as const) {
-        const heading = document.createElement("h3");
-        heading.className = "permanent-upgrade-tier-title";
-        heading.textContent = tier === "basic" ? I18nManager.t("lobby.upgrade_basic") : I18nManager.t("lobby.upgrade_advanced");
-        if (tier === "advanced") {
-          appendSizeUpgradeRow(runtime, rows, statusText);
-        }
-        rows.append(heading);
-        for (const type of TREE_PIECE_ORDER) {
-          for (const track of ["force", "weight"] as const) {
-            appendUpgradeRow(runtime, rows, statusText, tier, type, track);
-          }
-        }
-      }
-
-      const resetBtn = document.createElement("button");
-      resetBtn.className = "permanent-upgrade-reset";
-      resetBtn.textContent = I18nManager.t("lobby.upgrade_reset_btn");
-      resetBtn.style.cssText = "margin-top:12px; padding:10px; width:100%; background:#ef4444; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer;";
-      resetBtn.onclick = () => {
-        resetPermanentUpgrades(runtime.metaRuntime);
-        renderContent();
-      };
-      upgradeContainer.appendChild(resetBtn);
-
-      body.appendChild(upgradeContainer);
+      workbench = new PieceStatWorkbench(adapter, {
+        selectedPiece,
+        previewServices: runtime.piecePreviewServices,
+        onSummaryChange: () => {
+          const points = card.querySelector("#pve-points-held");
+          if (points) points.textContent = I18nManager.t("lobby.stage_points_held", { points: runtime.metaRuntime.state.points });
+        },
+      });
+      body.append(workbench.element);
     }
   };
 
@@ -423,6 +217,7 @@ export function showMainMenu(runtime: MainMenuRuntime): void {
 export function hideMainMenuAfterModeStart(
   runtime: MainMenuRuntime,
 ): void {
+  runtime.closePveLobby?.();
   runtime.busy = false;
   runtime.visible = false;
   runtime.overlay.hidden = true;
@@ -966,6 +761,7 @@ export function createMainMenu(
     returnButton,
     confirmOverlay,
     metaRuntime,
+    piecePreviewServices: null,
     ready: false,
     busy: false,
     visible: true,
