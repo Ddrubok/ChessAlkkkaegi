@@ -60,8 +60,7 @@ export class SupabaseMatchUi {
     root.style.cssText = `
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.95);
-      backdrop-filter: blur(12px);
+      background: #0f172a;
       display: flex;
       flex-direction: column;
       align-items: center;

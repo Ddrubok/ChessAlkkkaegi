@@ -1,6 +1,7 @@
 import "./style.css";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
+import { tutorialManager } from "./tutorial";
 import {
   createAiRuntime,
   isAiTelegraphActive,
@@ -859,8 +860,11 @@ async function bootstrap(): Promise<void> {
         cardTuningRuntime.settings,
       ),
     };
+    const targetInstances = stageOptions.gameMode === "tutorial"
+      ? tutorialManager.getStepPieces(stageOptions.stageNumber)
+      : PIECE_INSTANCES;
     const spawnInstances = selectStageSpawnInstances(
-      PIECE_INSTANCES,
+      targetInstances,
       stageOptions,
     );
     const expectedPieceCount = spawnInstances.length;
@@ -892,13 +896,13 @@ async function bootstrap(): Promise<void> {
     resetPhysicsPieces(
       physicsRuntime,
       assets.meta,
-      PIECE_INSTANCES,
+      targetInstances,
       stageOptions,
     );
     resetScenePieces(
       sceneRuntime,
       assets,
-      PIECE_INSTANCES,
+      targetInstances,
       stageOptions,
     );
     reapplyTuningPhysicsSettings(tuningRuntime);
@@ -1306,9 +1310,50 @@ async function bootstrap(): Promise<void> {
     }
   });
 
+  turnRuntime.onTurnSettled = () => {
+    if (gameModeRuntime?.mode === "tutorial") {
+      const remainingBlack = [...physicsRuntime.pieces.values()].filter(
+        (p) => p.instance.side === "black",
+      );
+      const remainingWhite = [...physicsRuntime.pieces.values()].filter(
+        (p) => p.instance.side === "white",
+      );
+      const initialBlackCount = tutorialManager.currentStep === 5 ? 3 : 1;
+      const hadHit = remainingBlack.length < initialBlackCount || remainingWhite.length > 0;
+      const hasCustomStrikePoint =
+        turnRuntime.lastLaunchHasCustomStrike ||
+        inputRuntime.aimParametersRuntime.strikePointOverride !== null;
+      const checkResult = tutorialManager.checkStepClear(
+        remainingBlack.length,
+        remainingBlack.map((p) => ({ type: p.instance.type })),
+        hadHit,
+        hasCustomStrikePoint,
+      );
+
+      if (checkResult.cleared) {
+        void tutorialManager.handleStepSuccess();
+      } else {
+        if (checkResult.hint) {
+          tutorialManager.showFailureHint(checkResult.hint);
+        }
+        setTimeout(() => {
+          if (gameModeRuntime?.mode === "tutorial" && tutorialManager.isActive) {
+            void resetBoard({
+              gameMode: "tutorial",
+              stageNumber: tutorialManager.currentStep,
+            });
+          }
+        }, 1200);
+      }
+    }
+  };
+
   setMatchOverHandler(turnRuntime, (winner) => {
     lockInputForMatchOver(inputRuntime);
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
+    if (gameMode === "tutorial") {
+      return;
+    }
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
     if (gameMode === "stage") {
       if (winner === "white") {
@@ -1614,6 +1659,11 @@ async function bootstrap(): Promise<void> {
     onlineResignButton.hidden = true;
     renderRematchControls(null);
     hideDisconnectOverlay();
+    if (mode === "tutorial") {
+      tutorialManager.start(selectedStage ?? 1);
+    } else {
+      tutorialManager.stop();
+    }
     await switchGameMode(gameModeRuntime, mode, true);
     ensureGameLoopStarted();
   };
@@ -1679,6 +1729,7 @@ async function bootstrap(): Promise<void> {
     onlineResignButton.hidden = true;
     renderRematchControls(null);
     hideDisconnectOverlay();
+    tutorialManager.stop();
     await switchGameMode(gameModeRuntime, "hotseat", true);
     hideMatchResult(matchRuntime);
     void AdManager.showBanner();
@@ -1687,6 +1738,7 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
+    tutorialManager.stop();
     if (gameModeRuntime.mode !== "stage") {
       await returnToMainMenu(menuRuntime);
       return;
@@ -1763,6 +1815,21 @@ async function bootstrap(): Promise<void> {
     );
   }
   setMainMenuReady(menuRuntime, true);
+  tutorialManager.init(
+    metaRuntime,
+    async (nextStep) => {
+      if (gameModeRuntime !== null) {
+        setStageNumber(gameModeRuntime, nextStep);
+        await resetBoard({
+          gameMode: "tutorial",
+          stageNumber: nextStep,
+        });
+      }
+    },
+    async () => {
+      await returnToMainMenu(menuRuntime);
+    },
+  );
   await AdManager.init();
   await AdManager.showBanner();
 }

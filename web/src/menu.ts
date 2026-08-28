@@ -29,6 +29,7 @@ import {
 } from "./supabase-auth";
 import { getSupabaseClient } from "./supabase-client";
 import { AdManager } from "./ad-manager";
+import { TutorialManager } from "./tutorial";
 
 export interface MainMenuRuntime {
   overlay: HTMLElement;
@@ -202,8 +203,7 @@ export function openPveLobbyModal(
   modal.style.cssText = `
     position: absolute;
     inset: 0;
-    background: rgba(15, 23, 42, 0.96);
-    backdrop-filter: blur(16px);
+    background: #0f172a;
     z-index: 50;
     display: flex;
     flex-direction: column;
@@ -695,7 +695,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:14px 16px; margin-bottom:18px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="font-size:15px; font-weight:700; color:#f8fafc;">
-          👤 ${user.nickname} <span style="font-size:12px; color:#94a3b8; font-weight:normal; margin-left:6px;">| PVE: <strong style="color:#38bdf8;">${points} P</strong></span>
+          ${user.nickname} <span style="font-size:12px; color:#94a3b8; font-weight:normal; margin-left:6px;">| PVE 포인트: <strong style="color:#38bdf8;">${points} P</strong></span>
         </div>
         <button id="btn-logout" style="background:transparent; border:none; color:#94a3b8; font-size:12px; cursor:pointer; text-decoration:underline; padding:2px 4px;">
           로그아웃
@@ -715,9 +715,10 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
 
     <!-- 게임 모드 선택 목록 -->
     <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:flex; flex-direction:column; gap:10px; width:100%;">
-      <button type="button" data-game-mode="hotseat" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px;">2인 대전 (로컬)</button>
+      <button type="button" data-game-mode="tutorial" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#059669; color:white;">튜토리얼 (조작법 배우기)</button>
       <button type="button" data-game-mode="stage" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#2563eb; color:white;">스테이지 대전 (PVE)</button>
       <button type="button" data-game-mode="online" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#7c3aed; color:white;">온라인 랭크 대전</button>
+      <button type="button" data-game-mode="hotseat" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px;">2인 대전 (로컬)</button>
     </div>
     <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:14px; font-size:13px;"></p>
   `;
@@ -743,8 +744,21 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
         !runtime.ready ||
         (mode !== "hotseat" &&
           mode !== "stage" &&
-          mode !== "online")
+          mode !== "online" &&
+          mode !== "tutorial")
       ) {
+        return;
+      }
+
+      if (mode === "tutorial") {
+        runtime.busy = true;
+        renderMainMenu(runtime);
+        void runtime.onStartMode("tutorial", 1)
+          .then(() => hideMainMenuAfterModeStart(runtime))
+          .catch((err) => {
+            console.error(err);
+            runtime.busy = false;
+          });
         return;
       }
 
@@ -800,6 +814,21 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       );
     });
   }
+
+  // 최초 접속 시 튜토리얼 권장 팝업 1회 표시
+  TutorialManager.checkFirstVisitAndPrompt(
+    () => {
+      runtime.busy = true;
+      renderMainMenu(runtime);
+      void runtime.onStartMode("tutorial", 1)
+        .then(() => hideMainMenuAfterModeStart(runtime))
+        .catch((err) => {
+          console.error(err);
+          runtime.busy = false;
+        });
+    },
+    () => {},
+  );
 }
 
 /**

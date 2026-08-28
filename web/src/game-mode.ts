@@ -1,4 +1,4 @@
-export type GameMode = "hotseat" | "stage" | "online";
+export type GameMode = "hotseat" | "stage" | "online" | "tutorial";
 
 export interface GameModeRuntime {
   // 현재 판에 적용된 2인·컴퓨터·온라인 상대 모드다.
