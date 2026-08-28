@@ -3,15 +3,8 @@ import type { PieceSide } from "./layout";
 import type { OnlineTransport } from "./online";
 import type { PeerDisconnectCause, PeerLinkState } from "./net";
 import type { UserProfile } from "./supabase-auth";
+import { getUnifiedIceServers } from "./metered-turn";
 
-const RTC_CONFIGURATION: RTCConfiguration = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-  ],
-  iceCandidatePoolSize: 2,
-};
 const DATA_CHANNEL_LABEL = "chess-alkkaegi-p2p";
 
 export type MatchmakingPhase =
@@ -552,7 +545,8 @@ export class SupabaseMatchmaker {
    */
   private async setupHostWebRTC(guestId: string, matchId: string): Promise<void> {
     this.updateStatus("signaling", "P2P 연결 준비 중 (Offer 생성)...");
-    const pc = new RTCPeerConnection(RTC_CONFIGURATION);
+    const iceServers = await getUnifiedIceServers();
+    const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 2 });
     this.peerConnection = pc;
 
     const dc = pc.createDataChannel(DATA_CHANNEL_LABEL, { ordered: true });
@@ -614,7 +608,8 @@ export class SupabaseMatchmaker {
   private async setupGuestWebRTC(hostId: string, matchId: string): Promise<void> {
     if (this.peerConnection) return;
     this.updateStatus("signaling", "P2P 연결 응답 중...");
-    const pc = new RTCPeerConnection(RTC_CONFIGURATION);
+    const iceServers = await getUnifiedIceServers();
+    const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 2 });
     this.peerConnection = pc;
 
     pc.onicecandidate = (event) => {
