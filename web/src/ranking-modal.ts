@@ -146,15 +146,41 @@ export async function openRankingModal(
     }
 
     // 내 순위 바 렌더링
-    if (userProfile && myRankInfo) {
+    if (userProfile && userProfile.id !== "local_guest") {
+      const currentMmr = currentMode === "strategy" 
+        ? (userProfile.strategyMmr ?? userProfile.mmr ?? 1200) 
+        : (userProfile.classicMmr ?? userProfile.mmr ?? 1200);
+
+      const rankText = myRankInfo && myRankInfo.rank > 0 
+        ? `#${myRankInfo.rank}` 
+        : I18nManager.t("ranking.unranked");
+
+      const percentileText = myRankInfo && myRankInfo.totalPlayers > 0 && myRankInfo.rank > 0
+        ? `<span style="color:#64748b; font-size:12px;">(상위 ${Math.max(1, Math.round((myRankInfo.rank / myRankInfo.totalPlayers) * 100))}%)</span>`
+        : "";
+
       myBar.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="color:#94a3b8;">${I18nManager.t("ranking.my_rank")}:</span>
-          <strong style="color:#38bdf8; font-size:15px;">#${myRankInfo.rank}</strong>
-          <span style="color:#64748b; font-size:12px;">(상위 ${Math.max(1, Math.round((myRankInfo.rank / myRankInfo.totalPlayers) * 100))}%)</span>
+        <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
+          <span style="color:#94a3b8; white-space:nowrap;">${I18nManager.t("ranking.my_rank")}:</span>
+          <strong style="color:#38bdf8; font-size:15px; white-space:nowrap;">${rankText}</strong>
+          ${percentileText}
+          <span style="color:#cbd5e1; font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">[${userProfile.nickname}]</span>
         </div>
-        <div style="font-weight:700; color:#fbbf24;">
-          MMR: ${myRankInfo.mmr}
+        <div style="font-weight:700; color:#fbbf24; white-space:nowrap; margin-left:8px;">
+          MMR: ${myRankInfo?.mmr ?? currentMmr}
+        </div>
+      `;
+    } else if (userProfile && userProfile.id === "local_guest") {
+      const currentMmr = currentMode === "strategy" 
+        ? (userProfile.strategyMmr ?? userProfile.mmr ?? 1200) 
+        : (userProfile.classicMmr ?? userProfile.mmr ?? 1200);
+      myBar.innerHTML = `
+        <div style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+          <span style="color:#f59e0b; font-weight:700; font-size:12px; white-space:nowrap;">[게스트]</span>
+          <span style="color:#94a3b8; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${userProfile.nickname} (랭킹 등록을 위해 회원가입 필요)</span>
+        </div>
+        <div style="font-weight:700; color:#fbbf24; white-space:nowrap; margin-left:8px;">
+          MMR: ${currentMmr}
         </div>
       `;
     } else {

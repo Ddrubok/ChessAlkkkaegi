@@ -23,6 +23,7 @@ import { openSettingsModal } from "./settings-modal";
 import { openRankingModal } from "./ranking-modal";
 import { openFriendsModal } from "./friends-modal";
 import { I18nManager } from "./i18n";
+import { SocialService } from "./social-service";
 import {
   getOrCreateUserProfile,
   signInWithEmail,
@@ -638,6 +639,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
           if (res.success && res.user) {
             localStorage.setItem("ca_logged_in_user", "true");
             runtime.userProfile = res.user;
+            SocialService.init(res.user);
             renderMainMenu(runtime);
           } else {
             if (status) status.textContent = res.error || "로그인에 실패했습니다.";
@@ -676,6 +678,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
           if (res.success && res.user) {
             localStorage.setItem("ca_logged_in_user", "true");
             runtime.userProfile = res.user;
+            SocialService.init(res.user);
             renderMainMenu(runtime);
           } else {
             if (status) status.textContent = res.error || "회원가입에 실패했습니다.";
