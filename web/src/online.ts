@@ -182,6 +182,9 @@ export interface OnlineRematchStatus {
 export interface OnlineTransport {
   // 실제 링크는 사용자 상태와 분리해 원래 끊김 원인을 제공한다.
   readonly disconnectCause?: PeerDisconnectCause;
+  // 현재 연결 방식 ("stun" | "turn" | "supabase")
+  readonly transportType?: "stun" | "turn" | "supabase";
+  getTransportType?: () => Promise<"stun" | "turn" | "supabase">;
   // JSON 직렬화 가능한 온라인 프로토콜 객체를 보낸다.
   send(payload: object): void;
   // 상대 프로토콜 객체 수신을 구독한다.
@@ -912,7 +915,7 @@ export function createOnlineRuntime(
   const deriveRematchMatchId = (offerId: string): string =>
     parseMatchId(`rematch-${offerId}`, "재대결");
 
-  // 실시간 Ping HUD 뱃지 UI 생성
+  // 실시간 Ping 및 연결 방식 HUD 뱃지 UI 생성
   const pingBadge = document.createElement("div");
   pingBadge.className = "online-ping-hud";
   pingBadge.style.cssText = `
@@ -921,32 +924,69 @@ export function createOnlineRuntime(
     right: 14px;
     z-index: 50;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
     background: rgba(15, 23, 42, 0.88);
     border: 1px solid #334155;
     border-radius: 6px;
-    padding: 4px 8px;
+    padding: 3px 8px;
     font-size: 11px;
     font-weight: 700;
     color: #94a3b8;
     backdrop-filter: blur(4px);
     pointer-events: none;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-width: 48px;
+    text-align: center;
   `;
-  pingBadge.innerHTML = `<span style="color:#22c55e;">●</span> <span>-- ms</span>`;
+  pingBadge.innerHTML = `
+    <div style="display:flex; align-items:center; gap:4px;">
+      <span style="color:#22c55e; font-size:9px;">●</span> <span id="hud-ping-val" style="color:#f8fafc;">-- ms</span>
+    </div>
+    <div id="hud-mode-val" style="font-size:10px; font-weight:800; color:#38bdf8; text-transform:lowercase; line-height:1.1; margin-top:1px;">s</div>
+  `;
   document.body.appendChild(pingBadge);
+
+  let currentModeCode = "s"; // 기본 stun = s
 
   const updatePingHud = (rttMs: number) => {
     let dotColor = "#22c55e"; // 🟢 < 60ms
     if (rttMs > 180) dotColor = "#ef4444"; // 🔴 > 180ms
     else if (rttMs >= 60) dotColor = "#eab308"; // 🟡 60~180ms
 
-    pingBadge.innerHTML = `<span style="color:${dotColor};">●</span> <span style="color:#f8fafc;">${rttMs}ms</span>`;
+    const pingValEl = pingBadge.querySelector("#hud-ping-val");
+    if (pingValEl) {
+      pingValEl.innerHTML = `${rttMs}ms`;
+    }
+    const dotEl = pingBadge.querySelector("span");
+    if (dotEl) {
+      dotEl.style.color = dotColor;
+    }
+    const modeEl = pingBadge.querySelector("#hud-mode-val") as HTMLElement;
+    if (modeEl) {
+      modeEl.textContent = currentModeCode;
+    }
   };
 
-  const pingTimer = window.setInterval(() => {
+  const pingTimer = window.setInterval(async () => {
     if (transportConnected && !sessionEnded) {
+      try {
+        if (currentTransport.getTransportType) {
+          const type = await currentTransport.getTransportType();
+          // STUN = s, TURN = t, Supabase = s
+          if (type === "turn") {
+            currentModeCode = "t";
+          } else {
+            currentModeCode = "s";
+          }
+          const modeEl = pingBadge.querySelector("#hud-mode-val") as HTMLElement;
+          if (modeEl) {
+            modeEl.textContent = currentModeCode;
+          }
+        }
+      } catch {}
+
       try {
         currentTransport.send({
           kind: "ping",

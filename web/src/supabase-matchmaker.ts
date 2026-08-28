@@ -89,6 +89,7 @@ type SignalMessage =
  */
 class WebRtcOnlineTransport implements OnlineTransport {
   public disconnectCause: PeerDisconnectCause = null;
+  public transportType: "stun" | "turn" = "stun";
   private peerConnection: RTCPeerConnection;
   private dataChannel: RTCDataChannel;
   private messageListeners = new Set<(payload: object) => void>();
@@ -102,6 +103,23 @@ class WebRtcOnlineTransport implements OnlineTransport {
 
     this.setupDataChannel(dc);
     this.setupPeerConnection(pc);
+  }
+
+  public async getTransportType(): Promise<"stun" | "turn"> {
+    try {
+      const stats = await this.peerConnection.getStats();
+      for (const report of stats.values()) {
+        if (report.type === "candidate-pair" && report.state === "succeeded") {
+          const localCand = stats.get(report.localCandidateId);
+          const remoteCand = stats.get(report.remoteCandidateId);
+          if (localCand?.candidateType === "relay" || remoteCand?.candidateType === "relay") {
+            this.transportType = "turn";
+            return "turn";
+          }
+        }
+      }
+    } catch {}
+    return this.transportType;
   }
 
   private setupDataChannel(dc: RTCDataChannel): void {
@@ -216,6 +234,7 @@ class WebRtcOnlineTransport implements OnlineTransport {
  */
 class SupabaseRealtimeOnlineTransport implements OnlineTransport {
   public disconnectCause: PeerDisconnectCause = null;
+  public transportType: "supabase" = "supabase";
   private channel: RealtimeChannel;
   private myUserId: string;
   private messageListeners = new Set<(payload: object) => void>();
