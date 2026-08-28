@@ -8,16 +8,7 @@ const RTC_CONFIGURATION: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelay",
-      credential: "openrelay",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelay",
-      credential: "openrelay",
-    },
+    { urls: "stun:stun2.l.google.com:19302" },
   ],
   iceCandidatePoolSize: 2,
 };
@@ -314,7 +305,7 @@ export class SupabaseMatchmaker {
 
           // 2초마다 큐 재평가 및 타이머 가동
           this.evalTimer = window.setInterval(() => {
-            if (this.isCancelled) return;
+            if (this.isCancelled || this.activeMatchId || this.isConnectionEstablished) return;
             this.evaluateQueue();
           }, 2000);
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
@@ -327,7 +318,7 @@ export class SupabaseMatchmaker {
    * Expanding Queue 매칭 적합도 검사
    */
   private evaluateQueue(): void {
-    if (!this.channel || this.activeMatchId || this.isCancelled || this.isConnectionEstablished) return;
+    if (!this.channel || this.activeMatchId || this.opponentProfile || this.isCancelled || this.isConnectionEstablished) return;
 
     const presenceState = this.channel.presenceState<PresencePayload>();
     const now = Date.now();
@@ -350,22 +341,24 @@ export class SupabaseMatchmaker {
       if (!presences || presences.length === 0) continue;
       const candidate = presences[0];
 
-      if (candidate.id === this.user.id) continue;
+      if (candidate.id.toLowerCase() === this.user.id.toLowerCase()) continue;
       if (this.failedOpponentsCooldown.has(candidate.id)) continue;
       if (candidate.targetMatchId) continue; // 이미 다른 매칭 진행 중
 
       const mmrDiff = Math.abs(currentMmr - candidate.mmr);
       if (mmrDiff <= allowedMmrDiff) {
-        // 매칭 성사 결정: 오직 UUID가 더 작은 Host만 initiateMatch를 주도적으로 실행
-        if (this.user.id < candidate.id) {
+        // 매칭 성사 결정: 오직 UUID가 사전순으로 더 작은 Host만 initiateMatch를 주도적으로 실행
+        if (this.user.id.toLowerCase() < candidate.id.toLowerCase()) {
           const cleanHost = this.user.id.replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
           const cleanGuest = candidate.id.replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
           const matchId = `match-${cleanHost}-${cleanGuest}-${Date.now().toString(36)}`;
 
           void this.initiateMatch(matchId, this.user.id, candidate.id, candidate);
         } else {
-          // Guest는 Host로부터 match-proposal 시그널이 오기를 대기
-          this.updateStatus("searching", `상대 발견 대기 중 (${candidate.nickname})...`, waitTimeSeconds, allowedMmrDiff);
+          // Guest는 Host로부터 match-proposal 시그널이 오기를 대기 (activeMatchId 세팅 전까지 덮어쓰기 방지용 임시 정보 기록)
+          this.opponentProfile = candidate;
+          this.updateStatus("match-found", `대전 상대 발견: ${candidate.nickname} (${candidate.mmr})`, waitTimeSeconds, allowedMmrDiff, candidate);
+          this.startSignalingTimeout(`pending-${candidate.id}`, candidate.id);
         }
         break;
       }
@@ -383,14 +376,14 @@ export class SupabaseMatchmaker {
   ): Promise<void> {
     if (this.activeMatchId) return;
     this.activeMatchId = matchId;
-    this.isHost = this.user.id === hostId;
+    this.isHost = this.user.id.toLowerCase() === hostId.toLowerCase();
     this.opponentProfile = opponentInfo;
 
     this.updateStatus("match-found", `대전 상대 발견: ${opponentInfo.nickname} (${opponentInfo.mmr})`, 0, 0, opponentInfo);
     this.startSignalingTimeout(matchId, opponentInfo.id);
 
     if (this.isHost) {
-      // Host: 제안 브로드캐스트 및 Offer 생성
+      console.log(`[Matchmaker] Host initiateMatch: ${matchId}, Guest: ${guestId}`);
       await this.sendSignal({
         type: "match-proposal",
         matchId,
@@ -442,19 +435,22 @@ export class SupabaseMatchmaker {
    * 시그널링 메시지 수신 핸들러
    */
   private async handleIncomingSignal(signal: SignalMessage): Promise<void> {
-    if (this.isCancelled || !signal || signal.toId !== this.user.id) return;
+    if (this.isCancelled || !signal || !signal.toId) return;
+    if (signal.toId.toLowerCase() !== this.user.id.toLowerCase()) return;
+
+    console.log(`[Matchmaker Signal Received] ${signal.type} from ${signal.fromId}`);
 
     try {
       if (signal.type === "match-proposal") {
-        if (!this.activeMatchId) {
+        if (!this.activeMatchId || this.activeMatchId.startsWith("pending-")) {
           this.activeMatchId = signal.matchId;
           this.isHost = false;
           const presenceState = this.channel?.presenceState<PresencePayload>() || {};
           const hostPresence = presenceState[signal.hostId]?.[0];
           this.opponentProfile = {
             id: signal.hostId,
-            nickname: hostPresence?.nickname || "상대 플레이어",
-            mmr: hostPresence?.mmr || 1200,
+            nickname: hostPresence?.nickname || this.opponentProfile?.nickname || "상대 플레이어",
+            mmr: hostPresence?.mmr || this.opponentProfile?.mmr || 1200,
           };
           this.updateStatus(
             "match-found",
@@ -463,20 +459,21 @@ export class SupabaseMatchmaker {
             0,
             this.opponentProfile,
           );
+          this.startSignalingTimeout(signal.matchId, signal.hostId);
           await this.setupGuestWebRTC(signal.hostId, signal.matchId);
         }
       } else if (signal.type === "offer") {
-        // match-proposal보다 offer가 먼저 오거나 동시에 온 경우 자동 자가 치유
-        if (!this.activeMatchId) {
+        if (!this.activeMatchId || this.activeMatchId.startsWith("pending-")) {
           this.activeMatchId = signal.matchId;
           this.isHost = false;
           const presenceState = this.channel?.presenceState<PresencePayload>() || {};
           const hostPresence = presenceState[signal.fromId]?.[0];
           this.opponentProfile = {
             id: signal.fromId,
-            nickname: hostPresence?.nickname || "상대 플레이어",
-            mmr: hostPresence?.mmr || 1200,
+            nickname: hostPresence?.nickname || this.opponentProfile?.nickname || "상대 플레이어",
+            mmr: hostPresence?.mmr || this.opponentProfile?.mmr || 1200,
           };
+          this.startSignalingTimeout(signal.matchId, signal.fromId);
         }
 
         if (!this.isHost) {
@@ -486,10 +483,10 @@ export class SupabaseMatchmaker {
 
           if (this.peerConnection) {
             this.updateStatus("signaling", "P2P 연결 수립 중 (Answer 전송)...");
-            await this.peerConnection.setRemoteDescription({
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription({
               type: "offer",
               sdp: signal.sdp,
-            });
+            }));
 
             // 버퍼링된 조기 ICE Candidate 적용
             await this.flushPendingIceCandidates();
@@ -506,21 +503,25 @@ export class SupabaseMatchmaker {
             });
           }
         }
-      } else if (signal.type === "answer" && signal.matchId === this.activeMatchId) {
+      } else if (signal.type === "answer") {
         if (this.isHost && this.peerConnection) {
           this.updateStatus("signaling", "P2P 연결 확정 중...");
-          await this.peerConnection.setRemoteDescription({
+          await this.peerConnection.setRemoteDescription(new RTCSessionDescription({
             type: "answer",
             sdp: signal.sdp,
-          });
+          }));
 
           // 버퍼링된 조기 ICE Candidate 적용
           await this.flushPendingIceCandidates();
         }
-      } else if (signal.type === "ice" && (signal.matchId === this.activeMatchId || !this.activeMatchId)) {
+      } else if (signal.type === "ice") {
         if (signal.candidate) {
           if (this.peerConnection && this.peerConnection.remoteDescription) {
-            await this.peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            try {
+              await this.peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            } catch (e) {
+              console.warn("ICE Candidate 추가 예외:", e);
+            }
           } else {
             // remoteDescription 설정 전이면 큐에 보관
             this.pendingIceCandidates.push(signal.candidate);
@@ -569,13 +570,31 @@ export class SupabaseMatchmaker {
       }
     };
 
-    if (dc.readyState === "open") {
-      this.onConnectionEstablished(pc, dc, "white", matchId);
-    } else {
-      dc.onopen = () => {
+    pc.oniceconnectionstatechange = () => {
+      console.log(`[Host ICE State] ${pc.iceConnectionState}`);
+    };
+
+    pc.onconnectionstatechange = () => {
+      console.log(`[Host Peer State] ${pc.connectionState}`);
+      if (pc.connectionState === "connected" && dc.readyState === "open") {
         this.onConnectionEstablished(pc, dc, "white", matchId);
-      };
-    }
+      }
+    };
+
+    const checkOpen = () => {
+      if (dc.readyState === "open") {
+        this.onConnectionEstablished(pc, dc, "white", matchId);
+      }
+    };
+
+    dc.onopen = checkOpen;
+    const pollInterval = window.setInterval(() => {
+      if (this.isConnectionEstablished || this.isCancelled) {
+        clearInterval(pollInterval);
+        return;
+      }
+      checkOpen();
+    }, 100);
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -593,6 +612,7 @@ export class SupabaseMatchmaker {
    * Guest WebRTC RTCPeerConnection 설정
    */
   private async setupGuestWebRTC(hostId: string, matchId: string): Promise<void> {
+    if (this.peerConnection) return;
     this.updateStatus("signaling", "P2P 연결 응답 중...");
     const pc = new RTCPeerConnection(RTC_CONFIGURATION);
     this.peerConnection = pc;
@@ -609,16 +629,34 @@ export class SupabaseMatchmaker {
       }
     };
 
+    pc.oniceconnectionstatechange = () => {
+      console.log(`[Guest ICE State] ${pc.iceConnectionState}`);
+    };
+
+    pc.onconnectionstatechange = () => {
+      console.log(`[Guest Peer State] ${pc.connectionState}`);
+      if (pc.connectionState === "connected" && this.dataChannel && this.dataChannel.readyState === "open") {
+        this.onConnectionEstablished(pc, this.dataChannel, "black", matchId);
+      }
+    };
+
     pc.ondatachannel = (event) => {
       const dc = event.channel;
       this.dataChannel = dc;
-      if (dc.readyState === "open") {
-        this.onConnectionEstablished(pc, dc, "black", matchId);
-      } else {
-        dc.onopen = () => {
+      const checkOpen = () => {
+        if (dc.readyState === "open") {
           this.onConnectionEstablished(pc, dc, "black", matchId);
-        };
-      }
+        }
+      };
+      dc.onopen = checkOpen;
+      const pollInterval = window.setInterval(() => {
+        if (this.isConnectionEstablished || this.isCancelled) {
+          clearInterval(pollInterval);
+          return;
+        }
+        checkOpen();
+      }, 100);
+      checkOpen();
     };
   }
 
