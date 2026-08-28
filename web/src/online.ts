@@ -915,40 +915,38 @@ export function createOnlineRuntime(
   const deriveRematchMatchId = (offerId: string): string =>
     parseMatchId(`rematch-${offerId}`, "재대결");
 
-  // 실시간 Ping 및 연결 방식 HUD 뱃지 UI 생성
+  // 실시간 Ping HUD 뱃지 UI 생성 (메뉴 버튼과 동일한 크기 및 스타일)
   const pingBadge = document.createElement("div");
   pingBadge.className = "online-ping-hud";
   pingBadge.style.cssText = `
     position: fixed;
     top: 14px;
-    right: 14px;
+    right: 86px;
     z-index: 50;
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 5px;
     background: rgba(15, 23, 42, 0.88);
-    border: 1px solid #334155;
-    border-radius: 6px;
-    padding: 3px 8px;
-    font-size: 11px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 0.65rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
     font-weight: 700;
-    color: #94a3b8;
+    color: #f8f2e7;
     backdrop-filter: blur(4px);
     pointer-events: none;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    min-width: 48px;
+    box-sizing: border-box;
+    height: 34px;
+    min-width: 66px;
     text-align: center;
   `;
   pingBadge.innerHTML = `
-    <div style="display:flex; align-items:center; gap:4px;">
-      <span style="color:#22c55e; font-size:9px;">●</span> <span id="hud-ping-val" style="color:#f8fafc;">-- ms</span>
-    </div>
-    <div id="hud-mode-val" style="font-size:10px; font-weight:800; color:#38bdf8; text-transform:lowercase; line-height:1.1; margin-top:1px;">st</div>
+    <span style="color:#22c55e; font-size:10px; line-height:1;">●</span>
+    <span id="hud-ping-val" style="color:#f8fafc; font-variant-numeric:tabular-nums;">-- ms</span>
   `;
   document.body.appendChild(pingBadge);
-
-  let currentModeCode = "st"; // 기본 stun = st
 
   const updatePingHud = (rttMs: number) => {
     let dotColor = "#22c55e"; // 🟢 < 60ms
@@ -963,32 +961,10 @@ export function createOnlineRuntime(
     if (dotEl) {
       dotEl.style.color = dotColor;
     }
-    const modeEl = pingBadge.querySelector("#hud-mode-val") as HTMLElement;
-    if (modeEl) {
-      modeEl.textContent = currentModeCode;
-    }
   };
 
   const pingTimer = window.setInterval(async () => {
     if (transportConnected && !sessionEnded) {
-      try {
-        if (currentTransport.getTransportType) {
-          const type = await currentTransport.getTransportType();
-          // STUN = st, TURN = tu, Supabase = sup
-          if (type === "turn") {
-            currentModeCode = "tu";
-          } else if (type === "supabase") {
-            currentModeCode = "sup";
-          } else {
-            currentModeCode = "st";
-          }
-          const modeEl = pingBadge.querySelector("#hud-mode-val") as HTMLElement;
-          if (modeEl) {
-            modeEl.textContent = currentModeCode;
-          }
-        }
-      } catch {}
-
       try {
         currentTransport.send({
           kind: "ping",
