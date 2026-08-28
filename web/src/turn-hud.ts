@@ -32,27 +32,32 @@ export function createTurnHud(
   const mainBadge = document.createElement("div");
   mainBadge.className = "turn-hud-badge";
   mainBadge.style.cssText = `
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 10px;
-    padding: 6px 14px;
-    display: flex;
+    background: rgba(15, 23, 42, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 0.65rem;
+    padding: 0 10px;
+    height: 34px;
+    box-sizing: border-box;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    backdrop-filter: blur(4px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   `;
 
   const sideIndicator = document.createElement("div");
+  sideIndicator.className = "turn-hud-side";
   sideIndicator.style.cssText = `
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     font-size: 13px;
     font-weight: 700;
     letter-spacing: -0.02em;
   `;
 
   const timerWrapper = document.createElement("div");
+  timerWrapper.className = "turn-hud-timer-wrap";
   timerWrapper.style.cssText = `
     display: flex;
     align-items: center;
@@ -60,17 +65,19 @@ export function createTurnHud(
   `;
 
   const timerText = document.createElement("span");
+  timerText.className = "turn-hud-timer-text";
   timerText.style.cssText = `
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
-    min-width: 38px;
+    min-width: 32px;
     text-align: right;
   `;
 
   const progressBarTrack = document.createElement("div");
+  progressBarTrack.className = "turn-hud-progress-track";
   progressBarTrack.style.cssText = `
-    width: 50px;
+    width: 36px;
     height: 5px;
     background: rgba(51, 65, 85, 0.8);
     border-radius: 3px;
