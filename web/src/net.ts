@@ -602,7 +602,7 @@ export function createPeerLink(
     });
   };
 
-  // Google STUN 및 Metered TURN 릴레이로 NAT 후보를 모으는 새 연결을 만든다.
+  // Google STUN 3중화로 NAT 후보를 모으는 새 연결을 만든다.
   const createConnection = (): RTCPeerConnection => {
     if (typeof RTCPeerConnection === "undefined") {
       throw new Error("이 브라우저는 WebRTC RTCPeerConnection을 지원하지 않습니다.");
@@ -611,16 +611,7 @@ export function createPeerLink(
       iceServers: [
         { urls: STUN_URL },
         { urls: "stun:stun1.l.google.com:19302" },
-        {
-          urls: "turn:openrelay.metered.ca:80",
-          username: "openrelay",
-          credential: "openrelay",
-        },
-        {
-          urls: "turn:openrelay.metered.ca:443?transport=tcp",
-          username: "openrelay",
-          credential: "openrelay",
-        },
+        { urls: "stun:stun2.l.google.com:19302" },
       ],
       iceCandidatePoolSize: 2,
     });
