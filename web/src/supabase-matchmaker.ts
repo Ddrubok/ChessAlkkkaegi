@@ -229,90 +229,6 @@ class WebRtcOnlineTransport implements OnlineTransport {
   }
 }
 
-/**
- * 방화벽/WebRTC 차단 시 100% 안전하게 대국을 진행시키는 Supabase Realtime WebSocket 전송 어댑터
- */
-class SupabaseRealtimeOnlineTransport implements OnlineTransport {
-  public disconnectCause: PeerDisconnectCause = null;
-  public transportType: "supabase" = "supabase";
-  private channel: RealtimeChannel;
-  private myUserId: string;
-  private messageListeners = new Set<(payload: object) => void>();
-  private stateListeners = new Set<(state: PeerLinkState) => void>();
-  private currentState: PeerLinkState = "connected";
-  private bufferedMessages: object[] = [];
-
-  constructor(channel: RealtimeChannel, myUserId: string) {
-    this.channel = channel;
-    this.myUserId = myUserId;
-
-    this.channel.on("broadcast", { event: "game-packet" }, ({ payload }) => {
-      if (!payload || typeof payload !== "object") return;
-      const raw = payload as { senderId?: string; data?: object };
-      // 본인이 보낸 패킷은 무시
-      if (raw.senderId === this.myUserId) return;
-      if (raw.data) {
-        if (this.messageListeners.size === 0) {
-          this.bufferedMessages.push(raw.data);
-        } else {
-          for (const listener of this.messageListeners) {
-            listener(raw.data);
-          }
-        }
-      }
-    });
-  }
-
-  private setState(state: PeerLinkState): void {
-    if (this.currentState === state) return;
-    this.currentState = state;
-    for (const listener of this.stateListeners) {
-      listener(state);
-    }
-  }
-
-  public send(payload: object): void {
-    try {
-      void this.channel.send({
-        type: "broadcast",
-        event: "game-packet",
-        payload: {
-          senderId: this.myUserId,
-          data: payload,
-        },
-      });
-    } catch (err) {
-      console.warn("Realtime WebSocket 패킷 전송 오류:", err);
-    }
-  }
-
-  public onMessage(handler: (payload: object) => void): () => void {
-    this.messageListeners.add(handler);
-    if (this.bufferedMessages.length > 0) {
-      const pending = [...this.bufferedMessages];
-      this.bufferedMessages = [];
-      for (const msg of pending) {
-        handler(msg);
-      }
-    }
-    return () => {
-      this.messageListeners.delete(handler);
-    };
-  }
-
-  public onStateChange(handler: (state: PeerLinkState) => void): () => void {
-    this.stateListeners.add(handler);
-    handler(this.currentState);
-    return () => {
-      this.stateListeners.delete(handler);
-    };
-  }
-
-  public close(): void {
-    this.setState("disconnected");
-  }
-}
-
 export class SupabaseMatchmaker {
   private client: SupabaseClient;
   private user: UserProfile;
@@ -333,7 +249,6 @@ export class SupabaseMatchmaker {
   private pendingIceCandidates: RTCIceCandidateInit[] = [];
   private isConnectionEstablished = false;
   private signalingTimeoutTimer: number | null = null;
-  private fallbackTimer: number | null = null;
   private setupGuestPromise: Promise<void> | null = null;
   private failedOpponentsCooldown: Map<string, number> = new Map();
 
@@ -478,7 +393,6 @@ export class SupabaseMatchmaker {
 
     this.updateStatus("match-found", `대전 상대 발견: ${opponentInfo.nickname} (${opponentInfo.mmr})`, 0, 0, opponentInfo);
     this.startSignalingTimeout(matchId, opponentInfo.id);
-    this.startFallbackTimer(matchId, this.isHost ? "white" : "black");
 
     if (this.isHost) {
       console.log(`[Matchmaker] Host initiateMatch: ${matchId}, Guest: ${guestId}`);
@@ -486,31 +400,15 @@ export class SupabaseMatchmaker {
     }
   }
 
-  private startFallbackTimer(matchId: string, mySide: PieceSide): void {
-    this.clearFallbackTimer();
-    this.fallbackTimer = window.setTimeout(() => {
-      if (this.isConnectionEstablished || this.isCancelled || !this.channel) return;
-      console.warn(`[Matchmaker] WebRTC P2P 지연/방화벽 감지 (3.5초 경과) -> Supabase Realtime WebSocket 릴레이로 무중단 자동 전환!`);
-      this.onConnectionEstablishedViaRealtime(this.channel, mySide, matchId);
-    }, 3500);
-  }
-
-  private clearFallbackTimer(): void {
-    if (this.fallbackTimer !== null) {
-      clearTimeout(this.fallbackTimer);
-      this.fallbackTimer = null;
-    }
-  }
-
   private startSignalingTimeout(matchId: string, opponentId: string): void {
     this.clearSignalingTimeout();
     this.signalingTimeoutTimer = window.setTimeout(() => {
       if (this.isConnectionEstablished || this.isCancelled) return;
-      console.warn(`[Matchmaker] 10초 시그널링 타임아웃 발생 (상대방: ${opponentId}, 매치: ${matchId})`);
+      console.warn(`[Matchmaker] 15초 WebRTC/TURN 시그널링 타임아웃 발생 (상대방: ${opponentId}, 매치: ${matchId})`);
       this.failedOpponentsCooldown.set(opponentId, Date.now() + 15000);
       this.resetSignalingState();
-      this.updateStatus("searching", "상대방의 응답이 지연되어 대기열을 다시 탐색합니다...");
-    }, 10000);
+      this.updateStatus("searching", "상대방과의 P2P/TURN 연결이 지연되어 대기열을 다시 탐색합니다...");
+    }, 15000);
   }
 
   private clearSignalingTimeout(): void {
@@ -522,7 +420,6 @@ export class SupabaseMatchmaker {
 
   private resetSignalingState(): void {
     this.clearSignalingTimeout();
-    this.clearFallbackTimer();
     this.setupGuestPromise = null;
     if (this.dataChannel) {
       try { this.dataChannel.close(); } catch {}
@@ -561,7 +458,6 @@ export class SupabaseMatchmaker {
           };
           this.updateStatus("match-found", `대전 상대 발견: ${this.opponentProfile.nickname}`, 0, 0, this.opponentProfile);
           this.startSignalingTimeout(signal.matchId, signal.fromId);
-          this.startFallbackTimer(signal.matchId, "black");
         }
 
         if (!this.isHost) {
@@ -766,7 +662,6 @@ export class SupabaseMatchmaker {
     if (this.isConnectionEstablished) return;
     this.isConnectionEstablished = true;
     this.clearSignalingTimeout();
-    this.clearFallbackTimer();
 
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);
@@ -781,36 +676,6 @@ export class SupabaseMatchmaker {
     this.updateStatus("connected", "P2P 연결 성공! 게임을 시작합니다.");
 
     const transport = new WebRtcOnlineTransport(pc, dc);
-    if (this.matchReadyCallback && this.opponentProfile) {
-      this.matchReadyCallback(transport, mySide, matchId, this.opponentProfile);
-    }
-  }
-
-  /**
-   * Supabase Realtime WebSocket 릴레이로 무중단 인게임 런타임 전환 (Zero-Fail Fallback)
-   */
-  private onConnectionEstablishedViaRealtime(
-    channel: RealtimeChannel,
-    mySide: PieceSide,
-    matchId: string,
-  ): void {
-    if (this.isConnectionEstablished) return;
-    this.isConnectionEstablished = true;
-    this.clearSignalingTimeout();
-    this.clearFallbackTimer();
-
-    if (this.evalTimer !== null) {
-      clearInterval(this.evalTimer);
-      this.evalTimer = null;
-    }
-
-    try {
-      this.channel?.untrack();
-    } catch {}
-
-    this.updateStatus("connected", "실시간 서버 릴레이 연결 성공! 게임을 시작합니다.");
-
-    const transport = new SupabaseRealtimeOnlineTransport(channel, this.user.id);
     if (this.matchReadyCallback && this.opponentProfile) {
       this.matchReadyCallback(transport, mySide, matchId, this.opponentProfile);
     }
@@ -920,7 +785,6 @@ export class SupabaseMatchmaker {
 
   private async cleanup(): Promise<void> {
     this.clearSignalingTimeout();
-    this.clearFallbackTimer();
     this.setupGuestPromise = null;
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);
