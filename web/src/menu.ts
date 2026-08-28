@@ -911,12 +911,12 @@ export function createMainMenu(
     "menu-confirm-title",
   );
   confirmOverlay.innerHTML = `
-    <div class="match-result-panel">
-      <p>${I18nManager.t("ingame.abandon_title")}</p>
-      <h1 id="menu-confirm-title">${I18nManager.t("ingame.abandon_desc")}</h1>
-      <div class="match-result-actions">
-        <button type="button" data-menu-cancel>${I18nManager.t("ingame.continue_btn")}</button>
-        <button type="button" data-menu-confirm>${I18nManager.t("ingame.menu_btn")}</button>
+    <div class="match-result-panel" style="max-width:380px; text-align:center; padding:24px;">
+      <h1 id="menu-confirm-title" style="font-size:22px; font-weight:800; color:#ffe7a3; margin:0 0 10px 0;">${I18nManager.t("ingame.abandon_title")}</h1>
+      <p style="font-size:13px; color:#94a3b8; margin:0 0 20px 0; line-height:1.5;">${I18nManager.t("ingame.abandon_desc")}</p>
+      <div class="match-result-actions" style="display:flex; gap:10px; justify-content:center;">
+        <button type="button" data-menu-cancel style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer;">${I18nManager.t("ingame.continue_btn")}</button>
+        <button type="button" data-menu-confirm style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#ef4444; color:white; border:none; cursor:pointer;">${I18nManager.t("ingame.menu_btn")}</button>
       </div>
     </div>
   `;
