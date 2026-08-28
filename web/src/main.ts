@@ -54,6 +54,7 @@ import {
   handleInputPieceRemoved,
   lockInputForMatchOver,
   resetInputAfterMatch,
+  switchInputMode,
 } from "./input";
 import {
   type PieceSide,
@@ -1663,7 +1664,11 @@ async function bootstrap(): Promise<void> {
     renderRematchControls(null);
     hideDisconnectOverlay();
     if (mode === "tutorial") {
-      tutorialManager.start(selectedStage ?? 1);
+      const step = selectedStage ?? 1;
+      tutorialManager.start(step);
+      if (step === 3) {
+        switchInputMode(inputRuntime, "billiards");
+      }
     } else {
       tutorialManager.stop();
     }
@@ -1939,6 +1944,9 @@ async function bootstrap(): Promise<void> {
           gameMode: "tutorial",
           stageNumber: nextStep,
         });
+        if (nextStep === 3) {
+          switchInputMode(inputRuntime, "billiards");
+        }
       }
     },
     async () => {
