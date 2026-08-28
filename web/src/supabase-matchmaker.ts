@@ -4,10 +4,23 @@ import type { OnlineTransport } from "./online";
 import type { PeerDisconnectCause, PeerLinkState } from "./net";
 import type { UserProfile } from "./supabase-auth";
 
-const STUN_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-];
+const RTC_CONFIGURATION: RTCConfiguration = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelay",
+      credential: "openrelay",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "openrelay",
+      credential: "openrelay",
+    },
+  ],
+  iceCandidatePoolSize: 2,
+};
 const DATA_CHANNEL_LABEL = "chess-alkkaegi-p2p";
 
 export type MatchmakingPhase =
@@ -233,6 +246,8 @@ export class SupabaseMatchmaker {
   private isCancelled = false;
   private pendingIceCandidates: RTCIceCandidateInit[] = [];
   private isConnectionEstablished = false;
+  private signalingTimeoutTimer: number | null = null;
+  private failedOpponentsCooldown: Map<string, number> = new Map();
 
   private queueMode: "classic" | "strategy";
 
@@ -316,6 +331,12 @@ export class SupabaseMatchmaker {
 
     const presenceState = this.channel.presenceState<PresencePayload>();
     const now = Date.now();
+
+    // 쿨다운 만료 정리
+    for (const [id, exp] of this.failedOpponentsCooldown.entries()) {
+      if (now > exp) this.failedOpponentsCooldown.delete(id);
+    }
+
     const waitTimeSeconds = Math.max(0, Math.floor((now - this.startTime) / 1000));
     const allowedMmrDiff = Math.min(1000, 50 + waitTimeSeconds * 10);
 
@@ -330,6 +351,7 @@ export class SupabaseMatchmaker {
       const candidate = presences[0];
 
       if (candidate.id === this.user.id) continue;
+      if (this.failedOpponentsCooldown.has(candidate.id)) continue;
       if (candidate.targetMatchId) continue; // 이미 다른 매칭 진행 중
 
       const mmrDiff = Math.abs(currentMmr - candidate.mmr);
@@ -365,6 +387,7 @@ export class SupabaseMatchmaker {
     this.opponentProfile = opponentInfo;
 
     this.updateStatus("match-found", `대전 상대 발견: ${opponentInfo.nickname} (${opponentInfo.mmr})`, 0, 0, opponentInfo);
+    this.startSignalingTimeout(matchId, opponentInfo.id);
 
     if (this.isHost) {
       // Host: 제안 브로드캐스트 및 Offer 생성
@@ -379,6 +402,40 @@ export class SupabaseMatchmaker {
 
       await this.setupHostWebRTC(guestId, matchId);
     }
+  }
+
+  private startSignalingTimeout(matchId: string, opponentId: string): void {
+    this.clearSignalingTimeout();
+    this.signalingTimeoutTimer = window.setTimeout(() => {
+      if (this.isConnectionEstablished || this.isCancelled) return;
+      console.warn(`[Matchmaker] 10초 시그널링 타임아웃 발생 (상대방: ${opponentId}, 매치: ${matchId})`);
+      this.failedOpponentsCooldown.set(opponentId, Date.now() + 15000);
+      this.resetSignalingState();
+      this.updateStatus("searching", "상대방의 응답이 지연되어 대기열을 다시 탐색합니다...");
+    }, 10000);
+  }
+
+  private clearSignalingTimeout(): void {
+    if (this.signalingTimeoutTimer !== null) {
+      clearTimeout(this.signalingTimeoutTimer);
+      this.signalingTimeoutTimer = null;
+    }
+  }
+
+  private resetSignalingState(): void {
+    this.clearSignalingTimeout();
+    if (this.dataChannel) {
+      try { this.dataChannel.close(); } catch {}
+      this.dataChannel = null;
+    }
+    if (this.peerConnection) {
+      try { this.peerConnection.close(); } catch {}
+      this.peerConnection = null;
+    }
+    this.activeMatchId = null;
+    this.opponentProfile = null;
+    this.isHost = false;
+    this.pendingIceCandidates = [];
   }
 
   /**
@@ -494,7 +551,7 @@ export class SupabaseMatchmaker {
    */
   private async setupHostWebRTC(guestId: string, matchId: string): Promise<void> {
     this.updateStatus("signaling", "P2P 연결 준비 중 (Offer 생성)...");
-    const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+    const pc = new RTCPeerConnection(RTC_CONFIGURATION);
     this.peerConnection = pc;
 
     const dc = pc.createDataChannel(DATA_CHANNEL_LABEL, { ordered: true });
@@ -537,7 +594,7 @@ export class SupabaseMatchmaker {
    */
   private async setupGuestWebRTC(hostId: string, matchId: string): Promise<void> {
     this.updateStatus("signaling", "P2P 연결 응답 중...");
-    const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+    const pc = new RTCPeerConnection(RTC_CONFIGURATION);
     this.peerConnection = pc;
 
     pc.onicecandidate = (event) => {
@@ -576,6 +633,7 @@ export class SupabaseMatchmaker {
   ): void {
     if (this.isConnectionEstablished) return;
     this.isConnectionEstablished = true;
+    this.clearSignalingTimeout();
 
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);
@@ -662,6 +720,7 @@ export class SupabaseMatchmaker {
       0,
       opponent,
     );
+    this.startSignalingTimeout(roomId, opponent.id);
 
     // 고유한 방 채널 생성
     const channelName = `ca-friendly-room-${roomId}`;
@@ -697,6 +756,7 @@ export class SupabaseMatchmaker {
   }
 
   private async cleanup(): Promise<void> {
+    this.clearSignalingTimeout();
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);
       this.evalTimer = null;

@@ -21,6 +21,7 @@ import {
 } from "./net";
 import type { ReplayTurnRecord } from "./replay";
 import { capturePhysicsStateHash } from "./state-hash";
+import { validateStrategyDeck } from "./strategy-deck";
 import { I18nManager } from "./i18n";
 import {
   alignTurnCameraToPerspective,
@@ -136,6 +137,16 @@ export interface OnlineRematchMessage {
   offerId: string;
 }
 
+export interface OnlinePingMessage {
+  kind: "ping";
+  t: number;
+}
+
+export interface OnlinePongMessage {
+  kind: "pong";
+  t: number;
+}
+
 export type OnlineMessage =
   | OnlineReadyMessage
   | OnlineTurnMessage
@@ -145,7 +156,9 @@ export type OnlineMessage =
   | OnlineResumeMessage
   | OnlineResumeTailMessage
   | OnlineResignMessage
-  | OnlineRematchMessage;
+  | OnlineRematchMessage
+  | OnlinePingMessage
+  | OnlinePongMessage;
 
 export type OnlineRematchPhase =
   | "idle"
@@ -629,6 +642,18 @@ export function parseOnlineMessage(
         offerId: source.offerId,
       };
     }
+    case "ping": {
+      return {
+        kind: "ping",
+        t: typeof source.t === "number" ? source.t : performance.now(),
+      };
+    }
+    case "pong": {
+      return {
+        kind: "pong",
+        t: typeof source.t === "number" ? source.t : performance.now(),
+      };
+    }
     default:
       throw new Error(`알 수 없는 온라인 메시지 종류 ${String(source.kind)}입니다.`);
   }
@@ -886,6 +911,50 @@ export function createOnlineRuntime(
   // 요청 ID만으로 양쪽이 별도 왕복 없이 같은 새 매치 식별자를 만든다.
   const deriveRematchMatchId = (offerId: string): string =>
     parseMatchId(`rematch-${offerId}`, "재대결");
+
+  // 실시간 Ping HUD 뱃지 UI 생성
+  const pingBadge = document.createElement("div");
+  pingBadge.className = "online-ping-hud";
+  pingBadge.style.cssText = `
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.88);
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  `;
+  pingBadge.innerHTML = `<span style="color:#22c55e;">●</span> <span>-- ms</span>`;
+  document.body.appendChild(pingBadge);
+
+  const updatePingHud = (rttMs: number) => {
+    let dotColor = "#22c55e"; // 🟢 < 60ms
+    if (rttMs > 180) dotColor = "#ef4444"; // 🔴 > 180ms
+    else if (rttMs >= 60) dotColor = "#eab308"; // 🟡 60~180ms
+
+    pingBadge.innerHTML = `<span style="color:${dotColor};">●</span> <span style="color:#f8fafc;">${rttMs}ms</span>`;
+  };
+
+  const pingTimer = window.setInterval(() => {
+    if (transportConnected && !sessionEnded) {
+      try {
+        currentTransport.send({
+          kind: "ping",
+          t: performance.now(),
+        } satisfies OnlinePingMessage);
+      } catch {}
+    }
+  }, 2000);
 
   const runtime: OnlineRuntime = {
     transport: currentTransport,
@@ -1363,6 +1432,8 @@ export function createOnlineRuntime(
       hooksAttached = false;
       cancelRemoteTelegraph();
       runtime.active = false;
+      clearInterval(pingTimer);
+      pingBadge.remove();
       setTurnCameraPerspectiveSide(turnRuntime, null);
       currentTransport.close();
       runtime.lastEvent = "온라인 연결 종료";
@@ -1709,6 +1780,13 @@ export function createOnlineRuntime(
           runtime.remoteReady = true;
           remoteReadyHash = message.stateHash;
           const remoteDeck = message.strategyDeck ?? null;
+          if (remoteDeck !== null) {
+            const validation = validateStrategyDeck(remoteDeck);
+            if (!validation.isValid) {
+              console.error("[Anti-Cheat] 상대방의 전략 덱 검증 실패:", validation.reason);
+              throw new Error(`상대방의 전략 덱 검증 실패 (${validation.reason})`);
+            }
+          }
           if (mySide === "white") {
             runtime.whiteStrategyDeck = options.localStrategyDeck ?? null;
             runtime.blackStrategyDeck = remoteDeck;
@@ -2114,6 +2192,18 @@ export function createOnlineRuntime(
               message: "",
             });
           }
+          return;
+        }
+        case "ping": {
+          currentTransport.send({
+            kind: "pong",
+            t: message.t,
+          } satisfies OnlinePongMessage);
+          return;
+        }
+        case "pong": {
+          const rtt = Math.max(1, Math.round(performance.now() - message.t));
+          updatePingHud(rtt);
           return;
         }
       }
