@@ -19,8 +19,11 @@ export const DEFAULT_STUN_SERVERS: RTCIceServer[] = [
 let cachedIceServers: RTCIceServer[] | null = null;
 let cacheExpireTime = 0;
 
+export const DEFAULT_METERED_APP_NAME = "chessalkkagi";
+export const DEFAULT_METERED_API_KEY = "gq_9zBZTGIQ7OlvnUMGkPYMv5dz0SF_-aZr5j1zMlTRhXTeI";
+
 /**
- * Metered 설정값 가져오기 (환경 변수 또는 LocalStorage)
+ * Metered 설정값 가져오기 (환경 변수, LocalStorage, 또는 기본 설정)
  */
 export function getMeteredConfig(): { appName: string; apiKey: string } {
   const envAppName = (import.meta as any).env?.VITE_METERED_APP_NAME || "";
@@ -30,8 +33,8 @@ export function getMeteredConfig(): { appName: string; apiKey: string } {
   const storageApiKey = localStorage.getItem("ca_metered_api_key") || "";
 
   return {
-    appName: storageAppName || envAppName,
-    apiKey: storageApiKey || envApiKey,
+    appName: storageAppName || envAppName || DEFAULT_METERED_APP_NAME,
+    apiKey: storageApiKey || envApiKey || DEFAULT_METERED_API_KEY,
   };
 }
 
