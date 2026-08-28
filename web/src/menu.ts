@@ -913,7 +913,7 @@ export function createMainMenu(
   confirmOverlay.innerHTML = `
     <div class="match-result-panel" style="max-width:380px; text-align:center; padding:24px;">
       <h1 id="menu-confirm-title" style="font-size:22px; font-weight:800; color:#ffe7a3; margin:0 0 10px 0;">${I18nManager.t("ingame.abandon_title")}</h1>
-      <p style="font-size:13px; color:#94a3b8; margin:0 0 20px 0; line-height:1.5;">${I18nManager.t("ingame.abandon_desc")}</p>
+      <p id="menu-confirm-desc" style="font-size:13px; color:#94a3b8; margin:0 0 20px 0; line-height:1.5;">${I18nManager.t("ingame.abandon_desc")}</p>
       <div class="match-result-actions" style="display:flex; gap:10px; justify-content:center;">
         <button type="button" data-menu-cancel style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer;">${I18nManager.t("ingame.continue_btn")}</button>
         <button type="button" data-menu-confirm style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#ef4444; color:white; border:none; cursor:pointer;">${I18nManager.t("ingame.menu_btn")}</button>
@@ -979,10 +979,10 @@ export function createMainMenu(
   renderMainMenu(runtime);
   I18nManager.subscribe(() => {
     returnButton.textContent = I18nManager.t("ingame.menu_btn");
-    const confirmP = confirmOverlay.querySelector("p");
-    if (confirmP) confirmP.textContent = I18nManager.t("ingame.abandon_title");
     const confirmH1 = confirmOverlay.querySelector("#menu-confirm-title");
-    if (confirmH1) confirmH1.textContent = I18nManager.t("ingame.abandon_desc");
+    if (confirmH1) confirmH1.textContent = I18nManager.t("ingame.abandon_title");
+    const confirmDesc = confirmOverlay.querySelector("#menu-confirm-desc");
+    if (confirmDesc) confirmDesc.textContent = I18nManager.t("ingame.abandon_desc");
     const cancelBtn = confirmOverlay.querySelector("[data-menu-cancel]");
     if (cancelBtn) cancelBtn.textContent = I18nManager.t("ingame.continue_btn");
     const confirmBtn = confirmOverlay.querySelector("[data-menu-confirm]");
@@ -1032,7 +1032,14 @@ export function createMainMenu(
         "#menu-confirm-title",
       );
     if (heading !== null) {
-      heading.textContent = I18nManager.t("ingame.abandon_desc");
+      heading.textContent = I18nManager.t("ingame.abandon_title");
+    }
+    const desc =
+      confirmOverlay.querySelector<HTMLParagraphElement>(
+        "#menu-confirm-desc",
+      );
+    if (desc !== null) {
+      desc.textContent = I18nManager.t("ingame.abandon_desc");
     }
     runtime.confirming = true;
     runtime.confirmOverlay.hidden = false;
