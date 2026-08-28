@@ -20,7 +20,7 @@ let cachedIceServers: RTCIceServer[] | null = null;
 let cacheExpireTime = 0;
 
 export const DEFAULT_METERED_APP_NAME = "chessalkkagi";
-export const DEFAULT_METERED_API_KEY = "gq_9zBZTGIQ7OlvnUMGkPYMv5dz0SF_-aZr5j1zMlTRhXTeI";
+export const DEFAULT_METERED_API_KEY = "ee6b69bf97699b897c7b29bbcdc2620a4c04";
 
 /**
  * Metered 설정값 가져오기 (환경 변수, LocalStorage, 또는 기본 설정)
