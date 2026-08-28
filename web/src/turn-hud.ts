@@ -26,22 +26,9 @@ export function createTurnHud(
 ): TurnHudRuntime {
   const container = document.createElement("div");
   container.className = "turn-hud-container";
-  container.style.cssText = `
-    position: absolute;
-    top: 14px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    z-index: 10;
-    pointer-events: none;
-    user-select: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  `;
 
   const mainBadge = document.createElement("div");
+  mainBadge.className = "turn-hud-badge";
   mainBadge.style.cssText = `
     background: rgba(15, 23, 42, 0.9);
     backdrop-filter: blur(12px);
@@ -109,19 +96,17 @@ export function createTurnHud(
   // 정착 5초 초과 시 등장하는 가속 인디케이터 배지
   const accelBadge = document.createElement("div");
   accelBadge.style.cssText = `
-    background: rgba(234, 88, 12, 0.92);
+    background: #c2410c;
     color: #fff;
-    font-size: 12px;
-    font-weight: 800;
+    font-size: 11px;
+    font-weight: 700;
     padding: 3px 10px;
-    border-radius: 20px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
     display: none;
     align-items: center;
     gap: 4px;
-    animation: pulse 1s infinite;
   `;
-  accelBadge.innerHTML = `<span>⏩</span> <span id="accel-text">물리 가속 중 (1.0x)</span>`;
+  accelBadge.innerHTML = `<span id="accel-text">물리 가속 (1.0x)</span>`;
   container.appendChild(accelBadge);
 
   parent.appendChild(container);
@@ -155,16 +140,16 @@ export function createTurnHud(
 
     if (isOnline) {
       if (isMyTurn) {
-        sideIndicator.innerHTML = `<span style="color:#22c55e;">🟢 내 턴</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "백 ⚪" : "흑 ⚫"})</span>`;
-        mainBadge.style.borderColor = "rgba(34, 197, 94, 0.5)";
+        sideIndicator.innerHTML = `<span style="color:#22c55e;">내 턴</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "백" : "흑"})</span>`;
+        mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
       } else {
-        sideIndicator.innerHTML = `<span style="color:#38bdf8;">⏳ 상대 턴</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "백 ⚪" : "흑 ⚫"})</span>`;
+        sideIndicator.innerHTML = `<span style="color:#38bdf8;">상대 턴</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "백" : "흑"})</span>`;
         mainBadge.style.borderColor = "rgba(56, 189, 248, 0.3)";
       }
     } else {
-      const sideName = currentSide === "white" ? "백(선공) ⚪" : "흑(후공) ⚫";
-      sideIndicator.innerHTML = `<span style="color:${currentSide === "white" ? "#f8fafc" : "#94a3b8"};">${sideName} 턴</span>`;
-      mainBadge.style.borderColor = currentSide === "white" ? "rgba(248, 250, 252, 0.4)" : "rgba(148, 163, 184, 0.4)";
+      const sideName = currentSide === "white" ? "백(선공)" : "흑(후공)";
+      sideIndicator.innerHTML = `<span style="color:${currentSide === "white" ? "#f8fafc" : "#94a3b8"};">${sideName}</span>`;
+      mainBadge.style.borderColor = currentSide === "white" ? "rgba(248, 250, 252, 0.3)" : "rgba(148, 163, 184, 0.3)";
     }
 
     // 타이머 카운트다운 (ready 상태에서만 진행)

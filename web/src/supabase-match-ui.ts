@@ -27,6 +27,8 @@ export interface SupabaseMatchUiCallbacks {
     matchId: string,
     opponent: { id: string; nickname: string; mmr: number },
     myProfile: UserProfile,
+    strategyDeck?: import("./strategy-deck").StrategyDeck | null,
+    matchMode?: "classic" | "strategy",
   ) => Promise<void>;
   onOpenManualP2P: () => void;
   onClose: () => void;
@@ -40,9 +42,10 @@ export class SupabaseMatchUi {
   private matchmaker: SupabaseMatchmaker | null = null;
   private userEmail: string | null = null;
 
-  constructor(container: HTMLElement, callbacks: SupabaseMatchUiCallbacks) {
+  constructor(container: HTMLElement, callbacks: SupabaseMatchUiCallbacks, initialProfile: UserProfile | null = null) {
     this.container = container;
     this.callbacks = callbacks;
+    this.profile = initialProfile;
   }
 
   /**
@@ -95,22 +98,20 @@ export class SupabaseMatchUi {
       padding-bottom: 14px;
     `;
     header.innerHTML = `
-      <div style="display:flex; align-items:center; gap:8px;">
-        <span style="font-size:24px;">♟️</span>
-        <h2 style="margin:0; font-size:20px; font-weight:700; color:#e2e8f0;">온라인 랭크 대전</h2>
+      <div>
+        <h2 style="margin:0; font-size:18px; font-weight:700; color:#f8fafc;">온라인 랭크 대전</h2>
       </div>
     `;
 
     const closeBtn = document.createElement("button");
-    closeBtn.textContent = "✕";
+    closeBtn.textContent = "닫기";
     closeBtn.style.cssText = `
       background: transparent;
       border: none;
       color: #94a3b8;
-      font-size: 20px;
+      font-size: 14px;
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 6px;
     `;
     closeBtn.onclick = () => {
       this.cancelSearch();
@@ -143,14 +144,13 @@ export class SupabaseMatchUi {
 
     if (this.userEmail) {
       authBar.innerHTML = `
-        <div style="color:#38bdf8; display:flex; align-items:center; gap:6px;">
-          <span>👤</span>
-          <span style="font-weight:600;">${this.userEmail}</span>
+        <div style="color:#38bdf8; font-weight:600;">
+          ${this.userEmail}
         </div>
       `;
       const signOutBtn = document.createElement("button");
       signOutBtn.textContent = "로그아웃";
-      signOutBtn.style.cssText = "background:transparent; border:none; color:#f87171; font-size:12px; cursor:pointer; text-decoration:underline;";
+      signOutBtn.style.cssText = "background:transparent; border:none; color:#f87171; font-size:12px; cursor:pointer;";
       signOutBtn.onclick = async () => {
         if (this.client) {
           await signOutUser(this.client);
@@ -160,9 +160,8 @@ export class SupabaseMatchUi {
       authBar.appendChild(signOutBtn);
     } else {
       authBar.innerHTML = `
-        <div style="color:#94a3b8; display:flex; align-items:center; gap:6px;">
-          <span>👻</span>
-          <span>게스트 모드</span>
+        <div style="color:#94a3b8;">
+          게스트 모드
         </div>
       `;
       const authBtn = document.createElement("button");
@@ -202,68 +201,231 @@ export class SupabaseMatchUi {
       this.profile = await getOrCreateUserProfile(this.client);
       this.renderProfileCard(profileSection, this.profile);
     } catch (err: any) {
-      profileSection.innerHTML = `
-        <div style="color:#f87171; font-size:13px; text-align:center;">
-          서버 접속 오류: ${err.message || "연결 실패"}
-        </div>
-      `;
+      if (this.profile) {
+        this.renderProfileCard(profileSection, this.profile);
+      } else {
+        profileSection.innerHTML = `
+          <div style="color:#f87171; font-size:13px; text-align:center;">
+            서버 접속 오류: ${err.message || "연결 실패"}
+          </div>
+        `;
+      }
     }
 
-    // 메인 액션 버튼 그룹
-    const actionGroup = document.createElement("div");
-    actionGroup.style.cssText = "display: flex; flex-direction: column; gap: 12px;";
+    // 클래식 vs 전략 랭크 탭
+    const modeTabs = document.createElement("div");
+    modeTabs.style.cssText = "display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;";
+    
+    let activePvpMode: "classic" | "strategy" = "classic";
 
-    const searchBtn = document.createElement("button");
-    searchBtn.textContent = "⚡ 빠른 랭크 매치 찾기";
-    searchBtn.style.cssText = `
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 14px 20px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
-      transition: all 0.2s;
-    `;
-    searchBtn.onmouseover = () => {
-      searchBtn.style.transform = "translateY(-2px)";
+    const defaultStrategyDeck = {
+      Pawn: { force: 0, weight: 0 },
+      Knight: { force: 0, weight: 0 },
+      Bishop: { force: 0, weight: 0 },
+      Rook: { force: 0, weight: 0 },
+      Queen: { force: 0, weight: 0 },
+      King: { force: 0, weight: 0 },
     };
-    searchBtn.onmouseout = () => {
-      searchBtn.style.transform = "none";
-    };
-    searchBtn.onclick = () => {
-      if (this.profile && this.client) {
-        this.openMatchingModal(card);
+    let strategyDeck = defaultStrategyDeck;
+    try {
+      const saved = localStorage.getItem("ca_strategy_deck");
+      if (saved) strategyDeck = JSON.parse(saved);
+    } catch {}
+
+    const actionContainer = document.createElement("div");
+    actionContainer.style.cssText = "display:flex; flex-direction:column; gap:12px;";
+
+    const renderActionArea = () => {
+      modeTabs.innerHTML = `
+        <button id="pvp-tab-classic" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activePvpMode === "classic" ? "#2563eb" : "transparent"}; color:${activePvpMode === "classic" ? "#fff" : "#94a3b8"};">클래식 랭크</button>
+        <button id="pvp-tab-strategy" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activePvpMode === "strategy" ? "#7c3aed" : "transparent"}; color:${activePvpMode === "strategy" ? "#fff" : "#94a3b8"};">전략 랭크 (10P)</button>
+      `;
+
+      modeTabs.querySelector("#pvp-tab-classic")?.addEventListener("click", () => {
+        activePvpMode = "classic";
+        renderActionArea();
+      });
+      modeTabs.querySelector("#pvp-tab-strategy")?.addEventListener("click", () => {
+        activePvpMode = "strategy";
+        renderActionArea();
+      });
+
+      actionContainer.innerHTML = "";
+
+      if (activePvpMode === "classic") {
+        const searchBtn = document.createElement("button");
+        searchBtn.textContent = "클래식 매치 찾기";
+        searchBtn.style.cssText = `
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 14px 20px;
+          font-size: 15px;
+          font-weight: 700;
+          cursor: pointer;
+        `;
+        searchBtn.onclick = () => {
+          if (this.profile && this.client) {
+            this.openMatchingModal(card, null, "classic");
+          }
+        };
+        actionContainer.appendChild(searchBtn);
+      } else {
+        // 전략 덱 세팅 창
+        const deckBox = document.createElement("div");
+        deckBox.style.cssText = "background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px;";
+
+        const calcSpent = () => {
+          let spent = 0;
+          for (const key of Object.keys(strategyDeck) as (keyof typeof strategyDeck)[]) {
+            spent += strategyDeck[key].force + strategyDeck[key].weight;
+          }
+          return spent;
+        };
+
+        const deckHeader = document.createElement("div");
+        deckHeader.style.cssText = "display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:700;";
+        const spent = calcSpent();
+        deckHeader.innerHTML = `
+          <span style="color:#cbd5e1;">전략 스탯 분배 (비공개)</span>
+          <span style="color:${spent === 10 ? "#22c55e" : "#fbbf24"};">배분 포인트: ${spent} / 10 P</span>
+        `;
+        deckBox.appendChild(deckHeader);
+
+        const pieceLabels: Record<keyof typeof strategyDeck, string> = {
+          Pawn: "폰",
+          Knight: "나이트",
+          Bishop: "비숍",
+          Rook: "룩",
+          Queen: "퀸",
+          King: "킹",
+        };
+
+        const rowsGrid = document.createElement("div");
+        rowsGrid.style.cssText = "display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto; padding-right:4px;";
+
+        for (const pieceKey of Object.keys(pieceLabels) as (keyof typeof strategyDeck)[]) {
+          const row = document.createElement("div");
+          row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:#1e293b; padding:6px 10px; border-radius:6px; font-size:12px;";
+          
+          const label = document.createElement("span");
+          label.style.cssText = "font-weight:600; width:60px;";
+          label.textContent = pieceLabels[pieceKey];
+
+          const controls = document.createElement("div");
+          controls.style.cssText = "display:flex; align-items:center; gap:8px;";
+
+          // Force control
+          const forceBox = document.createElement("div");
+          forceBox.style.cssText = "display:flex; align-items:center; gap:3px;";
+          forceBox.innerHTML = `<span style="color:#f87171; font-weight:700;">힘</span>`;
+          const forceMinus = document.createElement("button");
+          forceMinus.textContent = "-";
+          forceMinus.style.cssText = "width:20px; height:20px; background:#334155; color:white; border:none; border-radius:3px; cursor:pointer;";
+          const forceVal = document.createElement("span");
+          forceVal.textContent = String(strategyDeck[pieceKey].force);
+          forceVal.style.cssText = "font-weight:700; min-width:14px; text-align:center;";
+          const forcePlus = document.createElement("button");
+          forcePlus.textContent = "+";
+          forcePlus.style.cssText = "width:20px; height:20px; background:#334155; color:white; border:none; border-radius:3px; cursor:pointer;";
+
+          forceMinus.onclick = () => {
+            if (strategyDeck[pieceKey].force > 0) {
+              strategyDeck[pieceKey].force -= 1;
+              localStorage.setItem("ca_strategy_deck", JSON.stringify(strategyDeck));
+              renderActionArea();
+            }
+          };
+          forcePlus.onclick = () => {
+            if (calcSpent() < 10 && strategyDeck[pieceKey].force < 4) {
+              strategyDeck[pieceKey].force += 1;
+              localStorage.setItem("ca_strategy_deck", JSON.stringify(strategyDeck));
+              renderActionArea();
+            }
+          };
+          forceBox.append(forceMinus, forceVal, forcePlus);
+
+          // Weight control
+          const weightBox = document.createElement("div");
+          weightBox.style.cssText = "display:flex; align-items:center; gap:3px;";
+          weightBox.innerHTML = `<span style="color:#38bdf8; font-weight:700;">중량</span>`;
+          const weightMinus = document.createElement("button");
+          weightMinus.textContent = "-";
+          weightMinus.style.cssText = "width:20px; height:20px; background:#334155; color:white; border:none; border-radius:3px; cursor:pointer;";
+          const weightVal = document.createElement("span");
+          weightVal.textContent = String(strategyDeck[pieceKey].weight);
+          weightVal.style.cssText = "font-weight:700; min-width:14px; text-align:center;";
+          const weightPlus = document.createElement("button");
+          weightPlus.textContent = "+";
+          weightPlus.style.cssText = "width:20px; height:20px; background:#334155; color:white; border:none; border-radius:3px; cursor:pointer;";
+
+          weightMinus.onclick = () => {
+            if (strategyDeck[pieceKey].weight > 0) {
+              strategyDeck[pieceKey].weight -= 1;
+              localStorage.setItem("ca_strategy_deck", JSON.stringify(strategyDeck));
+              renderActionArea();
+            }
+          };
+          weightPlus.onclick = () => {
+            if (calcSpent() < 10 && strategyDeck[pieceKey].weight < 4) {
+              strategyDeck[pieceKey].weight += 1;
+              localStorage.setItem("ca_strategy_deck", JSON.stringify(strategyDeck));
+              renderActionArea();
+            }
+          };
+          weightBox.append(weightMinus, weightVal, weightPlus);
+
+          controls.append(forceBox, weightBox);
+          row.append(label, controls);
+          rowsGrid.appendChild(row);
+        }
+
+        deckBox.appendChild(rowsGrid);
+        actionContainer.appendChild(deckBox);
+
+        const searchStrategyBtn = document.createElement("button");
+        searchStrategyBtn.textContent = "전략 매치 찾기";
+        searchStrategyBtn.style.cssText = `
+          background: #7c3aed;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 14px 20px;
+          font-size: 15px;
+          font-weight: 700;
+          cursor: pointer;
+        `;
+        searchStrategyBtn.onclick = () => {
+          if (this.profile && this.client) {
+            this.openMatchingModal(card, strategyDeck, "strategy");
+          }
+        };
+        actionContainer.appendChild(searchStrategyBtn);
       }
-    };
-    actionGroup.appendChild(searchBtn);
 
-    const manualBtn = document.createElement("button");
-    manualBtn.textContent = "🔗 초대 코드 직접 입력 (친선전)";
-    manualBtn.style.cssText = `
-      background: #334155;
-      color: #cbd5e1;
-      border: 1px solid #475569;
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    `;
-    manualBtn.onmouseover = () => {
-      manualBtn.style.background = "#475569";
+      const manualBtn = document.createElement("button");
+      manualBtn.textContent = "초대 코드로 접속 (친선전)";
+      manualBtn.style.cssText = `
+        background: #334155;
+        color: #cbd5e1;
+        border: 1px solid #475569;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      `;
+      manualBtn.onclick = () => {
+        this.cancelSearch();
+        this.callbacks.onOpenManualP2P();
+      };
+      actionContainer.appendChild(manualBtn);
     };
-    manualBtn.onmouseout = () => {
-      manualBtn.style.background = "#334155";
-    };
-    manualBtn.onclick = () => {
-      this.cancelSearch();
-      this.callbacks.onOpenManualP2P();
-    };
-    actionGroup.appendChild(manualBtn);
+
+    renderActionArea();
+    card.appendChild(modeTabs);
+    card.appendChild(actionContainer);
 
     // 하단 설정 링크
     const footerLink = document.createElement("div");
@@ -286,8 +448,6 @@ export class SupabaseMatchUi {
       this.renderConfigForm(card);
     };
     footerLink.appendChild(configBtn);
-
-    card.appendChild(actionGroup);
     card.appendChild(footerLink);
 
     root.appendChild(card);
@@ -330,37 +490,41 @@ export class SupabaseMatchUi {
     nameWrapper.appendChild(nickDisplay);
     nameWrapper.appendChild(editBtn);
 
-    const mmrBadge = document.createElement("div");
-    mmrBadge.style.cssText = `
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      color: #fff;
-      padding: 4px 10px;
-      border-radius: 9999px;
-      font-size: 13px;
-      font-weight: 800;
-      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+    const mmrContainer = document.createElement("div");
+    mmrContainer.style.cssText = "display:flex; gap:6px; font-size:12px; font-weight:700;";
+    mmrContainer.innerHTML = `
+      <span style="background:#1d4ed8; color:#fff; padding:4px 8px; border-radius:6px;">클래식 ${profile.classicMmr ?? profile.mmr}</span>
+      <span style="background:#6d28d9; color:#fff; padding:4px 8px; border-radius:6px;">전략 ${profile.strategyMmr ?? profile.mmr}</span>
     `;
-    mmrBadge.textContent = `MMR ${profile.mmr}`;
 
     topRow.appendChild(nameWrapper);
-    topRow.appendChild(mmrBadge);
+    topRow.appendChild(mmrContainer);
 
-    const statRow = document.createElement("div");
-    statRow.style.cssText = "display:flex; justify-content:space-around; font-size:13px; color:#94a3b8; border-top:1px solid #1e293b; padding-top:8px;";
-    statRow.innerHTML = `
-      <div><span style="color:#22c55e; font-weight:700;">${profile.wins}</span> 승</div>
-      <div><span style="color:#94a3b8; font-weight:700;">${profile.draws}</span> 무</div>
-      <div><span style="color:#ef4444; font-weight:700;">${profile.losses}</span> 패</div>
+    const statGrid = document.createElement("div");
+    statGrid.style.cssText = "display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:12px; border-top:1px solid #1e293b; padding-top:10px;";
+    statGrid.innerHTML = `
+      <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #1e3a8a;">
+        <div style="color:#60a5fa; font-weight:700; margin-bottom:4px;">클래식 전적</div>
+        <div style="color:#94a3b8;"><strong style="color:#22c55e;">${profile.classicWins}</strong>승 <strong style="color:#94a3b8;">${profile.classicDraws}</strong>무 <strong style="color:#ef4444;">${profile.classicLosses}</strong>패</div>
+      </div>
+      <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #581c87;">
+        <div style="color:#c084fc; font-weight:700; margin-bottom:4px;">전략 전적 (10P)</div>
+        <div style="color:#94a3b8;"><strong style="color:#22c55e;">${profile.strategyWins}</strong>승 <strong style="color:#94a3b8;">${profile.strategyDraws}</strong>무 <strong style="color:#ef4444;">${profile.strategyLosses}</strong>패</div>
+      </div>
     `;
 
     container.appendChild(topRow);
-    container.appendChild(statRow);
+    container.appendChild(statGrid);
   }
 
   /**
    * 실시간 매칭 검색 모달
    */
-  private async openMatchingModal(parentCard: HTMLElement): Promise<void> {
+  private async openMatchingModal(
+    parentCard: HTMLElement,
+    strategyDeck: import("./strategy-deck").StrategyDeck | null = null,
+    matchMode: "classic" | "strategy" = "classic",
+  ): Promise<void> {
     if (!this.client || !this.profile) return;
 
     try {
@@ -383,9 +547,10 @@ export class SupabaseMatchUi {
       z-index: 10;
     `;
 
+    const modeName = matchMode === "strategy" ? "전략 랭크 (10P)" : "클래식 랭크";
     modalOverlay.innerHTML = `
-      <div style="font-size:48px; animation: pulse 1.5s infinite;">🎯</div>
-      <h3 style="margin:0; font-size:18px; color:#f8fafc; font-weight:700;">상대 플레이어 탐색 중</h3>
+      <div style="font-size:48px; animation: pulse 1.5s infinite;"></div>
+      <h3 style="margin:0; font-size:18px; color:#f8fafc; font-weight:700;">${modeName} 상대 탐색 중</h3>
       <div id="matching-timer" style="font-size:15px; color:#38bdf8; font-weight:600;">대기 시간: 00:00</div>
       <div id="matching-range" style="font-size:13px; color:#94a3b8;">MMR 탐색 범위: ±50</div>
       <div id="matching-opponent" style="font-size:14px; color:#a7f3d0; font-weight:600; min-height:20px;"></div>
@@ -412,7 +577,7 @@ export class SupabaseMatchUi {
     modalOverlay.appendChild(cancelBtn);
     parentCard.appendChild(modalOverlay);
 
-    this.matchmaker = new SupabaseMatchmaker(this.client, this.profile);
+    this.matchmaker = new SupabaseMatchmaker(this.client, this.profile, matchMode);
     void this.matchmaker.startMatching(
       (status: MatchmakingStatus) => {
         const timerEl = modalOverlay.querySelector("#matching-timer");
@@ -430,10 +595,10 @@ export class SupabaseMatchUi {
       },
       async (transport, mySide, matchId, opponent) => {
         const oppEl = modalOverlay.querySelector("#matching-opponent");
-        if (oppEl) oppEl.textContent = `⚡ 연결 완료! ${mySide === "white" ? "백(선공)" : "흑(후공)"}으로 시작합니다.`;
+        if (oppEl) oppEl.textContent = `연결 완료! ${mySide === "white" ? "백(선공)" : "흑(후공)"}으로 시작합니다.`;
         this.container.innerHTML = "";
         if (this.profile) {
-          await this.callbacks.onMatchStarted(transport, mySide, matchId, opponent, this.profile);
+          await this.callbacks.onMatchStarted(transport, mySide, matchId, opponent, this.profile, strategyDeck, matchMode);
         }
       },
       (error) => {
@@ -476,8 +641,8 @@ export class SupabaseMatchUi {
     const renderAuthForm = () => {
       modalOverlay.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:10px;">
-          <h3 style="margin:0; font-size:18px; color:#f8fafc;">${mode === "signup" ? "📝 신규 회원가입" : "🔑 계정 로그인"}</h3>
-          <button id="auth-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">✕</button>
+          <h3 style="margin:0; font-size:18px; color:#f8fafc;">${mode === "signup" ? "신규 회원가입" : "계정 로그인"}</h3>
+          <button id="auth-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">닫기</button>
         </div>
 
         <div style="display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;">
@@ -573,7 +738,7 @@ export class SupabaseMatchUi {
   private renderConfigForm(container: HTMLElement): void {
     container.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:14px;">
-        <div style="font-size:18px; font-weight:700; color:#f8fafc;">⚙️ Supabase 서버 연동 설정</div>
+        <div style="font-size:18px; font-weight:700; color:#f8fafc;">서버 연동 설정</div>
         <p style="margin:0; font-size:13px; color:#94a3b8; line-height:1.5;">
           멀티플레이어 자동 매칭 및 Elo 랭킹 시스템을 활성화하려면 Supabase Project URL 및 Anon Key를 등록해주세요.
         </p>

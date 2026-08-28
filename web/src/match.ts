@@ -9,7 +9,7 @@ export interface RemainingPieceCounts {
   black: number;
 }
 
-export type MatchWinner = PieceSide;
+export type MatchWinner = PieceSide | "draw";
 
 export interface MatchRuntime {
   // 게임 입력 위에 놓여 결과 확인 전까지 포인터를 차단하는 전체 화면 요소다.
@@ -54,13 +54,13 @@ export interface StageRunResultCopy {
  */
 export function determineMatchWinner(
   remaining: RemainingPieceCounts,
-  launchingSide: PieceSide,
+  _launchingSide: PieceSide,
 ): MatchWinner | null {
   if (remaining.white > 0 && remaining.black > 0) {
     return null;
   }
   if (remaining.white === 0 && remaining.black === 0) {
-    return launchingSide;
+    return "draw";
   }
   return remaining.white === 0 ? "black" : "white";
 }
@@ -251,7 +251,9 @@ export function showMatchResult(
   runtime.resultDetails.replaceChildren();
   runtime.resultDetails.hidden = true;
   runtime.winnerHeading.textContent =
-    gameMode === "online"
+    winner === "draw"
+      ? "무승부"
+      : gameMode === "online"
       ? localSide === null
         ? "대국 종료"
         : winner === localSide

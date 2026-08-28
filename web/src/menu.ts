@@ -6,7 +6,6 @@ import {
 } from "./config";
 import type { GameMode } from "./game-mode";
 import {
-  computePermanentUpgradeSpentPoints,
   computePermanentUpgradeCost,
   computePermanentTierEffect,
   getPermanentTierUpgradeLevel,
@@ -15,33 +14,34 @@ import {
   purchasePermanentUpgrade,
   purchasePermanentSizeUpgrade,
   resetPermanentUpgrades,
+  getMaxClearedStage,
   type MetaRuntime,
   type PermanentUpgradeTier,
   type PermanentUpgradeTrack,
 } from "./meta";
+import { openSoundSettingsModal } from "./sound";
+import {
+  getOrCreateUserProfile,
+  signInWithEmail,
+  signUpWithEmail,
+  signOutUser,
+  type UserProfile,
+} from "./supabase-auth";
+import { getSupabaseClient } from "./supabase-client";
+import { AdManager } from "./ad-manager";
 
 export interface MainMenuRuntime {
-  // 게임 화면 위를 덮고 모드 선택과 영구 강화 표를 보여 주는 메인 메뉴다.
   overlay: HTMLElement;
-  // 메뉴가 숨겨져도 우상단에서 포기 확인을 여는 인게임 버튼이다.
   returnButton: HTMLButtonElement;
-  // 브라우저 기본 확인창 대신 기존 결과 화면 스타일로 포기 여부를 묻는 오버레이다.
   confirmOverlay: HTMLElement;
-  // 포인트와 강화 레벨의 메모리·저장 원본이다.
   metaRuntime: MetaRuntime;
-  // 게임 월드 준비 전 모드 버튼만 비활성화하는 상태다.
   ready: boolean;
-  // 모드 시작·메뉴 복귀 중 중복 입력을 막는 상태다.
   busy: boolean;
-  // 현재 메인 메뉴가 게임 입력을 가리고 있는지 나타낸다.
   visible: boolean;
-  // 현재 포기 확인 화면이 게임 입력을 가리고 있는지 나타낸다.
   confirming: boolean;
-  // 선택한 모드로 보드를 준비하고 최초 게임 루프를 시작하는 연결점이다.
-  onStartMode: (mode: GameMode) => Promise<void>;
-  // 런 상태를 지우고 안전한 보드로 되돌리는 연결점이다.
+  userProfile: UserProfile | null;
+  onStartMode: (mode: GameMode, selectedStage?: number) => Promise<void>;
   onReturnToMenu: () => Promise<void>;
-  // 포기 확인 뒤 현재 모드에 맞는 런 종료 또는 즉시 메뉴 복귀를 수행하는 연결점이다.
   onConfirmAbandon: () => Promise<void>;
 }
 
@@ -189,73 +189,201 @@ function appendSizeUpgradeRow(
   rows.append(row);
 }
 
+
 /**
- * 메인 메뉴의 포인트·25개 구매 노드·선행 잠금·초기화 상태를 다시 그린다.
+ * PVE 로비 모달 (스테이지 선택 + 영구 강화 테크트리)을 연다.
  */
-export function renderMainMenu(runtime: MainMenuRuntime): void {
-  const points =
-    runtime.overlay.querySelector<HTMLElement>("[data-menu-points]");
-  const rows =
-    runtime.overlay.querySelector<HTMLElement>("[data-upgrade-rows]");
-  const status =
-    runtime.overlay.querySelector<HTMLElement>("[data-menu-status]");
-  const resetButton =
-    runtime.overlay.querySelector<HTMLButtonElement>(
-      "[data-upgrade-reset]",
-    );
-  if (
-    points === null ||
-    rows === null ||
-    status === null ||
-    resetButton === null
-  ) {
-    throw new Error("메인 메뉴의 갱신 대상 요소를 찾지 못했습니다.");
-  }
-  points.textContent = `${runtime.metaRuntime.state.points} P`;
-  if (!runtime.ready) {
-    status.textContent = "게임 월드를 준비하는 중입니다…";
-  } else if (
-    status.textContent === "게임 월드를 준비하는 중입니다…"
-  ) {
-    status.textContent = "";
-  }
-  rows.replaceChildren();
+export function openPveLobbyModal(
+  runtime: MainMenuRuntime,
+  onStartStage: (stage: number) => Promise<void>,
+): void {
+  const modal = document.createElement("div");
+  modal.className = "pve-lobby-modal";
+  modal.style.cssText = `
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(16px);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  `;
 
-  for (const tier of ["basic", "advanced"] as const) {
-    const heading = document.createElement("h3");
-    heading.className = "permanent-upgrade-tier-title";
-    heading.textContent =
-      tier === "basic"
-        ? "기초 강화 · 폰·나이트→킹 / 룩·비숍→퀸"
-        : "심화 강화 · 폰·나이트→킹 / 룩·비숍→퀸";
-    if (tier === "advanced") {
-      appendSizeUpgradeRow(runtime, rows, status);
-    }
-    rows.append(heading);
-    for (const type of TREE_PIECE_ORDER) {
-      for (const track of ["force", "weight"] as const) {
-        appendUpgradeRow(
-          runtime,
-          rows,
-          status,
-          tier,
-          type,
-          track,
-        );
+  const card = document.createElement("div");
+  card.style.cssText = `
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: hidden;
+  `;
+
+  let activeTab: "stages" | "upgrades" = "stages";
+  let selectedStage = 1;
+
+  const renderContent = () => {
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
+        <h2 style="margin:0; font-size:18px; font-weight:700;">스테이지 대전</h2>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:13px; color:#38bdf8; font-weight:600;">보유 포인트: ${runtime.metaRuntime.state.points} P</span>
+          <button id="pve-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">닫기</button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;">
+        <button id="tab-stages" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "stages" ? "#3b82f6" : "transparent"}; color:${activeTab === "stages" ? "#fff" : "#94a3b8"};">스테이지 선택</button>
+        <button id="tab-upgrades" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "upgrades" ? "#3b82f6" : "transparent"}; color:${activeTab === "upgrades" ? "#fff" : "#94a3b8"};">기물 영구 강화</button>
+      </div>
+
+      <div id="pve-tab-body" style="flex:1; overflow-y:auto; min-height:280px; max-height:460px; padding-right:4px;"></div>
+    `;
+
+    card.querySelector("#pve-close-btn")?.addEventListener("click", () => modal.remove());
+    card.querySelector("#tab-stages")?.addEventListener("click", () => {
+      activeTab = "stages";
+      renderContent();
+    });
+    card.querySelector("#tab-upgrades")?.addEventListener("click", () => {
+      activeTab = "upgrades";
+      renderContent();
+    });
+
+    const body = card.querySelector("#pve-tab-body") as HTMLElement;
+
+    if (activeTab === "stages") {
+      const maxClearedStage = getMaxClearedStage(runtime.metaRuntime.storage);
+      const unlockedMaxStage = Math.min(10, maxClearedStage + 1);
+      if (selectedStage > unlockedMaxStage) {
+        selectedStage = unlockedMaxStage;
       }
-    }
-  }
-  resetButton.disabled =
-    runtime.busy ||
-    computePermanentUpgradeSpentPoints(
-      runtime.metaRuntime.state.upgrades,
-    ) === 0;
 
-  for (const button of runtime.overlay.querySelectorAll<HTMLButtonElement>(
-    "[data-game-mode]",
-  )) {
-    button.disabled = !runtime.ready || runtime.busy;
-  }
+      const grid = document.createElement("div");
+      grid.style.cssText = "display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; margin-top:8px;";
+      for (let s = 1; s <= 10; s++) {
+        const btn = document.createElement("button");
+        const isCleared = s <= maxClearedStage;
+        const isUnlocked = s <= unlockedMaxStage;
+        const isSelected = selectedStage === s && isUnlocked;
+
+        let statusText = isCleared ? "클리어" : s === unlockedMaxStage ? "도전 가능" : "잠김";
+        let bgColor = isSelected ? "#0284c7" : isCleared ? "#1e3a8a" : isUnlocked ? "#0f172a" : "#1e293b";
+        let borderColor = isSelected ? "#38bdf8" : isCleared ? "#3b82f6" : isUnlocked ? "#475569" : "#334155";
+        let textColor = isUnlocked ? "#ffffff" : "#64748b";
+
+        btn.disabled = !isUnlocked;
+        btn.innerHTML = `
+          <div style="font-weight:700; font-size:14px;">Stage ${s}</div>
+          <div style="font-size:11px; margin-top:4px; opacity:0.85; color:${isCleared ? "#86efac" : isUnlocked ? "#93c5fd" : "#64748b"};">${statusText}</div>
+        `;
+        btn.style.cssText = `
+          padding: 12px 6px;
+          border-radius: 8px;
+          border: 1px solid ${borderColor};
+          background: ${bgColor};
+          color: ${textColor};
+          cursor: ${isUnlocked ? "pointer" : "not-allowed"};
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+        `;
+        if (isUnlocked) {
+          btn.onclick = () => {
+            selectedStage = s;
+            renderContent();
+          };
+        }
+        grid.appendChild(btn);
+      }
+      body.appendChild(grid);
+
+      const startBox = document.createElement("div");
+      startBox.style.cssText = "margin-top:20px; display:flex; flex-direction:column; gap:10px;";
+      startBox.innerHTML = `
+        <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid #334155; font-size:13px; color:#94a3b8;">
+          Stage ${selectedStage}에 도전합니다. (최대 클리어: ${maxClearedStage}단계 / 클리어 시 런 카드 및 영구 포인트 획득)
+        </div>
+        <button id="pve-start-btn" style="background:#16a34a; color:#fff; border:none; border-radius:8px; padding:14px; font-weight:700; font-size:15px; cursor:pointer;">
+          Stage ${selectedStage} 시작
+        </button>
+      `;
+      body.appendChild(startBox);
+
+      startBox.querySelector("#pve-start-btn")?.addEventListener("click", async () => {
+        modal.remove();
+        await onStartStage(selectedStage);
+      });
+    } else {
+      // 영구 강화 탭
+      const upgradeContainer = document.createElement("div");
+      upgradeContainer.style.cssText = "display:flex; flex-direction:column; gap:10px;";
+      
+      const statusText = document.createElement("div");
+      statusText.style.cssText = "font-size:12px; color:#38bdf8; min-height:16px;";
+      upgradeContainer.appendChild(statusText);
+
+      const rowsWrapper = document.createElement("div");
+      rowsWrapper.className = "permanent-upgrade-panel";
+      rowsWrapper.innerHTML = `
+        <div class="permanent-upgrade-heading" aria-hidden="true" style="margin-bottom:8px;">
+          <span>말 · 강화</span>
+          <span>레벨</span>
+          <span>효과</span>
+          <span>비용</span>
+          <span>구매</span>
+        </div>
+        <div id="pve-upgrade-rows"></div>
+      `;
+      upgradeContainer.appendChild(rowsWrapper);
+
+      const rows = rowsWrapper.querySelector("#pve-upgrade-rows") as HTMLElement;
+
+      for (const tier of ["basic", "advanced"] as const) {
+        const heading = document.createElement("h3");
+        heading.className = "permanent-upgrade-tier-title";
+        heading.textContent = tier === "basic" ? "기초 강화" : "심화 강화";
+        if (tier === "advanced") {
+          appendSizeUpgradeRow(runtime, rows, statusText);
+        }
+        rows.append(heading);
+        for (const type of TREE_PIECE_ORDER) {
+          for (const track of ["force", "weight"] as const) {
+            appendUpgradeRow(runtime, rows, statusText, tier, type, track);
+          }
+        }
+      }
+
+      const resetBtn = document.createElement("button");
+      resetBtn.className = "permanent-upgrade-reset";
+      resetBtn.textContent = "전체 초기화 · 사용 포인트 100% 반환";
+      resetBtn.style.cssText = "margin-top:12px; padding:10px; width:100%; background:#ef4444; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer;";
+      resetBtn.onclick = () => {
+        resetPermanentUpgrades(runtime.metaRuntime);
+        renderContent();
+      };
+      upgradeContainer.appendChild(resetBtn);
+
+      body.appendChild(upgradeContainer);
+    }
+  };
+
+  renderContent();
+  modal.appendChild(card);
+  runtime.overlay.appendChild(modal);
 }
 
 /**
@@ -273,12 +401,15 @@ export function setMainMenuReady(
  * 인게임 UI를 가리고 영구 메타가 보존된 메인 메뉴를 표시한다.
  */
 export function showMainMenu(runtime: MainMenuRuntime): void {
+  runtime.busy = false;
+  runtime.ready = true;
   runtime.visible = true;
   runtime.confirming = false;
   runtime.overlay.hidden = false;
   runtime.confirmOverlay.hidden = true;
   runtime.returnButton.hidden = true;
   renderMainMenu(runtime);
+  void AdManager.showBanner();
   runtime.overlay
     .querySelector<HTMLButtonElement>("[data-game-mode]")
     ?.focus();
@@ -309,21 +440,365 @@ export function isMenuBlocking(runtime: MainMenuRuntime): boolean {
 export async function returnToMainMenu(
   runtime: MainMenuRuntime,
 ): Promise<void> {
-  if (runtime.busy) {
-    return;
-  }
   runtime.busy = true;
   try {
     await runtime.onReturnToMenu();
-    showMainMenu(runtime);
   } finally {
     runtime.busy = false;
+    runtime.ready = true;
+    showMainMenu(runtime);
+  }
+}
+/**
+ * 메인 메뉴 화면을 갱신한다. (로그인 전: 게스트/로그인/가입 폼 / 로그인 후: 유저 프로필 + 게임 모드 선택)
+ */
+export function renderMainMenu(runtime: MainMenuRuntime): void {
+  const panel = runtime.overlay.querySelector<HTMLElement>(".main-menu-panel");
+  if (panel === null) return;
+
+  if (localStorage.getItem("ca_logged_in_user") === "true") {
+    const classicMmr = Number(localStorage.getItem("ca_local_classic_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
+    const strategyMmr = Number(localStorage.getItem("ca_local_strategy_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
+    const classicWins = Number(localStorage.getItem("ca_local_classic_wins") || 0);
+    const classicDraws = Number(localStorage.getItem("ca_local_classic_draws") || 0);
+    const classicLosses = Number(localStorage.getItem("ca_local_classic_losses") || 0);
+    const strategyWins = Number(localStorage.getItem("ca_local_strategy_wins") || 0);
+    const strategyDraws = Number(localStorage.getItem("ca_local_strategy_draws") || 0);
+    const strategyLosses = Number(localStorage.getItem("ca_local_strategy_losses") || 0);
+
+    runtime.userProfile = {
+      id: runtime.userProfile?.id || localStorage.getItem("ca_guest_user_uuid") || "local_guest",
+      nickname: localStorage.getItem("ca_local_nickname") || runtime.userProfile?.nickname || "알까기플레이어",
+      mmr: classicMmr,
+      classicMmr,
+      strategyMmr,
+      wins: classicWins + strategyWins,
+      losses: classicLosses + strategyLosses,
+      draws: classicDraws + strategyDraws,
+      classicWins,
+      classicDraws,
+      classicLosses,
+      strategyWins,
+      strategyDraws,
+      strategyLosses,
+    };
+  }
+
+  const points = runtime.metaRuntime.state.points;
+  const user = runtime.userProfile;
+
+  if (user === null) {
+    // -------------------------------------------------------------
+    // 1. 미로그인 상태: 로그인 / 회원가입 / 게스트 로그인 뷰
+    // -------------------------------------------------------------
+    panel.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">체스 알까기</h1>
+        <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer;">
+          사운드 설정
+        </button>
+      </div>
+      <p style="font-size:13px; color:#94a3b8; margin:0 0 16px 0;">로그인하거나 게스트로 즉시 시작하세요.</p>
+
+      <!-- 탭 선택 바 -->
+      <div style="display:flex; gap:6px; background:#0f172a; padding:4px; border-radius:8px; margin-bottom:16px;">
+        <button id="auth-tab-guest" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:#2563eb; color:white;">게스트 시작</button>
+        <button id="auth-tab-login" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#94a3b8;">이메일 로그인</button>
+        <button id="auth-tab-signup" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#94a3b8;">회원가입</button>
+      </div>
+
+      <div id="auth-tab-content"></div>
+      <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:12px; font-size:13px; min-height:16px; color:#ef4444;"></p>
+    `;
+
+    panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
+      openSoundSettingsModal(runtime.overlay);
+    });
+
+    let currentAuthTab: "guest" | "login" | "signup" = "guest";
+
+    const renderAuthTab = () => {
+      const content = panel.querySelector("#auth-tab-content") as HTMLElement;
+      if (!content) return;
+
+      const tabGuest = panel.querySelector("#auth-tab-guest") as HTMLElement;
+      const tabLogin = panel.querySelector("#auth-tab-login") as HTMLElement;
+      const tabSignup = panel.querySelector("#auth-tab-signup") as HTMLElement;
+
+      tabGuest.style.background = currentAuthTab === "guest" ? "#2563eb" : "transparent";
+      tabGuest.style.color = currentAuthTab === "guest" ? "white" : "#94a3b8";
+
+      tabLogin.style.background = currentAuthTab === "login" ? "#2563eb" : "transparent";
+      tabLogin.style.color = currentAuthTab === "login" ? "white" : "#94a3b8";
+
+      tabSignup.style.background = currentAuthTab === "signup" ? "#2563eb" : "transparent";
+      tabSignup.style.color = currentAuthTab === "signup" ? "white" : "#94a3b8";
+
+      const status = panel.querySelector<HTMLElement>("[data-menu-status]");
+      if (status) status.textContent = "";
+
+      if (currentAuthTab === "guest") {
+        const savedNick = localStorage.getItem("ca_local_nickname") || `알까기장인_${Math.floor(1000 + Math.random() * 9000)}`;
+        content.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">플레이어 닉네임</label>
+              <input type="text" id="guest-nickname-input" value="${savedNick}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
+            </div>
+            <button id="btn-guest-submit" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-top:4px;">
+              게스트로 바로 시작
+            </button>
+          </div>
+        `;
+        content.querySelector("#btn-guest-submit")?.addEventListener("click", async () => {
+          const nickInput = content.querySelector("#guest-nickname-input") as HTMLInputElement;
+          const nick = nickInput?.value.trim() || savedNick;
+          localStorage.setItem("ca_local_nickname", nick);
+          localStorage.setItem("ca_logged_in_user", "true");
+
+          const sb = getSupabaseClient();
+          if (sb) {
+            const prof = await getOrCreateUserProfile(sb);
+            prof.nickname = nick;
+            runtime.userProfile = prof;
+          } else {
+            const classicMmr = Number(localStorage.getItem("ca_local_classic_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
+            const strategyMmr = Number(localStorage.getItem("ca_local_strategy_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
+            const classicWins = Number(localStorage.getItem("ca_local_classic_wins") || 0);
+            const classicDraws = Number(localStorage.getItem("ca_local_classic_draws") || 0);
+            const classicLosses = Number(localStorage.getItem("ca_local_classic_losses") || 0);
+            const strategyWins = Number(localStorage.getItem("ca_local_strategy_wins") || 0);
+            const strategyDraws = Number(localStorage.getItem("ca_local_strategy_draws") || 0);
+            const strategyLosses = Number(localStorage.getItem("ca_local_strategy_losses") || 0);
+            runtime.userProfile = {
+              id: "local_guest",
+              nickname: nick,
+              mmr: classicMmr,
+              classicMmr,
+              strategyMmr,
+              wins: classicWins + strategyWins,
+              losses: classicLosses + strategyLosses,
+              draws: classicDraws + strategyDraws,
+              classicWins,
+              classicDraws,
+              classicLosses,
+              strategyWins,
+              strategyDraws,
+              strategyLosses,
+            };
+          }
+          renderMainMenu(runtime);
+        });
+      } else if (currentAuthTab === "login") {
+        content.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">이메일</label>
+              <input type="email" id="login-email-input" placeholder="user@example.com" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">비밀번호</label>
+              <input type="password" id="login-pw-input" placeholder="••••••••" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
+            </div>
+            <button id="btn-login-submit" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-top:4px;">
+              이메일 로그인
+            </button>
+          </div>
+        `;
+        content.querySelector("#btn-login-submit")?.addEventListener("click", async () => {
+          const email = (content.querySelector("#login-email-input") as HTMLInputElement)?.value;
+          const pw = (content.querySelector("#login-pw-input") as HTMLInputElement)?.value;
+          const sb = getSupabaseClient();
+          if (!sb) {
+            if (status) status.textContent = "Supabase 서버 연결이 구성되지 않았습니다.";
+            return;
+          }
+          const res = await signInWithEmail(sb, email, pw);
+          if (res.success && res.user) {
+            localStorage.setItem("ca_logged_in_user", "true");
+            runtime.userProfile = res.user;
+            renderMainMenu(runtime);
+          } else {
+            if (status) status.textContent = res.error || "로그인에 실패했습니다.";
+          }
+        });
+      } else {
+        content.innerHTML = `
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">이메일</label>
+              <input type="email" id="signup-email-input" placeholder="user@example.com" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">비밀번호 (6자 이상)</label>
+              <input type="password" id="signup-pw-input" placeholder="••••••••" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
+            </div>
+            <div>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">닉네임</label>
+              <input type="text" id="signup-nick-input" placeholder="알까기마스터" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
+            </div>
+            <button id="btn-signup-submit" style="background:#16a34a; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-top:4px;">
+              회원가입 및 시작
+            </button>
+          </div>
+        `;
+        content.querySelector("#btn-signup-submit")?.addEventListener("click", async () => {
+          const email = (content.querySelector("#signup-email-input") as HTMLInputElement)?.value;
+          const pw = (content.querySelector("#signup-pw-input") as HTMLInputElement)?.value;
+          const nick = (content.querySelector("#signup-nick-input") as HTMLInputElement)?.value;
+          const sb = getSupabaseClient();
+          if (!sb) {
+            if (status) status.textContent = "Supabase 서버 연결이 구성되지 않았습니다.";
+            return;
+          }
+          const res = await signUpWithEmail(sb, email, pw, nick);
+          if (res.success && res.user) {
+            localStorage.setItem("ca_logged_in_user", "true");
+            runtime.userProfile = res.user;
+            renderMainMenu(runtime);
+          } else {
+            if (status) status.textContent = res.error || "회원가입에 실패했습니다.";
+          }
+        });
+      }
+    };
+
+    panel.querySelector("#auth-tab-guest")?.addEventListener("click", () => {
+      currentAuthTab = "guest";
+      renderAuthTab();
+    });
+    panel.querySelector("#auth-tab-login")?.addEventListener("click", () => {
+      currentAuthTab = "login";
+      renderAuthTab();
+    });
+    panel.querySelector("#auth-tab-signup")?.addEventListener("click", () => {
+      currentAuthTab = "signup";
+      renderAuthTab();
+    });
+
+    renderAuthTab();
+    return;
+  }
+
+  // -------------------------------------------------------------
+  // 2. 로그인 완료 상태: 유저 정보 + 게임 모드 선택 뷰
+  // -------------------------------------------------------------
+  panel.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">체스 알까기</h1>
+      <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer;">
+        사운드 설정
+      </button>
+    </div>
+
+    <!-- 유저 프로필 카드 -->
+    <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:14px 16px; margin-bottom:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-size:15px; font-weight:700; color:#f8fafc;">
+          👤 ${user.nickname} <span style="font-size:12px; color:#94a3b8; font-weight:normal; margin-left:6px;">| PVE: <strong style="color:#38bdf8;">${points} P</strong></span>
+        </div>
+        <button id="btn-logout" style="background:transparent; border:none; color:#94a3b8; font-size:12px; cursor:pointer; text-decoration:underline; padding:2px 4px;">
+          로그아웃
+        </button>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:12px;">
+        <div style="background:#1e293b; padding:8px 10px; border-radius:6px; border:1px solid #1e3a8a;">
+          <div style="color:#60a5fa; font-weight:700; margin-bottom:2px;">클래식 MMR ${user.classicMmr ?? user.mmr}</div>
+          <div style="color:#94a3b8;"><strong style="color:#22c55e;">${user.classicWins ?? 0}</strong>승 <strong style="color:#94a3b8;">${user.classicDraws ?? 0}</strong>무 <strong style="color:#ef4444;">${user.classicLosses ?? 0}</strong>패</div>
+        </div>
+        <div style="background:#1e293b; padding:8px 10px; border-radius:6px; border:1px solid #581c87;">
+          <div style="color:#c084fc; font-weight:700; margin-bottom:2px;">전략 MMR ${user.strategyMmr ?? user.mmr}</div>
+          <div style="color:#94a3b8;"><strong style="color:#22c55e;">${user.strategyWins ?? 0}</strong>승 <strong style="color:#94a3b8;">${user.strategyDraws ?? 0}</strong>무 <strong style="color:#ef4444;">${user.strategyLosses ?? 0}</strong>패</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 게임 모드 선택 목록 -->
+    <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:flex; flex-direction:column; gap:10px; width:100%;">
+      <button type="button" data-game-mode="hotseat" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px;">2인 대전 (로컬)</button>
+      <button type="button" data-game-mode="stage" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#2563eb; color:white;">스테이지 대전 (PVE)</button>
+      <button type="button" data-game-mode="online" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#7c3aed; color:white;">온라인 랭크 대전</button>
+    </div>
+    <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:14px; font-size:13px;"></p>
+  `;
+
+  panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
+    openSoundSettingsModal(runtime.overlay);
+  });
+
+  panel.querySelector("#btn-logout")?.addEventListener("click", async () => {
+    const sb = getSupabaseClient();
+    if (sb) await signOutUser(sb);
+    localStorage.removeItem("ca_logged_in_user");
+    runtime.userProfile = null;
     renderMainMenu(runtime);
-    if (runtime.visible) {
-      runtime.overlay
-        .querySelector<HTMLButtonElement>("[data-game-mode]")
-        ?.focus();
-    }
+  });
+
+  for (const button of panel.querySelectorAll<HTMLButtonElement>("[data-game-mode]")) {
+    button.disabled = !runtime.ready || runtime.busy;
+    button.addEventListener("click", () => {
+      const mode = button.dataset.gameMode;
+      if (
+        runtime.busy ||
+        !runtime.ready ||
+        (mode !== "hotseat" &&
+          mode !== "stage" &&
+          mode !== "online")
+      ) {
+        return;
+      }
+
+      if (mode === "stage") {
+        openPveLobbyModal(runtime, async (selectedStage) => {
+          runtime.busy = true;
+          renderMainMenu(runtime);
+          try {
+            await runtime.onStartMode("stage", selectedStage);
+            hideMainMenuAfterModeStart(runtime);
+          } catch (error: unknown) {
+            const fullError =
+              error instanceof Error
+                ? (error.stack ?? error.message)
+                : String(error);
+            console.error(fullError);
+            runtime.busy = false;
+            const status =
+              runtime.overlay.querySelector<HTMLElement>(
+                "[data-menu-status]",
+              );
+            if (status !== null) {
+              status.textContent = "스테이지 대전을 시작하지 못했습니다.";
+            }
+            renderMainMenu(runtime);
+          }
+        });
+        return;
+      }
+
+      runtime.busy = true;
+      renderMainMenu(runtime);
+      void runtime.onStartMode(mode).then(
+        () => {
+          hideMainMenuAfterModeStart(runtime);
+        },
+        (error: unknown) => {
+          const fullError =
+            error instanceof Error
+              ? (error.stack ?? error.message)
+              : String(error);
+          console.error(fullError);
+          runtime.busy = false;
+          const status =
+            runtime.overlay.querySelector<HTMLElement>(
+              "[data-menu-status]",
+            );
+          if (status !== null) {
+            status.textContent = "대전을 시작하지 못했습니다.";
+          }
+          renderMainMenu(runtime);
+        },
+      );
+    });
   }
 }
 
@@ -333,7 +808,7 @@ export async function returnToMainMenu(
 export function createMainMenu(
   container: HTMLElement,
   metaRuntime: MetaRuntime,
-  onStartMode: (mode: GameMode) => Promise<void>,
+  onStartMode: (mode: GameMode, selectedStage?: number) => Promise<void>,
   onReturnToMenu: () => Promise<void>,
   onConfirmAbandon: () => Promise<void>,
 ): MainMenuRuntime {
@@ -343,31 +818,7 @@ export function createMainMenu(
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-labelledby", "main-menu-title");
   overlay.innerHTML = `
-    <div class="main-menu-panel">
-      <p class="main-menu-kicker">물리 체스 알까기</p>
-      <h1 id="main-menu-title">체스알까기</h1>
-      <div class="main-menu-points">보유 포인트 <strong data-menu-points></strong></div>
-      <div class="main-menu-modes" role="group" aria-label="대전 모드">
-        <button type="button" data-game-mode="hotseat">2인 대전</button>
-        <button type="button" data-game-mode="stage">스테이지 대전</button>
-        <button type="button" data-game-mode="online">온라인 대전</button>
-      </div>
-      <p class="main-menu-status" data-menu-status aria-live="polite"></p>
-      <section class="permanent-upgrade-panel" aria-labelledby="upgrade-title">
-        <h2 id="upgrade-title">영구 강화</h2>
-        <div class="permanent-upgrade-heading" aria-hidden="true">
-          <span>말 · 강화</span>
-          <span>레벨</span>
-          <span>효과</span>
-          <span>비용</span>
-          <span>구매</span>
-        </div>
-        <div data-upgrade-rows></div>
-        <button type="button" class="permanent-upgrade-reset" data-upgrade-reset>
-          전체 초기화 · 사용 포인트 100% 반환
-        </button>
-      </section>
-    </div>
+    <div class="main-menu-panel" style="max-width:440px; padding:28px;"></div>
   `;
 
   const returnButton = document.createElement("button");
@@ -408,6 +859,35 @@ export function createMainMenu(
     throw new Error("메뉴 복귀 확인 버튼을 만들지 못했습니다.");
   }
 
+  const savedLoggedIn = localStorage.getItem("ca_logged_in_user") === "true";
+  let initialProfile: UserProfile | null = null;
+  if (savedLoggedIn) {
+    const classicMmr = Number(localStorage.getItem("ca_local_classic_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
+    const strategyMmr = Number(localStorage.getItem("ca_local_strategy_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
+    const classicWins = Number(localStorage.getItem("ca_local_classic_wins") || 0);
+    const classicDraws = Number(localStorage.getItem("ca_local_classic_draws") || 0);
+    const classicLosses = Number(localStorage.getItem("ca_local_classic_losses") || 0);
+    const strategyWins = Number(localStorage.getItem("ca_local_strategy_wins") || 0);
+    const strategyDraws = Number(localStorage.getItem("ca_local_strategy_draws") || 0);
+    const strategyLosses = Number(localStorage.getItem("ca_local_strategy_losses") || 0);
+    initialProfile = {
+      id: localStorage.getItem("ca_guest_user_uuid") || "local_guest",
+      nickname: localStorage.getItem("ca_local_nickname") || "알까기플레이어",
+      mmr: classicMmr,
+      classicMmr,
+      strategyMmr,
+      wins: classicWins + strategyWins,
+      losses: classicLosses + strategyLosses,
+      draws: classicDraws + strategyDraws,
+      classicWins,
+      classicDraws,
+      classicLosses,
+      strategyWins,
+      strategyDraws,
+      strategyLosses,
+    };
+  }
+
   const runtime: MainMenuRuntime = {
     overlay,
     returnButton,
@@ -417,72 +897,13 @@ export function createMainMenu(
     busy: false,
     visible: true,
     confirming: false,
+    userProfile: initialProfile,
     onStartMode,
     onReturnToMenu,
     onConfirmAbandon,
   };
-  const resetButton =
-    overlay.querySelector<HTMLButtonElement>(
-      "[data-upgrade-reset]",
-    );
-  if (resetButton === null) {
-    throw new Error("영구 강화 전체 초기화 버튼을 만들지 못했습니다.");
-  }
-  resetButton.addEventListener("click", () => {
-    if (runtime.busy) {
-      return;
-    }
-    const refunded = resetPermanentUpgrades(runtime.metaRuntime);
-    renderMainMenu(runtime);
-    const status =
-      runtime.overlay.querySelector<HTMLElement>(
-        "[data-menu-status]",
-      );
-    if (status !== null) {
-      status.textContent =
-        `영구 강화를 전체 초기화하고 ${refunded} P를 반환했습니다.`;
-    }
-  });
 
-  for (const button of overlay.querySelectorAll<HTMLButtonElement>(
-    "[data-game-mode]",
-  )) {
-    button.addEventListener("click", () => {
-      const mode = button.dataset.gameMode;
-      if (
-        runtime.busy ||
-        !runtime.ready ||
-        (mode !== "hotseat" &&
-          mode !== "stage" &&
-          mode !== "online")
-      ) {
-        return;
-      }
-      runtime.busy = true;
-      renderMainMenu(runtime);
-      void runtime.onStartMode(mode).then(
-        () => {
-          hideMainMenuAfterModeStart(runtime);
-        },
-        (error: unknown) => {
-          const fullError =
-            error instanceof Error
-              ? (error.stack ?? error.message)
-              : String(error);
-          console.error(fullError);
-          runtime.busy = false;
-          const status =
-            runtime.overlay.querySelector<HTMLElement>(
-              "[data-menu-status]",
-            );
-          if (status !== null) {
-            status.textContent = "대전을 시작하지 못했습니다.";
-          }
-          renderMainMenu(runtime);
-        },
-      );
-    });
-  }
+  renderMainMenu(runtime);
   overlay.addEventListener("keydown", (event) => {
     if (event.code !== "Tab") {
       if (event.code === "Escape") {
