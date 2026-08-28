@@ -19,7 +19,8 @@ import {
   type PermanentUpgradeTier,
   type PermanentUpgradeTrack,
 } from "./meta";
-import { openSoundSettingsModal } from "./sound";
+import { openSettingsModal } from "./settings-modal";
+import { I18nManager } from "./i18n";
 import {
   getOrCreateUserProfile,
   signInWithEmail,
@@ -46,27 +47,24 @@ export interface MainMenuRuntime {
   onConfirmAbandon: () => Promise<void>;
 }
 
-const PIECE_LABELS: Readonly<Record<PieceType, string>> = {
-  Pawn: "폰",
-  Rook: "룩",
-  Knight: "나이트",
-  Bishop: "비숍",
-  Queen: "퀸",
-  King: "킹",
+const getPieceLabel = (type: PieceType): string => {
+  const keyMap: Record<PieceType, string> = {
+    Pawn: "lobby.piece_pawn",
+    Rook: "lobby.piece_rook",
+    Knight: "lobby.piece_knight",
+    Bishop: "lobby.piece_bishop",
+    Queen: "lobby.piece_queen",
+    King: "lobby.piece_king",
+  };
+  return I18nManager.t(keyMap[type]);
 };
 
-const TRACK_LABELS: Readonly<
-  Record<PermanentUpgradeTrack, string>
-> = {
-  force: "힘",
-  weight: "중량",
+const getTrackLabel = (track: PermanentUpgradeTrack): string => {
+  return track === "force" ? I18nManager.t("lobby.stat_force") : I18nManager.t("lobby.stat_weight");
 };
 
-const TIER_LABELS: Readonly<
-  Record<PermanentUpgradeTier, string>
-> = {
-  basic: "기초",
-  advanced: "심화",
+const getTierLabel = (tier: PermanentUpgradeTier): string => {
+  return tier === "basic" ? I18nManager.t("lobby.upgrade_basic") : I18nManager.t("lobby.upgrade_advanced");
 };
 
 const TREE_PIECE_ORDER = [
@@ -109,14 +107,14 @@ function appendUpgradeRow(
   row.className = "permanent-upgrade-row";
   row.dataset.locked = String(!unlocked);
   row.innerHTML = `
-    <strong>${TIER_LABELS[tier]} · ${PIECE_LABELS[type]} · ${TRACK_LABELS[track]}</strong>
+    <strong>${getTierLabel(tier)} · ${getPieceLabel(type)} · ${getTrackLabel(track)}</strong>
     <span>${level}/3</span>
     <span>+${(computePermanentTierEffect(tier, level) * 100).toFixed(0)}%</span>
-    <span>${unlocked ? (cost === null ? "최대" : `${cost} P`) : "잠김"}</span>
+    <span>${unlocked ? (cost === null ? I18nManager.t("lobby.upgrade_max") : `${cost} P`) : I18nManager.t("lobby.upgrade_locked")}</span>
   `;
   const purchaseButton = document.createElement("button");
   purchaseButton.type = "button";
-  purchaseButton.textContent = atMaximum ? "최대" : "구매";
+  purchaseButton.textContent = atMaximum ? I18nManager.t("lobby.upgrade_max") : I18nManager.t("lobby.upgrade_buy");
   purchaseButton.disabled =
     runtime.busy ||
     !unlocked ||
@@ -135,7 +133,7 @@ function appendUpgradeRow(
     renderMainMenu(runtime);
     status.textContent =
       result.purchased
-        ? `${TIER_LABELS[tier]} ${PIECE_LABELS[type]} ${TRACK_LABELS[track]} 강화를 구매했습니다.`
+        ? `${getTierLabel(tier)} ${getPieceLabel(type)} ${getTrackLabel(track)}`
         : (result.reason ?? "");
   });
   row.append(purchaseButton);
@@ -159,14 +157,14 @@ function appendSizeUpgradeRow(
     "permanent-upgrade-row permanent-upgrade-size-row";
   row.dataset.locked = String(!unlocked);
   row.innerHTML = `
-    <strong>중앙 · 전체 말 크기</strong>
+    <strong>${I18nManager.t("lobby.upgrade_size_title")}</strong>
     <span>${level}/1</span>
-    <span>백 전체 +${(PERMANENT_PLAYER_SIZE_STEP * 100).toFixed(0)}%</span>
-    <span>${unlocked ? (level === 1 ? "구매 완료" : `${PERMANENT_PLAYER_SIZE_COST} P`) : "기초 전체 완료 필요"}</span>
+    <span>${I18nManager.t("lobby.upgrade_size_effect", { val: (PERMANENT_PLAYER_SIZE_STEP * 100).toFixed(0) })}</span>
+    <span>${unlocked ? (level === 1 ? I18nManager.t("lobby.upgrade_size_bought") : `${PERMANENT_PLAYER_SIZE_COST} P`) : I18nManager.t("lobby.upgrade_size_need_basic")}</span>
   `;
   const purchaseButton = document.createElement("button");
   purchaseButton.type = "button";
-  purchaseButton.textContent = level === 1 ? "구매 완료" : "구매";
+  purchaseButton.textContent = level === 1 ? I18nManager.t("lobby.upgrade_size_bought") : I18nManager.t("lobby.upgrade_buy");
   purchaseButton.disabled =
     runtime.busy ||
     !unlocked ||
@@ -183,7 +181,7 @@ function appendSizeUpgradeRow(
     renderMainMenu(runtime);
     status.textContent =
       result.purchased
-        ? "플레이어 전체 말 크기 +5% 강화를 구매했습니다."
+        ? I18nManager.t("lobby.upgrade_size_title")
         : (result.reason ?? "");
   });
   row.append(purchaseButton);
@@ -237,16 +235,16 @@ export function openPveLobbyModal(
   const renderContent = () => {
     card.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
-        <h2 style="margin:0; font-size:18px; font-weight:700;">스테이지 대전</h2>
+        <h2 style="margin:0; font-size:18px; font-weight:700;">${I18nManager.t("lobby.stage_modal_title")}</h2>
         <div style="display:flex; align-items:center; gap:12px;">
-          <span style="font-size:13px; color:#38bdf8; font-weight:600;">보유 포인트: ${runtime.metaRuntime.state.points} P</span>
-          <button id="pve-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">닫기</button>
+          <span style="font-size:13px; color:#38bdf8; font-weight:600;">${I18nManager.t("lobby.stage_points_held", { points: runtime.metaRuntime.state.points })}</span>
+          <button id="pve-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">${I18nManager.t("common.close")}</button>
         </div>
       </div>
 
       <div style="display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;">
-        <button id="tab-stages" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "stages" ? "#3b82f6" : "transparent"}; color:${activeTab === "stages" ? "#fff" : "#94a3b8"};">스테이지 선택</button>
-        <button id="tab-upgrades" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "upgrades" ? "#3b82f6" : "transparent"}; color:${activeTab === "upgrades" ? "#fff" : "#94a3b8"};">기물 영구 강화</button>
+        <button id="tab-stages" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "stages" ? "#3b82f6" : "transparent"}; color:${activeTab === "stages" ? "#fff" : "#94a3b8"};">${I18nManager.t("lobby.stage_tab_stages")}</button>
+        <button id="tab-upgrades" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "upgrades" ? "#3b82f6" : "transparent"}; color:${activeTab === "upgrades" ? "#fff" : "#94a3b8"};">${I18nManager.t("lobby.stage_tab_upgrades")}</button>
       </div>
 
       <div id="pve-tab-body" style="flex:1; overflow-y:auto; min-height:280px; max-height:460px; padding-right:4px;"></div>
@@ -279,7 +277,7 @@ export function openPveLobbyModal(
         const isUnlocked = s <= unlockedMaxStage;
         const isSelected = selectedStage === s && isUnlocked;
 
-        let statusText = isCleared ? "클리어" : s === unlockedMaxStage ? "도전 가능" : "잠김";
+        let statusText = isCleared ? I18nManager.t("lobby.stage_cleared") : s === unlockedMaxStage ? I18nManager.t("lobby.stage_challenge") : I18nManager.t("lobby.stage_locked");
         let bgColor = isSelected ? "#0284c7" : isCleared ? "#1e3a8a" : isUnlocked ? "#0f172a" : "#1e293b";
         let borderColor = isSelected ? "#38bdf8" : isCleared ? "#3b82f6" : isUnlocked ? "#475569" : "#334155";
         let textColor = isUnlocked ? "#ffffff" : "#64748b";
@@ -315,10 +313,10 @@ export function openPveLobbyModal(
       startBox.style.cssText = "margin-top:20px; display:flex; flex-direction:column; gap:10px;";
       startBox.innerHTML = `
         <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid #334155; font-size:13px; color:#94a3b8;">
-          Stage ${selectedStage}에 도전합니다. (최대 클리어: ${maxClearedStage}단계 / 클리어 시 런 카드 및 영구 포인트 획득)
+          ${I18nManager.t("lobby.stage_desc", { stage: selectedStage, max: maxClearedStage })}
         </div>
         <button id="pve-start-btn" style="background:#16a34a; color:#fff; border:none; border-radius:8px; padding:14px; font-weight:700; font-size:15px; cursor:pointer;">
-          Stage ${selectedStage} 시작
+          ${I18nManager.t("lobby.stage_start_btn", { stage: selectedStage })}
         </button>
       `;
       body.appendChild(startBox);
@@ -340,11 +338,11 @@ export function openPveLobbyModal(
       rowsWrapper.className = "permanent-upgrade-panel";
       rowsWrapper.innerHTML = `
         <div class="permanent-upgrade-heading" aria-hidden="true" style="margin-bottom:8px;">
-          <span>말 · 강화</span>
-          <span>레벨</span>
-          <span>효과</span>
-          <span>비용</span>
-          <span>구매</span>
+          <span>${I18nManager.t("lobby.upgrade_col_piece")}</span>
+          <span>${I18nManager.t("lobby.upgrade_col_level")}</span>
+          <span>${I18nManager.t("lobby.upgrade_col_effect")}</span>
+          <span>${I18nManager.t("lobby.upgrade_col_cost")}</span>
+          <span>${I18nManager.t("lobby.upgrade_col_buy")}</span>
         </div>
         <div id="pve-upgrade-rows"></div>
       `;
@@ -355,7 +353,7 @@ export function openPveLobbyModal(
       for (const tier of ["basic", "advanced"] as const) {
         const heading = document.createElement("h3");
         heading.className = "permanent-upgrade-tier-title";
-        heading.textContent = tier === "basic" ? "기초 강화" : "심화 강화";
+        heading.textContent = tier === "basic" ? I18nManager.t("lobby.upgrade_basic") : I18nManager.t("lobby.upgrade_advanced");
         if (tier === "advanced") {
           appendSizeUpgradeRow(runtime, rows, statusText);
         }
@@ -369,7 +367,7 @@ export function openPveLobbyModal(
 
       const resetBtn = document.createElement("button");
       resetBtn.className = "permanent-upgrade-reset";
-      resetBtn.textContent = "전체 초기화 · 사용 포인트 100% 반환";
+      resetBtn.textContent = I18nManager.t("lobby.upgrade_reset_btn");
       resetBtn.style.cssText = "margin-top:12px; padding:10px; width:100%; background:#ef4444; color:white; border:none; border-radius:8px; font-weight:700; cursor:pointer;";
       resetBtn.onclick = () => {
         resetPermanentUpgrades(runtime.metaRuntime);
@@ -493,18 +491,18 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     // -------------------------------------------------------------
     panel.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">체스 알까기</h1>
+        <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">${I18nManager.t("lobby.title")}</h1>
         <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer;">
-          사운드 설정
+          ${I18nManager.t("common.settings")}
         </button>
       </div>
-      <p style="font-size:13px; color:#94a3b8; margin:0 0 16px 0;">로그인하거나 게스트로 즉시 시작하세요.</p>
+      <p style="font-size:13px; color:#94a3b8; margin:0 0 16px 0;">${I18nManager.t("lobby.subtitle")}</p>
 
       <!-- 탭 선택 바 -->
       <div style="display:flex; gap:6px; background:#0f172a; padding:4px; border-radius:8px; margin-bottom:16px;">
-        <button id="auth-tab-guest" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:#2563eb; color:white;">게스트 시작</button>
-        <button id="auth-tab-login" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#94a3b8;">이메일 로그인</button>
-        <button id="auth-tab-signup" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#94a3b8;">회원가입</button>
+        <button id="auth-tab-guest" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:#2563eb; color:white;">${I18nManager.t("lobby.guest_tab")}</button>
+        <button id="auth-tab-login" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#94a3b8;">${I18nManager.t("lobby.login_tab")}</button>
+        <button id="auth-tab-signup" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#94a3b8;">${I18nManager.t("lobby.signup_tab")}</button>
       </div>
 
       <div id="auth-tab-content"></div>
@@ -512,7 +510,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     `;
 
     panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
-      openSoundSettingsModal(runtime.overlay);
+      openSettingsModal(runtime.overlay);
     });
 
     let currentAuthTab: "guest" | "login" | "signup" = "guest";
@@ -538,15 +536,15 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       if (status) status.textContent = "";
 
       if (currentAuthTab === "guest") {
-        const savedNick = localStorage.getItem("ca_local_nickname") || `알까기장인_${Math.floor(1000 + Math.random() * 9000)}`;
+        const savedNick = localStorage.getItem("ca_local_nickname") || `Player_${Math.floor(1000 + Math.random() * 9000)}`;
         content.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:10px;">
             <div>
-              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">플레이어 닉네임</label>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">${I18nManager.t("lobby.nickname_label")}</label>
               <input type="text" id="guest-nickname-input" value="${savedNick}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
             </div>
             <button id="btn-guest-submit" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-top:4px;">
-              게스트로 바로 시작
+              ${I18nManager.t("lobby.guest_btn")}
             </button>
           </div>
         `;
@@ -685,9 +683,9 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   // -------------------------------------------------------------
   panel.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">체스 알까기</h1>
+      <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">${I18nManager.t("lobby.title")}</h1>
       <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer;">
-        사운드 설정
+        ${I18nManager.t("common.settings")}
       </button>
     </div>
 
@@ -695,36 +693,36 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:14px 16px; margin-bottom:18px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="font-size:15px; font-weight:700; color:#f8fafc;">
-          ${user.nickname} <span style="font-size:12px; color:#94a3b8; font-weight:normal; margin-left:6px;">| PVE 포인트: <strong style="color:#38bdf8;">${points} P</strong></span>
+          ${user.nickname} <span style="font-size:12px; color:#94a3b8; font-weight:normal; margin-left:6px;">| ${I18nManager.t("common.points")}: <strong style="color:#38bdf8;">${points} P</strong></span>
         </div>
         <button id="btn-logout" style="background:transparent; border:none; color:#94a3b8; font-size:12px; cursor:pointer; text-decoration:underline; padding:2px 4px;">
-          로그아웃
+          ${I18nManager.t("common.logout")}
         </button>
       </div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:12px;">
         <div style="background:#1e293b; padding:8px 10px; border-radius:6px; border:1px solid #1e3a8a;">
-          <div style="color:#60a5fa; font-weight:700; margin-bottom:2px;">클래식 MMR ${user.classicMmr ?? user.mmr}</div>
-          <div style="color:#94a3b8;"><strong style="color:#22c55e;">${user.classicWins ?? 0}</strong>승 <strong style="color:#94a3b8;">${user.classicDraws ?? 0}</strong>무 <strong style="color:#ef4444;">${user.classicLosses ?? 0}</strong>패</div>
+          <div style="color:#60a5fa; font-weight:700; margin-bottom:2px;">${I18nManager.t("lobby.classic_mmr")} ${user.classicMmr ?? user.mmr}</div>
+          <div style="color:#94a3b8;">${I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 })}</div>
         </div>
         <div style="background:#1e293b; padding:8px 10px; border-radius:6px; border:1px solid #581c87;">
-          <div style="color:#c084fc; font-weight:700; margin-bottom:2px;">전략 MMR ${user.strategyMmr ?? user.mmr}</div>
-          <div style="color:#94a3b8;"><strong style="color:#22c55e;">${user.strategyWins ?? 0}</strong>승 <strong style="color:#94a3b8;">${user.strategyDraws ?? 0}</strong>무 <strong style="color:#ef4444;">${user.strategyLosses ?? 0}</strong>패</div>
+          <div style="color:#c084fc; font-weight:700; margin-bottom:2px;">${I18nManager.t("lobby.strategy_mmr")} ${user.strategyMmr ?? user.mmr}</div>
+          <div style="color:#94a3b8;">${I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 })}</div>
         </div>
       </div>
     </div>
 
     <!-- 게임 모드 선택 목록 -->
     <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:flex; flex-direction:column; gap:10px; width:100%;">
-      <button type="button" data-game-mode="tutorial" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#059669; color:white;">튜토리얼 (조작법 배우기)</button>
-      <button type="button" data-game-mode="stage" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#2563eb; color:white;">스테이지 대전 (PVE)</button>
-      <button type="button" data-game-mode="online" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#7c3aed; color:white;">온라인 랭크 대전</button>
-      <button type="button" data-game-mode="hotseat" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px;">2인 대전 (로컬)</button>
+      <button type="button" data-game-mode="tutorial" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#059669; color:white;">${I18nManager.t("lobby.mode_tutorial")}</button>
+      <button type="button" data-game-mode="stage" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#2563eb; color:white;">${I18nManager.t("lobby.mode_stage")}</button>
+      <button type="button" data-game-mode="online" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px; background:#7c3aed; color:white;">${I18nManager.t("lobby.mode_online")}</button>
+      <button type="button" data-game-mode="hotseat" style="padding:14px; font-size:15px; font-weight:700; border-radius:8px;">${I18nManager.t("lobby.mode_2p")}</button>
     </div>
     <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:14px; font-size:13px;"></p>
   `;
 
   panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
-    openSoundSettingsModal(runtime.overlay);
+    openSettingsModal(runtime.overlay);
   });
 
   panel.querySelector("#btn-logout")?.addEventListener("click", async () => {
@@ -853,7 +851,7 @@ export function createMainMenu(
   const returnButton = document.createElement("button");
   returnButton.type = "button";
   returnButton.className = "return-menu-button";
-  returnButton.textContent = "메뉴로";
+  returnButton.textContent = I18nManager.t("ingame.menu_btn");
   returnButton.hidden = true;
 
   const confirmOverlay = document.createElement("section");
@@ -868,11 +866,11 @@ export function createMainMenu(
   );
   confirmOverlay.innerHTML = `
     <div class="match-result-panel">
-      <p>대국 포기</p>
-      <h1 id="menu-confirm-title">진행 중인 대국을 포기하고 메뉴로 돌아갑니다</h1>
+      <p>${I18nManager.t("ingame.abandon_title")}</p>
+      <h1 id="menu-confirm-title">${I18nManager.t("ingame.abandon_desc")}</h1>
       <div class="match-result-actions">
-        <button type="button" data-menu-cancel>계속하기</button>
-        <button type="button" data-menu-confirm>메뉴로</button>
+        <button type="button" data-menu-cancel>${I18nManager.t("ingame.continue_btn")}</button>
+        <button type="button" data-menu-confirm>${I18nManager.t("ingame.menu_btn")}</button>
       </div>
     </div>
   `;
@@ -933,6 +931,21 @@ export function createMainMenu(
   };
 
   renderMainMenu(runtime);
+  I18nManager.subscribe(() => {
+    returnButton.textContent = I18nManager.t("ingame.menu_btn");
+    const confirmP = confirmOverlay.querySelector("p");
+    if (confirmP) confirmP.textContent = I18nManager.t("ingame.abandon_title");
+    const confirmH1 = confirmOverlay.querySelector("#menu-confirm-title");
+    if (confirmH1) confirmH1.textContent = I18nManager.t("ingame.abandon_desc");
+    const cancelBtn = confirmOverlay.querySelector("[data-menu-cancel]");
+    if (cancelBtn) cancelBtn.textContent = I18nManager.t("ingame.continue_btn");
+    const confirmBtn = confirmOverlay.querySelector("[data-menu-confirm]");
+    if (confirmBtn) confirmBtn.textContent = I18nManager.t("ingame.menu_btn");
+
+    if (runtime.visible) {
+      renderMainMenu(runtime);
+    }
+  });
   overlay.addEventListener("keydown", (event) => {
     if (event.code !== "Tab") {
       if (event.code === "Escape") {
@@ -973,8 +986,7 @@ export function createMainMenu(
         "#menu-confirm-title",
       );
     if (heading !== null) {
-      heading.textContent =
-        "진행 중인 대국을 포기하고 메뉴로 돌아갑니다";
+      heading.textContent = I18nManager.t("ingame.abandon_desc");
     }
     runtime.confirming = true;
     runtime.confirmOverlay.hidden = false;

@@ -15,6 +15,7 @@ import {
   WebGLRenderTarget,
 } from "three";
 import { isCoarsePointerEnvironment } from "./input-capability";
+import { I18nManager } from "./i18n";
 
 export interface StrikePanelProjection {
   // 패널 정중앙에 놓이는 선택 말의 월드 AABB 중심이다.
@@ -237,7 +238,7 @@ export function createStrikePointPanel(
   root.setAttribute("aria-label", "확대 타점 선택");
 
   const heading = document.createElement("strong");
-  heading.textContent = "타점 선택";
+  heading.textContent = I18nManager.t("ingame.strike_point_title");
 
   const viewport = document.createElement("div");
   viewport.className = "strike-point-panel-viewport";
@@ -245,7 +246,7 @@ export function createStrikePointPanel(
   canvas.className = "strike-point-panel-canvas";
   canvas.setAttribute(
     "aria-label",
-    "선택한 말의 확대 정면 타점",
+    "Strike Point Preview",
   );
   const marker = document.createElement("span");
   marker.className = "strike-point-panel-marker";
@@ -254,9 +255,14 @@ export function createStrikePointPanel(
 
   const resetButton = document.createElement("button");
   resetButton.type = "button";
-  resetButton.textContent = "타점 초기화";
+  resetButton.textContent = I18nManager.t("ingame.strike_reset_btn");
   root.append(heading, viewport, resetButton);
   container.append(root);
+
+  I18nManager.subscribe(() => {
+    heading.textContent = I18nManager.t("ingame.strike_point_title");
+    resetButton.textContent = I18nManager.t("ingame.strike_reset_btn");
+  });
 
   const context = canvas.getContext("2d");
   if (context === null) {

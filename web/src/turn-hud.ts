@@ -1,6 +1,7 @@
 import type { PieceSide } from "./layout";
 import type { TurnRuntime } from "./turn";
 import { tutorialManager } from "./tutorial";
+import { I18nManager } from "./i18n";
 
 export interface TurnHudRuntime {
   element: HTMLElement;
@@ -142,25 +143,25 @@ export function createTurnHud(
     if (isTutorial) {
       if (tutorialManager.currentStep < 5) {
         timerWrapper.style.display = "none";
-        sideIndicator.innerHTML = `<span style="color:#38bdf8;">연습 모드</span> <span style="color:#94a3b8; font-size:12px;">(시간 무제한)</span>`;
+        sideIndicator.innerHTML = `<span style="color:#38bdf8;">${I18nManager.t("ingame.unlimited_time")}</span>`;
         mainBadge.style.borderColor = "rgba(56, 189, 248, 0.3)";
       } else {
         timerWrapper.style.display = "flex";
-        sideIndicator.innerHTML = `<span style="color:#22c55e;">실전 연습</span> <span style="color:#94a3b8; font-size:12px;">(20초 제한)</span>`;
+        sideIndicator.innerHTML = `<span style="color:#22c55e;">${I18nManager.t("ingame.time_limited")}</span>`;
         mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
       }
     } else if (isOnline) {
       timerWrapper.style.display = "flex";
       if (isMyTurn) {
-        sideIndicator.innerHTML = `<span style="color:#22c55e;">내 턴</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "백" : "흑"})</span>`;
+        sideIndicator.innerHTML = `<span style="color:#22c55e;">${I18nManager.t("ingame.my_turn")}</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "W" : "B"})</span>`;
         mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
       } else {
-        sideIndicator.innerHTML = `<span style="color:#38bdf8;">상대 턴</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "백" : "흑"})</span>`;
+        sideIndicator.innerHTML = `<span style="color:#38bdf8;">${I18nManager.t("ingame.opponent_turn")}</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "W" : "B"})</span>`;
         mainBadge.style.borderColor = "rgba(56, 189, 248, 0.3)";
       }
     } else {
       timerWrapper.style.display = "flex";
-      const sideName = currentSide === "white" ? "백(선공)" : "흑(후공)";
+      const sideName = currentSide === "white" ? I18nManager.t("ingame.turn_white") : I18nManager.t("ingame.turn_black");
       sideIndicator.innerHTML = `<span style="color:${currentSide === "white" ? "#f8fafc" : "#94a3b8"};">${sideName}</span>`;
       mainBadge.style.borderColor = currentSide === "white" ? "rgba(248, 250, 252, 0.3)" : "rgba(148, 163, 184, 0.3)";
     }

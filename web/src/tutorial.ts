@@ -11,6 +11,7 @@
 import type { PieceInstance } from "./layout";
 import type { MetaRuntime } from "./meta";
 import { saveMetaState } from "./meta";
+import { I18nManager } from "./i18n";
 
 export interface TutorialStepInfo {
   step: number;
@@ -20,43 +21,51 @@ export interface TutorialStepInfo {
   successMessage: string;
 }
 
-export const TUTORIAL_STEPS: Record<number, TutorialStepInfo> = {
-  1: {
-    step: 1,
-    title: "기초 이동과 직진 타격",
-    mission: "내 폰(Pawn)을 발사하여 전방의 적 폰을 맞추세요.",
-    guide: "내 기물을 터치한 뒤 목표 반대 방향으로 끌어당겨 놓으세요.",
-    successMessage: "타격 성공. 기물 충돌 물리 감각을 익혔습니다.",
-  },
-  2: {
-    step: 2,
-    title: "각도 조절과 대각선 조준",
-    mission: "드래그 각도를 조절하여 대각선 위치의 적 폰을 맞추세요.",
-    guide: "적이 대각선에 있습니다. 원하는 방향의 정확한 반대 각도로 조준하세요.",
-    successMessage: "명중. 조준 각도 조절을 마스터했습니다.",
-  },
-  3: {
-    step: 3,
-    title: "타점 선택과 스핀 회전력",
-    mission: "좌측 [타점 선택창]에서 가장자리를 찍고 스핀 샷으로 적을 치세요.",
-    guide: "[타점 선택창]에서 중심이 아닌 좌/우 가장자리를 클릭하고 발사해야 인정됩니다.",
-    successMessage: "스핀 샷 성공. 회전력을 이용해 적을 타격했습니다.",
-  },
-  4: {
-    step: 4,
-    title: "장외 낙사 시스템",
-    mission: "적 나이트를 보드 밖(장외)으로 밀어내세요.",
-    guide: "상대 기물을 보드 밖으로 떨어뜨리면 즉시 파괴됩니다. 강하게 밀어보세요.",
-    successMessage: "장외 성공. 상대 기물을 파괴했습니다.",
-  },
-  5: {
-    step: 5,
-    title: "실전 연습 미니 대전",
-    mission: "배운 기술을 종합 활용하여 상대 킹(King)을 격파하고 승리하세요.",
-    guide: "실전 연습 대전입니다. 20초 안에 각도와 스핀을 활용해 적 킹을 격파하세요.",
-    successMessage: "튜토리얼 완료. 모든 실전 준비를 마쳤습니다.",
-  },
-};
+export function getTutorialStepInfo(step: number): TutorialStepInfo {
+  switch (step) {
+    case 1:
+      return {
+        step: 1,
+        title: I18nManager.t("tutorial.step1_title"),
+        mission: I18nManager.t("tutorial.step1_mission"),
+        guide: I18nManager.t("tutorial.step1_guide"),
+        successMessage: I18nManager.t("tutorial.step1_success"),
+      };
+    case 2:
+      return {
+        step: 2,
+        title: I18nManager.t("tutorial.step2_title"),
+        mission: I18nManager.t("tutorial.step2_mission"),
+        guide: I18nManager.t("tutorial.step2_guide"),
+        successMessage: I18nManager.t("tutorial.step2_success"),
+      };
+    case 3:
+      return {
+        step: 3,
+        title: I18nManager.t("tutorial.step3_title"),
+        mission: I18nManager.t("tutorial.step3_mission"),
+        guide: I18nManager.t("tutorial.step3_guide"),
+        successMessage: I18nManager.t("tutorial.step3_success"),
+      };
+    case 4:
+      return {
+        step: 4,
+        title: I18nManager.t("tutorial.step4_title"),
+        mission: I18nManager.t("tutorial.step4_mission"),
+        guide: I18nManager.t("tutorial.step4_guide"),
+        successMessage: I18nManager.t("tutorial.step4_success"),
+      };
+    case 5:
+    default:
+      return {
+        step: 5,
+        title: I18nManager.t("tutorial.step5_title"),
+        mission: I18nManager.t("tutorial.step5_mission"),
+        guide: I18nManager.t("tutorial.step5_guide"),
+        successMessage: I18nManager.t("tutorial.step5_success"),
+      };
+  }
+}
 
 export class TutorialManager {
   public currentStep: number = 1;
@@ -105,7 +114,6 @@ export class TutorialManager {
   public getStepPieces(step: number): PieceInstance[] {
     switch (step) {
       case 1:
-        // Step 1 (직진 타격): 백 폰 (d2) vs 흑 폰 (d5)
         return [
           {
             id: "white-pawn-d2",
@@ -122,7 +130,6 @@ export class TutorialManager {
         ];
 
       case 2:
-        // Step 2 (대각선 각도 조준): 백 폰 (d2) vs 대각선 흑 폰 (f5)
         return [
           {
             id: "white-pawn-d2",
@@ -139,7 +146,6 @@ export class TutorialManager {
         ];
 
       case 3:
-        // Step 3 (타점 스핀 훈련): 백 폰 (d2) vs 흑 폰 (d5)
         return [
           {
             id: "white-pawn-d2",
@@ -156,7 +162,6 @@ export class TutorialManager {
         ];
 
       case 4:
-        // Step 4 (장외 낙사): 백 폰 (d3) vs 흑 나이트 (d8 보드 가장자리)
         return [
           {
             id: "white-pawn-d3",
@@ -174,7 +179,6 @@ export class TutorialManager {
 
       case 5:
       default:
-        // Step 5 (실전 연습 미니 대전): 백 4개 vs 흑 3개
         return [
           {
             id: "white-pawn-c2",
@@ -235,29 +239,24 @@ export class TutorialManager {
 
     switch (this.currentStep) {
       case 1:
-        // Step 1: 내 폰이 적 폰을 한 번이라도 맞추거나 장외시키면 성공
         return { cleared: hadWhiteHitBlack || remainingBlackPieceCount === 0 };
 
       case 2:
-        // Step 2: 대각선 적 폰을 맞추거나 장외시키면 성공
         return { cleared: hadWhiteHitBlack || remainingBlackPieceCount === 0 };
 
       case 3:
-        // Step 3: 반드시 타점을 바꾼 상태에서 적을 타격해야 인정!
         if (!hasCustomStrikePoint) {
           return {
             cleared: false,
-            hint: "[안내] 좌측 타점 선택창에서 기물의 가장자리를 먼저 클릭하고 발사하세요.",
+            hint: I18nManager.t("tutorial.step3_hint"),
           };
         }
         return { cleared: hadWhiteHitBlack || remainingBlackPieceCount === 0 };
 
       case 4:
-        // Step 4: 적 나이트가 장외되어 흑 기물이 0개가 되면 성공
         return { cleared: remainingBlackPieceCount === 0 };
 
       case 5:
-        // Step 5: 적 킹이 장외/격파되면 최종 승리!
         return { cleared: !remainingBlackPieces.some((p) => p.type === "King") };
 
       default:
@@ -270,9 +269,8 @@ export class TutorialManager {
    */
   public async handleStepSuccess(): Promise<void> {
     if (!this.isActive) return;
-    const stepInfo = TUTORIAL_STEPS[this.currentStep];
+    const stepInfo = getTutorialStepInfo(this.currentStep);
 
-    // 코치 말풍선에 성공 메시지 연출
     this.updateCoachMessage(stepInfo.successMessage, true);
 
     await new Promise((r) => setTimeout(r, 1200));
@@ -285,7 +283,6 @@ export class TutorialManager {
         await this.onStepCompletedCallback(nextStep);
       }
     } else {
-      // 5단계 최종 완료: 100포인트 보상 지급 및 완료 팝업
       this.completeTutorial();
     }
   }
@@ -308,7 +305,6 @@ export class TutorialManager {
   public completeTutorial(): void {
     localStorage.setItem("has_completed_tutorial", "true");
 
-    // 100 PVE 포인트 보상 지급
     if (this.metaRuntime) {
       this.metaRuntime.state.points += 100;
       saveMetaState(this.metaRuntime);
@@ -328,7 +324,7 @@ export class TutorialManager {
       document.body.appendChild(this.overlayElement);
     }
 
-    const stepInfo = TUTORIAL_STEPS[this.currentStep] || TUTORIAL_STEPS[1];
+    const stepInfo = getTutorialStepInfo(this.currentStep);
 
     this.overlayElement.innerHTML = `
       <div class="tutorial-coach-card">
@@ -356,7 +352,7 @@ export class TutorialManager {
     }
     if (guideEl && isSuccess) {
       guideEl.style.color = "#93c5fd";
-      guideEl.textContent = "다음 단계로 이동합니다.";
+      guideEl.textContent = "...";
     }
   }
 
@@ -370,16 +366,15 @@ export class TutorialManager {
     modal.className = "tutorial-modal-overlay";
     modal.innerHTML = `
       <div class="tutorial-modal-card">
-        <h2 style="margin:0 0 10px 0; font-size:22px; color:#38bdf8; font-weight:800;">튜토리얼 완료</h2>
+        <h2 style="margin:0 0 10px 0; font-size:22px; color:#38bdf8; font-weight:800;">${I18nManager.t("tutorial.complete_title")}</h2>
         <p style="margin:0 0 16px 0; font-size:14px; color:#cbd5e1; line-height:1.5;">
-          기본 타격, 각도 조절, 스핀 회전력, 장외 낙사, 실전 대전까지 모두 마스터하셨습니다.<br>
-          완료 보상으로 <strong>100 PVE 포인트</strong>가 지급되었습니다.
+          ${I18nManager.t("tutorial.complete_desc")}
         </p>
         <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:20px; font-size:13px; color:#38bdf8; font-weight:700;">
-          완료 보상: +100 PVE 포인트 지급 완료
+          ${I18nManager.t("tutorial.complete_reward")}
         </div>
         <button id="btn-tutorial-finish" style="background:#16a34a; color:white; border:none; border-radius:8px; padding:14px 28px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">
-          메인 로비로 이동
+          ${I18nManager.t("tutorial.complete_btn")}
         </button>
       </div>
     `;
@@ -414,17 +409,16 @@ export class TutorialManager {
     modal.className = "tutorial-modal-overlay";
     modal.innerHTML = `
       <div class="tutorial-modal-card">
-        <h2 style="margin:0 0 10px 0; font-size:20px; color:#f8fafc; font-weight:800;">체스 알까기 튜토리얼</h2>
+        <h2 style="margin:0 0 10px 0; font-size:20px; color:#f8fafc; font-weight:800;">${I18nManager.t("tutorial.welcome_title")}</h2>
         <p style="margin:0 0 20px 0; font-size:14px; color:#94a3b8; line-height:1.5;">
-          기본 조작법과 스핀 타격, 승리 규칙을 <strong>1분 안에</strong> 학습할 수 있습니다.<br>
-          완료 시 <strong>100 PVE 포인트</strong>를 드립니다.
+          ${I18nManager.t("tutorial.welcome_desc")}
         </p>
         <div style="display:flex; flex-direction:column; gap:10px;">
           <button id="btn-start-tutorial-prompt" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:14px; font-size:15px; font-weight:700; cursor:pointer;">
-            튜토리얼 시작하기 (권장)
+            ${I18nManager.t("tutorial.welcome_start_btn")}
           </button>
           <button id="btn-skip-tutorial-prompt" style="background:transparent; color:#94a3b8; border:1px solid #475569; border-radius:8px; padding:12px; font-size:13px; font-weight:600; cursor:pointer;">
-            바로 게임하기
+            ${I18nManager.t("tutorial.welcome_skip_btn")}
           </button>
         </div>
       </div>

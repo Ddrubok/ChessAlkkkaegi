@@ -21,6 +21,7 @@ import {
 } from "./net";
 import type { ReplayTurnRecord } from "./replay";
 import { capturePhysicsStateHash } from "./state-hash";
+import { I18nManager } from "./i18n";
 import {
   alignTurnCameraToPerspective,
   applyPendingLaunchBeforeStep,
@@ -2220,34 +2221,34 @@ export function openOnlineLobby(
   panel.setAttribute("aria-labelledby", "online-lobby-title");
   panel.innerHTML = `
     <div class="online-lobby-card">
-      <p>친구와 P2P 연결</p>
-      <h2 id="online-lobby-title">온라인 대전</h2>
-      <p data-online-status aria-live="polite">방을 만들거나 초대 코드로 참가하세요.</p>
+      <p>${I18nManager.t("p2p.title")}</p>
+      <h2 id="online-lobby-title">${I18nManager.t("p2p.subtitle")}</h2>
+      <p data-online-status aria-live="polite">${I18nManager.t("p2p.prompt")}</p>
       <div class="online-path-buttons">
-        <button type="button" data-online-host>방 만들기</button>
-        <button type="button" data-online-guest>참가하기</button>
+        <button type="button" data-online-host>${I18nManager.t("p2p.create_room")}</button>
+        <button type="button" data-online-guest>${I18nManager.t("p2p.join_room")}</button>
       </div>
       <section data-online-host-panel hidden>
-        <label>초대 코드
+        <label>${I18nManager.t("p2p.invite_code")}
           <textarea rows="4" readonly data-online-invite-output></textarea>
         </label>
-        <button type="button" data-online-copy-invite>초대 코드 복사</button>
-        <label>응답 코드 붙여넣기
+        <button type="button" data-online-copy-invite>${I18nManager.t("p2p.copy_invite")}</button>
+        <label>${I18nManager.t("p2p.paste_answer")}
           <textarea rows="4" data-online-answer-input></textarea>
         </label>
-        <button type="button" data-online-accept>응답 코드로 연결</button>
+        <button type="button" data-online-accept>${I18nManager.t("p2p.connect_answer")}</button>
       </section>
       <section data-online-guest-panel hidden>
-        <label>초대 코드 붙여넣기
+        <label>${I18nManager.t("p2p.paste_invite")}
           <textarea rows="4" data-online-invite-input></textarea>
         </label>
-        <button type="button" data-online-join>초대 코드로 참가</button>
-        <label>응답 코드
+        <button type="button" data-online-join>${I18nManager.t("p2p.join_invite")}</button>
+        <label>${I18nManager.t("p2p.answer_code")}
           <textarea rows="4" readonly data-online-answer-output></textarea>
         </label>
-        <button type="button" data-online-copy-answer>응답 코드 복사</button>
+        <button type="button" data-online-copy-answer>${I18nManager.t("p2p.copy_answer")}</button>
       </section>
-      <button type="button" data-online-cancel>취소</button>
+      <button type="button" data-online-cancel>${I18nManager.t("common.cancel")}</button>
     </div>
   `;
   parent.append(panel);
@@ -2304,12 +2305,12 @@ export function openOnlineLobby(
   return new Promise<OnlinePeerSession>((resolve, reject) => {
     const removeStateHandler = link.onStateChange((state) => {
       const labels: Record<PeerLinkState, string> = {
-        idle: "연결 방법을 선택하세요.",
-        "waiting-answer": "상대의 응답 코드를 기다리는 중입니다.",
-        connecting: "상대 브라우저와 연결 중입니다.",
-        connected: "연결됐습니다. 표준 대국을 준비합니다.",
-        disconnected: "연결이 끊겼습니다.",
-        failed: "연결에 실패했습니다.",
+        idle: I18nManager.t("p2p.prompt"),
+        "waiting-answer": I18nManager.t("p2p.status_waiting_answer"),
+        connecting: I18nManager.t("p2p.status_connecting"),
+        connected: I18nManager.t("p2p.status_connected"),
+        disconnected: I18nManager.t("p2p.status_disconnected"),
+        failed: I18nManager.t("p2p.status_failed"),
       };
       status.textContent = labels[state];
       if (
