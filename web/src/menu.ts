@@ -20,6 +20,8 @@ import {
   type PermanentUpgradeTrack,
 } from "./meta";
 import { openSettingsModal } from "./settings-modal";
+import { openRankingModal } from "./ranking-modal";
+import { openFriendsModal } from "./friends-modal";
 import { I18nManager } from "./i18n";
 import {
   getOrCreateUserProfile,
@@ -45,6 +47,7 @@ export interface MainMenuRuntime {
   onStartMode: (mode: GameMode, selectedStage?: number) => Promise<void>;
   onReturnToMenu: () => Promise<void>;
   onConfirmAbandon: () => Promise<void>;
+  onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
 }
 
 const getPieceLabel = (type: PieceType): string => {
@@ -492,9 +495,17 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     panel.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">${I18nManager.t("lobby.title")}</h1>
-        <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer;">
-          ${I18nManager.t("common.settings")}
-        </button>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button id="menu-ranking-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
+            🏆 ${I18nManager.t("common.ranking_btn")}
+          </button>
+          <button id="menu-friends-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
+            👥 ${I18nManager.t("common.friends_btn")}
+          </button>
+          <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
+            ⚙️ ${I18nManager.t("common.settings")}
+          </button>
+        </div>
       </div>
       <p style="font-size:13px; color:#94a3b8; margin:0 0 16px 0;">${I18nManager.t("lobby.subtitle")}</p>
 
@@ -508,6 +519,18 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       <div id="auth-tab-content"></div>
       <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:12px; font-size:13px; min-height:16px; color:#ef4444;"></p>
     `;
+
+    panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
+      void openRankingModal(runtime.overlay, runtime.userProfile);
+    });
+
+    panel.querySelector("#menu-friends-btn")?.addEventListener("click", () => {
+      void openFriendsModal(runtime.overlay, runtime.userProfile, {
+        onStartFriendlyMatch: (friend, roomId, isHost) => {
+          void runtime.onStartFriendlyMatch?.(friend, roomId, isHost);
+        },
+      });
+    });
 
     panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
       openSettingsModal(runtime.overlay);
@@ -684,9 +707,17 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   panel.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h1 id="main-menu-title" style="font-size:24px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc;">${I18nManager.t("lobby.title")}</h1>
-      <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer;">
-        ${I18nManager.t("common.settings")}
-      </button>
+      <div style="display:flex; gap:6px; flex-shrink:0;">
+        <button id="menu-ranking-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
+          🏆 ${I18nManager.t("common.ranking_btn")}
+        </button>
+        <button id="menu-friends-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
+          👥 ${I18nManager.t("common.friends_btn")}
+        </button>
+        <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
+          ⚙️ ${I18nManager.t("common.settings")}
+        </button>
+      </div>
     </div>
 
     <!-- 유저 프로필 카드 -->
@@ -720,6 +751,18 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     </div>
     <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:14px; font-size:13px;"></p>
   `;
+
+  panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
+    void openRankingModal(runtime.overlay, runtime.userProfile);
+  });
+
+  panel.querySelector("#menu-friends-btn")?.addEventListener("click", () => {
+    void openFriendsModal(runtime.overlay, runtime.userProfile, {
+      onStartFriendlyMatch: (friend, roomId, isHost) => {
+        void runtime.onStartFriendlyMatch?.(friend, roomId, isHost);
+      },
+    });
+  });
 
   panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
     openSettingsModal(runtime.overlay);

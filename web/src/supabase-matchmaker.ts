@@ -631,6 +631,63 @@ export class SupabaseMatchmaker {
   }
 
   /**
+   * 1:1 친구 대전 직접 WebRTC 시그널링 및 P2P 연결
+   */
+  public async startDirectFriendlyMatch(
+    roomId: string,
+    isHost: boolean,
+    opponent: { id: string; nickname: string; mmr: number },
+    onReady: (
+      transport: OnlineTransport,
+      mySide: PieceSide,
+      matchId: string,
+      opponent: { id: string; nickname: string; mmr: number },
+    ) => void,
+    onError?: (error: Error) => void,
+  ): Promise<void> {
+    await this.cleanup();
+    this.isHost = isHost;
+    this.opponentProfile = opponent;
+    this.activeMatchId = roomId;
+    this.isConnectionEstablished = false;
+    this.isCancelled = false;
+    this.pendingIceCandidates = [];
+    this.matchReadyCallback = onReady;
+    this.errorCallback = onError || null;
+
+    this.updateStatus(
+      "match-found",
+      "친구와 1:1 대전을 연결 중입니다...",
+      0,
+      0,
+      opponent,
+    );
+
+    // 고유한 방 채널 생성
+    const channelName = `ca-friendly-room-${roomId}`;
+    this.channel = this.client.channel(channelName, {
+      config: { broadcast: { self: false } },
+    });
+
+    this.channel
+      .on("broadcast", { event: "webrtc-signal" }, ({ payload }) => {
+        void this.handleIncomingSignal(payload as SignalMessage);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          this.updateStatus("signaling", "P2P 신호를 교환하는 중입니다...", 0, 0, opponent);
+          if (isHost) {
+            await this.setupHostWebRTC(opponent.id, roomId);
+          } else {
+            await this.setupGuestWebRTC(opponent.id, roomId);
+          }
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          this.handleError(new Error(`친선전 채널 연결 오류: ${status}`));
+        }
+      });
+  }
+
+  /**
    * 매칭 대기열 취소
    */
   public cancel(): void {

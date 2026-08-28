@@ -122,6 +122,9 @@ import type {
 import type { OnlineSelfTestRuntime } from "./tools/online-selftest";
 import { SupabaseMatchUi } from "./supabase-match-ui";
 import { SupabaseMatchmaker } from "./supabase-matchmaker";
+import { SocialService } from "./social-service";
+import { openChallengeReceivedModal } from "./challenge-modal";
+import { I18nManager } from "./i18n";
 import { getSupabaseClient } from "./supabase-client";
 import type { UserProfile } from "./supabase-auth";
 import {
@@ -432,7 +435,7 @@ async function bootstrap(): Promise<void> {
       });
     }
 
-    const modeBadge = isStrategyMode ? "[전략 랭크 10P]" : "[클래식 랭크]";
+    const modeBadge = isStrategyMode ? `[${I18nManager.t("online.strategy_tab")}]` : `[${I18nManager.t("online.classic_tab")}]`;
     const recordStr = isStrategyMode
       ? `${activeMyProfile.strategyWins}승 ${activeMyProfile.strategyDraws}무 ${activeMyProfile.strategyLosses}패`
       : `${activeMyProfile.classicWins}승 ${activeMyProfile.classicDraws}무 ${activeMyProfile.classicLosses}패`;
@@ -1667,6 +1670,117 @@ async function bootstrap(): Promise<void> {
     await switchGameMode(gameModeRuntime, mode, true);
     ensureGameLoopStarted();
   };
+
+  const startDirectFriendlyMatch = async (
+    roomId: string,
+    isHost: boolean,
+    opponent: { id: string; nickname: string; mmr: number },
+  ): Promise<void> => {
+    const sb = getSupabaseClient();
+    if (!sb || !menuRuntime.userProfile || !gameModeRuntime) return;
+
+    onlineSelfTestRuntime?.destroy();
+    void AdManager.hideBanner();
+    void SocialService.updateMyStatus("in_game");
+
+    const { createOnlineRuntime } = await import("./online");
+
+    const session = await new Promise<{
+      transport: OnlineTransport;
+      mySide: PieceSide;
+      matchId: string;
+      opponent: { id: string; nickname: string; mmr: number };
+    }>((resolve, reject) => {
+      const matchmaker = new SupabaseMatchmaker(
+        sb,
+        menuRuntime.userProfile!,
+        "classic",
+      );
+
+      void matchmaker.startDirectFriendlyMatch(
+        roomId,
+        isHost,
+        opponent,
+        (transport, mySide, matchId, opp) => {
+          resolve({ transport, mySide, matchId, opponent: opp });
+        },
+        (err) => reject(err),
+      );
+    });
+
+    activeMatchOpponent = session.opponent;
+    activeMyProfile = menuRuntime.userProfile;
+    activeOnlineMatchMode = "classic";
+
+    onlineRuntime?.close();
+    onlineRuntime = createOnlineRuntime(
+      session.transport,
+      turnRuntime,
+      aimRuntime,
+      session.mySide,
+      {
+        onDisconnected: showDisconnectOverlay,
+        onStrategyDecksReady: (whiteDeck, blackDeck) => {
+          applyStrategyDecksToPhysics(physicsRuntime, whiteDeck, blackDeck);
+        },
+        prepareRematch: async () => {
+          await resetBoard({
+            gameMode: "online",
+            stageNumber: 1,
+          });
+        },
+        onRematchStateChange: renderRematchControls,
+        onRematchStarted: () => {
+          hideDisconnectOverlay();
+          hideMatchResult(matchRuntime);
+          renderRematchControls(null);
+          onlineResignButton.hidden = false;
+        },
+        onResigned: async (resignedSide) => {
+          hideDisconnectOverlay();
+          onlineResignButton.hidden = true;
+          turnRuntime.phase = "match-over";
+          lockInputForMatchOver(inputRuntime);
+          const winner = resignedSide === "white" ? "black" : "white";
+
+          showMatchResult(
+            matchRuntime,
+            winner,
+            "online",
+            1,
+            async () => {},
+            [],
+            null,
+            () => returnToMainMenu(menuRuntime),
+            onlineRuntime?.mySide ?? null,
+          );
+          renderRematchControls(onlineRuntime?.getRematchStatus() ?? null);
+          void SocialService.updateMyStatus("online");
+          void AdManager.showBanner();
+        },
+      },
+      {
+        matchId: session.matchId,
+        localStrategyDeck: null,
+      },
+    );
+
+    onlineResignButton.hidden = false;
+    await switchGameMode(gameModeRuntime, "online", true);
+    onlineRuntime.startMatch({ rejoining: false });
+    ensureGameLoopStarted();
+    await onlineRuntime.waitUntilReady();
+    hideMainMenuAfterModeStart(menuRuntime);
+  };
+
+  menuRuntime.onStartFriendlyMatch = async (friend, roomId, isHost) => {
+    await startDirectFriendlyMatch(roomId, isHost, {
+      id: friend.id,
+      nickname: friend.nickname,
+      mmr: friend.classicMmr ?? 1000,
+    });
+  };
+
   reconnectButton.addEventListener("click", () => {
     if (onlineRuntime === null) {
       return;
@@ -1723,6 +1837,7 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
+    void SocialService.updateMyStatus("online");
     onlineSelfTestRuntime?.destroy();
     onlineRuntime?.close();
     onlineRuntime = null;
@@ -1832,6 +1947,21 @@ async function bootstrap(): Promise<void> {
   );
   await AdManager.init();
   await AdManager.showBanner();
+
+  if (menuRuntime.userProfile) {
+    SocialService.init(menuRuntime.userProfile, (challenge) => {
+      openChallengeReceivedModal(challenge, {
+        onAccept: (req) => {
+          void startDirectFriendlyMatch(req.roomId, false, {
+            id: req.challengerId,
+            nickname: req.challengerNickname,
+            mmr: req.challengerMmr,
+          });
+        },
+        onReject: () => {},
+      });
+    });
+  }
 }
 
 void bootstrap().catch((error: unknown) => {
