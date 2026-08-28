@@ -586,50 +586,7 @@ async function bootstrap(): Promise<void> {
     onlineConnectionBlocked = false;
     disconnectOverlay.hidden = true;
   };
-  const onlineResignButton = document.createElement("button");
-  onlineResignButton.type = "button";
-  onlineResignButton.className =
-    "return-menu-button online-resign-button";
-  onlineResignButton.textContent = "기권";
-  onlineResignButton.hidden = true;
-  const resignOverlay = document.createElement("section");
-  resignOverlay.className = "match-result-overlay";
-  resignOverlay.hidden = true;
-  resignOverlay.innerHTML = `
-    <div class="match-result-panel">
-      <p>온라인 대전</p>
-      <h1>대국을 기권하시겠습니까?</h1>
-      <div class="match-result-actions">
-        <button type="button" data-resign-cancel>계속하기</button>
-        <button type="button" data-resign-confirm>기권</button>
-      </div>
-    </div>
-  `;
-  app.append(onlineResignButton, resignOverlay);
-  const resignCancel =
-    resignOverlay.querySelector<HTMLButtonElement>(
-      "[data-resign-cancel]",
-    );
-  const resignConfirm =
-    resignOverlay.querySelector<HTMLButtonElement>(
-      "[data-resign-confirm]",
-    );
-  if (resignCancel === null || resignConfirm === null) {
-    throw new Error("온라인 기권 확인 화면 요소를 만들지 못했습니다.");
-  }
-  onlineResignButton.addEventListener("click", () => {
-    onlineConnectionBlocked = true;
-    resignOverlay.hidden = false;
-    resignCancel.focus();
-  });
-  resignCancel.addEventListener("click", () => {
-    onlineConnectionBlocked = false;
-    resignOverlay.hidden = true;
-  });
-  resignConfirm.addEventListener("click", () => {
-    resignOverlay.hidden = true;
-    onlineRuntime?.resign();
-  });
+  const onlineResignButton = { hidden: true };
   let readsAiTelegraphActive = (): boolean => false;
   const inputRuntime = createInputRuntime(
     sceneRuntime,
@@ -1863,6 +1820,9 @@ async function bootstrap(): Promise<void> {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
     tutorialManager.stop();
+    if (gameModeRuntime.mode === "online" && onlineRuntime) {
+      onlineRuntime.resign();
+    }
     if (gameModeRuntime.mode !== "stage") {
       await returnToMainMenu(menuRuntime);
       return;

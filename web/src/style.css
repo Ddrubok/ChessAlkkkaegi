@@ -131,34 +131,21 @@ body {
   background: rgb(12 14 17 / 84%);
 }
 
-.online-resign-button {
-  position: absolute;
-  z-index: 10;
-  top: 1rem;
-  right: 10.5rem;
-  left: auto;
-  padding: 0.45rem 0.75rem;
-  border: 1px solid rgb(239 68 68 / 40%);
-  border-radius: 0.65rem;
-  color: #fca5a5;
-  background: rgb(127 29 29 / 70%);
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
 .return-menu-button {
   position: absolute;
-  z-index: 10;
-  top: 1rem;
-  right: 5.5rem;
+  z-index: 20;
+  top: 14px;
+  right: 76px;
   left: auto;
   padding: 0.45rem 0.75rem;
-  border: 1px solid rgb(255 255 255 / 14%);
+  border: 1px solid rgb(255 255 255 / 16%);
   border-radius: 0.65rem;
   color: #f8f2e7;
-  background: rgb(12 14 17 / 84%);
+  background: rgb(15 23 42 / 88%);
+  backdrop-filter: blur(4px);
   cursor: pointer;
   font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .input-mode-toggle button,
@@ -996,22 +983,13 @@ body {
   }
 
   .online-ping-hud {
-    top: 0.4rem;
-    right: 0.4rem;
+    top: 8px;
+    right: 8px;
   }
 
   .return-menu-button {
-    top: 0.4rem;
-    right: 4.2rem;
-    left: auto;
-    padding: 0.35rem 0.55rem;
-    font-size: 0.72rem;
-    border-radius: 0.45rem;
-  }
-
-  .online-resign-button {
-    top: 0.4rem;
-    right: 8.0rem;
+    top: 8px;
+    right: 64px;
     left: auto;
     padding: 0.35rem 0.55rem;
     font-size: 0.72rem;
@@ -1240,19 +1218,13 @@ body {
   }
 
   .online-ping-hud {
-    top: 0.75rem;
-    right: 0.75rem;
+    top: 12px;
+    right: 12px;
   }
 
   .return-menu-button {
-    top: 0.75rem;
-    right: 4.8rem;
-    left: auto;
-  }
-
-  .online-resign-button {
-    top: 0.75rem;
-    right: 9.0rem;
+    top: 12px;
+    right: 72px;
     left: auto;
   }
 
