@@ -15,6 +15,7 @@ import {
   type ActionBarAnchor,
   type ActionBarRect,
 } from "./action-bar";
+import { I18nManager } from "./i18n";
 import {
   beginAim,
   beginDirectedAim,
@@ -1780,33 +1781,54 @@ export function createInputRuntime(
   modeToggle.className = "input-mode-toggle";
   modeToggle.setAttribute("role", "group");
   modeToggle.setAttribute("aria-label", "조작 모드");
-  for (const [mode, label] of [
-    ["billiards", "당구식"],
-    ["classic", "클래식"],
-  ] as const) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.mode = mode;
-    button.textContent = label;
-    modeToggle.append(button);
-  }
+
+  const modeButtons: Record<InputMode, HTMLButtonElement> = {
+    billiards: document.createElement("button"),
+    classic: document.createElement("button"),
+  };
+
+  modeButtons.billiards.type = "button";
+  modeButtons.billiards.dataset.mode = "billiards";
+  modeButtons.classic.type = "button";
+  modeButtons.classic.dataset.mode = "classic";
+  modeToggle.append(modeButtons.billiards, modeButtons.classic);
+
+  const updateToggleLabels = () => {
+    modeButtons.billiards.textContent = I18nManager.t("ingame.billiards_mode");
+    modeButtons.classic.textContent = I18nManager.t("ingame.classic_mode");
+  };
+  updateToggleLabels();
   sceneRuntime.renderer.domElement.parentElement?.append(modeToggle);
+
   const actionBar = document.createElement("div");
   actionBar.className = "strike-action-bar";
   actionBar.setAttribute("role", "group");
   actionBar.setAttribute("aria-label", "동작 선택");
   actionBar.hidden = true;
-  for (const [action, label] of [
-    ["launch", "발사"],
-    ["strike", "타점선택"],
-  ] as const) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.action = action;
-    button.textContent = label;
-    actionBar.append(button);
-  }
+
+  const actionButtons: Record<string, HTMLButtonElement> = {
+    launch: document.createElement("button"),
+    strike: document.createElement("button"),
+  };
+
+  actionButtons.launch.type = "button";
+  actionButtons.launch.dataset.action = "launch";
+  actionButtons.strike.type = "button";
+  actionButtons.strike.dataset.action = "strike";
+  actionBar.append(actionButtons.launch, actionButtons.strike);
+
+  const updateActionBarLabels = () => {
+    actionButtons.launch.textContent = I18nManager.t("ingame.launch");
+    actionButtons.strike.textContent = I18nManager.t("ingame.strike_select");
+  };
+  updateActionBarLabels();
   sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
+
+  I18nManager.subscribe(() => {
+    updateToggleLabels();
+    updateActionBarLabels();
+    updateModeToggle(runtime);
+  });
   const overlayContainer =
     sceneRuntime.renderer.domElement.parentElement;
   if (overlayContainer === null) {

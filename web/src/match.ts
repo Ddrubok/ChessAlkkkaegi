@@ -1,6 +1,7 @@
 import type { PieceSide } from "./layout";
 import type { GameMode } from "./game-mode";
 import type { CardId, UpgradeCard } from "./cards";
+import { I18nManager } from "./i18n";
 
 export interface RemainingPieceCounts {
   // 판에 남아 있는 백 말 수다.
@@ -225,6 +226,14 @@ export function createMatchRuntime(
     event.stopPropagation();
   });
   container.append(overlay);
+  I18nManager.subscribe(() => {
+    if (!runtime.restartButton.hidden) {
+      runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
+    }
+    if (!runtime.menuButton.hidden && runtime.menuButton.textContent !== I18nManager.t("ingame.go_to_main")) {
+      runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
+    }
+  });
   return runtime;
 }
 
@@ -247,25 +256,25 @@ export function showMatchResult(
   runtime.onCardSelected = onCardSelected;
   runtime.onReturnToMenu = onReturnToMenu;
   runtime.resultKicker.hidden = false;
-  runtime.resultKicker.textContent = "대국 종료";
+  runtime.resultKicker.textContent = I18nManager.t("ingame.game_over");
   runtime.resultDetails.replaceChildren();
   runtime.resultDetails.hidden = true;
   runtime.winnerHeading.textContent =
     winner === "draw"
-      ? "무승부"
+      ? I18nManager.t("ingame.draw")
       : gameMode === "online"
       ? localSide === null
-        ? "대국 종료"
+        ? I18nManager.t("ingame.game_over")
         : winner === localSide
-          ? "승리"
-          : "패배"
+          ? I18nManager.t("ingame.victory")
+          : I18nManager.t("ingame.defeat")
       : gameMode === "stage"
       ? winner === "white"
-        ? `승리! 스테이지 ${stageNumber} 클리어`
-        : "패배"
+        ? I18nManager.t("ingame.stage_clear", { stage: stageNumber })
+        : I18nManager.t("ingame.defeat")
       : winner === "white"
-        ? "백 승리"
-        : "흑 승리";
+        ? I18nManager.t("ingame.white_win")
+        : I18nManager.t("ingame.black_win");
   const showsCards =
     gameMode === "stage" &&
     winner === "white" &&
@@ -276,22 +285,24 @@ export function showMatchResult(
   runtime.restartButton.hidden =
     showsCards || gameMode === "online";
   runtime.restartButton.disabled = false;
-  runtime.restartButton.textContent = "다시 시작";
+  runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
   runtime.menuButton.hidden =
     showsCards ||
     (gameMode === "stage" && winner !== "black") ||
     (gameMode !== "stage" && gameMode !== "online") ||
     onReturnToMenu === null;
   runtime.menuButton.disabled = false;
-  runtime.menuButton.textContent = "메뉴로";
+  runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
   if (showsCards) {
     for (const card of upgradeCards) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "upgrade-card";
+      const cardName = I18nManager.t(`cards.${card.id}_name`) || card.name;
+      const cardDesc = I18nManager.t(`cards.${card.id}_desc`) || card.description;
       button.innerHTML = `
-        <strong>${card.name}</strong>
-        <span>${card.description}</span>
+        <strong>${cardName}</strong>
+        <span>${cardDesc}</span>
       `;
       button.addEventListener("click", () => {
         if (runtime.restarting || runtime.onCardSelected === null) {
@@ -360,18 +371,18 @@ export function createStageRunResultCopy(
   return completed
     ? {
         kicker: null,
-        heading: "축하합니다.",
+        heading: I18nManager.t("ingame.congrats"),
         detailLines: [
-          "데모 버전 스테이지를 전부 클리어하셨습니다.",
-          "플레이해 주셔서 감사합니다.",
+          I18nManager.t("ingame.demo_cleared_1"),
+          I18nManager.t("ingame.demo_cleared_2"),
         ],
-        buttonLabel: "메인으로 이동",
+        buttonLabel: I18nManager.t("ingame.go_to_main"),
       }
     : {
-        kicker: "대국 종료",
-        heading: `스테이지 ${stageNumber} 종료`,
-        detailLines: [`획득 포인트 : ${payout}점`],
-        buttonLabel: "메인으로 이동",
+        kicker: I18nManager.t("ingame.game_over"),
+        heading: I18nManager.t("ingame.stage_ended", { stage: stageNumber }),
+        detailLines: [I18nManager.t("ingame.points_earned", { points: payout })],
+        buttonLabel: I18nManager.t("ingame.go_to_main"),
       };
 }
 
@@ -428,9 +439,9 @@ export function showDisconnectedMatchEnd(
   runtime.onCardSelected = null;
   runtime.onReturnToMenu = onReturnToMenu;
   runtime.resultKicker.hidden = false;
-  runtime.resultKicker.textContent = "대국 종료";
+  runtime.resultKicker.textContent = I18nManager.t("ingame.game_over");
   runtime.winnerHeading.textContent =
-    "상대와 연결이 끊겨 대국이 종료되었습니다";
+    I18nManager.t("ingame.disconnected_title");
   runtime.resultDetails.replaceChildren();
   runtime.resultDetails.hidden = true;
   runtime.cardChoices.replaceChildren();
@@ -439,7 +450,7 @@ export function showDisconnectedMatchEnd(
   runtime.restartButton.disabled = false;
   runtime.menuButton.hidden = false;
   runtime.menuButton.disabled = false;
-  runtime.menuButton.textContent = "메뉴로";
+  runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
   runtime.overlay.hidden = false;
   runtime.menuButton.focus();
 }

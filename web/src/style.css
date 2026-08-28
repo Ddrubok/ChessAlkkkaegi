@@ -463,8 +463,7 @@ body {
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  background: rgb(12 10 8 / 76%);
-  backdrop-filter: blur(0.3rem);
+  background: rgba(15, 23, 42, 0.95);
   pointer-events: auto;
 }
 
@@ -645,8 +644,7 @@ body {
   place-items: center;
   padding: 1rem;
   overflow: auto;
-  background: rgb(16 13 10 / 96%);
-  backdrop-filter: blur(0.45rem);
+  background: #0f172a;
 }
 
 .online-lobby-card {
@@ -1381,6 +1379,10 @@ body {
   text-align: center;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   box-sizing: border-box;
+}
+
+.settings-modal-overlay {
+  animation: tutorialModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 
