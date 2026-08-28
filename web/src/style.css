@@ -133,10 +133,10 @@ body {
 
 .online-resign-button {
   position: absolute;
-  z-index: 5;
+  z-index: 10;
   top: 1rem;
-  left: calc(50% + 115px);
-  right: auto;
+  right: 10.5rem;
+  left: auto;
   padding: 0.45rem 0.75rem;
   border: 1px solid rgb(239 68 68 / 40%);
   border-radius: 0.65rem;
@@ -148,10 +148,10 @@ body {
 
 .return-menu-button {
   position: absolute;
-  z-index: 5;
+  z-index: 10;
   top: 1rem;
-  left: calc(50% + 115px + 4.0rem);
-  right: auto;
+  right: 5.5rem;
+  left: auto;
   padding: 0.45rem 0.75rem;
   border: 1px solid rgb(255 255 255 / 14%);
   border-radius: 0.65rem;
@@ -159,10 +159,6 @@ body {
   background: rgb(12 14 17 / 84%);
   cursor: pointer;
   font-size: 0.85rem;
-}
-
-.online-resign-button[hidden] ~ .return-menu-button {
-  left: calc(50% + 115px);
 }
 
 .input-mode-toggle button,
@@ -999,9 +995,15 @@ body {
     border-radius: 0.35rem;
   }
 
-  .return-menu-button {
+  .online-ping-hud {
     top: 0.4rem;
     right: 0.4rem;
+  }
+
+  .return-menu-button {
+    top: 0.4rem;
+    right: 4.2rem;
+    left: auto;
     padding: 0.35rem 0.55rem;
     font-size: 0.72rem;
     border-radius: 0.45rem;
@@ -1009,7 +1011,8 @@ body {
 
   .online-resign-button {
     top: 0.4rem;
-    right: calc(0.4rem + 3.6rem);
+    right: 8.0rem;
+    left: auto;
     padding: 0.35rem 0.55rem;
     font-size: 0.72rem;
     border-radius: 0.45rem;
@@ -1236,12 +1239,21 @@ body {
     left: 0.75rem;
   }
 
-  .return-menu-button {
+  .online-ping-hud {
+    top: 0.75rem;
     right: 0.75rem;
   }
 
+  .return-menu-button {
+    top: 0.75rem;
+    right: 4.8rem;
+    left: auto;
+  }
+
   .online-resign-button {
-    right: 5.5rem;
+    top: 0.75rem;
+    right: 9.0rem;
+    left: auto;
   }
 
   .strike-point-panel {
