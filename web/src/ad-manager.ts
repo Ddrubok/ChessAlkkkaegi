@@ -20,7 +20,7 @@ const ENV: AdManagerConfig = {
   isDevMode: Boolean(import.meta.env.DEV) || (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")),
   admobProdAndroid: "ca-app-pub-xxxxxxxxxxxxxxxx/android-id",
   admobProdIos: "ca-app-pub-xxxxxxxxxxxxxxxx/ios-id",
-  adSenseClientId: "ca-pub-xxxxxxxxxxxxxxxx",
+  adSenseClientId: "ca-pub-1173757866262139",
   adSenseSlotSide: "xxxxxxxxxx",
   adSenseSlotBottom: "xxxxxxxxxx",
 };
