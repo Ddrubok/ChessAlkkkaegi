@@ -250,10 +250,18 @@ export const EnergySystem = {
   claimPendingReferralReward: async (
     newUserId: string,
     client?: SupabaseClient | null,
+    isNewUser: boolean = true,
   ): Promise<boolean> => {
     if (typeof window === "undefined") return false;
     const pendingCode = sessionStorage.getItem(PENDING_REF_KEY);
     if (!pendingCode) return false;
+
+    // 만약 이미 가입되어 있던 기존 회원인 경우
+    if (!isNewUser) {
+      alert("이미 가입된 회원이에요.");
+      sessionStorage.removeItem(PENDING_REF_KEY);
+      return false;
+    }
 
     console.log(`[Referral] 추천 보상 청구 시작: referee=${newUserId}, code=${pendingCode}`);
 
@@ -262,6 +270,7 @@ export const EnergySystem = {
         const { data, error } = await client.rpc("claim_referral_reward", {
           p_referee_id: newUserId,
           p_referrer_code: pendingCode,
+          p_is_new_user: true,
         });
 
         if (error) {
@@ -273,7 +282,13 @@ export const EnergySystem = {
           sessionStorage.removeItem(PENDING_REF_KEY);
           return true;
         } else if (data && !data.success) {
-          console.warn("[Referral] RPC 처리 결과:", data.message);
+          if (data.code === "ALREADY_MEMBER" || data.code === "ALREADY_REFERRED") {
+            alert("이미 가입된 회원이에요.");
+          } else if (data.code === "SELF_REFERRAL") {
+            alert("자기 자신은 추천할 수 없습니다.");
+          } else {
+            console.warn("[Referral] RPC 처리 결과:", data.message);
+          }
           sessionStorage.removeItem(PENDING_REF_KEY);
           return false;
         }
@@ -290,6 +305,8 @@ export const EnergySystem = {
       EnergySystem.addCoins(5);
       sessionStorage.removeItem(PENDING_REF_KEY);
       return true;
+    } else {
+      alert("이미 가입된 회원이에요.");
     }
 
     sessionStorage.removeItem(PENDING_REF_KEY);

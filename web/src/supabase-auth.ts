@@ -155,8 +155,8 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
     const referralCode = existing.referral_code || localStorage.getItem("ca_referral_code") || generateReferralCode();
     localStorage.setItem("ca_referral_code", referralCode);
 
-    // 대기 중인 추천인 코드가 있다면 보상 청구
-    void EnergySystem.claimPendingReferralReward(existing.id, client);
+    // 대기 중인 추천인 코드가 있다면 확인 (기존 회원이므로 안내 후 종료)
+    void EnergySystem.claimPendingReferralReward(existing.id, client, false);
 
     const synchronizedProfile: UserProfile = {
       id: existing.id,
@@ -242,8 +242,8 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
       .select()
       .single();
 
-    // 신규 프로필 생성 후 대기 중인 추천인 코드가 있다면 보상 청구
-    void EnergySystem.claimPendingReferralReward(user.id, client);
+    // 신규 프로필 생성 후 대기 중인 추천인 코드가 있다면 보상 청구 (신규 회원)
+    void EnergySystem.claimPendingReferralReward(user.id, client, true);
 
     if (!insertErr && created) {
       const classicMmr = Number(created.classic_mmr ?? created.mmr ?? 1200);
