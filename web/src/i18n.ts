@@ -2225,6 +2225,13 @@ export class I18nManager {
   }
 
   /**
+   * 현재 선택된 언어 코드 반환
+   */
+  public static getLanguage(): LanguageCode {
+    return this.currentLang;
+  }
+
+  /**
    * 언어 변경
    */
   public static setLanguage(lang: LanguageCode): void {

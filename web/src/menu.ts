@@ -54,7 +54,11 @@ export function openPveLobbyModal(
   const adapter = createPermanentResearchAdapter(runtime.metaRuntime);
   let workbench: PieceStatWorkbench | null = null;
   let selectedPiece: PieceType = "Pawn";
+  const unsubscribeLang = I18nManager.subscribe(() => {
+    if (modal.isConnected) renderContent();
+  });
   const close = () => {
+    unsubscribeLang();
     workbench?.dispose(); workbench = null;
     modal.remove(); runtime.closePveLobby = undefined;
     renderMainMenu(runtime); unbindModal();
