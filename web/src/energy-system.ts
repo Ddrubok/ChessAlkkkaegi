@@ -3,7 +3,8 @@ import { AdManager } from "./ad-manager";
 /**
  * 행동력/코인 경제 순환 시스템 (Unified Energy Model)
  * - 최초 가입: 10 코인 지급
- * - 매칭 1판당: 1 코인 소모
+ * - 매칭 진입 시: 잔액 확인 (코인 차감 없음)
+ * - 인게임 대전 확정 시: 1 코인 소모
  * - 자연 시간 충전: 20분당 +1 코인 (최대 5개까지 누적)
  * - 보상형 광고 시청: +2 코인 (1일 최대 10회)
  * - 친구 초대 보상: +5 코인
@@ -14,6 +15,15 @@ const MAX_AUTO_RECHARGE_COINS = 5;
 const INITIAL_FREE_COINS = 10;
 const RECHARGE_INTERVAL_MS = 20 * 60 * 1000; // 20분 (1200초)
 const MAX_DAILY_ADS = 10;
+
+export const SVG_COIN_ICON = `
+<svg class="coin-icon-svg" viewBox="0 0 24 24" width="18" height="18" style="vertical-align: middle; flex-shrink: 0;">
+  <circle cx="12" cy="12" r="10" fill="#F59E0B" stroke="#B45309" stroke-width="1.5" />
+  <circle cx="12" cy="12" r="7.5" fill="#FBBF24" />
+  <path d="M12 7.5v9M9.5 9.5h5a1.5 1.5 0 0 1 0 3h-5a1.5 1.5 0 0 0 0 3h5" 
+        fill="none" stroke="#78350F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
+`;
 
 export interface EnergyState {
   coins: number;
@@ -110,9 +120,17 @@ export const EnergySystem = {
   },
 
   /**
-   * 매칭 진입 시 1 코인을 즉시 소모한다. (성공 시 true, 코인 부족 시 false)
+   * 1. 잔액 체크 (대전 시도 시 코인 보유 여부 확인)
    */
-  consumeMatchCoin: (): boolean => {
+  hasEnoughCoin: (): boolean => {
+    const state = EnergySystem.getState();
+    return state.coins >= 1;
+  },
+
+  /**
+   * 2. 인게임 진입 확정 시점에 1코인 차감
+   */
+  consumeCoinOnGameStart: (): boolean => {
     const state = EnergySystem.getState();
     if (state.coins < 1) {
       return false;
