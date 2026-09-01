@@ -19,8 +19,7 @@ globalThis.cancelAnimationFrame = id => frames.delete(id);
 const tick = now => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(cb => cb(now)); };
 globalThis.devicePixelRatio = 1;
 const motion = Object.assign(new TrackedTarget(), { matches: false });
-const mobileLayout = Object.assign(new TrackedTarget(), { matches: false });
-globalThis.matchMedia = query => query === "(max-width: 780px)" ? mobileLayout : motion;
+globalThis.matchMedia = () => motion;
 const resizeObservers = new Set();
 globalThis.ResizeObserver = class {
   constructor(callback) { this.callback = callback; resizeObservers.add(this); }
@@ -38,15 +37,25 @@ class Canvas extends TrackedTarget {
 }
 function rendererDouble() {
   const renderer = {
-    domElement: new TrackedTarget(), autoClear: false,
+    domElement: new TrackedTarget(), autoClear: false, pixelRatio: 1,
     target: null, viewport: new Vector4(3, 4, 800, 600), scissor: new Vector4(5, 6, 700, 500), scissorTest: true,
     face: 2, mip: 1, renderCount: 0, targets: new Set(),
+    // three.js와 같은 GL 뷰포트 계산: RT가 걸리면 RT 뷰포트, 아니면 논리 뷰포트 × 픽셀 비율.
+    glViewport: new Vector4(3, 4, 800, 600), renderViewport: new Vector4(),
     getRenderTarget() { return this.target; }, getActiveCubeFace() { return this.face; }, getActiveMipmapLevel() { return this.mip; },
     getViewport(out) { return out.copy(this.viewport); }, getScissor(out) { return out.copy(this.scissor); }, getScissorTest() { return this.scissorTest; },
-    setRenderTarget(target, face = 0, mip = 0) { this.target = target; this.face = face; this.mip = mip; },
-    setViewport(...args) { if (args[0] instanceof Vector4) this.viewport.copy(args[0]); else this.viewport.set(...args); },
+    getPixelRatio() { return this.pixelRatio; },
+    setRenderTarget(target, face = 0, mip = 0) {
+      this.target = target; this.face = face; this.mip = mip;
+      if (target) this.glViewport.copy(target.viewport);
+      else this.glViewport.copy(this.viewport).multiplyScalar(this.pixelRatio).floor();
+    },
+    setViewport(...args) {
+      if (args[0] instanceof Vector4) this.viewport.copy(args[0]); else this.viewport.set(...args);
+      this.glViewport.copy(this.viewport).multiplyScalar(this.pixelRatio).round();
+    },
     setScissor(value) { this.scissor.copy(value); }, setScissorTest(value) { this.scissorTest = value; },
-    render(scene, camera) { this.renderCount++; this.scene = scene; this.camera = camera; this.targets.add(this.target); if (this.fail) throw new Error("injected render failure"); },
+    render(scene, camera) { this.renderCount++; this.scene = scene; this.camera = camera; this.renderViewport.copy(this.glViewport); this.targets.add(this.target); if (this.fail) throw new Error("injected render failure"); },
     readRenderTargetPixels(_target, _x, _y, width, height, pixels) {
       if (this.failRead) throw new Error("injected read failure");
       for (let y = 0; y < height; y++) pixels.fill(y % 256, y * width * 4, (y + 1) * width * 4);
@@ -87,16 +96,21 @@ try {
   }
   const renderer = rendererDouble(); const target = new WebGLRenderTarget(8, 8); const originalTarget = new WebGLRenderTarget(16, 16);
   renderer.setRenderTarget(originalTarget, 2, 1);
-  for (const failure of [null, "fail", "failRead"]) {
-    renderer.fail = failure === "fail"; renderer.failRead = failure === "failRead";
-    const call = () => renderPreviewTarget(renderer, new Scene(), new OrthographicCamera(), target, new Uint8Array(256));
-    if (failure) assert.throws(call, /injected/); else call();
-    assert.equal(renderer.target, originalTarget); assert.equal(renderer.face, 2); assert.equal(renderer.mip, 1);
-    assert.deepEqual(renderer.viewport.toArray(), [3, 4, 800, 600]);
-    assert.deepEqual(renderer.scissor.toArray(), [5, 6, 700, 500]);
-    assert.equal(renderer.scissorTest, true); assert.equal(renderer.autoClear, false);
+  for (const pixelRatio of [1, 1.5, 2, 3]) {
+    renderer.pixelRatio = pixelRatio;
+    for (const failure of [null, "fail", "failRead"]) {
+      renderer.fail = failure === "fail"; renderer.failRead = failure === "failRead";
+      const call = () => renderPreviewTarget(renderer, new Scene(), new OrthographicCamera(), target, new Uint8Array(256));
+      if (failure) assert.throws(call, /injected/); else call();
+      if (failure !== "fail") assert.deepEqual(renderer.renderViewport.toArray(), [0, 0, target.width, target.height],
+        `preview viewport must cover the whole render target at devicePixelRatio ${pixelRatio}: ${renderer.renderViewport.toArray()}`);
+      assert.equal(renderer.target, originalTarget); assert.equal(renderer.face, 2); assert.equal(renderer.mip, 1);
+      assert.deepEqual(renderer.viewport.toArray(), [3, 4, 800, 600]);
+      assert.deepEqual(renderer.scissor.toArray(), [5, 6, 700, 500]);
+      assert.equal(renderer.scissorTest, true); assert.equal(renderer.autoClear, false);
+    }
   }
-  renderer.fail = renderer.failRead = false;
+  renderer.pixelRatio = 1; renderer.fail = renderer.failRead = false;
   const effects = new PieceUpgradeEffects(); effects.fit(1, 2);
   const model = new Group();
   const event = { changed: true, piece: "Pawn", stat: "force", direction: "increase", effectBefore: 0, effectAfter: 0.02, messageKey: null };
@@ -112,13 +126,9 @@ try {
   effects.dispose();
 
   for (let cycle = 0; cycle < 25; cycle++) {
-    mobileLayout.matches = false;
     const canvas = new Canvas(); const available = [];
     const preview = new PiecePreviewRenderer(canvas, { renderer, assets: { geometries } }, value => available.push(value));
     for (const type of geometries.keys()) { preview.setPiece(type); tick(performance.now() + 100); assert.ok(canvas.paints > 0); }
-    const desktopHalfHeight = renderer.camera.top;
-    mobileLayout.matches = true; mobileLayout.dispatchEvent(new Event("change")); tick(performance.now() + 150);
-    assert.ok(Math.abs(renderer.camera.top * 0.72 - desktopHalfHeight) < 1e-12, `mobile preview must render the model at 72% of desktop size: desktop=${desktopHalfHeight}, mobile=${renderer.camera.top}`);
     assert.equal(canvas.image.data[0], (canvas.height - 1) % 256, "read pixels are vertically flipped");
     assert.equal(available.at(-1), true);
     const ownedMaterials = new Set(); const ownedGeometries = new Set();
@@ -145,11 +155,11 @@ try {
     preview.dispose(); preview.dispose();
     assert.equal(disposedMaterials, ownedMaterials.size);
     assert.equal(disposedGeometries, ownedGeometries.size);
-    assert.equal(canvas.listenerCount, 0); assert.equal(renderer.domElement.listenerCount, 0); assert.equal(motion.listenerCount, 0); assert.equal(mobileLayout.listenerCount, 0);
+    assert.equal(canvas.listenerCount, 0); assert.equal(renderer.domElement.listenerCount, 0); assert.equal(motion.listenerCount, 0);
     assert.equal(frames.size, 0); assert.equal(resizeObservers.size, 0);
     assert.equal(sharedDisposals, 0, "shared GLB geometry must survive preview disposal");
   }
   target.dispose(); originalTarget.dispose();
-  console.log("PASS preview contracts: six real GLB geometries at 1.0/1.05 scale, mobile model size 72% of desktop, state restoration on render/read failure, effect transforms, 25 lifecycle cycles, reduced motion, context recovery");
+  console.log("PASS preview contracts: six real GLB geometries at 1.0/1.05 scale, full-target viewport at devicePixelRatio 1/1.5/2/3, state restoration on render/read failure, effect transforms, 25 lifecycle cycles, reduced motion, context recovery");
   console.log("NOTE: renderer/DOM doubles validate contracts, not GPU rendering or visual browser quality.");
 } finally { await vite.close(); }
