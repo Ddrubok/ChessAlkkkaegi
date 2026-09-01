@@ -10,7 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * - 보상형 광고 시청: +2 코인 (1일 최대 10회)
  * - 친구 초대 보상:
  *   - 신규 가입자(피초대자): 가입 완료 시 즉시 +5 코인
- *   - 초대한 유저(초대자): Realtime 알림 및 서버 동기화를 통해 +5 코인 자동 지급
+ *   - 초대한 유저(초대자): RPC 조회 및 Realtime 알림을 통해 +5 코인 자동 지급
  */
 
 const STORAGE_KEY = "ca_unified_energy_v1";
@@ -234,7 +234,7 @@ export const EnergySystem = {
       const urlParams = new URLSearchParams(window.location.search);
       const refCode = urlParams.get("ref");
       if (refCode && refCode.trim()) {
-        sessionStorage.setItem(PENDING_REF_KEY, refCode.trim().toUpperCase());
+        sessionStorage.setItem(PENDING_REF_KEY, refCode.trim());
         console.log(`[Referral] 추천인 코드 감지: ${refCode.trim()}`);
         // URL 주소창에서 파라미터 노출 제거
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -264,19 +264,21 @@ export const EnergySystem = {
           p_referrer_code: pendingCode,
         });
 
-        if (!error && data && data.success) {
+        if (error) {
+          console.warn("[Referral] RPC 호출 에러:", error.message);
+        } else if (data && data.success) {
           const reward = Number(data.reward_coins ?? 5);
           alert(`🎉 친구 초대 링크로 가입하셨습니다!\n가입 축하 보너스로 ${reward} 코인이 지급되었습니다.`);
           EnergySystem.addCoins(reward);
           sessionStorage.removeItem(PENDING_REF_KEY);
           return true;
         } else if (data && !data.success) {
-          console.warn("[Referral] RPC 거절:", data.message);
+          console.warn("[Referral] RPC 처리 결과:", data.message);
           sessionStorage.removeItem(PENDING_REF_KEY);
           return false;
         }
       } catch (err) {
-        console.warn("[Referral] RPC 호출 예외 (오프라인/미설치 폴백):", err);
+        console.warn("[Referral] RPC 호출 예외:", err);
       }
     }
 
@@ -295,7 +297,7 @@ export const EnergySystem = {
   },
 
   /**
-   * ★ 초대한 유저(Referrer)의 미지급 추천 보상을 서버(referral_logs)와 동기화
+   * ★ 초대한 유저(Referrer)의 미지급 추천 보상을 서버와 동기화
    */
   syncReferralRewardsFromServer: async (
     userId: string,
@@ -304,17 +306,39 @@ export const EnergySystem = {
     if (!userId || !client) return;
 
     try {
-      const { data: logs, error } = await client
-        .from("referral_logs")
-        .select("id, reward_coins, created_at")
-        .eq("referrer_id", userId);
+      // 1. RPC 함수로 안전하게 추천 보상 조회 (RLS 우회)
+      const { data: rpcData, error: rpcErr } = await client.rpc("check_and_claim_referrer_rewards", {
+        p_user_id: userId,
+      });
 
-      if (error) {
-        console.warn("[Referral] 추천 보상 동기화 조회 오류:", error.message);
-        return;
+      if (!rpcErr && rpcData && rpcData.success) {
+        const logIds: string[] = rpcData.log_ids || [];
+        const syncedIds = getSyncedLogIds();
+        let newCount = 0;
+
+        for (const id of logIds) {
+          if (!syncedIds.has(id)) {
+            syncedIds.add(id);
+            newCount++;
+          }
+        }
+
+        if (newCount > 0) {
+          const rewardAmount = newCount * 5;
+          saveSyncedLogIds(syncedIds);
+          EnergySystem.addCoins(rewardAmount);
+          alert(`🎉 친구 ${newCount}명이 가입을 완료했습니다!\n친구 초대 보너스로 +${rewardAmount} 코인이 지급되었습니다!`);
+          return;
+        }
       }
 
-      if (logs && logs.length > 0) {
+      // 2. 폴백: referral_logs 직접 조회
+      const { data: logs, error: logErr } = await client
+        .from("referral_logs")
+        .select("id, reward_coins")
+        .eq("referrer_id", userId);
+
+      if (!logErr && logs && logs.length > 0) {
         const syncedIds = getSyncedLogIds();
         let newRewards = 0;
         let newCount = 0;
@@ -330,7 +354,7 @@ export const EnergySystem = {
         if (newCount > 0 && newRewards > 0) {
           saveSyncedLogIds(syncedIds);
           EnergySystem.addCoins(newRewards);
-          alert(`🎉 친구 ${newCount}명이 가입을 완료했습니다!\n친구 초대 보너스로 +${newRewards} 코인이 지급되었습니다.`);
+          alert(`🎉 친구 ${newCount}명이 가입을 완료했습니다!\n친구 초대 보너스로 +${newRewards} 코인이 지급되었습니다!`);
         }
       }
     } catch (err) {
@@ -349,7 +373,7 @@ export const EnergySystem = {
 
     try {
       const channel = client
-        .channel(`referral-reward-${userId}`)
+        .channel(`referral-realtime-${userId}`)
         .on(
           "postgres_changes",
           {
@@ -359,10 +383,11 @@ export const EnergySystem = {
             filter: `referrer_id=eq.${userId}`,
           },
           (payload) => {
+            console.log("[Referral] Realtime 추천 로그 수신:", payload);
             const newLog = payload.new as { id: string; reward_coins?: number };
             const syncedIds = getSyncedLogIds();
 
-            if (!syncedIds.has(newLog.id)) {
+            if (newLog && newLog.id && !syncedIds.has(newLog.id)) {
               syncedIds.add(newLog.id);
               saveSyncedLogIds(syncedIds);
               const reward = Number(newLog.reward_coins || 5);
@@ -371,7 +396,9 @@ export const EnergySystem = {
             }
           },
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log("[Referral] Realtime 채널 상태:", status);
+        });
 
       return () => {
         void client.removeChannel(channel);

@@ -2,10 +2,11 @@
 -- [체스알까기] 친구 추천(Referral) 시스템 DB 스키마 및 원자적 보상 RPC 함수
 -- ==============================================================================
 
--- 1. profiles 테이블에 고유 추천 코드 및 추천인 컬럼 추가
+-- 1. profiles 테이블에 고유 추천 코드 및 추천인, 코인 컬럼 보장
 ALTER TABLE public.profiles 
-ADD COLUMN IF NOT EXISTS referral_code VARCHAR(12) UNIQUE,
-ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES public.profiles(id);
+ADD COLUMN IF NOT EXISTS referral_code VARCHAR(36) UNIQUE,
+ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES public.profiles(id),
+ADD COLUMN IF NOT EXISTS coins INT DEFAULT 10;
 
 -- 기존 레코드 중 referral_code가 없는 행에 대해 고유 난수 코드 일괄 생성
 UPDATE public.profiles
@@ -26,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.referral_logs (
     CONSTRAINT check_no_self_referral CHECK (referrer_id <> referee_id)
 );
 
--- Realtime Publication에 referral_logs 테이블 추가 (실시간 구독 지원)
+-- Realtime Publication에 referral_logs 및 profiles 추가 (실시간 구독 지원)
 DO $$ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.referral_logs;
 EXCEPTION
@@ -34,18 +35,22 @@ EXCEPTION
     WHEN undefined_object THEN null;
 END $$;
 
--- RLS 활성화
-ALTER TABLE public.referral_logs ENABLE ROW LEVEL SECURITY;
-
 DO $$ BEGIN
-    CREATE POLICY "Users can view their own referral logs"
-    ON public.referral_logs FOR SELECT
-    USING (auth.uid() = referrer_id OR auth.uid() = referee_id);
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
 EXCEPTION
     WHEN duplicate_object THEN null;
+    WHEN undefined_object THEN null;
 END $$;
 
--- 3. 원자적 보상 처리 RPC 함수 (claim_referral_reward)
+-- RLS 활성화 및 권한 정책 (SELECT 허용)
+ALTER TABLE public.referral_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public select on referral_logs" ON public.referral_logs;
+CREATE POLICY "Public select on referral_logs"
+ON public.referral_logs FOR SELECT
+USING (true);
+
+-- 3. 원자적 추천 보상 처리 RPC 함수 (claim_referral_reward)
 CREATE OR REPLACE FUNCTION claim_referral_reward(
     p_referee_id UUID,
     p_referrer_code VARCHAR
@@ -59,14 +64,14 @@ DECLARE
 BEGIN
     v_clean_code := UPPER(TRIM(p_referrer_code));
 
-    -- 1. 추천인 코드 또는 UUID로 추천인 식별 (코드/ID 호환 매칭)
+    -- 1. 추천인 코드(대소문자 무시) 또는 ID(UUID, 대소문자 무시)로 추천인 검색
     SELECT id INTO v_referrer_id 
     FROM public.profiles 
     WHERE UPPER(TRIM(COALESCE(referral_code, ''))) = v_clean_code
-       OR id::TEXT = TRIM(p_referrer_code);
+       OR LOWER(id::TEXT) = LOWER(TRIM(p_referrer_code));
 
     IF v_referrer_id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'message', '존재하지 않는 추천 코드입니다.');
+        RETURN jsonb_build_object('success', false, 'message', '존재하지 않는 추천 코드입니다: ' || p_referrer_code);
     END IF;
 
     -- 2. 자가 추천(Self-Referral) 차단
@@ -101,7 +106,30 @@ BEGIN
     RETURN jsonb_build_object(
         'success', true, 
         'reward_coins', v_reward_amount,
+        'referrer_id', v_referrer_id,
         'message', '추천인 등록 완료! 보너스 코인 5개가 지급되었습니다.'
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. 초대한 유저(Referrer)의 추천 보상 조회 RPC (RLS 무관하게 100% 안전 조회)
+CREATE OR REPLACE FUNCTION check_and_claim_referrer_rewards(
+    p_user_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_total_rewards INT := 0;
+    v_log_ids TEXT[];
+BEGIN
+    SELECT COALESCE(SUM(reward_coins), 0), COALESCE(array_agg(id::TEXT), ARRAY[]::TEXT[])
+    INTO v_total_rewards, v_log_ids
+    FROM public.referral_logs
+    WHERE referrer_id = p_user_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'total_referral_coins', v_total_rewards,
+        'log_ids', v_log_ids
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
