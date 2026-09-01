@@ -3,14 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * 행동력/코인 경제 순환 및 서버 검증 추천인(Referral) 시스템
- * - 최초 가입: 10 코인 지급
- * - 매칭 진입 시: 잔액 확인 (코인 차감 없음)
- * - 인게임 대전 확정 시: 1 코인 소모
- * - 자연 시간 충전: 20분당 +1 코인 (최대 5개까지 누적)
- * - 보상형 광고 시청: +2 코인 (1일 최대 10회)
- * - 친구 초대 보상:
- *   - 신규 가입자(피초대자): 가입 완료 시 즉시 +5 코인
- *   - 초대한 유저(초대자): RPC 조회 및 Realtime 알림을 통해 +5 코인 자동 지급
+ * 
+ * 구글 계정 보호(Anti-Ban Policy) 광고 정책:
+ * - 1일 최대 시청 한도: 5회 (과도한 시청 및 무효 트래픽 방지)
+ * - 1회 시청당 보상: +2 코인 (하루 최대 +10 코인 무료 충전)
+ * - 시청 간격 쿨다운: 60초 (연타/매크로 시청 방지)
  */
 
 const STORAGE_KEY = "ca_unified_energy_v1";
@@ -18,7 +15,8 @@ const SYNCED_LOGS_KEY = "ca_synced_referral_log_ids";
 const MAX_AUTO_RECHARGE_COINS = 5;
 const INITIAL_FREE_COINS = 10;
 const RECHARGE_INTERVAL_MS = 20 * 60 * 1000; // 20분 (1200초)
-const MAX_DAILY_ADS = 10;
+const MAX_DAILY_ADS = 5; // ★ 구글 계정 정지 방지: 1일 최대 5회 권장치
+const AD_COOLDOWN_MS = 60 * 1000; // ★ 시청 간격 쿨다운 60초
 const PENDING_REF_KEY = "pending_referrer_code";
 
 export const SVG_COIN_ICON = `
@@ -34,9 +32,10 @@ export interface EnergyState {
   coins: number;
   maxCoins: number;
   timeToNextMs: number; // 다음 1 코인 충전까지 남은 밀리초
-  adAvailable: boolean; // 오늘 광고 시청 가능 여부
+  adAvailable: boolean; // 오늘 광고 시청 가능 여부 (한도 및 쿨다운 모두 통과 시 true)
   adCountToday: number;
   dailyAdLimit: number;
+  adCooldownSec: number; // 남은 쿨다운 초 (0이면 쿨다운 없음)
 }
 
 interface StoredEnergyData {
@@ -44,6 +43,7 @@ interface StoredEnergyData {
   lastRechargeAt: number;
   adCountToday: number;
   lastAdDate: string;
+  lastAdWatchedAt: number;
   hasReceivedInitial: boolean;
 }
 
@@ -62,6 +62,9 @@ function loadStoredData(): StoredEnergyData {
         data.adCountToday = 0;
         data.lastAdDate = today;
       }
+      if (!data.lastAdWatchedAt) {
+        data.lastAdWatchedAt = 0;
+      }
       return data;
     }
   } catch {}
@@ -72,6 +75,7 @@ function loadStoredData(): StoredEnergyData {
     lastRechargeAt: Date.now(),
     adCountToday: 0,
     lastAdDate: today,
+    lastAdWatchedAt: 0,
     hasReceivedInitial: true,
   };
   saveStoredData(initialData);
@@ -130,13 +134,22 @@ export const EnergySystem = {
       timeToNextMs = Math.max(0, RECHARGE_INTERVAL_MS - (now - data.lastRechargeAt));
     }
 
+    // 광고 쿨다운 계산 (60초)
+    const adElapsed = now - (data.lastAdWatchedAt || 0);
+    const adCooldownRemainingMs = Math.max(0, AD_COOLDOWN_MS - adElapsed);
+    const adCooldownSec = Math.ceil(adCooldownRemainingMs / 1000);
+
+    const hasDailyLimitRemaining = data.adCountToday < MAX_DAILY_ADS;
+    const adAvailable = hasDailyLimitRemaining && adCooldownSec <= 0;
+
     return {
       coins: data.coins,
       maxCoins: MAX_AUTO_RECHARGE_COINS,
       timeToNextMs,
-      adAvailable: data.adCountToday < MAX_DAILY_ADS,
+      adAvailable,
       adCountToday: data.adCountToday,
       dailyAdLimit: MAX_DAILY_ADS,
+      adCooldownSec,
     };
   },
 
@@ -178,11 +191,16 @@ export const EnergySystem = {
   },
 
   /**
-   * 보상형 광고 시청 후 +2 코인 지급 (AdManager 연동)
+   * 보상형 광고 시청 후 +2 코인 지급 (일일 5회 + 60초 쿨다운 검증)
    */
   watchAdForCoins: async (): Promise<boolean> => {
     const state = EnergySystem.getState();
-    if (!state.adAvailable) {
+    if (state.adCountToday >= MAX_DAILY_ADS) {
+      alert("오늘 광고 시청 한도(5회)를 모두 달성하셨습니다. 내일 다시 이용해주세요!");
+      return false;
+    }
+    if (state.adCooldownSec > 0) {
+      alert(`광고 재시청 대기 중입니다. ${state.adCooldownSec}초 후에 다시 시도해주세요.`);
       return false;
     }
 
@@ -191,6 +209,7 @@ export const EnergySystem = {
         const data = loadStoredData();
         data.coins += 2;
         data.adCountToday += 1;
+        data.lastAdWatchedAt = Date.now();
         saveStoredData(data);
         EnergySystem.notify();
         resolve(true);

@@ -580,13 +580,36 @@ export class SupabaseMatchUi {
     const adBtn = overlay.querySelector<HTMLButtonElement>("#coin-watch-ad-btn")!;
     const inviteBtn = overlay.querySelector<HTMLButtonElement>("#coin-invite-friend-btn")!;
 
-    if (!state.adAvailable) {
-      adBtn.disabled = true;
-      adBtn.style.opacity = "0.5";
-      adBtn.querySelector("strong")!.textContent = "오늘 광고 시청 완료";
-    }
+    const updateAdBtnState = () => {
+      const s = EnergySystem.getState();
+      const strongEl = adBtn.querySelector("strong");
+      const spanEl = adBtn.querySelector("span.coin-btn-text span");
+
+      if (s.adCountToday >= s.dailyAdLimit) {
+        adBtn.disabled = true;
+        adBtn.style.opacity = "0.5";
+        adBtn.style.cursor = "not-allowed";
+        if (strongEl) strongEl.textContent = `오늘 광고 시청 완료 (${s.dailyAdLimit}/${s.dailyAdLimit})`;
+        if (spanEl) spanEl.textContent = "내일 다시 시청할 수 있습니다.";
+      } else if (s.adCooldownSec > 0) {
+        adBtn.disabled = true;
+        adBtn.style.opacity = "0.6";
+        adBtn.style.cursor = "wait";
+        if (strongEl) strongEl.textContent = `⏳ ${s.adCooldownSec}초 후 시청 가능`;
+        if (spanEl) spanEl.textContent = `오늘 남은 횟수: ${s.dailyAdLimit - s.adCountToday}/${s.dailyAdLimit}`;
+      } else {
+        adBtn.disabled = false;
+        adBtn.style.opacity = "1";
+        adBtn.style.cursor = "pointer";
+        if (strongEl) strongEl.textContent = "광고 시청하고 받기";
+        if (spanEl) spanEl.textContent = `시청 완료 시 +2 코인 충전 (${s.dailyAdLimit - s.adCountToday}/${s.dailyAdLimit})`;
+      }
+    };
+    updateAdBtnState();
+    const modalAdInterval = setInterval(updateAdBtnState, 1000);
 
     const closeModal = () => {
+      clearInterval(modalAdInterval);
       overlay.remove();
     };
 
@@ -594,6 +617,13 @@ export class SupabaseMatchUi {
     bottomCloseBtn.onclick = closeModal;
 
     adBtn.onclick = async () => {
+      const s = EnergySystem.getState();
+      if (!s.adAvailable) {
+        if (s.adCooldownSec > 0) {
+          alert(`광고 재시청 대기 중입니다. ${s.adCooldownSec}초 후에 다시 시도해주세요.`);
+        }
+        return;
+      }
       adBtn.disabled = true;
       adBtn.querySelector("strong")!.textContent = "광고 로딩 중...";
       const success = await EnergySystem.watchAdForCoins();
@@ -601,9 +631,7 @@ export class SupabaseMatchUi {
         alert("광고 시청 완료! +2 코인이 지급되었습니다.");
         closeModal();
       } else {
-        adBtn.disabled = false;
-        adBtn.querySelector("strong")!.textContent = "광고 시청하고 받기";
-        alert("광고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+        updateAdBtnState();
       }
     };
 
