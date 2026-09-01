@@ -1,11 +1,11 @@
 /**
  * 광고 매니저 모듈 (AdManager)
  * 
- * 구글 계정 정지 방지 원칙 (Anti-Ban Policy) 준수:
- * 1. 로컬/개발 환경(IS_DEV_MODE)에서는 Google 공식 테스트 광고 단위 ID 자동 적용
- * 2. Capacitor 네이티브 플랫폼(Android/iOS) 및 웹(AdSense/Mock UI) 자동 분기
- * 3. 인게임 조작 방해 방지: 게임 중(인게임)에는 모바일 하단 배너 자동 숨김, 메뉴/결과창에서 노출
- * 4. 보안 원칙: 실제 AdMob Key는 .env(Git 미추적)에서 로드하여 코드베이스 노출 차단
+ * 구글 정책 및 멀티플랫폼 지원:
+ * 1. 앱(Android/iOS): Google AdMob 네이티브 SDK 연동 (보상형 비디오, 전면 광고, 배너)
+ * 2. 웹(Web Browser): Google AdSense 및 5초 보상형 스폰서 광고 모달 뷰어 연동
+ * 3. 로컬/개발 환경(isDevMode): 구글 계정 보호를 위한 공식 테스트 모드 가동
+ * 4. 보안 원칙: 실제 AdMob Key는 .env에서만 로드 (코드베이스 미노출)
  */
 
 export interface AdManagerConfig {
@@ -44,6 +44,8 @@ declare global {
   interface Window {
     Capacitor?: any;
     adsbygoogle?: any[];
+    adBreak?: (options: any) => void;
+    adConfig?: (options: any) => void;
   }
 }
 
@@ -74,7 +76,7 @@ export const AdManager = {
     if (ENV.isDevMode) {
       return ADMOB_TEST_IDS.BANNER_ANDROID;
     }
-    return ENV.admobInterstitialId ? ADMOB_TEST_IDS.BANNER_ANDROID : ADMOB_TEST_IDS.BANNER_ANDROID;
+    return ADMOB_TEST_IDS.BANNER_ANDROID;
   },
 
   getInterstitialUnitId: (): string => {
@@ -122,45 +124,34 @@ export const AdManager = {
   },
 
   /**
-   * 배너 광고 노출 (메인 메뉴, 로비, 게임 종료 결과창)
+   * 모바일 하단 배너 광고 노출 (인게임 외 메뉴/로비)
    */
   showBanner: async (): Promise<void> => {
     try {
       if (AdManager.isNative()) {
         const AdMob = await getAdMobPlugin();
-        if (AdMob) {
-          const mod = await import("@capacitor-community/admob").catch(() => null);
-          const BannerAdPosition = mod?.BannerAdPosition;
-          const BannerAdSize = mod?.BannerAdSize;
+        if (!AdMob) return;
 
-          await AdMob.showBanner({
-            adId: AdManager.getBannerUnitId(),
-            adSize: BannerAdSize?.ADAPTIVE_BANNER || "ADAPTIVE_BANNER",
-            position: BannerAdPosition?.BOTTOM_CENTER || "BOTTOM_CENTER",
-            isTesting: ENV.isDevMode,
-          });
-        }
+        const adId = AdManager.getBannerUnitId();
+        await AdMob.showBanner({
+          adId,
+          position: "BOTTOM_CENTER",
+          margin: 0,
+          isTesting: ENV.isDevMode,
+        });
       } else {
-        AdManager.ensureWebBannerElements();
-        const isMobile = window.innerWidth <= 1024;
-        const mobileBanner = document.querySelector<HTMLElement>(".mobile-ad-bottom");
-        const pcBanners = document.querySelectorAll<HTMLElement>(".pc-side-ad");
-
-        if (isMobile) {
-          if (mobileBanner) mobileBanner.style.display = "flex";
-          pcBanners.forEach((el) => (el.style.display = "none"));
-        } else {
-          if (mobileBanner) mobileBanner.style.display = "none";
-          pcBanners.forEach((el) => (el.style.display = "flex"));
+        const bottomAd = document.querySelector<HTMLElement>(".mobile-ad-bottom");
+        if (bottomAd && window.innerWidth <= 1024) {
+          bottomAd.style.display = "flex";
         }
       }
     } catch (error) {
-      console.warn("[AdManager] Show banner failed:", error);
+      console.warn("[AdManager] 배너 광고 노출 실패:", error);
     }
   },
 
   /**
-   * 배너 광고 숨김 (인게임 진입 시 터치 영역 확보)
+   * 모바일 하단 배너 광고 숨김 (인게임 진입 시)
    */
   hideBanner: async (): Promise<void> => {
     try {
@@ -170,35 +161,36 @@ export const AdManager = {
           await AdMob.hideBanner();
         }
       } else {
-        const mobileBanner = document.querySelector<HTMLElement>(".mobile-ad-bottom");
-        if (mobileBanner) {
-          mobileBanner.style.display = "none";
+        const bottomAd = document.querySelector<HTMLElement>(".mobile-ad-bottom");
+        if (bottomAd) {
+          bottomAd.style.display = "none";
         }
       }
     } catch (error) {
-      console.warn("[AdManager] Hide banner failed:", error);
+      console.warn("[AdManager] 배너 광고 숨김 실패:", error);
     }
   },
 
   /**
-   * 전면 광고 (GameEnd: 대국 종료 후 메뉴 이동 시 1회 송출)
+   * 전면 광고 (GameEnd: 대국 종료 후 노출)
    */
   showInterstitial: async (): Promise<boolean> => {
     try {
-      if (!AdManager.isNative()) {
-        console.log("[AdManager] 웹 환경에서는 전면 광고가 생략됩니다.");
+      if (AdManager.isNative()) {
+        const AdMob = await getAdMobPlugin();
+        if (!AdMob) return false;
+
+        const adId = AdManager.getInterstitialUnitId();
+        await AdMob.prepareInterstitial({
+          adId,
+          isTesting: ENV.isDevMode,
+        });
+        await AdMob.showInterstitial();
         return true;
       }
-      const AdMob = await getAdMobPlugin();
-      if (!AdMob) return false;
 
-      const adId = AdManager.getInterstitialUnitId();
-      await AdMob.prepareInterstitial({
-        adId,
-        isTesting: ENV.isDevMode,
-      });
-      await AdMob.showInterstitial();
-      return true;
+      // 웹 브라우저 환경: 전면 광고 모달 노출
+      return AdManager.showWebInterstitialModal();
     } catch (error) {
       console.warn("[AdManager] 전면 광고 로드 실패:", error);
       return false;
@@ -206,42 +198,262 @@ export const AdManager = {
   },
 
   /**
-   * 보상형 비디오 광고 (Reward_Gold: 시청 완료 시 보상 콜백 실행)
+   * 보상형 광고 (Reward_Gold: 시청 완료 시 보상 콜백 실행)
+   * - 앱: Google AdMob 네이티브 보상형 비디오 재생
+   * - 웹: Google AdSense 5초 보상형 스폰서 광고 모달 재생
    */
   showRewardVideo: async (onRewarded: (rewardAmount: number) => void): Promise<boolean> => {
     try {
-      if (!AdManager.isNative()) {
-        // 웹 브라우저 테스트 환경: 모의 보상 즉시 지급
-        console.log("[AdManager] 웹 테스트 환경: 모의 보상 500 Gold 지급");
-        onRewarded(500);
+      // 1. 앱 (Capacitor Android/iOS) 환경
+      if (AdManager.isNative()) {
+        const AdMob = await getAdMobPlugin();
+        if (!AdMob) return false;
+
+        const adId = AdManager.getRewardedUnitId();
+        await AdMob.prepareRewardVideoAd({
+          adId,
+          isTesting: ENV.isDevMode,
+        });
+
+        const rewardListener = await AdMob.addListener(
+          "onRewarded",
+          (reward: { type: string; amount: number }) => {
+            console.log("[AdManager] AdMob 보상형 광고 시청 완료:", reward);
+            onRewarded(reward.amount || 500);
+            rewardListener.remove();
+          },
+        );
+
+        await AdMob.showRewardVideoAd();
         return true;
       }
 
-      const AdMob = await getAdMobPlugin();
-      if (!AdMob) return false;
+      // 2. 웹 브라우저 환경: Google H5 Games Ads 또는 AdSense 5초 보상형 모달 실행
+      if (typeof window.adBreak === "function") {
+        return new Promise<boolean>((resolve) => {
+          window.adBreak!({
+            type: "reward",
+            name: "recharge_coins",
+            beforeReward: (showAdFn: () => void) => { showAdFn(); },
+            adDismissed: () => { resolve(false); },
+            adViewed: () => {
+              onRewarded(500);
+              resolve(true);
+            },
+          });
+        });
+      }
 
-      const adId = AdManager.getRewardedUnitId();
-      await AdMob.prepareRewardVideoAd({
-        adId,
-        isTesting: ENV.isDevMode,
-      });
-
-      // 보상 획득 이벤트 리스너
-      const rewardListener = await AdMob.addListener(
-        "onRewarded",
-        (reward: { type: string; amount: number }) => {
-          console.log("[AdManager] 보상형 광고 시청 완료:", reward);
-          onRewarded(reward.amount || 500);
-          rewardListener.remove();
-        },
-      );
-
-      await AdMob.showRewardVideoAd();
-      return true;
+      // 3. 웹 애드센스 5초 보상형 모달 뷰어 실행
+      return await AdManager.showWebRewardedAdModal(onRewarded);
     } catch (error) {
       console.warn("[AdManager] 보상형 광고 표시 실패:", error);
       return false;
     }
+  },
+
+  /**
+   * 웹 브라우저 전용 Google AdSense 5초 보상형 광고 모달 뷰어
+   */
+  showWebRewardedAdModal: (onRewarded: (rewardAmount: number) => void): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      if (document.querySelector(".web-reward-ad-overlay")) {
+        resolve(false);
+        return;
+      }
+
+      const overlay = document.createElement("div");
+      overlay.className = "web-reward-ad-overlay";
+      overlay.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.96);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+        animation: tutorialModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      `;
+
+      let remainingSec = 5;
+
+      overlay.innerHTML = `
+        <div class="web-ad-modal-card" style="
+          width: 100%;
+          max-width: 400px;
+          background: #1e293b;
+          border: 1px solid #475569;
+          border-radius: 16px;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          text-align: center;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        ">
+          <div style="display:flex; justify-content:space-between; align-items:center; width:100%; border-bottom:1px solid #334155; padding-bottom:10px;">
+            <span style="font-size:13px; font-weight:700; color:#ffd54a; display:flex; align-items:center; gap:6px;">
+              🎬 스폰서 광고
+            </span>
+            <span id="web-ad-timer-text" style="font-size:12px; font-weight:700; color:#38bdf8; background:#0f172a; padding:3px 8px; border-radius:10px;">
+              ⏳ ${remainingSec}초 후 보상 지급
+            </span>
+          </div>
+
+          <!-- Google AdSense 광고 영역 -->
+          <div class="web-ad-content-box" style="
+            width: 100%;
+            min-height: 250px;
+            background: #0f172a;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+          ">
+            ${
+              ENV.isDevMode
+                ? `
+                  <div style="padding:20px; color:#94a3b8; font-size:13px;">
+                    <div style="font-size:32px; margin-bottom:8px;">📢</div>
+                    <strong style="color:#f8fafc; font-size:15px;">Google AdSense Preview</strong><br>
+                    <span>체스알까기 웹 스폰서 광고 영역</span><br>
+                    <small style="color:#64748b; font-size:11px;">(배포 환경에서는 실제 구글 배너가 송출됩니다)</small>
+                  </div>
+                `
+                : `
+                  <ins class="adsbygoogle"
+                       style="display:block; width:100%; height:250px;"
+                       data-ad-client="${ENV.adSenseClientId}"
+                       data-ad-format="rectangle"
+                       data-full-width-responsive="true"></ins>
+                `
+            }
+          </div>
+
+          <!-- 하단 보상 획득 버튼 -->
+          <button id="web-ad-claim-btn" disabled style="
+            width: 100%;
+            background: #334155;
+            color: #94a3b8;
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: not-allowed;
+            transition: all 0.2s ease;
+          ">
+            광고 시청 중... (${remainingSec}초)
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      // 애드센스 인스턴스 렌더링 시도
+      if (!ENV.isDevMode && window.adsbygoogle) {
+        try {
+          window.adsbygoogle.push({});
+        } catch (e) {
+          console.warn("[AdManager] AdSense push error in modal:", e);
+        }
+      }
+
+      const timerText = overlay.querySelector<HTMLElement>("#web-ad-timer-text");
+      const claimBtn = overlay.querySelector<HTMLButtonElement>("#web-ad-claim-btn")!;
+
+      const timerInterval = setInterval(() => {
+        remainingSec -= 1;
+        if (timerText) {
+          timerText.textContent = remainingSec > 0 ? `⏳ ${remainingSec}초 후 보상 지급` : "✓ 시청 완료!";
+        }
+
+        if (remainingSec <= 0) {
+          clearInterval(timerInterval);
+          claimBtn.disabled = false;
+          claimBtn.style.background = "#2563eb";
+          claimBtn.style.color = "#ffffff";
+          claimBtn.style.cursor = "pointer";
+          claimBtn.innerHTML = "🎉 보상 받기 (+2 코인)";
+        } else {
+          claimBtn.textContent = `광고 시청 중... (${remainingSec}초)`;
+        }
+      }, 1000);
+
+      claimBtn.onclick = () => {
+        clearInterval(timerInterval);
+        overlay.remove();
+        onRewarded(500);
+        resolve(true);
+      };
+    });
+  },
+
+  /**
+   * 웹 브라우저 전용 전면 광고 모달 (3초)
+   */
+  showWebInterstitialModal: (): Promise<boolean> => {
+    return new Promise<boolean>((resolve) => {
+      const overlay = document.createElement("div");
+      overlay.className = "web-interstitial-ad-overlay";
+      overlay.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.96);
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        box-sizing: border-box;
+      `;
+
+      let sec = 3;
+      overlay.innerHTML = `
+        <div style="width:100%; max-width:380px; background:#1e293b; border:1px solid #475569; border-radius:16px; padding:20px; text-align:center; display:flex; flex-direction:column; gap:14px;">
+          <div style="font-size:12px; color:#94a3b8; text-align:right;">
+            <button id="web-interstitial-close-btn" disabled style="background:#334155; color:#94a3b8; border:none; border-radius:6px; padding:4px 10px; font-size:11px; cursor:not-allowed;">
+              닫기 (${sec}초)
+            </button>
+          </div>
+          <div style="min-height:200px; background:#0f172a; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:13px;">
+            <div>
+              <div style="font-size:28px;">♟️</div>
+              <strong style="color:#f8fafc;">ChessAlkkagi Sponsor</strong>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      const closeBtn = overlay.querySelector<HTMLButtonElement>("#web-interstitial-close-btn")!;
+      const interval = setInterval(() => {
+        sec -= 1;
+        if (sec <= 0) {
+          clearInterval(interval);
+          closeBtn.disabled = false;
+          closeBtn.style.background = "#ef4444";
+          closeBtn.style.color = "#ffffff";
+          closeBtn.style.cursor = "pointer";
+          closeBtn.textContent = "✕ 닫기";
+        } else {
+          closeBtn.textContent = `닫기 (${sec}초)`;
+        }
+      }, 1000);
+
+      closeBtn.onclick = () => {
+        clearInterval(interval);
+        overlay.remove();
+        resolve(true);
+      };
+    });
   },
 
   /**
