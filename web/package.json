@@ -11,6 +11,7 @@
     "check:piece-stats": "node src/tools/strategy-deck-headless-check.mjs && node src/tools/piece-stat-adapter-headless-check.mjs && node src/tools/piece-preview-contract-check.mjs"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.1.0",
     "@capacitor/android": "^8.4.2",
     "@capacitor/cli": "^8.4.2",
     "@capacitor/core": "^8.4.2",
