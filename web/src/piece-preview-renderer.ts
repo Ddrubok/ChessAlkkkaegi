@@ -6,6 +6,9 @@ import { PieceUpgradeEffects } from "./piece-upgrade-effects";
 
 export interface PiecePreviewServices { renderer: WebGLRenderer; assets: ChessAssets }
 
+const MOBILE_LAYOUT_QUERY = "(max-width: 780px)";
+const MOBILE_PREVIEW_MODEL_SCALE = 0.72;
+
 /** 회전·5% 크기 강화까지 담는 보수적인 프레이밍. 공유 geometry는 변경하지 않는다. */
 export function computePreviewFit(geometry: BufferGeometry, aspect: number) {
   if (!geometry.boundingBox) geometry.computeBoundingBox();
@@ -58,6 +61,7 @@ export class PiecePreviewRenderer {
   private readonly context: CanvasRenderingContext2D | null;
   private readonly resizeObserver: ResizeObserver;
   private readonly motion = matchMedia("(prefers-reduced-motion: reduce)");
+  private readonly mobileLayout = matchMedia(MOBILE_LAYOUT_QUERY);
   private mesh: Mesh | null = null;
   private pixels = new Uint8Array(4);
   private imageData: ImageData | null = null;
@@ -90,6 +94,7 @@ export class PiecePreviewRenderer {
     canvas.addEventListener("lostpointercapture", this.pointerUp);
     document.addEventListener("visibilitychange", this.wake);
     this.motion.addEventListener("change", this.motionChanged);
+    this.mobileLayout.addEventListener("change", this.wake);
     services.renderer.domElement.addEventListener("webglcontextlost", this.contextLost);
     services.renderer.domElement.addEventListener("webglcontextrestored", this.contextRestored);
   }
@@ -146,11 +151,13 @@ export class PiecePreviewRenderer {
       this.pixels = new Uint8Array(width * height * 4); this.imageData = this.context.createImageData(width, height);
     }
     const fit = computePreviewFit(this.mesh.geometry, width / height);
+    const modelScreenScale = this.mobileLayout.matches ? MOBILE_PREVIEW_MODEL_SCALE : 1;
+    const cameraHalfHeight = fit.halfHeight / modelScreenScale;
     this.mesh.position.set(-fit.center.x, -fit.bottom, -fit.center.z);
     this.platform.scale.set(fit.radius * 1.4, fit.height, fit.radius * 1.4);
     this.platform.position.y = -fit.height * 0.04;
-    this.camera.top = fit.halfHeight; this.camera.bottom = -fit.halfHeight;
-    this.camera.right = fit.halfHeight * width / height; this.camera.left = -this.camera.right;
+    this.camera.top = cameraHalfHeight; this.camera.bottom = -cameraHalfHeight;
+    this.camera.right = cameraHalfHeight * width / height; this.camera.left = -this.camera.right;
     this.camera.near = 0.001; this.camera.far = fit.height * 30 + fit.radius * 30;
     const depth = Math.max(fit.height, fit.radius) * 5;
     this.camera.position.set(0, fit.height * 0.5 * 1.025 + depth * 0.28, depth);
@@ -188,6 +195,7 @@ export class PiecePreviewRenderer {
     if (this.pointer !== null && this.canvas.hasPointerCapture(this.pointer)) this.canvas.releasePointerCapture(this.pointer);
     document.removeEventListener("visibilitychange", this.wake);
     this.motion.removeEventListener("change", this.motionChanged);
+    this.mobileLayout.removeEventListener("change", this.wake);
     this.services.renderer.domElement.removeEventListener("webglcontextlost", this.contextLost);
     this.services.renderer.domElement.removeEventListener("webglcontextrestored", this.contextRestored);
     this.target.dispose(); this.effects.dispose(); this.material.dispose();

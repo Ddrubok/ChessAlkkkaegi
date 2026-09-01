@@ -19,7 +19,8 @@ globalThis.cancelAnimationFrame = id => frames.delete(id);
 const tick = now => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(cb => cb(now)); };
 globalThis.devicePixelRatio = 1;
 const motion = Object.assign(new TrackedTarget(), { matches: false });
-globalThis.matchMedia = () => motion;
+const mobileLayout = Object.assign(new TrackedTarget(), { matches: false });
+globalThis.matchMedia = query => query === "(max-width: 780px)" ? mobileLayout : motion;
 const resizeObservers = new Set();
 globalThis.ResizeObserver = class {
   constructor(callback) { this.callback = callback; resizeObservers.add(this); }
@@ -45,7 +46,7 @@ function rendererDouble() {
     setRenderTarget(target, face = 0, mip = 0) { this.target = target; this.face = face; this.mip = mip; },
     setViewport(...args) { if (args[0] instanceof Vector4) this.viewport.copy(args[0]); else this.viewport.set(...args); },
     setScissor(value) { this.scissor.copy(value); }, setScissorTest(value) { this.scissorTest = value; },
-    render(scene) { this.renderCount++; this.scene = scene; this.targets.add(this.target); if (this.fail) throw new Error("injected render failure"); },
+    render(scene, camera) { this.renderCount++; this.scene = scene; this.camera = camera; this.targets.add(this.target); if (this.fail) throw new Error("injected render failure"); },
     readRenderTargetPixels(_target, _x, _y, width, height, pixels) {
       if (this.failRead) throw new Error("injected read failure");
       for (let y = 0; y < height; y++) pixels.fill(y % 256, y * width * 4, (y + 1) * width * 4);
@@ -111,9 +112,13 @@ try {
   effects.dispose();
 
   for (let cycle = 0; cycle < 25; cycle++) {
+    mobileLayout.matches = false;
     const canvas = new Canvas(); const available = [];
     const preview = new PiecePreviewRenderer(canvas, { renderer, assets: { geometries } }, value => available.push(value));
     for (const type of geometries.keys()) { preview.setPiece(type); tick(performance.now() + 100); assert.ok(canvas.paints > 0); }
+    const desktopHalfHeight = renderer.camera.top;
+    mobileLayout.matches = true; mobileLayout.dispatchEvent(new Event("change")); tick(performance.now() + 150);
+    assert.ok(Math.abs(renderer.camera.top * 0.72 - desktopHalfHeight) < 1e-12, `mobile preview must render the model at 72% of desktop size: desktop=${desktopHalfHeight}, mobile=${renderer.camera.top}`);
     assert.equal(canvas.image.data[0], (canvas.height - 1) % 256, "read pixels are vertically flipped");
     assert.equal(available.at(-1), true);
     const ownedMaterials = new Set(); const ownedGeometries = new Set();
@@ -140,11 +145,11 @@ try {
     preview.dispose(); preview.dispose();
     assert.equal(disposedMaterials, ownedMaterials.size);
     assert.equal(disposedGeometries, ownedGeometries.size);
-    assert.equal(canvas.listenerCount, 0); assert.equal(renderer.domElement.listenerCount, 0); assert.equal(motion.listenerCount, 0);
+    assert.equal(canvas.listenerCount, 0); assert.equal(renderer.domElement.listenerCount, 0); assert.equal(motion.listenerCount, 0); assert.equal(mobileLayout.listenerCount, 0);
     assert.equal(frames.size, 0); assert.equal(resizeObservers.size, 0);
     assert.equal(sharedDisposals, 0, "shared GLB geometry must survive preview disposal");
   }
   target.dispose(); originalTarget.dispose();
-  console.log("PASS preview contracts: six real GLB geometries at 1.0/1.05 scale, state restoration on render/read failure, effect transforms, 25 lifecycle cycles, reduced motion, context recovery");
+  console.log("PASS preview contracts: six real GLB geometries at 1.0/1.05 scale, mobile model size 72% of desktop, state restoration on render/read failure, effect transforms, 25 lifecycle cycles, reduced motion, context recovery");
   console.log("NOTE: renderer/DOM doubles validate contracts, not GPU rendering or visual browser quality.");
 } finally { await vite.close(); }
