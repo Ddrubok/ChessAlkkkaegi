@@ -6,10 +6,8 @@ import { PieceUpgradeEffects } from "./piece-upgrade-effects";
 
 export interface PiecePreviewServices { renderer: WebGLRenderer; assets: ChessAssets }
 
-const COARSE_POINTER_FIT_SCALE = 1.22;
-
 /** 회전·5% 크기 강화까지 담는 보수적인 프레이밍. 공유 geometry는 변경하지 않는다. */
-export function computePreviewFit(geometry: BufferGeometry, aspect: number, framingScale = 1) {
+export function computePreviewFit(geometry: BufferGeometry, aspect: number) {
   if (!geometry.boundingBox) geometry.computeBoundingBox();
   const box = geometry.boundingBox!;
   const size = box.getSize(new Vector3());
@@ -17,7 +15,7 @@ export function computePreviewFit(geometry: BufferGeometry, aspect: number, fram
   const radius = Math.hypot(size.x, size.z) / 2;
   const pitch = Math.atan(0.28);
   const projectedHeight = size.y * Math.cos(pitch) + 2 * radius * Math.sin(pitch);
-  const halfHeight = Math.max(projectedHeight / 2, radius / Math.max(aspect, 0.1)) * 1.12 * 1.05 * framingScale;
+  const halfHeight = Math.max(projectedHeight / 2, radius / Math.max(aspect, 0.1)) * 1.12 * 1.05;
   return { center, bottom: box.min.y, height: size.y, radius, halfHeight };
 }
 
@@ -60,7 +58,6 @@ export class PiecePreviewRenderer {
   private readonly context: CanvasRenderingContext2D | null;
   private readonly resizeObserver: ResizeObserver;
   private readonly motion = matchMedia("(prefers-reduced-motion: reduce)");
-  private readonly coarsePointer = matchMedia("(pointer: coarse)");
   private mesh: Mesh | null = null;
   private pixels = new Uint8Array(4);
   private imageData: ImageData | null = null;
@@ -148,11 +145,7 @@ export class PiecePreviewRenderer {
       this.target.setSize(width, height); this.canvas.width = width; this.canvas.height = height;
       this.pixels = new Uint8Array(width * height * 4); this.imageData = this.context.createImageData(width, height);
     }
-    const fit = computePreviewFit(
-      this.mesh.geometry,
-      width / height,
-      this.coarsePointer.matches ? COARSE_POINTER_FIT_SCALE : 1,
-    );
+    const fit = computePreviewFit(this.mesh.geometry, width / height);
     this.mesh.position.set(-fit.center.x, -fit.bottom, -fit.center.z);
     this.platform.scale.set(fit.radius * 1.4, fit.height, fit.radius * 1.4);
     this.platform.position.y = -fit.height * 0.04;
