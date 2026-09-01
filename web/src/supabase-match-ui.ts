@@ -51,6 +51,7 @@ export class SupabaseMatchUi {
   private selectedPiece: PieceType = "Pawn";
   private activePvpMode: "classic" | "strategy" = "classic";
   private unsubscribeLanguage: () => void;
+  private unsubscribeReferral: (() => void) | null = null;
   private unbindModal: (() => void) | null = null;
   private coinInterval: any = null;
   private disposed = false;
@@ -235,6 +236,13 @@ export class SupabaseMatchUi {
       this.profile = await getOrCreateUserProfile(this.client);
       if (this.disposed || version !== this.renderVersion) return;
       this.renderProfileCard(profileSection, this.profile);
+
+      // 초대한 유저(Referrer) 보상 서버 동기화 및 실시간 알림 리스너 연결
+      if (this.profile && this.client) {
+        void EnergySystem.syncReferralRewardsFromServer(this.profile.id, this.client);
+        this.unsubscribeReferral?.();
+        this.unsubscribeReferral = EnergySystem.subscribeReferralRealtime(this.profile.id, this.client);
+      }
     } catch (err: any) {
       if (this.profile) {
         this.renderProfileCard(profileSection, this.profile);
@@ -619,6 +627,8 @@ export class SupabaseMatchUi {
       clearInterval(this.coinInterval);
       this.coinInterval = null;
     }
+    this.unsubscribeReferral?.();
+    this.unsubscribeReferral = null;
     this.disposeWorkbench(); this.unsubscribeLanguage();
     this.unbindModal?.(); this.unbindModal = null;
   }

@@ -12,7 +12,7 @@ UPDATE public.profiles
 SET referral_code = UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 8))
 WHERE referral_code IS NULL;
 
--- 2. 추천 보상 지급 로그 테이블 (중복 지급 방지 & 어뷰징 추적)
+-- 2. 추천 보상 지급 로그 테이블 (중복 지급 방지 & 실시간 알림 트리거)
 CREATE TABLE IF NOT EXISTS public.referral_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     referrer_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
@@ -25,6 +25,14 @@ CREATE TABLE IF NOT EXISTS public.referral_logs (
     -- 자기 자신 추천 방지 제약조건
     CONSTRAINT check_no_self_referral CHECK (referrer_id <> referee_id)
 );
+
+-- Realtime Publication에 referral_logs 테이블 추가 (실시간 구독 지원)
+DO $$ BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.referral_logs;
+EXCEPTION
+    WHEN duplicate_object THEN null;
+    WHEN undefined_object THEN null;
+END $$;
 
 -- RLS 활성화
 ALTER TABLE public.referral_logs ENABLE ROW LEVEL SECURITY;
@@ -47,11 +55,15 @@ DECLARE
     v_referrer_id UUID;
     v_already_referred BOOLEAN;
     v_reward_amount INT := 5;
+    v_clean_code VARCHAR;
 BEGIN
-    -- 1. 추천인 코드 유효성 검증
+    v_clean_code := UPPER(TRIM(p_referrer_code));
+
+    -- 1. 추천인 코드 또는 UUID로 추천인 식별 (코드/ID 호환 매칭)
     SELECT id INTO v_referrer_id 
     FROM public.profiles 
-    WHERE referral_code = UPPER(TRIM(p_referrer_code));
+    WHERE UPPER(TRIM(COALESCE(referral_code, ''))) = v_clean_code
+       OR id::TEXT = TRIM(p_referrer_code);
 
     IF v_referrer_id IS NULL THEN
         RETURN jsonb_build_object('success', false, 'message', '존재하지 않는 추천 코드입니다.');
@@ -62,7 +74,7 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'message', '자기 자신은 추천할 수 없습니다.');
     END IF;
 
-    -- 3. 이미 추천 보상을 수령한 계정인지 검증
+    -- 3. 이미 추천 보상을 수령한 신규 가입자인지 검증
     SELECT EXISTS (
         SELECT 1 FROM public.referral_logs WHERE referee_id = p_referee_id
     ) INTO v_already_referred;
@@ -71,7 +83,7 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'message', '이미 추천인 보상을 수령한 계정입니다.');
     END IF;
 
-    -- 4. 추천 이력 로그 기록
+    -- 4. 추천 이력 로그 기록 (Realtime INSERT 이벤트 발생 -> 초대자 클라이언트에 실시간 전달)
     INSERT INTO public.referral_logs (referrer_id, referee_id, reward_coins)
     VALUES (v_referrer_id, p_referee_id, v_reward_amount);
 
@@ -81,7 +93,7 @@ BEGIN
         referred_by = v_referrer_id
     WHERE id = p_referee_id;
 
-    -- 6. 초대자(기존 유저) 코인 지급
+    -- 6. 초대자(기존 유저) DB 코인 지급
     UPDATE public.profiles
     SET coins = COALESCE(coins, 0) + v_reward_amount
     WHERE id = v_referrer_id;

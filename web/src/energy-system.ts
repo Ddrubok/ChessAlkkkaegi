@@ -8,10 +8,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * - 인게임 대전 확정 시: 1 코인 소모
  * - 자연 시간 충전: 20분당 +1 코인 (최대 5개까지 누적)
  * - 보상형 광고 시청: +2 코인 (1일 최대 10회)
- * - 친구 초대 보상: 신규 가입자가 추천 링크(?ref=CODE)로 가입 완료 시 Supabase RPC 검증을 거쳐 양측 +5 코인 지급 (복사 시 즉시 지급 취약점 완전 제거)
+ * - 친구 초대 보상:
+ *   - 신규 가입자(피초대자): 가입 완료 시 즉시 +5 코인
+ *   - 초대한 유저(초대자): Realtime 알림 및 서버 동기화를 통해 +5 코인 자동 지급
  */
 
 const STORAGE_KEY = "ca_unified_energy_v1";
+const SYNCED_LOGS_KEY = "ca_synced_referral_log_ids";
 const MAX_AUTO_RECHARGE_COINS = 5;
 const INITIAL_FREE_COINS = 10;
 const RECHARGE_INTERVAL_MS = 20 * 60 * 1000; // 20분 (1200초)
@@ -78,6 +81,22 @@ function loadStoredData(): StoredEnergyData {
 function saveStoredData(data: StoredEnergyData): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {}
+}
+
+function getSyncedLogIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SYNCED_LOGS_KEY);
+    if (raw) {
+      return new Set(JSON.parse(raw));
+    }
+  } catch {}
+  return new Set<string>();
+}
+
+function saveSyncedLogIds(ids: Set<string>): void {
+  try {
+    localStorage.setItem(SYNCED_LOGS_KEY, JSON.stringify([...ids]));
   } catch {}
 }
 
@@ -182,19 +201,19 @@ export const EnergySystem = {
   },
 
   /**
-   * 친구 초대 링크 생성 (고유 추천 코드 포함)
+   * 친구 초대 링크 생성 (고유 추천 코드 또는 ID 포함)
    */
-  getInviteLink: (referralCode?: string): string => {
+  getInviteLink: (referralCodeOrId?: string): string => {
     const base = window.location.origin + window.location.pathname;
-    const code = referralCode || localStorage.getItem("ca_referral_code") || "CHESS888";
+    const code = referralCodeOrId || localStorage.getItem("ca_referral_code") || "CHESS888";
     return `${base}?ref=${encodeURIComponent(code)}`;
   },
 
   /**
    * 초대 링크 복사 (★ 클라이언트 즉시 코인 증가 로직 완전 제거)
    */
-  copyInviteLink: async (referralCode?: string): Promise<boolean> => {
-    const inviteUrl = EnergySystem.getInviteLink(referralCode);
+  copyInviteLink: async (referralCodeOrId?: string): Promise<boolean> => {
+    const inviteUrl = EnergySystem.getInviteLink(referralCodeOrId);
     try {
       await navigator.clipboard.writeText(inviteUrl);
       alert(`초대 링크가 복사되었습니다!\n\n친구가 이 링크로 접속하여 가입/닉네임 생성을 완료하면 두 분 모두에게 5코인이 지급됩니다.`);
@@ -247,7 +266,7 @@ export const EnergySystem = {
 
         if (!error && data && data.success) {
           const reward = Number(data.reward_coins ?? 5);
-          alert(`🎉 친구 초대 링크로 가입하셨습니다!\n보너스 ${reward} 코인이 지급되었습니다.`);
+          alert(`🎉 친구 초대 링크로 가입하셨습니다!\n가입 축하 보너스로 ${reward} 코인이 지급되었습니다.`);
           EnergySystem.addCoins(reward);
           sessionStorage.removeItem(PENDING_REF_KEY);
           return true;
@@ -265,7 +284,7 @@ export const EnergySystem = {
     const CLAIMED_LOCAL_KEY = `ca_ref_claimed_${newUserId}`;
     if (!localStorage.getItem(CLAIMED_LOCAL_KEY)) {
       localStorage.setItem(CLAIMED_LOCAL_KEY, pendingCode);
-      alert(`🎉 친구 초대 링크로 가입하셨습니다!\n보너스 5 코인이 지급되었습니다.`);
+      alert(`🎉 친구 초대 링크로 가입하셨습니다!\n가입 축하 보너스로 5 코인이 지급되었습니다.`);
       EnergySystem.addCoins(5);
       sessionStorage.removeItem(PENDING_REF_KEY);
       return true;
@@ -273,6 +292,94 @@ export const EnergySystem = {
 
     sessionStorage.removeItem(PENDING_REF_KEY);
     return false;
+  },
+
+  /**
+   * ★ 초대한 유저(Referrer)의 미지급 추천 보상을 서버(referral_logs)와 동기화
+   */
+  syncReferralRewardsFromServer: async (
+    userId: string,
+    client: SupabaseClient,
+  ): Promise<void> => {
+    if (!userId || !client) return;
+
+    try {
+      const { data: logs, error } = await client
+        .from("referral_logs")
+        .select("id, reward_coins, created_at")
+        .eq("referrer_id", userId);
+
+      if (error) {
+        console.warn("[Referral] 추천 보상 동기화 조회 오류:", error.message);
+        return;
+      }
+
+      if (logs && logs.length > 0) {
+        const syncedIds = getSyncedLogIds();
+        let newRewards = 0;
+        let newCount = 0;
+
+        for (const log of logs) {
+          if (!syncedIds.has(log.id)) {
+            syncedIds.add(log.id);
+            newRewards += Number(log.reward_coins || 5);
+            newCount++;
+          }
+        }
+
+        if (newCount > 0 && newRewards > 0) {
+          saveSyncedLogIds(syncedIds);
+          EnergySystem.addCoins(newRewards);
+          alert(`🎉 친구 ${newCount}명이 가입을 완료했습니다!\n친구 초대 보너스로 +${newRewards} 코인이 지급되었습니다.`);
+        }
+      }
+    } catch (err) {
+      console.warn("[Referral] 서버 추천 보상 동기화 예외:", err);
+    }
+  },
+
+  /**
+   * ★ 초대한 유저(Referrer) 실시간 초대 보상 감지기 등록 (Supabase Realtime)
+   */
+  subscribeReferralRealtime: (
+    userId: string,
+    client: SupabaseClient,
+  ): (() => void) => {
+    if (!userId || !client) return () => {};
+
+    try {
+      const channel = client
+        .channel(`referral-reward-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "referral_logs",
+            filter: `referrer_id=eq.${userId}`,
+          },
+          (payload) => {
+            const newLog = payload.new as { id: string; reward_coins?: number };
+            const syncedIds = getSyncedLogIds();
+
+            if (!syncedIds.has(newLog.id)) {
+              syncedIds.add(newLog.id);
+              saveSyncedLogIds(syncedIds);
+              const reward = Number(newLog.reward_coins || 5);
+              EnergySystem.addCoins(reward);
+              alert(`🎉 친구가 회원가입을 완료했습니다!\n친구 초대 보너스로 +${reward} 코인이 지급되었습니다!`);
+            }
+          },
+        )
+        .subscribe();
+
+      return () => {
+        void client.removeChannel(channel);
+      };
+    } catch (err) {
+      console.warn("[Referral] Realtime 구독 설정 실패:", err);
+      return () => {};
+    }
   },
 
   /**
