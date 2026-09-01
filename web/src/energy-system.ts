@@ -47,10 +47,7 @@ interface StoredEnergyData {
   hasReceivedInitial: boolean;
 }
 
-function getTodayString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+const getTodayString = (): string => new Date().toISOString().slice(0, 10);
 
 function loadStoredData(): StoredEnergyData {
   const today = getTodayString();
@@ -294,7 +291,7 @@ export const EnergySystem = {
 
         if (error) {
           console.warn("[Referral] RPC 호출 에러:", error.message);
-        } else if (data && data.success) {
+        } else if (data?.success) {
           const reward = Number(data.reward_coins ?? 5);
           alert(`🎉 친구 초대 링크로 가입하셨습니다!\n가입 축하 보너스로 ${reward} 코인이 지급되었습니다.`);
           EnergySystem.addCoins(reward);
@@ -308,24 +305,10 @@ export const EnergySystem = {
           } else {
             console.warn("[Referral] RPC 처리 결과:", data.message);
           }
-          sessionStorage.removeItem(PENDING_REF_KEY);
-          return false;
         }
       } catch (err) {
         console.warn("[Referral] RPC 호출 예외:", err);
       }
-    }
-
-    // 로컬 폴백 (RPC 미설정 환경)
-    const CLAIMED_LOCAL_KEY = `ca_ref_claimed_${newUserId}`;
-    if (!localStorage.getItem(CLAIMED_LOCAL_KEY)) {
-      localStorage.setItem(CLAIMED_LOCAL_KEY, pendingCode);
-      alert(`🎉 친구 초대 링크로 가입하셨습니다!\n가입 축하 보너스로 5 코인이 지급되었습니다.`);
-      EnergySystem.addCoins(5);
-      sessionStorage.removeItem(PENDING_REF_KEY);
-      return true;
-    } else {
-      alert("이미 가입된 회원이에요.");
     }
 
     sessionStorage.removeItem(PENDING_REF_KEY);

@@ -14,8 +14,6 @@ export interface AdManagerConfig {
   admobRewardedId?: string;
   admobInterstitialId?: string;
   adSenseClientId?: string;
-  adSenseSlotSide?: string;
-  adSenseSlotBottom?: string;
 }
 
 const ENV: AdManagerConfig = {
@@ -28,8 +26,6 @@ const ENV: AdManagerConfig = {
   admobRewardedId: (import.meta as any).env?.VITE_ADMOB_REWARDED_ID || "",
   admobInterstitialId: (import.meta as any).env?.VITE_ADMOB_INTERSTITIAL_ID || "",
   adSenseClientId: "ca-pub-1173757866262139",
-  adSenseSlotSide: "xxxxxxxxxx",
-  adSenseSlotBottom: "xxxxxxxxxx",
 };
 
 // Google 공식 테스트 광고 단위 ID (개발 및 테스트 시 계정 정지 방지용)
@@ -73,9 +69,6 @@ export const AdManager = {
   },
 
   getBannerUnitId: (): string => {
-    if (ENV.isDevMode) {
-      return ADMOB_TEST_IDS.BANNER_ANDROID;
-    }
     return ADMOB_TEST_IDS.BANNER_ANDROID;
   },
 
@@ -517,7 +510,6 @@ export const AdManager = {
       <ins class="adsbygoogle"
            style="display:inline-block;width:${width};height:${height}"
            data-ad-client="${ENV.adSenseClientId}"
-           data-ad-slot="${width === "100%" ? ENV.adSenseSlotBottom : ENV.adSenseSlotSide}"
            data-adtest="${ENV.isDevMode ? "on" : "off"}"></ins>
     `;
   },

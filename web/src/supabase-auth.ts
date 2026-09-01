@@ -152,7 +152,7 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
       localStorage.setItem(NICKNAME_STORAGE_KEY, existing.nickname);
     }
 
-    const referralCode = existing.referral_code || localStorage.getItem("ca_referral_code") || generateReferralCode();
+    const referralCode = existing.referral_code || generateReferralCode();
     localStorage.setItem("ca_referral_code", referralCode);
 
     // 대기 중인 추천인 코드가 있다면 확인 (기존 회원이므로 안내 후 종료)

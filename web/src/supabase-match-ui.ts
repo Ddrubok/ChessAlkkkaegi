@@ -566,17 +566,10 @@ export class SupabaseMatchUi {
             </div>
           </button>
         </div>
-
-        <div style="margin-top: 4px;">
-          <button id="coin-modal-bottom-close-btn" style="background:#334155; color:#cbd5e1; border:1px solid #475569; border-radius:8px; padding:8px 24px; font-size:13px; font-weight:600; cursor:pointer;">
-            닫기
-          </button>
-        </div>
       </div>
     `;
 
     const topCloseBtn = overlay.querySelector<HTMLButtonElement>(".coin-modal-close-btn")!;
-    const bottomCloseBtn = overlay.querySelector<HTMLButtonElement>("#coin-modal-bottom-close-btn")!;
     const adBtn = overlay.querySelector<HTMLButtonElement>("#coin-watch-ad-btn")!;
     const inviteBtn = overlay.querySelector<HTMLButtonElement>("#coin-invite-friend-btn")!;
 
@@ -614,7 +607,9 @@ export class SupabaseMatchUi {
     };
 
     topCloseBtn.onclick = closeModal;
-    bottomCloseBtn.onclick = closeModal;
+    overlay.onclick = (e) => {
+      if (e.target === overlay) closeModal();
+    };
 
     adBtn.onclick = async () => {
       const s = EnergySystem.getState();
