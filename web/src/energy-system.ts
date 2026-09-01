@@ -1,13 +1,14 @@
 import { AdManager } from "./ad-manager";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * 행동력/코인 경제 순환 시스템 (Unified Energy Model)
+ * 행동력/코인 경제 순환 및 서버 검증 추천인(Referral) 시스템
  * - 최초 가입: 10 코인 지급
  * - 매칭 진입 시: 잔액 확인 (코인 차감 없음)
  * - 인게임 대전 확정 시: 1 코인 소모
  * - 자연 시간 충전: 20분당 +1 코인 (최대 5개까지 누적)
  * - 보상형 광고 시청: +2 코인 (1일 최대 10회)
- * - 친구 초대 보상: +5 코인
+ * - 친구 초대 보상: 신규 가입자가 추천 링크(?ref=CODE)로 가입 완료 시 Supabase RPC 검증을 거쳐 양측 +5 코인 지급 (복사 시 즉시 지급 취약점 완전 제거)
  */
 
 const STORAGE_KEY = "ca_unified_energy_v1";
@@ -15,6 +16,7 @@ const MAX_AUTO_RECHARGE_COINS = 5;
 const INITIAL_FREE_COINS = 10;
 const RECHARGE_INTERVAL_MS = 20 * 60 * 1000; // 20분 (1200초)
 const MAX_DAILY_ADS = 10;
+const PENDING_REF_KEY = "pending_referrer_code";
 
 export const SVG_COIN_ICON = `
 <svg class="coin-icon-svg" viewBox="0 0 24 24" width="18" height="18" style="vertical-align: middle; flex-shrink: 0;">
@@ -180,28 +182,96 @@ export const EnergySystem = {
   },
 
   /**
-   * 친구 초대 링크 생성 및 클립보드 복사
+   * 친구 초대 링크 생성 (고유 추천 코드 포함)
    */
-  getInviteLink: (userId?: string): string => {
+  getInviteLink: (referralCode?: string): string => {
     const base = window.location.origin + window.location.pathname;
-    const ref = userId || "chess_player";
-    return `${base}?ref=${encodeURIComponent(ref)}`;
+    const code = referralCode || localStorage.getItem("ca_referral_code") || "CHESS888";
+    return `${base}?ref=${encodeURIComponent(code)}`;
   },
 
   /**
-   * 레퍼럴 URL(?ref=...)로 접속한 경우 피초대자 보너스 지급 (1회)
+   * 초대 링크 복사 (★ 클라이언트 즉시 코인 증가 로직 완전 제거)
    */
-  checkReferralBonus: (): boolean => {
-    if (typeof window === "undefined") return false;
-    const urlParams = new URLSearchParams(window.location.search);
-    const ref = urlParams.get("ref");
-    const REFERRAL_KEY = "ca_referral_rewarded";
-
-    if (ref && !localStorage.getItem(REFERRAL_KEY)) {
-      localStorage.setItem(REFERRAL_KEY, "true");
-      EnergySystem.addCoins(5);
+  copyInviteLink: async (referralCode?: string): Promise<boolean> => {
+    const inviteUrl = EnergySystem.getInviteLink(referralCode);
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      alert(`초대 링크가 복사되었습니다!\n\n친구가 이 링크로 접속하여 가입/닉네임 생성을 완료하면 두 분 모두에게 5코인이 지급됩니다.`);
+      return true;
+    } catch (err) {
+      console.warn("클립보드 복사 실패:", err);
+      prompt("아래 초대 링크를 복사하여 친구에게 공유하세요:", inviteUrl);
       return true;
     }
+  },
+
+  /**
+   * 앱 진입 시 URL의 ?ref= 추천인 코드 감지 및 세션 스토리지 임시 저장
+   */
+  initReferralTracker: (): void => {
+    if (typeof window === "undefined") return;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get("ref");
+      if (refCode && refCode.trim()) {
+        sessionStorage.setItem(PENDING_REF_KEY, refCode.trim().toUpperCase());
+        console.log(`[Referral] 추천인 코드 감지: ${refCode.trim()}`);
+        // URL 주소창에서 파라미터 노출 제거
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (e) {
+      console.warn("[Referral] Tracker init error:", e);
+    }
+  },
+
+  /**
+   * 신규 가입/프로필 생성 완료 시점에 백엔드 RPC를 호출하여 추천 보상 청구
+   */
+  claimPendingReferralReward: async (
+    newUserId: string,
+    client?: SupabaseClient | null,
+  ): Promise<boolean> => {
+    if (typeof window === "undefined") return false;
+    const pendingCode = sessionStorage.getItem(PENDING_REF_KEY);
+    if (!pendingCode) return false;
+
+    console.log(`[Referral] 추천 보상 청구 시작: referee=${newUserId}, code=${pendingCode}`);
+
+    if (client) {
+      try {
+        const { data, error } = await client.rpc("claim_referral_reward", {
+          p_referee_id: newUserId,
+          p_referrer_code: pendingCode,
+        });
+
+        if (!error && data && data.success) {
+          const reward = Number(data.reward_coins ?? 5);
+          alert(`🎉 친구 초대 링크로 가입하셨습니다!\n보너스 ${reward} 코인이 지급되었습니다.`);
+          EnergySystem.addCoins(reward);
+          sessionStorage.removeItem(PENDING_REF_KEY);
+          return true;
+        } else if (data && !data.success) {
+          console.warn("[Referral] RPC 거절:", data.message);
+          sessionStorage.removeItem(PENDING_REF_KEY);
+          return false;
+        }
+      } catch (err) {
+        console.warn("[Referral] RPC 호출 예외 (오프라인/미설치 폴백):", err);
+      }
+    }
+
+    // 로컬 폴백 (RPC 미설정 환경)
+    const CLAIMED_LOCAL_KEY = `ca_ref_claimed_${newUserId}`;
+    if (!localStorage.getItem(CLAIMED_LOCAL_KEY)) {
+      localStorage.setItem(CLAIMED_LOCAL_KEY, pendingCode);
+      alert(`🎉 친구 초대 링크로 가입하셨습니다!\n보너스 5 코인이 지급되었습니다.`);
+      EnergySystem.addCoins(5);
+      sessionStorage.removeItem(PENDING_REF_KEY);
+      return true;
+    }
+
+    sessionStorage.removeItem(PENDING_REF_KEY);
     return false;
   },
 
@@ -219,3 +289,8 @@ export const EnergySystem = {
     listeners.forEach((l) => l(state));
   },
 };
+
+// 앱 로드 시 추천인 코드 감지기 자동 가동
+if (typeof window !== "undefined") {
+  EnergySystem.initReferralTracker();
+}

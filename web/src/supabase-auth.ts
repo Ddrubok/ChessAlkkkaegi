@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { EnergySystem } from "./energy-system";
 
 export interface UserProfile {
   id: string;
@@ -15,6 +16,8 @@ export interface UserProfile {
   strategyWins: number;
   strategyDraws: number;
   strategyLosses: number;
+  referralCode?: string;
+  referredBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -32,6 +35,15 @@ function generateRandomNickname(): string {
   const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
   const num = Math.floor(1000 + Math.random() * 9000);
   return `${prefix}_${num}`;
+}
+
+export function generateReferralCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "CHESS";
+  for (let i = 0; i < 4; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }
 
 function getOrCreateGuestUuid(): string {
@@ -140,6 +152,12 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
       localStorage.setItem(NICKNAME_STORAGE_KEY, existing.nickname);
     }
 
+    const referralCode = existing.referral_code || localStorage.getItem("ca_referral_code") || generateReferralCode();
+    localStorage.setItem("ca_referral_code", referralCode);
+
+    // 대기 중인 추천인 코드가 있다면 보상 청구
+    void EnergySystem.claimPendingReferralReward(existing.id, client);
+
     const synchronizedProfile: UserProfile = {
       id: existing.id,
       nickname: existing.nickname,
@@ -155,6 +173,8 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
       strategyWins,
       strategyDraws,
       strategyLosses,
+      referralCode,
+      referredBy: existing.referred_by,
       createdAt: existing.created_at,
       updatedAt: existing.updated_at,
     };
@@ -163,6 +183,7 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
     void client.from("profiles").upsert({
       id: synchronizedProfile.id,
       nickname: synchronizedProfile.nickname,
+      referral_code: referralCode,
       mmr: classicMmr,
       classic_mmr: classicMmr,
       strategy_mmr: strategyMmr,
@@ -193,6 +214,8 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
   const savedWins = savedClassicWins + savedStrategyWins;
   const savedDraws = savedClassicDraws + savedStrategyDraws;
   const savedLosses = savedClassicLosses + savedStrategyLosses;
+  const referralCode = localStorage.getItem("ca_referral_code") || generateReferralCode();
+  localStorage.setItem("ca_referral_code", referralCode);
 
   const initialProfile: UserProfile = {
     id: user.id,
@@ -209,14 +232,18 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
     strategyWins: savedStrategyWins,
     strategyDraws: savedStrategyDraws,
     strategyLosses: savedStrategyLosses,
+    referralCode,
   };
 
   try {
     const { data: created, error: insertErr } = await client
       .from("profiles")
-      .upsert(initialProfile, { onConflict: "id" })
+      .upsert({ ...initialProfile, referral_code: referralCode }, { onConflict: "id" })
       .select()
       .single();
+
+    // 신규 프로필 생성 후 대기 중인 추천인 코드가 있다면 보상 청구
+    void EnergySystem.claimPendingReferralReward(user.id, client);
 
     if (!insertErr && created) {
       const classicMmr = Number(created.classic_mmr ?? created.mmr ?? 1200);
@@ -236,6 +263,8 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
         strategyWins: Number(created.strategy_wins ?? savedStrategyWins),
         strategyDraws: Number(created.strategy_draws ?? savedStrategyDraws),
         strategyLosses: Number(created.strategy_losses ?? savedStrategyLosses),
+        referralCode: created.referral_code ?? referralCode,
+        referredBy: created.referred_by,
         createdAt: created.created_at,
         updatedAt: created.updated_at,
       };

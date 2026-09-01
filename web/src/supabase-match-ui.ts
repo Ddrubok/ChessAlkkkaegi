@@ -96,9 +96,6 @@ export class SupabaseMatchUi {
       });
     };
 
-    // 레퍼럴 보너스 확인
-    EnergySystem.checkReferralBonus();
-
     const header = document.createElement("div");
     header.style.cssText = `
       display: flex;
@@ -602,17 +599,9 @@ export class SupabaseMatchUi {
       }
     };
 
-    inviteBtn.onclick = () => {
-      const link = EnergySystem.getInviteLink(this.profile?.id);
-      navigator.clipboard.writeText(link).then(() => {
-        alert("초대 링크가 복사되었습니다! (+5 코인 보너스 지급)");
-        EnergySystem.addCoins(5);
-        closeModal();
-      }).catch(() => {
-        prompt("아래 초대 링크를 복사하여 친구에게 공유하세요:", link);
-        EnergySystem.addCoins(5);
-        closeModal();
-      });
+    inviteBtn.onclick = async () => {
+      await EnergySystem.copyInviteLink(this.profile?.referralCode || this.profile?.id);
+      closeModal();
     };
 
     parentCard.appendChild(overlay);
