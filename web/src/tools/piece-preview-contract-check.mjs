@@ -19,7 +19,8 @@ globalThis.cancelAnimationFrame = id => frames.delete(id);
 const tick = now => { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach(cb => cb(now)); };
 globalThis.devicePixelRatio = 1;
 const motion = Object.assign(new TrackedTarget(), { matches: false });
-globalThis.matchMedia = () => motion;
+const coarsePointer = Object.assign(new TrackedTarget(), { matches: false });
+globalThis.matchMedia = query => query === "(pointer: coarse)" ? coarsePointer : motion;
 const resizeObservers = new Set();
 globalThis.ResizeObserver = class {
   constructor(callback) { this.callback = callback; resizeObservers.add(this); }
@@ -65,8 +66,13 @@ try {
   for (const [type, geometry] of geometries) {
     geometry.addEventListener("dispose", () => sharedDisposals++);
     const original = Array.from(geometry.attributes.position.array);
-    for (const aspect of [280 / 310, 320 / 240, 1.8]) {
-      const fit = computePreviewFit(geometry, aspect);
+    for (const [aspect, framingScale, maximumFrameUsage] of [
+      [280 / 310, 1, 0.94],
+      [320 / 240, 1.22, 0.78],
+      [667 / 240, 1.22, 0.78],
+      [1.8, 1, 0.94],
+    ]) {
+      const fit = computePreviewFit(geometry, aspect, framingScale);
       const camera = new OrthographicCamera(-fit.halfHeight * aspect, fit.halfHeight * aspect, fit.halfHeight, -fit.halfHeight, 0.001, 1000);
       const depth = Math.max(fit.height, fit.radius) * 5;
       camera.position.set(0, fit.height * 0.5 * 1.025 + depth * 0.28, depth);
@@ -79,7 +85,7 @@ try {
           point.sub(new Vector3(fit.center.x, fit.bottom, fit.center.z)).multiplyScalar(scale).applyAxisAngle(new Vector3(0, 1, 0), yaw).project(camera);
           maximum = Math.max(maximum, Math.abs(point.x), Math.abs(point.y));
         }
-        assert.ok(maximum < 0.94, `${type} clipped / insufficient margin: ${maximum}`);
+        assert.ok(maximum < maximumFrameUsage, `${type} clipped / insufficient margin: ${maximum}`);
       }
     }
     assert.deepEqual(Array.from(geometry.attributes.position.array), original, "shared vertices remain unchanged");
@@ -111,6 +117,7 @@ try {
   effects.dispose();
 
   for (let cycle = 0; cycle < 25; cycle++) {
+    coarsePointer.matches = cycle % 2 === 0;
     const canvas = new Canvas(); const available = [];
     const preview = new PiecePreviewRenderer(canvas, { renderer, assets: { geometries } }, value => available.push(value));
     for (const type of geometries.keys()) { preview.setPiece(type); tick(performance.now() + 100); assert.ok(canvas.paints > 0); }
@@ -145,6 +152,6 @@ try {
     assert.equal(sharedDisposals, 0, "shared GLB geometry must survive preview disposal");
   }
   target.dispose(); originalTarget.dispose();
-  console.log("PASS preview contracts: six real GLB geometries at 1.0/1.05 scale, state restoration on render/read failure, effect transforms, 25 lifecycle cycles, reduced motion, context recovery");
+  console.log("PASS preview contracts: six real GLB geometries at desktop/mobile framing and 1.0/1.05 scale, state restoration on render/read failure, effect transforms, 25 lifecycle cycles, reduced motion, context recovery");
   console.log("NOTE: renderer/DOM doubles validate contracts, not GPU rendering or visual browser quality.");
 } finally { await vite.close(); }
