@@ -4,5 +4,5 @@
     <string name="title_activity_main">ChessAlkkagi</string>
     <string name="package_name">com.chessalkkagi.app</string>
     <string name="custom_url_scheme">com.chessalkkagi.app</string>
-    <string name="admob_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_app_id">ca-app-pub-1173757866262139~1926264640</string>
 </resources>

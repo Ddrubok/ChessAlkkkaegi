@@ -9,3 +9,9 @@ web/docs/
 # 프로젝트 전용 에이전트·스킬 설정은 로컬에만 보관한다
 /.agents/
 /AGENTS.md
+
+# Signing keys
+*.jks
+*.keystore
+keystore.properties
+*.aab
