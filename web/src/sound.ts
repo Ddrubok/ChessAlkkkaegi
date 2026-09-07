@@ -341,6 +341,32 @@ export function initializeSound(): void {
       });
     }
   });
+
+  const handlePause = (): void => {
+    runtime.bgm.pause();
+    if (runtime.context.state === "running") {
+      void runtime.context.suspend();
+    }
+  };
+
+  const handleResume = (): void => {
+    if (runtime.unlocked && !currentSoundSettings.muted) {
+      void runtime.bgm.play().catch(() => {});
+      if (runtime.context.state === "suspended") {
+        void runtime.context.resume();
+      }
+    }
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      handlePause();
+    } else {
+      handleResume();
+    }
+  });
+  window.addEventListener("pagehide", handlePause);
+  window.addEventListener("pageshow", handleResume);
 }
 
 /**
