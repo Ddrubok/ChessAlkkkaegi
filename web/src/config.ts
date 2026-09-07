@@ -327,3 +327,8 @@ export type PieceType = (typeof PIECE_TYPES)[number];
 export function deriveBoardHalfExtent(cellSize: number): number {
   return ((8 + BOARD_BORDER_CELLS * 2) * cellSize) / 2;
 }
+
+// 나이트(Knight) 고유 기믹: 포물선 발사 고정 앙각 (35도)
+export const KNIGHT_LAUNCH_ANGLE_DEG = 35;
+export const KNIGHT_LAUNCH_ANGLE = (KNIGHT_LAUNCH_ANGLE_DEG * Math.PI) / 180;
+

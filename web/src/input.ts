@@ -22,6 +22,7 @@ import {
   cancelAim,
   freezeCameraBasis,
   handleAimPieceRemoved,
+  isKnightPiece,
   selectAimPiece,
   setAimApplicationPoint,
   startLaunchPulse,
@@ -49,6 +50,7 @@ import {
   CAM_MIN_DISTANCE,
   CAM_PITCH_MAX,
   CAM_PITCH_MIN,
+  KNIGHT_LAUNCH_ANGLE,
   MAX_DRAG_PIXELS,
   TOUCH_MAX_DRAG_MIN_PIXELS,
   TOUCH_MAX_DRAG_VIEWPORT_RATIO,
@@ -1095,7 +1097,27 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         if (runtime.preparedStrikeSolution === null) {
           throw new Error("당구식 발사 방향이 준비되지 않았습니다.");
         }
-        return runtime.preparedStrikeSolution.direction.clone();
+        const dir = runtime.preparedStrikeSolution.direction.clone();
+        const selectedId = runtime.aimRuntime.selectedPieceId;
+        if (
+          selectedId &&
+          isKnightPiece(selectedId, runtime.physicsRuntime.pieces)
+        ) {
+          const horiz = new Vector3(dir.x, 0, dir.z);
+          if (horiz.lengthSq() > 1e-12) {
+            horiz.normalize();
+          } else {
+            horiz.set(0, 0, 1);
+          }
+          const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
+          const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
+          return new Vector3(
+            horiz.x * cosAngle,
+            sinAngle,
+            horiz.z * cosAngle,
+          ).normalize();
+        }
+        return dir;
       },
       computeApplicationPoint: (runtime) => {
         if (runtime.preparedStrikeSolution === null) {

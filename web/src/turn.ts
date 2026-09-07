@@ -2,6 +2,7 @@ import { MathUtils, Spherical, Vector3 } from "three";
 import {
   CAMERA_PITCH_DEG,
   FALL_OUT_Y,
+  KNIGHT_LAUNCH_ANGLE,
   MAX_SETTLE_SECONDS,
   REST_ANGULAR_EPS,
   REST_HOLD_SECONDS,
@@ -633,11 +634,31 @@ export function applyPendingLaunchBeforeStep(
     request.normalizedPower *
     runtime.tuningSettings.maxLaunchSpeed *
     speedMultiplier;
+
+  let launchDirection = request.direction.clone();
+  if (binding.instance.type === "Knight" && launchDirection.y < 0.2) {
+    const horiz = new Vector3(launchDirection.x, 0, launchDirection.z);
+    if (horiz.lengthSq() > 1e-12) {
+      horiz.normalize();
+    } else {
+      horiz.set(0, 0, 1);
+    }
+    const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
+    const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
+    launchDirection.set(
+      horiz.x * cosAngle,
+      sinAngle,
+      horiz.z * cosAngle,
+    ).normalize();
+  } else {
+    launchDirection.normalize();
+  }
+
   const impulseMagnitude = binding.body.mass() * targetSpeed;
   const impulse = {
-    x: request.direction.x * impulseMagnitude,
-    y: request.direction.y * impulseMagnitude,
-    z: request.direction.z * impulseMagnitude,
+    x: launchDirection.x * impulseMagnitude,
+    y: launchDirection.y * impulseMagnitude,
+    z: launchDirection.z * impulseMagnitude,
   };
   const velocityBefore = binding.body.linvel();
   const before = new Vector3(

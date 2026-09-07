@@ -24,7 +24,9 @@ import {
   GRAVITY_Y,
   GROUND_LANE_LENGTH,
   GUIDE_ARC_LENGTH,
+  KNIGHT_LAUNCH_ANGLE,
   MAX_DRAG_PIXELS,
+  MAX_LAUNCH_SPEED,
   NOMINAL_GUIDE_SPEED,
 } from "./config";
 import type { PieceBodyBinding } from "./physics";
@@ -69,6 +71,21 @@ export interface ActiveAim {
   showsElevationGauge: boolean;
   // 로컬 플레이어 드래그만 세기 임계 효과음을 내고 AI·원격 텔레그래프는 끄는 표시다.
   tracksPowerSounds: boolean;
+  // 나이트 기물 고유 포물선 조준 여부다.
+  isKnight?: boolean;
+}
+
+/**
+ * 말 식별자 또는 바인딩에서 나이트 기물 여부를 판정한다.
+ */
+export function isKnightPiece(
+  pieceId: string,
+  bindings?: ReadonlyMap<string, PieceBodyBinding>,
+): boolean {
+  if (bindings?.get(pieceId)?.instance.type === "Knight") {
+    return true;
+  }
+  return pieceId.toLowerCase().includes("knight");
 }
 
 interface RenderPulse {
@@ -408,6 +425,54 @@ function sampleGuideCurveRange(
         fromTime + (toTime - fromTime) * ratio,
       ),
     );
+  }
+  return points;
+}
+
+/**
+ * 나이트의 실제 발사 세기와 방향에 따른 물리 포물선 궤적 표본점들을 계산한다.
+ * 세기에 따른 실제 도달 거리 및 착지 지점까지 호를 그리며, 세기가 0일 때도 35% 기본 미리보기를 제공한다.
+ */
+export function computeKnightTrajectoryPoints(
+  start: Vector3,
+  direction: Vector3,
+  normalizedPower: number,
+  pointCount: number,
+): GuideCurvePoint[] {
+  assertFiniteGuideVector("나이트 탄도 시작점", start);
+  assertFiniteGuideVector("나이트 탄도 방향", direction);
+  const power = normalizedPower > 0 ? normalizedPower : 0.35;
+  const launchSpeed = power * MAX_LAUNCH_SPEED;
+  const initialVelocity = direction
+    .clone()
+    .normalize()
+    .multiplyScalar(launchSpeed);
+
+  const deltaY = start.y - GUIDE_GROUND_Y;
+  const vy = initialVelocity.y;
+  const gravityMagnitude = Math.abs(GRAVITY_Y);
+  const discriminant = vy * vy + 2 * gravityMagnitude * Math.max(0, deltaY);
+  const flightTime =
+    (vy + Math.sqrt(Math.max(0, discriminant))) / gravityMagnitude;
+
+  const points: GuideCurvePoint[] = [];
+  for (let index = 0; index < pointCount; index += 1) {
+    const ratio = index / (pointCount - 1);
+    const time = flightTime * ratio;
+    const position = start.clone().addScaledVector(initialVelocity, time);
+    position.y =
+      start.y + initialVelocity.y * time + 0.5 * GRAVITY_Y * time * time;
+    if (index === pointCount - 1) {
+      position.y = GUIDE_GROUND_Y;
+    }
+    const tangent = initialVelocity.clone();
+    tangent.y += GRAVITY_Y * time;
+    if (tangent.lengthSq() > 1e-12) {
+      tangent.normalize();
+    } else {
+      tangent.set(0, -1, 0);
+    }
+    points.push({ position, tangent, time });
   }
   return points;
 }
@@ -818,21 +883,23 @@ function setAimGuidesVisible(
   runtime: AimRuntime,
   visible: boolean,
 ): void {
-  runtime.groundRibbon.visible = visible;
-  runtime.faintGroundRibbon.visible = visible;
+  const isKnight = runtime.activeAim?.isKnight === true;
+  const showGround = visible && !isKnight;
+  runtime.groundRibbon.visible = showGround;
+  runtime.faintGroundRibbon.visible = showGround;
   runtime.elevationRibbon.visible = visible;
   runtime.faintElevationRibbon.visible = visible;
   runtime.groundChevrons.forEach((chevron) => {
-    chevron.visible = visible;
+    chevron.visible = showGround;
   });
   runtime.faintGroundChevrons.forEach((chevron) => {
-    chevron.visible = visible;
+    chevron.visible = showGround;
   });
   runtime.groundChevronOutlines.forEach((outline) => {
-    outline.visible = visible;
+    outline.visible = showGround;
   });
   runtime.faintGroundChevronOutlines.forEach((outline) => {
-    outline.visible = visible;
+    outline.visible = showGround;
   });
 }
 
@@ -1145,18 +1212,31 @@ export function beginAim(
   basis: FrozenCameraBasis,
   showsPowerReadout = true,
   tracksPowerSounds = showsPowerReadout,
+  isKnightOverride?: boolean,
 ): void {
   selectAimPiece(runtime, pieceId);
+  const isKnight = isKnightOverride ?? isKnightPiece(pieceId);
+  const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
+  const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
+  const initialDirection = isKnight
+    ? new Vector3(
+        basis.forward.x * cosAngle,
+        sinAngle,
+        basis.forward.z * cosAngle,
+      ).normalize()
+    : basis.forward.clone();
+
   runtime.activeAim = {
     pieceId,
     startX,
     startY,
     basis,
-    direction: basis.forward.clone(),
+    direction: initialDirection,
     normalizedPower: 0,
     showsPowerReadout,
     showsElevationGauge: !showsPowerReadout,
     tracksPowerSounds,
+    isKnight,
   };
   if (tracksPowerSounds) {
     resetAimPowerSounds();
@@ -1182,6 +1262,7 @@ export function beginDirectedAim(
   if (direction.lengthSq() < 1e-12) {
     throw new Error("방향 조준 시작 방향의 길이가 0입니다.");
   }
+  const isKnight = isKnightPiece(pieceId);
   const normalizedDirection = direction.clone().normalize();
   const right = normalizedDirection
     .clone()
@@ -1198,6 +1279,7 @@ export function beginDirectedAim(
     },
     false,
     tracksPowerSounds,
+    isKnight,
   );
 }
 
@@ -1218,7 +1300,25 @@ export function updateDirectedAim(
   if (activeAim === null) {
     return;
   }
-  activeAim.direction.copy(direction).normalize();
+  if (activeAim.isKnight) {
+    const horizontal = new Vector3(direction.x, 0, direction.z);
+    if (horizontal.lengthSq() > 1e-12) {
+      horizontal.normalize();
+    } else {
+      horizontal.set(0, 0, 1);
+    }
+    const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
+    const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
+    activeAim.direction
+      .set(
+        horizontal.x * cosAngle,
+        sinAngle,
+        horizontal.z * cosAngle,
+      )
+      .normalize();
+  } else {
+    activeAim.direction.copy(direction).normalize();
+  }
   activeAim.normalizedPower = Math.min(
     Math.max(normalizedPower, 0),
     1,
@@ -1261,14 +1361,28 @@ export function updateAimPointer(
   }
 
   // 화면 아래로 당기면 백 시점에서는 +z, 흑 시점에서는 -z로 발사되도록 카메라 forward의 부호를 유지한다.
-  activeAim.direction
+  const horizontalDir = new Vector3()
     .copy(activeAim.basis.right)
     .multiplyScalar(-deltaX)
     .addScaledVector(activeAim.basis.forward, deltaY);
-  if (activeAim.direction.lengthSq() > 1e-12) {
-    activeAim.direction.normalize();
+  if (horizontalDir.lengthSq() > 1e-12) {
+    horizontalDir.normalize();
   } else {
-    activeAim.direction.copy(activeAim.basis.forward);
+    horizontalDir.copy(activeAim.basis.forward);
+  }
+
+  if (activeAim.isKnight) {
+    const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
+    const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
+    activeAim.direction
+      .set(
+        horizontalDir.x * cosAngle,
+        sinAngle,
+        horizontalDir.z * cosAngle,
+      )
+      .normalize();
+  } else {
+    activeAim.direction.copy(horizontalDir);
   }
 
   const color = new Color(0xffffff).lerp(
@@ -1407,76 +1521,119 @@ export function updateAimVisuals(
         }
 
         const pieceSphere = computePieceWorldBoundingSphere(mesh);
-        // 바닥 띠는 고정 길이라 곡선과 무관하게 수평 방향과 말 크기만으로 정해진다.
-        const lane = computeGroundLane(activeAim.direction, pieceSphere);
-        setGroundRibbonGeometry(
-          runtime.groundRibbon.geometry,
-          lane.start,
-          lane.end,
-          lane.forward,
-        );
-        setGroundChevronTransforms(
-          runtime.groundChevrons,
-          lane.start,
-          lane.end,
-          lane.forward,
-          GROUND_CHEVRON_FILL_Y,
-        );
-        setGroundChevronTransforms(
-          runtime.faintGroundChevrons,
-          lane.start,
-          lane.end,
-          lane.forward,
-          GROUND_CHEVRON_FILL_Y,
-        );
-        setGroundChevronTransforms(
-          runtime.groundChevronOutlines,
-          lane.start,
-          lane.end,
-          lane.forward,
-          GROUND_CHEVRON_OUTLINE_Y,
-          GROUND_CHEVRON_OUTLINE_SCALE,
-        );
-        setGroundChevronTransforms(
-          runtime.faintGroundChevronOutlines,
-          lane.start,
-          lane.end,
-          lane.forward,
-          GROUND_CHEVRON_OUTLINE_Y,
-          GROUND_CHEVRON_OUTLINE_SCALE,
-        );
+        const isKnight =
+          activeAim.isKnight ??
+          (binding.instance.type === "Knight" ||
+            (selectedId !== null && isKnightPiece(selectedId)));
 
-        // 공중 띠는 말을 벗어난 지점부터 보드 상면에 닿는 순간까지만 남겨 판 아래 잔상을 없앤다.
-        const guideCurve = computeGuideCurve(
-          runtime.applicationPoint,
-          activeAim.direction,
-        );
-        const visibleStart = computeGuideVisibleStart(
-          runtime.applicationPoint,
-          activeAim.direction,
-          guideCurve.endTime,
-          pieceSphere,
-        );
-        const clipTime = findGuideBoardClipTime(
-          runtime.applicationPoint,
-          activeAim.direction,
-          guideCurve.endTime,
-        );
-        const hasElevationArc = clipTime > visibleStart.time;
-        runtime.elevationRibbon.visible = hasElevationArc;
-        runtime.faintElevationRibbon.visible = hasElevationArc;
-        if (hasElevationArc) {
+        if (isKnight) {
+          // 나이트는 지면을 슬라이딩하지 않고 공중 포물선으로만 도약하므로 바닥 띠는 숨깁니다.
+          runtime.groundRibbon.visible = false;
+          runtime.faintGroundRibbon.visible = false;
+          runtime.groundChevrons.forEach((chevron) => {
+            chevron.visible = false;
+          });
+          runtime.faintGroundChevrons.forEach((chevron) => {
+            chevron.visible = false;
+          });
+          runtime.groundChevronOutlines.forEach((outline) => {
+            outline.visible = false;
+          });
+          runtime.faintGroundChevronOutlines.forEach((outline) => {
+            outline.visible = false;
+          });
+
+          // 실제 세기(파워)와 중력에 기반한 물리 탄도 궤적을 실시간 계산하여 공중 띠로 표시합니다.
+          const points = computeKnightTrajectoryPoints(
+            runtime.applicationPoint,
+            activeAim.direction,
+            activeAim.normalizedPower,
+            GUIDE_CURVE_POINT_COUNT,
+          );
           setElevationRibbonGeometry(
             runtime.elevationRibbon.geometry,
-            sampleGuideCurveRange(
-              runtime.applicationPoint,
-              activeAim.direction,
-              visibleStart.time,
-              clipTime,
-              GUIDE_CURVE_POINT_COUNT,
-            ),
+            points,
             runtime.sceneRuntime.camera,
           );
+          setElevationRibbonGeometry(
+            runtime.faintElevationRibbon.geometry,
+            points,
+            runtime.sceneRuntime.camera,
+          );
+          runtime.elevationRibbon.visible = true;
+          runtime.faintElevationRibbon.visible = true;
+        } else {
+          // 바닥 띠는 고정 길이라 곡선과 무관하게 수평 방향과 말 크기만으로 정해진다.
+          const lane = computeGroundLane(activeAim.direction, pieceSphere);
+          setGroundRibbonGeometry(
+            runtime.groundRibbon.geometry,
+            lane.start,
+            lane.end,
+            lane.forward,
+          );
+          setGroundChevronTransforms(
+            runtime.groundChevrons,
+            lane.start,
+            lane.end,
+            lane.forward,
+            GROUND_CHEVRON_FILL_Y,
+          );
+          setGroundChevronTransforms(
+            runtime.faintGroundChevrons,
+            lane.start,
+            lane.end,
+            lane.forward,
+            GROUND_CHEVRON_FILL_Y,
+          );
+          setGroundChevronTransforms(
+            runtime.groundChevronOutlines,
+            lane.start,
+            lane.end,
+            lane.forward,
+            GROUND_CHEVRON_OUTLINE_Y,
+            GROUND_CHEVRON_OUTLINE_SCALE,
+          );
+          setGroundChevronTransforms(
+            runtime.faintGroundChevronOutlines,
+            lane.start,
+            lane.end,
+            lane.forward,
+            GROUND_CHEVRON_OUTLINE_Y,
+            GROUND_CHEVRON_OUTLINE_SCALE,
+          );
+
+          // 공중 띠는 말을 벗어난 지점부터 보드 상면에 닿는 순간까지만 남겨 판 아래 잔상을 없앤다.
+          const guideCurve = computeGuideCurve(
+            runtime.applicationPoint,
+            activeAim.direction,
+          );
+          const visibleStart = computeGuideVisibleStart(
+            runtime.applicationPoint,
+            activeAim.direction,
+            guideCurve.endTime,
+            pieceSphere,
+          );
+          const clipTime = findGuideBoardClipTime(
+            runtime.applicationPoint,
+            activeAim.direction,
+            guideCurve.endTime,
+          );
+          const hasElevationArc = clipTime > visibleStart.time;
+          runtime.elevationRibbon.visible = hasElevationArc;
+          runtime.faintElevationRibbon.visible = hasElevationArc;
+          if (hasElevationArc) {
+            setElevationRibbonGeometry(
+              runtime.elevationRibbon.geometry,
+              sampleGuideCurveRange(
+                runtime.applicationPoint,
+                activeAim.direction,
+                visibleStart.time,
+                clipTime,
+                GUIDE_CURVE_POINT_COUNT,
+              ),
+              runtime.sceneRuntime.camera,
+            );
+          }
         }
 
         const isCharging = activeAim.normalizedPower > 0;
