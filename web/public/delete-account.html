@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>체스알까기 (ChessAlkkagi) - 계정 및 데이터 삭제 요청 (Account Deletion)</title>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #131b2e;
+      --text-color: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-color: #ef4444;
+      --border-color: #1e293b;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-family);
+      line-height: 1.6;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      padding: 36px 32px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    h1 {
+      font-size: 24px;
+      margin-top: 0;
+      color: #f87171;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 {
+      font-size: 18px;
+      margin-top: 28px;
+      color: #38bdf8;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+    p, li {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    strong {
+      color: var(--text-color);
+    }
+    .notice-box {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    .steps-box {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    .btn-email {
+      display: inline-block;
+      background: #dc2626;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+      padding: 12px 24px;
+      border-radius: 8px;
+      margin-top: 14px;
+      transition: background 0.2s;
+    }
+    .btn-email:hover {
+      background: #b91c1c;
+    }
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🗑️ 체스알까기 계정 및 데이터 삭제 요청</h1>
+  <p style="color: #cbd5e1;">
+    본 페이지는 Google Play 개발자 정책(계정 삭제 요구사항)에 따라, 체스알까기(ChessAlkkagi) 이용자가 앱을 삭제하거나 이용하지 않는 경우에도 웹을 통해 본인의 계정과 개인정보의 영구 삭제를 간편하게 요청할 수 있도록 지원합니다.
+  </p>
+
+  <div class="notice-box">
+    <strong style="color: #fca5a5;">⚠️ 계정 삭제 시 삭제되는 데이터 범위:</strong>
+    <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+      <li><strong>회원 계정 정보</strong>: 등록된 이메일 주소, 암호화된 비밀번호 식별자</li>
+      <li><strong>게임 플레이 데이터</strong>: 대전 전적(승/무/패), 랭킹 레이팅(MMR 점수)</li>
+      <li><strong>게임 내 재화 및 설정</strong>: 보유 행동력(코인), 기물 강화 연구 테크트리, 친구 추천 연동 정보</li>
+    </ul>
+    <p style="margin: 8px 0 0 0; font-size: 13px; color: #fca5a5;">
+      * 계정 삭제가 완료되면 모든 게임 데이터는 영구 파기되며 절대 복구할 수 없습니다.
+    </p>
+  </div>
+
+  <h2>1. 앱 외부(웹)에서 계정 삭제 요청 방법</h2>
+  <div class="steps-box">
+    <p style="margin-top: 0;">아래 안내에 따라 개발자 지원 이메일로 삭제를 요청해 주시면, <strong>영업일 기준 24시간 이내</strong>에 데이터베이스에서 모든 계정 정보가 완전 파기됩니다:</p>
+    <ol style="padding-left: 20px; margin-bottom: 0;">
+      <li><strong>수신처</strong>: <a href="mailto:dubokup@gmail.com" style="color: #38bdf8;">dubokup@gmail.com</a></li>
+      <li><strong>메일 제목</strong>: <code>[체스알까기] 계정 삭제 및 데이터 파기 요청</code></li>
+      <li><strong>기재 내용</strong>: 게임 가입 시 사용한 <strong>이메일 주소</strong> 또는 <strong>게임 닉네임</strong></li>
+    </ol>
+    <a class="btn-email" href="mailto:dubokup@gmail.com?subject=[체스알까기]%20계정%20삭제%20및%20데이터%20파기%20요청&body=체스알까기%20가입%20이메일%20또는%20닉네임:">✉️ 계정 삭제 요청 메일 보내기</a>
+  </div>
+
+  <h2>2. 데이터 보관 정책</h2>
+  <p>
+    체스알까기는 이용자의 계정 삭제 요청 접수 즉시 서버 및 데이터베이스에서 개인정보를 영구 파기하며, 관련 법령에 의해 보존이 의무화된 경우가 아닌 한 어떠한 사용자 데이터도 백업본에 보관하지 않습니다.
+  </p>
+
+  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 40px 0;">
+
+  <!-- 영문 안내 (English Support for Google Reviewers) -->
+  <h1 style="color: #f87171; font-size: 22px;">♟️ ChessAlkkagi - Account & Data Deletion</h1>
+  <p style="color: #cbd5e1;">
+    In accordance with Google Play's Account Deletion Policy, users can request the permanent deletion of their account and all associated personal data via this web page.
+  </p>
+
+  <h2>How to Request Account Deletion</h2>
+  <ul>
+    <li><strong>Support Email</strong>: <a href="mailto:dubokup@gmail.com" style="color: #38bdf8;">dubokup@gmail.com</a></li>
+    <li><strong>Subject</strong>: <code>[ChessAlkkagi] Account & Data Deletion Request</code></li>
+    <li><strong>Required Information</strong>: Your registered email address or player nickname.</li>
+    <li><strong>Processing Time</strong>: All data (including email, MMR, match history, and in-game currencies) will be permanently purged within 24 hours.</li>
+  </ul>
+
+  <footer>
+    <a href="privacy.html" style="color: #38bdf8; text-decoration: none;">개인정보처리방침 (Privacy Policy) 보기</a><br><br>
+    © 2026 ChessAlkkagi. All rights reserved.
+  </footer>
+</div>
+
+</body>
+</html>
