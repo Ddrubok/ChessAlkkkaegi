@@ -328,7 +328,14 @@ export function deriveBoardHalfExtent(cellSize: number): number {
   return ((8 + BOARD_BORDER_CELLS * 2) * cellSize) / 2;
 }
 
-// 나이트(Knight) 고유 기믹: 포물선 발사 고정 앙각 (35도)
-export const KNIGHT_LAUNCH_ANGLE_DEG = 35;
+// 나이트(Knight) 고유 기믹: 포물선 발사 고정 앙각 (65도 - 바로 앞 폰을 높이 뛰어넘는 궤적)
+export const KNIGHT_LAUNCH_ANGLE_DEG = 65;
 export const KNIGHT_LAUNCH_ANGLE = (KNIGHT_LAUNCH_ANGLE_DEG * Math.PI) / 180;
+
+// 나이트 최소 발사 파워 보정 (약하게 쏴도 바로 앞 폰에 부딪히지 않고 폰 너머로 도약하도록 보장)
+export const KNIGHT_MIN_LAUNCH_POWER = 0.38;
+export function computeKnightEffectivePower(normalizedPower: number): number {
+  const clamped = Math.min(Math.max(normalizedPower, 0), 1);
+  return KNIGHT_MIN_LAUNCH_POWER + (1 - KNIGHT_MIN_LAUNCH_POWER) * clamped;
+}
 

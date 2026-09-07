@@ -1,6 +1,7 @@
 import { MathUtils, Spherical, Vector3 } from "three";
 import {
   CAMERA_PITCH_DEG,
+  computeKnightEffectivePower,
   FALL_OUT_Y,
   KNIGHT_LAUNCH_ANGLE,
   MAX_SETTLE_SECONDS,
@@ -630,8 +631,12 @@ export function applyPendingLaunchBeforeStep(
       `발사 속도 배수 ${speedMultiplier}가 유한한 양수가 아닙니다.`,
     );
   }
+  const effectivePower =
+    binding.instance.type === "Knight"
+      ? computeKnightEffectivePower(request.normalizedPower)
+      : request.normalizedPower;
   const targetSpeed =
-    request.normalizedPower *
+    effectivePower *
     runtime.tuningSettings.maxLaunchSpeed *
     speedMultiplier;
 

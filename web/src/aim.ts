@@ -21,6 +21,7 @@ import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import {
   BOWSTRING_MAX_PULL,
+  computeKnightEffectivePower,
   GRAVITY_Y,
   GROUND_LANE_LENGTH,
   GUIDE_ARC_LENGTH,
@@ -440,8 +441,7 @@ export function computeKnightTrajectoryPoints(
   pointCount: number,
 ): GuideCurvePoint[] {
   assertFiniteGuideVector("나이트 탄도 시작점", start);
-  assertFiniteGuideVector("나이트 탄도 방향", direction);
-  const power = normalizedPower > 0 ? normalizedPower : 0.35;
+  const power = computeKnightEffectivePower(normalizedPower);
   const launchSpeed = power * MAX_LAUNCH_SPEED;
   const initialVelocity = direction
     .clone()
