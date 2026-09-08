@@ -99,6 +99,7 @@ import {
   resetPhysicsPieces,
 } from "./physics";
 import {
+  attachKingDefenseShield,
   createSceneRuntime,
   promotePieceMesh,
   rebuildSceneBoard,
@@ -147,6 +148,7 @@ import {
 import {
   canSelectTurnPiece,
   createTurnRuntime,
+  executeKingDefense,
   executeKingSwap,
   queueTurnLaunch,
   resetTurnRuntime,
@@ -622,7 +624,11 @@ async function bootstrap(): Promise<void> {
           return false;
         }
         const side = turnRuntime.currentSide;
-        if (turnRuntime.kingSwapUsed[side]) {
+        if (
+          turnRuntime.kingSpecialUsed[side] ||
+          turnRuntime.kingSwapUsed[side] ||
+          turnRuntime.kingDefenseActive[side]
+        ) {
           return false;
         }
         const binding = physicsRuntime.pieces.get(pieceId);
@@ -641,6 +647,23 @@ async function bootstrap(): Promise<void> {
         const swapped = executeKingSwap(turnRuntime, kingPieceId, targetPieceId);
         if (swapped) {
           playSoundEffect("power90");
+          cancelInputInteraction(inputRuntime, true);
+          selectPiece(inputRuntime, kingPieceId);
+        }
+      },
+      onKingDefense: (kingPieceId) => {
+        const defended = executeKingDefense(turnRuntime, kingPieceId);
+        if (defended) {
+          playSoundEffect("power90");
+          attachKingDefenseShield(sceneRuntime, kingPieceId);
+          inputRuntime.kingSwapBanner.textContent =
+            "🛡️ [철벽 방어] 킹이 벽처럼 고정되었습니다. 조준하여 발사할 수 있습니다.";
+          inputRuntime.kingSwapBanner.hidden = false;
+          setTimeout(() => {
+            inputRuntime.kingSwapBanner.hidden = true;
+            inputRuntime.kingSwapBanner.textContent =
+              "교환할 기물을 터치/클릭하세요 (취소: 빈 곳 클릭)";
+          }, 2500);
           cancelInputInteraction(inputRuntime, true);
           selectPiece(inputRuntime, kingPieceId);
         }

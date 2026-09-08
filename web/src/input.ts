@@ -187,6 +187,7 @@ export interface InputPolicy {
   onModeChanged: (mode: InputMode) => void;
   canKingSwap?: (pieceId: string) => boolean;
   onKingSwap?: (kingPieceId: string, targetPieceId: string) => void;
+  onKingDefense?: (kingPieceId: string) => void;
 }
 
 export interface InputRuntime {
@@ -1218,6 +1219,10 @@ function updateActionBar(runtime: InputRuntime): void {
       button.hidden = !canSwap;
       button.textContent = runtime.kingSwapMode ? "스왑 취소" : "위치 변경";
       button.setAttribute("aria-pressed", String(runtime.kingSwapMode));
+    } else if (button.dataset.action === "defend") {
+      button.hidden = !canSwap || runtime.kingSwapMode;
+      button.textContent = "철벽 방어";
+      button.setAttribute("aria-pressed", "false");
     } else {
       button.hidden = runtime.mode !== "billiards";
       const active =
@@ -2000,6 +2005,7 @@ export function createInputRuntime(
     launch: document.createElement("button"),
     strike: document.createElement("button"),
     swap: document.createElement("button"),
+    defend: document.createElement("button"),
   };
 
   actionButtons.launch.type = "button";
@@ -2009,12 +2015,21 @@ export function createInputRuntime(
   actionButtons.swap.type = "button";
   actionButtons.swap.dataset.action = "swap";
   actionButtons.swap.hidden = true;
-  actionBar.append(actionButtons.launch, actionButtons.strike, actionButtons.swap);
+  actionButtons.defend.type = "button";
+  actionButtons.defend.dataset.action = "defend";
+  actionButtons.defend.hidden = true;
+  actionBar.append(
+    actionButtons.launch,
+    actionButtons.strike,
+    actionButtons.swap,
+    actionButtons.defend,
+  );
 
   const updateActionBarLabels = () => {
     actionButtons.launch.textContent = I18nManager.t("ingame.launch");
     actionButtons.strike.textContent = I18nManager.t("ingame.strike_select");
     actionButtons.swap.textContent = "위치 변경";
+    actionButtons.defend.textContent = "철벽 방어";
   };
   updateActionBarLabels();
   sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
@@ -2177,6 +2192,13 @@ export function createInputRuntime(
           runtime.kingSwapMode = !runtime.kingSwapMode;
           runtime.kingSwapBanner.hidden = !runtime.kingSwapMode;
           updateActionBar(runtime);
+        }
+        return;
+      }
+      if (action === "defend") {
+        const selectedId = runtime.aimRuntime.selectedPieceId;
+        if (selectedId !== null) {
+          runtime.policy.onKingDefense?.(selectedId);
         }
         return;
       }

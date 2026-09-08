@@ -1806,4 +1806,14 @@ body {
   }
 }
 
+.strike-action-bar button[data-action="defend"] {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.strike-action-bar button[data-action="defend"]:hover {
+  background: rgba(56, 189, 248, 0.18);
+}
+
+
 

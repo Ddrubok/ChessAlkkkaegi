@@ -1,4 +1,5 @@
 import { MathUtils, Spherical, Vector3 } from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
 import {
   BISHOP_DEFLECTION_IMPULSE_FACTOR,
   BISHOP_SPIN_TORQUE_MULTIPLIER,
@@ -132,8 +133,12 @@ export interface TurnRuntime {
   promotionQueue: string[];
   // 체스 보드 셀 크기
   cellSize: number;
-  // 킹 위치 변경 기믹 사용 여부 (게임당 각 진영 1회 한정)
+  // 킹 특수 기믹(위치 변경 또는 방어) 사용 여부 (게임당 각 진영 1회 한정, 둘 중 하나만 사용 가능)
+  kingSpecialUsed: { white: boolean; black: boolean };
+  // 킹 위치 변경 기믹 사용 여부 (하위 호환)
   kingSwapUsed: { white: boolean; black: boolean };
+  // 킹 방어(철벽) 기믹 활성화 여부
+  kingDefenseActive: { white: boolean; black: boolean };
 }
 
 // 턴 교대가 즉시 튀지 않으면서 조작 흐름을 오래 막지 않는 실제 시간 길이다.
@@ -143,6 +148,9 @@ const TURN_CAMERA_ROTATION_SECONDS = 0.55;
  * 선속도와 각속도가 모두 문턱 아래인지 확인해 회전 중인 말을 정지로 오판하지 않는다.
  */
 function isBodySlow(binding: PieceBodyBinding): boolean {
+  if (binding.body.isFixed()) {
+    return true;
+  }
   const linearVelocity = binding.body.linvel();
   const angularVelocity = binding.body.angvel();
   return (
@@ -191,6 +199,9 @@ export function collectGroundedPieceIds(
     ),
   );
   for (const binding of runtime.physicsRuntime.pieces.values()) {
+    if (binding.body.isFixed() || runtime.kingDefenseActive[binding.instance.side]) {
+      grounded.add(binding.instance.id);
+    }
     colliderOwners.set(binding.collider.handle, binding.instance.id);
     neighbors.set(binding.instance.id, new Set());
   }
@@ -424,7 +435,9 @@ export function createTurnRuntime(
     cellSize:
       cellSize ??
       (physicsRuntime.cellSize ?? physicsRuntime.boardHalfExtent / 4.25),
+    kingSpecialUsed: { white: false, black: false },
     kingSwapUsed: { white: false, black: false },
+    kingDefenseActive: { white: false, black: false },
   };
 }
 
@@ -667,6 +680,14 @@ export function applyPendingLaunchBeforeStep(
     return;
   }
 
+  // 킹 방어 활성화 상태로 Fixed였던 기물이라면 발사를 위해 Dynamic으로 전환
+  if (binding.body.isFixed()) {
+    binding.body.setBodyType(
+      RAPIER.RigidBodyType.Dynamic,
+      true,
+    );
+  }
+
   const preLaunchPosition = binding.body.translation();
   const preLaunchRotation = binding.body.rotation();
   const applicationPoint = request.applicationPoint;
@@ -833,6 +854,28 @@ function completeSettlement(runtime: TurnRuntime): void {
   disableLaunchCcdAfterTurn(runtime);
   runtime.restHoldSeconds = 0;
   runtime.settleSeconds = 0;
+
+  // 방어가 활성화된 킹이 보드 위에 생존해 있다면 정착 완료 후 다시 Fixed 상태로 고정하여 벽처럼 만든다.
+  for (const side of ["white", "black"] as const) {
+    if (runtime.kingDefenseActive[side]) {
+      for (const binding of runtime.physicsRuntime.pieces.values()) {
+        if (
+          binding.instance.type === "King" &&
+          binding.instance.side === side &&
+          !runtime.pendingRemovalIds.has(binding.instance.id) &&
+          binding.body.translation().y >= FALL_OUT_Y
+        ) {
+          binding.body.setBodyType(
+            RAPIER.RigidBodyType.Fixed,
+            true,
+          );
+          binding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          binding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        }
+      }
+    }
+  }
+
   if (!runtime.pendingTurnChange) {
     runtime.phase = "ready";
     return;
@@ -1080,7 +1123,9 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.pendingPromotionPawns.clear();
   runtime.promotionQueue = [];
   runtime.turnNumber = 0;
+  runtime.kingSpecialUsed = { white: false, black: false };
   runtime.kingSwapUsed = { white: false, black: false };
+  runtime.kingDefenseActive = { white: false, black: false };
 }
 
 /**
@@ -1172,6 +1217,7 @@ function processNextPromotionInQueue(runtime: TurnRuntime): void {
 
 /**
  * 킹 위치 변경(스왑): 게임당 각 진영 1회 한정으로 보드 위의 다른 기물과 킹의 위치를 맞바꾼다.
+ * 위치 변경과 방어 둘 중 하나만 사용할 수 있다.
  */
 export function executeKingSwap(
   runtime: TurnRuntime,
@@ -1179,7 +1225,7 @@ export function executeKingSwap(
   targetPieceId: string,
 ): boolean {
   const side = runtime.currentSide;
-  if (runtime.kingSwapUsed[side]) {
+  if (runtime.kingSpecialUsed[side] || runtime.kingSwapUsed[side] || runtime.kingDefenseActive[side]) {
     return false;
   }
   const kingBinding = runtime.physicsRuntime.pieces.get(kingPieceId);
@@ -1201,9 +1247,41 @@ export function executeKingSwap(
   );
   if (success) {
     synchronizePieceMeshes(runtime.sceneRuntime, runtime.physicsRuntime);
+    runtime.kingSpecialUsed[side] = true;
     runtime.kingSwapUsed[side] = true;
     return true;
   }
   return false;
 }
+
+/**
+ * 킹 방어(철벽): 게임당 각 진영 1회 한정(스왑과 택1)으로 킹을 벽처럼 고정하여 다른 기물이 부딪혀도 꿈쩍하지 않고 벽처럼 튕겨내게 한다.
+ */
+export function executeKingDefense(
+  runtime: TurnRuntime,
+  kingPieceId: string,
+): boolean {
+  const side = runtime.currentSide;
+  if (runtime.kingSpecialUsed[side] || runtime.kingSwapUsed[side] || runtime.kingDefenseActive[side]) {
+    return false;
+  }
+  const kingBinding = runtime.physicsRuntime.pieces.get(kingPieceId);
+  if (kingBinding === undefined) {
+    return false;
+  }
+  if (kingBinding.instance.type !== "King" || kingBinding.instance.side !== side) {
+    return false;
+  }
+
+  runtime.kingSpecialUsed[side] = true;
+  runtime.kingDefenseActive[side] = true;
+  kingBinding.body.setBodyType(
+    RAPIER.RigidBodyType.Fixed,
+    true,
+  );
+  kingBinding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  kingBinding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  return true;
+}
+
 
