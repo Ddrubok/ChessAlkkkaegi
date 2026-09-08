@@ -1273,24 +1273,14 @@ export function applyPowerReadoutVisuals(
 ): void {
   const percent = Math.round(normalizedPower * 100);
   powerReadout.style.color = color.getStyle();
+  powerReadout.style.textShadow = "";
+  powerReadout.style.transform = "translateX(-50%)";
   if (isBishopSpin) {
-    powerReadout.textContent = `${percent}% 🌀 [스핀 굴절]`;
-    powerReadout.style.textShadow =
-      "0 0 10px #a855f7, 0 0 20px #3b82f6, 0 0 30px #06b6d4";
-    powerReadout.style.transform = "translateX(-50%)";
+    powerReadout.textContent = `${percent}% [스핀 굴절]`;
   } else if (normalizedPower > 1.0) {
-    const t = Math.min(
-      (normalizedPower - 1.0) / (ROOK_MAX_OVERDRIVE_POWER - 1.0),
-      1.0,
-    );
-    powerReadout.textContent = `${percent}% 🔥`;
-    powerReadout.style.textShadow =
-      "0 0 10px #ff3b30, 0 0 20px #ff9500, 0 0 30px #ffd700";
-    powerReadout.style.transform = `translateX(-50%) scale(${1 + t * 0.2})`;
+    powerReadout.textContent = `${percent}% [오버드라이브]`;
   } else {
     powerReadout.textContent = `${percent}%`;
-    powerReadout.style.textShadow = "";
-    powerReadout.style.transform = "translateX(-50%)";
   }
 }
 
