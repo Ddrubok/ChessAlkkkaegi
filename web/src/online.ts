@@ -11,6 +11,7 @@ import {
   AI_AIM_PREVIEW_DELAY,
   FIXED_STEP,
   MAX_SETTLE_SECONDS,
+  ROOK_MAX_OVERDRIVE_POWER,
 } from "./config";
 import type { PieceSide } from "./layout";
 import {
@@ -437,7 +438,7 @@ export function parseOnlineMessage(
         typeof source.normalizedPower !== "number" ||
         !Number.isFinite(source.normalizedPower) ||
         source.normalizedPower < 0 ||
-        source.normalizedPower > 1 ||
+        source.normalizedPower > ROOK_MAX_OVERDRIVE_POWER ||
         typeof source.speedMultiplier !== "number" ||
         !Number.isFinite(source.speedMultiplier) ||
         source.speedMultiplier <= 0 ||

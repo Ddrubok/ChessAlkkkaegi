@@ -252,8 +252,13 @@ export function updateStrikePreview(
   runtime.error.hidden = true;
   const velocity = solution.initialDeltaVelocity;
   const omega = solution.initialDeltaOmega;
+  const percent = Math.round(runtime.normalizedPower * 100);
+  const powerText =
+    runtime.normalizedPower > 1.0
+      ? `세기 ${percent}% 🔥 [오버드라이브]`
+      : `세기 ${percent}%`;
   runtime.feedback.textContent = [
-    `세기 ${Math.round(runtime.normalizedPower * 100)}% · 피치 ${solution.cameraPitchDegrees.toFixed(1)}°`,
+    `${powerText} · 피치 ${solution.cameraPitchDegrees.toFixed(1)}°`,
     `고도 ${solution.elevationDegrees.toFixed(1)}°`,
     `Δv (${velocity.x.toFixed(2)}, ${velocity.y.toFixed(2)}, ${velocity.z.toFixed(2)})`,
     `Δω (${omega.x.toFixed(2)}, ${omega.y.toFixed(2)}, ${omega.z.toFixed(2)})`,
@@ -267,12 +272,17 @@ export function updateStrikePreview(
 export function setAimPower(
   runtime: AimParametersRuntime,
   normalizedPower: number,
+  maxPower = 1.0,
 ): void {
-  runtime.normalizedPower = MathUtils.clamp(normalizedPower, 0, 1);
+  runtime.normalizedPower = MathUtils.clamp(normalizedPower, 0, maxPower);
   if (runtime.redDot.visible) {
-    runtime.redDot.scale.setScalar(1 + runtime.normalizedPower * 2);
+    runtime.redDot.scale.setScalar(1 + (runtime.normalizedPower / maxPower) * 2);
     const material = runtime.redDot.material as MeshBasicMaterial;
-    material.color.setRGB(1, 1 - runtime.normalizedPower, 1 - runtime.normalizedPower);
+    if (runtime.normalizedPower > 1.0) {
+      material.color.setHex(0xffd700);
+    } else {
+      material.color.setRGB(1, 1 - runtime.normalizedPower, 1 - runtime.normalizedPower);
+    }
   }
 }
 
@@ -330,13 +340,16 @@ export function isRedDotHit(
   return Math.hypot(clientX - screenX, clientY - screenY) <= radiusPixels;
 }
 /**
- * 사용자가 직접 지정한 타점을 저장한다.
+ * 사용자가 직접 지정한 타점을 저장한다. 스핀 부여 시 1.0 초과 오버드라이브 파워는 1.0으로 클램프된다.
  */
 export function setStrikePointOverride(
   runtime: AimParametersRuntime,
   point: Vector3,
 ): void {
   runtime.strikePointOverride = point.clone();
+  if (runtime.normalizedPower > 1.0) {
+    runtime.normalizedPower = 1.0;
+  }
 }
 
 /**

@@ -339,3 +339,8 @@ export function computeKnightEffectivePower(normalizedPower: number): number {
   return KNIGHT_MIN_LAUNCH_POWER + (1 - KNIGHT_MIN_LAUNCH_POWER) * clamped;
 }
 
+// 룩(Rook) 고유 기믹: 기본 무회전(중앙 타점) 시 최대 150% 오버드라이브 파워, 스핀 부여 시 최대 100%
+export const ROOK_MAX_OVERDRIVE_POWER = 1.5;
+export const ROOK_SPIN_MAX_POWER = 1.0;
+
+

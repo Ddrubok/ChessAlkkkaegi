@@ -29,6 +29,8 @@ import {
   MAX_DRAG_PIXELS,
   MAX_LAUNCH_SPEED,
   NOMINAL_GUIDE_SPEED,
+  ROOK_MAX_OVERDRIVE_POWER,
+  ROOK_SPIN_MAX_POWER,
 } from "./config";
 import type { PieceBodyBinding } from "./physics";
 import type { SceneRuntime } from "./scene";
@@ -74,6 +76,10 @@ export interface ActiveAim {
   tracksPowerSounds: boolean;
   // 나이트 기물 고유 포물선 조준 여부다.
   isKnight?: boolean;
+  // 룩 기물 고유 150% 오버드라이브 조준 여부다.
+  isRook?: boolean;
+  // 타점(스핀) 적용 여부다. 스핀이 있으면 최대 100%, 스핀이 없으면 최대 150%다.
+  hasCustomSpin?: boolean;
 }
 
 /**
@@ -87,6 +93,19 @@ export function isKnightPiece(
     return true;
   }
   return pieceId.toLowerCase().includes("knight");
+}
+
+/**
+ * 말 식별자 또는 바인딩에서 룩 기물 여부를 판정한다.
+ */
+export function isRookPiece(
+  pieceId: string,
+  bindings?: ReadonlyMap<string, PieceBodyBinding>,
+): boolean {
+  if (bindings?.get(pieceId)?.instance.type === "Rook") {
+    return true;
+  }
+  return pieceId.toLowerCase().includes("rook");
 }
 
 interface RenderPulse {
@@ -1202,6 +1221,50 @@ export function selectAimPiece(
 }
 
 /**
+ * 조준 세기에 따른 안내선 및 UI 색상을 계산한다.
+ * 0~100%는 흰색에서 빨간색, 100% 초과 오버드라이브 구간은 빨간색에서 황금빛 불꽃(Gold)으로 전환된다.
+ */
+export function computeAimColor(normalizedPower: number): Color {
+  if (normalizedPower <= 1.0) {
+    return new Color(0xffffff).lerp(
+      new Color(0xff3b30),
+      Math.max(normalizedPower, 0),
+    );
+  }
+  const overdriveT = Math.min(
+    (normalizedPower - 1.0) / (ROOK_MAX_OVERDRIVE_POWER - 1.0),
+    1.0,
+  );
+  return new Color(0xff3b30).lerp(new Color(0xffd700), overdriveT);
+}
+
+/**
+ * 조준 세기 백분율 수치와 시각 효과(불꽃 아이콘, 네온 글로우, 스케일 펄스)를 UI에 반영한다.
+ */
+export function applyPowerReadoutVisuals(
+  powerReadout: HTMLDivElement,
+  normalizedPower: number,
+  color: Color,
+): void {
+  const percent = Math.round(normalizedPower * 100);
+  powerReadout.style.color = color.getStyle();
+  if (normalizedPower > 1.0) {
+    const t = Math.min(
+      (normalizedPower - 1.0) / (ROOK_MAX_OVERDRIVE_POWER - 1.0),
+      1.0,
+    );
+    powerReadout.textContent = `${percent}% 🔥`;
+    powerReadout.style.textShadow =
+      "0 0 10px #ff3b30, 0 0 20px #ff9500, 0 0 30px #ffd700";
+    powerReadout.style.transform = `translateX(-50%) scale(${1 + t * 0.2})`;
+  } else {
+    powerReadout.textContent = `${percent}%`;
+    powerReadout.style.textShadow = "";
+    powerReadout.style.transform = "translateX(-50%)";
+  }
+}
+
+/**
  * 선택된 말에서 포인터 기준과 카메라 기준을 고정해 새 조준을 시작한다.
  */
 export function beginAim(
@@ -1213,9 +1276,12 @@ export function beginAim(
   showsPowerReadout = true,
   tracksPowerSounds = showsPowerReadout,
   isKnightOverride?: boolean,
+  isRookOverride?: boolean,
+  hasCustomSpin?: boolean,
 ): void {
   selectAimPiece(runtime, pieceId);
   const isKnight = isKnightOverride ?? isKnightPiece(pieceId);
+  const isRook = isRookOverride ?? isRookPiece(pieceId);
   const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
   const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
   const initialDirection = isKnight
@@ -1237,6 +1303,8 @@ export function beginAim(
     showsElevationGauge: !showsPowerReadout,
     tracksPowerSounds,
     isKnight,
+    isRook,
+    hasCustomSpin: hasCustomSpin ?? false,
   };
   if (tracksPowerSounds) {
     resetAimPowerSounds();
@@ -1246,6 +1314,8 @@ export function beginAim(
   setBowstringVisible(runtime, false);
   runtime.powerReadout.hidden = !showsPowerReadout;
   runtime.powerReadout.textContent = "0%";
+  runtime.powerReadout.style.textShadow = "";
+  runtime.powerReadout.style.transform = "translateX(-50%)";
   runtime.elevationGauge.hidden = showsPowerReadout;
 }
 
@@ -1257,12 +1327,16 @@ export function beginDirectedAim(
   pieceId: string,
   direction: Vector3,
   tracksPowerSounds = false,
+  isKnightOverride?: boolean,
+  isRookOverride?: boolean,
+  hasCustomSpin?: boolean,
 ): void {
   assertFiniteGuideVector("방향 조준 시작 방향", direction);
   if (direction.lengthSq() < 1e-12) {
     throw new Error("방향 조준 시작 방향의 길이가 0입니다.");
   }
-  const isKnight = isKnightPiece(pieceId);
+  const isKnight = isKnightOverride ?? isKnightPiece(pieceId);
+  const isRook = isRookOverride ?? isRookPiece(pieceId);
   const normalizedDirection = direction.clone().normalize();
   const right = normalizedDirection
     .clone()
@@ -1280,6 +1354,8 @@ export function beginDirectedAim(
     false,
     tracksPowerSounds,
     isKnight,
+    isRook,
+    hasCustomSpin,
   );
 }
 
@@ -1319,21 +1395,24 @@ export function updateDirectedAim(
   } else {
     activeAim.direction.copy(direction).normalize();
   }
+  const maxPower =
+    activeAim.isRook && !activeAim.hasCustomSpin
+      ? ROOK_MAX_OVERDRIVE_POWER
+      : ROOK_SPIN_MAX_POWER;
   activeAim.normalizedPower = Math.min(
     Math.max(normalizedPower, 0),
-    1,
+    maxPower,
   );
   if (activeAim.tracksPowerSounds) {
-    updateAimPowerSounds(activeAim.normalizedPower);
+    updateAimPowerSounds(Math.min(activeAim.normalizedPower, 1.0));
   }
-  const color = new Color(0xffffff).lerp(
-    new Color(0xff3b30),
-    activeAim.normalizedPower,
-  );
+  const color = computeAimColor(activeAim.normalizedPower);
   if (activeAim.showsPowerReadout) {
-    runtime.powerReadout.textContent =
-      `${Math.round(activeAim.normalizedPower * 100)}%`;
-    runtime.powerReadout.style.color = color.getStyle();
+    applyPowerReadoutVisuals(
+      runtime.powerReadout,
+      activeAim.normalizedPower,
+      color,
+    );
   }
   setAimGuideColor(runtime, color);
   setAimGuidesVisible(runtime, true);
@@ -1352,12 +1431,16 @@ export function updateAimPointer(
   if (activeAim === null) {
     return;
   }
+  const maxPower =
+    activeAim.isRook && !activeAim.hasCustomSpin
+      ? ROOK_MAX_OVERDRIVE_POWER
+      : ROOK_SPIN_MAX_POWER;
   const deltaX = clientX - activeAim.startX;
   const deltaY = clientY - activeAim.startY;
   const dragLength = Math.hypot(deltaX, deltaY);
-  activeAim.normalizedPower = Math.min(dragLength / MAX_DRAG_PIXELS, 1);
+  activeAim.normalizedPower = Math.min(dragLength / MAX_DRAG_PIXELS, maxPower);
   if (activeAim.tracksPowerSounds) {
-    updateAimPowerSounds(activeAim.normalizedPower);
+    updateAimPowerSounds(Math.min(activeAim.normalizedPower, 1.0));
   }
 
   // 화면 아래로 당기면 백 시점에서는 +z, 흑 시점에서는 -z로 발사되도록 카메라 forward의 부호를 유지한다.
@@ -1385,13 +1468,12 @@ export function updateAimPointer(
     activeAim.direction.copy(horizontalDir);
   }
 
-  const color = new Color(0xffffff).lerp(
-    new Color(0xff3b30),
+  const color = computeAimColor(activeAim.normalizedPower);
+  applyPowerReadoutVisuals(
+    runtime.powerReadout,
     activeAim.normalizedPower,
+    color,
   );
-  runtime.powerReadout.textContent =
-    `${Math.round(activeAim.normalizedPower * 100)}%`;
-  runtime.powerReadout.style.color = color.getStyle();
   setAimGuideColor(runtime, color);
   setAimGuidesVisible(runtime, true);
   setBowstringVisible(runtime, activeAim.normalizedPower > 0);
@@ -1404,15 +1486,12 @@ export function setAimApplicationPoint(
   runtime: AimRuntime,
   applicationPoint: Vector3,
 ): void {
-  assertFiniteGuideVector("조준 적용점", applicationPoint);
+  assertFiniteGuideVector("적용점", applicationPoint);
   runtime.applicationPoint = applicationPoint.clone();
-  if (runtime.activeAim !== null) {
-    setAimGuidesVisible(runtime, true);
-  }
 }
 
 /**
- * 발사 없이 조준만 정리하고 필요할 때 기존 선택도 함께 해제한다.
+ * 현재 활성 조준을 비우고 선택 링은 인자에 따라 유지하거나 숨긴다.
  */
 export function cancelAim(
   runtime: AimRuntime,
@@ -1426,6 +1505,8 @@ export function cancelAim(
   setAimGuidesVisible(runtime, false);
   setBowstringVisible(runtime, false);
   runtime.powerReadout.hidden = true;
+  runtime.powerReadout.style.textShadow = "";
+  runtime.powerReadout.style.transform = "translateX(-50%)";
   runtime.elevationGauge.hidden = true;
   if (clearSelection) {
     runtime.selectedPieceId = null;

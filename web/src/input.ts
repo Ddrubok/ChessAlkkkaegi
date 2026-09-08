@@ -23,6 +23,7 @@ import {
   freezeCameraBasis,
   handleAimPieceRemoved,
   isKnightPiece,
+  isRookPiece,
   selectAimPiece,
   setAimApplicationPoint,
   startLaunchPulse,
@@ -52,6 +53,7 @@ import {
   CAM_PITCH_MIN,
   KNIGHT_LAUNCH_ANGLE,
   MAX_DRAG_PIXELS,
+  ROOK_MAX_OVERDRIVE_POWER,
   TOUCH_MAX_DRAG_MIN_PIXELS,
   TOUCH_MAX_DRAG_VIEWPORT_RATIO,
   TOUCH_PIECE_HIT_RADIUS_PIXELS,
@@ -490,13 +492,14 @@ export function computeRedDotPullPower(
   startY: number,
   currentY: number,
   maxDragPixels = MAX_DRAG_PIXELS,
+  maxPower = 1.0,
 ): number {
   const downwardPixels = Math.max(currentY - startY, 0);
   const normalizedPower = downwardPixels / maxDragPixels;
-  // 시작 좌표와 소수 거리의 덧셈 오차로 최대점이 0.999…가 되는 경우만 정확히 1로 맞춘다.
-  return normalizedPower >= 1 - Number.EPSILON
-    ? 1
-    : Math.min(normalizedPower, 1);
+  // 시작 좌표와 소수 거리의 덧셈 오차로 최대점이 maxPower - eps인 경우를 보정한다.
+  return normalizedPower >= maxPower - Number.EPSILON
+    ? maxPower
+    : Math.min(normalizedPower, maxPower);
 }
 
 /**
@@ -739,7 +742,18 @@ function refreshBilliardsPreview(
       ? getBilliardsHorizontalDirection(runtime)
       : horizontalOverride.clone().normalize();
   if (runtime.aimRuntime.activeAim?.pieceId !== pieceId) {
-    beginDirectedAim(runtime.aimRuntime, pieceId, horizontal, true);
+    const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+    const hasCustomSpin =
+      runtime.aimParametersRuntime.strikePointOverride !== null;
+    beginDirectedAim(
+      runtime.aimRuntime,
+      pieceId,
+      horizontal,
+      true,
+      undefined,
+      isRook,
+      hasCustomSpin,
+    );
   }
   const solution = updateStrikePreview(
     runtime.aimParametersRuntime,
@@ -1057,12 +1071,20 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         if (event === undefined) {
           throw new Error("클래식 조준 시작 포인터가 없습니다.");
         }
+        const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+        const hasCustomSpin =
+          runtime.aimParametersRuntime.strikePointOverride !== null;
         beginAim(
           runtime.aimRuntime,
           pieceId,
           event.clientX,
           event.clientY,
           freezeCameraBasis(runtime.sceneRuntime.camera),
+          true,
+          true,
+          undefined,
+          isRook,
+          hasCustomSpin,
         );
         const binding = runtime.physicsRuntime.pieces.get(pieceId);
         const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
@@ -1126,11 +1148,17 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         return runtime.preparedStrikeSolution.applicationPoint.clone();
       },
       onAimBegin: (runtime, pieceId) => {
+        const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+        const hasCustomSpin =
+          runtime.aimParametersRuntime.strikePointOverride !== null;
         beginDirectedAim(
           runtime.aimRuntime,
           pieceId,
           getBilliardsHorizontalDirection(runtime),
           true,
+          undefined,
+          isRook,
+          hasCustomSpin,
         );
       },
       onAimCancel: (runtime) => {
@@ -1611,13 +1639,23 @@ function handleCanvasPointerMove(
     );
   } else if (gesture.source === "red-dot") {
     event.preventDefault();
+    const selectedPieceId = runtime.aimRuntime.selectedPieceId;
+    const isRook =
+      selectedPieceId !== null &&
+      isRookPiece(selectedPieceId, runtime.physicsRuntime.pieces);
+    const hasCustomSpin =
+      runtime.aimParametersRuntime.strikePointOverride !== null;
+    const maxPower =
+      isRook && !hasCustomSpin ? ROOK_MAX_OVERDRIVE_POWER : 1.0;
     setAimPower(
       runtime.aimParametersRuntime,
       computeRedDotPullPower(
         gesture.startY,
         event.clientY,
         gesture.maxDragPixels,
+        maxPower,
       ),
+      maxPower,
     );
     const solution = runtime.preparedStrikeSolution;
     if (solution !== null) {
@@ -1704,6 +1742,15 @@ function handleCanvasPointerUp(
     const point = raycastSelectedPieceSurface(runtime, event);
     if (point !== null) {
       setStrikePointOverride(runtime.aimParametersRuntime, point);
+      if (runtime.aimRuntime.activeAim !== null) {
+        runtime.aimRuntime.activeAim.hasCustomSpin = true;
+        if (
+          runtime.aimRuntime.activeAim.isRook &&
+          runtime.aimRuntime.activeAim.normalizedPower > 1.0
+        ) {
+          runtime.aimRuntime.activeAim.normalizedPower = 1.0;
+        }
+      }
       beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
       try {
         refreshBilliardsPreview(runtime);
@@ -1940,6 +1987,15 @@ export function createInputRuntime(
         runtime.aimParametersRuntime,
         point,
       );
+      if (runtime.aimRuntime.activeAim !== null) {
+        runtime.aimRuntime.activeAim.hasCustomSpin = true;
+        if (
+          runtime.aimRuntime.activeAim.isRook &&
+          runtime.aimRuntime.activeAim.normalizedPower > 1.0
+        ) {
+          runtime.aimRuntime.activeAim.normalizedPower = 1.0;
+        }
+      }
       try {
         if (runtime.mode === "billiards") {
           refreshBilliardsPreview(runtime);
@@ -1954,6 +2010,9 @@ export function createInputRuntime(
   );
   strikePointPanel.resetButton.addEventListener("click", () => {
     clearStrikePointOverride(runtime.aimParametersRuntime);
+    if (runtime.aimRuntime.activeAim !== null) {
+      runtime.aimRuntime.activeAim.hasCustomSpin = false;
+    }
     if (runtime.aimRuntime.selectedPieceId === null) {
       return;
     }
