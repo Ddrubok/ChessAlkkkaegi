@@ -185,6 +185,8 @@ export interface InputPolicy {
   isCameraRotating: () => boolean;
   queueLaunch: (request: LaunchRequest) => LaunchQueueOutcome;
   onModeChanged: (mode: InputMode) => void;
+  canKingSwap?: (pieceId: string) => boolean;
+  onKingSwap?: (pieceId: string) => void;
 }
 
 export interface InputRuntime {
@@ -1193,19 +1195,30 @@ function updateModeToggle(runtime: InputRuntime): void {
  * 담돌받기 / 타점선택 앙션 바를 현재 상태로 보여준다.
  */
 function updateActionBar(runtime: InputRuntime): void {
+  const selectedPieceId = runtime.aimRuntime.selectedPieceId;
+  const canSwap =
+    selectedPieceId !== null &&
+    Boolean(runtime.policy.canKingSwap?.(selectedPieceId));
+
   const selected =
-    runtime.mode === "billiards" &&
-    runtime.aimRuntime.selectedPieceId !== null;
+    (runtime.mode === "billiards" || canSwap) &&
+    selectedPieceId !== null;
 
   runtime.actionBar.hidden = !selected;
   // 선택·동작 전환 직후 다음 입력 프레임에서 위치를 반드시 다시 계산한다.
   runtime.actionBarLastPositionedAt = Number.NEGATIVE_INFINITY;
   for (const button of runtime.actionBar.querySelectorAll("button")) {
-    const active =
-      button.dataset.action === "strike"
-        ? runtime.strikeMode
-        : !runtime.strikeMode;
-    button.setAttribute("aria-pressed", String(active));
+    if (button.dataset.action === "swap") {
+      button.hidden = !canSwap;
+      button.setAttribute("aria-pressed", "false");
+    } else {
+      button.hidden = runtime.mode !== "billiards";
+      const active =
+        button.dataset.action === "strike"
+          ? runtime.strikeMode
+          : !runtime.strikeMode;
+      button.setAttribute("aria-pressed", String(active));
+    }
   }
   if (!selected) {
     return;
@@ -1887,17 +1900,22 @@ export function createInputRuntime(
   const actionButtons: Record<string, HTMLButtonElement> = {
     launch: document.createElement("button"),
     strike: document.createElement("button"),
+    swap: document.createElement("button"),
   };
 
   actionButtons.launch.type = "button";
   actionButtons.launch.dataset.action = "launch";
   actionButtons.strike.type = "button";
   actionButtons.strike.dataset.action = "strike";
-  actionBar.append(actionButtons.launch, actionButtons.strike);
+  actionButtons.swap.type = "button";
+  actionButtons.swap.dataset.action = "swap";
+  actionButtons.swap.hidden = true;
+  actionBar.append(actionButtons.launch, actionButtons.strike, actionButtons.swap);
 
   const updateActionBarLabels = () => {
     actionButtons.launch.textContent = I18nManager.t("ingame.launch");
     actionButtons.strike.textContent = I18nManager.t("ingame.strike_select");
+    actionButtons.swap.textContent = "위치 변경";
   };
   updateActionBarLabels();
   sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
@@ -2046,12 +2064,19 @@ export function createInputRuntime(
   updateActionBar(runtime);
   for (const button of actionBar.querySelectorAll("button")) {
     button.addEventListener("click", () => {
+      const action = button.dataset.action;
+      if (action === "swap") {
+        const selectedId = runtime.aimRuntime.selectedPieceId;
+        if (selectedId !== null) {
+          runtime.policy.onKingSwap?.(selectedId);
+        }
+        return;
+      }
       if (runtime.mode !== "billiards") {
         // 클래식은 즉시 드래그 전용이라 숨은 동작 버튼을 강제로 눌러도 타점 모드에 들어가지 않는다.
         runtime.strikeMode = false;
         return;
       }
-      const action = button.dataset.action;
       if (action === "strike") {
         runtime.strikeMode = true;
         if (runtime.aimRuntime.selectedPieceId !== null) {

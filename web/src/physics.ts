@@ -1216,3 +1216,39 @@ export function applyStrategyDecksToPhysics(
     binding.upgradeAdditionalMass = additionalMass;
   }
 }
+
+/**
+ * 킹 고유 기믹: 두 기물의 물리 바디 위치(좌표)를 상호 맞바꾼다.
+ */
+export function swapPiecePositions(
+  runtime: PhysicsRuntime,
+  firstPieceId: string,
+  secondPieceId: string,
+): boolean {
+  const firstBinding = runtime.pieces.get(firstPieceId);
+  const secondBinding = runtime.pieces.get(secondPieceId);
+  if (firstBinding === undefined || secondBinding === undefined) {
+    return false;
+  }
+
+  const firstPos = firstBinding.body.translation();
+  const secondPos = secondBinding.body.translation();
+
+  firstBinding.body.setTranslation(
+    { x: secondPos.x, y: secondPos.y, z: secondPos.z },
+    true,
+  );
+  secondBinding.body.setTranslation(
+    { x: firstPos.x, y: firstPos.y, z: firstPos.z },
+    true,
+  );
+
+  firstBinding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  firstBinding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  secondBinding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  secondBinding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+
+  firstBinding.body.sleep();
+  secondBinding.body.sleep();
+  return true;
+}

@@ -110,6 +110,7 @@ import {
   resetPieceHitSoundTracking,
 } from "./sound";
 import { openPromotionModal } from "./promotion-modal";
+import { openKingSwapModal } from "./king-swap-modal";
 import {
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
@@ -146,6 +147,7 @@ import {
 import {
   canSelectTurnPiece,
   createTurnRuntime,
+  executeKingSwap,
   queueTurnLaunch,
   resetTurnRuntime,
   setMatchOverHandler,
@@ -615,6 +617,42 @@ async function bootstrap(): Promise<void> {
             canSelectTurnPiece(turnRuntime, pieceId),
       isCameraRotating: () =>
         turnRuntime.phase === "camera-rotating",
+      canKingSwap: (pieceId) => {
+        if (turnRuntime.phase !== "ready") {
+          return false;
+        }
+        const side = turnRuntime.currentSide;
+        if (turnRuntime.kingSwapUsed[side]) {
+          return false;
+        }
+        const binding = physicsRuntime.pieces.get(pieceId);
+        if (binding?.instance.type !== "King" || binding.instance.side !== side) {
+          return false;
+        }
+        if (gameModeRuntime?.mode === "stage" && side === "black") {
+          return false;
+        }
+        if (gameModeRuntime?.mode === "online") {
+          return onlineRuntime?.canSelectLocalPiece(pieceId) === true;
+        }
+        return true;
+      },
+      onKingSwap: (pieceId) => {
+        const side = turnRuntime.currentSide;
+        openKingSwapModal(
+          pieceId,
+          side,
+          physicsRuntime,
+          (targetPieceId) => {
+            const swapped = executeKingSwap(turnRuntime, pieceId, targetPieceId);
+            if (swapped) {
+              playSoundEffect("power90");
+              cancelInputInteraction(inputRuntime, true);
+            }
+          },
+          app,
+        );
+      },
       queueLaunch: (request) => {
         const binding = physicsRuntime.pieces.get(request.pieceId);
         const gameMode = gameModeRuntime?.mode ?? "hotseat";

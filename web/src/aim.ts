@@ -98,29 +98,46 @@ export function isKnightPiece(
 }
 
 /**
- * 말 식별자 또는 바인딩에서 룩 기물 여부를 판정한다.
+ * 말 식별자 또는 바인딩에서 킹 기물 여부를 판정한다.
+ */
+export function isKingPiece(
+  pieceId: string,
+  bindings?: ReadonlyMap<string, PieceBodyBinding>,
+): boolean {
+  if (bindings?.get(pieceId)?.instance.type === "King") {
+    return true;
+  }
+  return pieceId.toLowerCase().includes("king");
+}
+
+/**
+ * 말 식별자 또는 바인딩에서 룩 기물(또는 룩 기믹을 융합한 퀸) 여부를 판정한다.
  */
 export function isRookPiece(
   pieceId: string,
   bindings?: ReadonlyMap<string, PieceBodyBinding>,
 ): boolean {
-  if (bindings?.get(pieceId)?.instance.type === "Rook") {
+  const type = bindings?.get(pieceId)?.instance.type;
+  if (type === "Rook" || type === "Queen") {
     return true;
   }
-  return pieceId.toLowerCase().includes("rook");
+  const lower = pieceId.toLowerCase();
+  return lower.includes("rook") || lower.includes("queen");
 }
 
 /**
- * 말 식별자 또는 바인딩에서 비숍 기물 여부를 판정한다.
+ * 말 식별자 또는 바인딩에서 비숍 기물(또는 비숍 기믹을 융합한 퀸) 여부를 판정한다.
  */
 export function isBishopPiece(
   pieceId: string,
   bindings?: ReadonlyMap<string, PieceBodyBinding>,
 ): boolean {
-  if (bindings?.get(pieceId)?.instance.type === "Bishop") {
+  const type = bindings?.get(pieceId)?.instance.type;
+  if (type === "Bishop" || type === "Queen") {
     return true;
   }
-  return pieceId.toLowerCase().includes("bishop");
+  const lower = pieceId.toLowerCase();
+  return lower.includes("bishop") || lower.includes("queen");
 }
 
 interface RenderPulse {

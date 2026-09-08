@@ -1,6 +1,6 @@
 /**
  * 폰 승급(프로모션) 선택 모달
- * 상대 진영 끝에서 1턴 생존한 폰을 5종 기물 중 하나로 선택하는 UI
+ * 상대 진영 끝에서 1턴 생존한 폰을 4종 기물(퀸, 룩, 비숍, 나이트) 중 하나로 선택하는 UI
  */
 
 import type { PieceType } from "./config";
@@ -15,16 +15,10 @@ export interface PromotionPieceOption {
 
 export const PROMOTION_PIECE_OPTIONS: readonly PromotionPieceOption[] = [
   {
-    type: "King",
-    name: "킹 (King)",
-    symbol: "♔",
-    description: "최고 중량과 강력한 질량으로 상대를 밀어냅니다.",
-  },
-  {
     type: "Queen",
     name: "퀸 (Queen)",
     symbol: "♕",
-    description: "최상급 기동성과 완벽한 전방위 공격력을 발휘합니다.",
+    description: "무회전 150% 일직선 오버드라이브와 스핀 2.2배 리코셰 굴절을 모두 구사합니다.",
   },
   {
     type: "Rook",

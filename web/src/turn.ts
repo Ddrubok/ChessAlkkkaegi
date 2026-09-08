@@ -28,9 +28,11 @@ import type {
 import {
   applyPendingBreakableWallDestructions,
   scanBreakableWallContacts,
+  swapPiecePositions,
 } from "./physics";
 import {
   synchronizeBreakableWallMeshes,
+  synchronizePieceMeshes,
   type SceneRuntime,
 } from "./scene";
 import type { RuntimeTuningSettings } from "./tuning";
@@ -130,6 +132,8 @@ export interface TurnRuntime {
   promotionQueue: string[];
   // 체스 보드 셀 크기
   cellSize: number;
+  // 킹 위치 변경 기믹 사용 여부 (게임당 각 진영 1회 한정)
+  kingSwapUsed: { white: boolean; black: boolean };
 }
 
 // 턴 교대가 즉시 튀지 않으면서 조작 흐름을 오래 막지 않는 실제 시간 길이다.
@@ -420,6 +424,7 @@ export function createTurnRuntime(
     cellSize:
       cellSize ??
       (physicsRuntime.cellSize ?? physicsRuntime.boardHalfExtent / 4.25),
+    kingSwapUsed: { white: false, black: false },
   };
 }
 
@@ -720,7 +725,7 @@ export function applyPendingLaunchBeforeStep(
   runtime.ccdPieceId = request.pieceId;
   runtime.bishopRicochetedPieceIds.clear();
   binding.body.applyImpulseAtPoint(impulse, applicationPoint, true);
-  if (binding.instance.type === "Bishop") {
+  if (binding.instance.type === "Bishop" || binding.instance.type === "Queen") {
     // 편심 타점 시 회전 토크를 추가 인가하여 2.2배의 맹렬한 스핀 각속도를 형성
     const leverX = applicationPoint.x - preLaunchPosition.x;
     const leverZ = applicationPoint.z - preLaunchPosition.z;
@@ -917,7 +922,10 @@ function applyBishopSpinRicochet(runtime: TurnRuntime): void {
     return;
   }
   const launcher = runtime.physicsRuntime.pieces.get(runtime.ccdPieceId);
-  if (launcher === undefined || launcher.instance.type !== "Bishop") {
+  if (
+    launcher === undefined ||
+    (launcher.instance.type !== "Bishop" && launcher.instance.type !== "Queen")
+  ) {
     return;
   }
   const spinY = launcher.body.angvel().y;
@@ -1072,6 +1080,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.pendingPromotionPawns.clear();
   runtime.promotionQueue = [];
   runtime.turnNumber = 0;
+  runtime.kingSwapUsed = { white: false, black: false };
 }
 
 /**
@@ -1159,5 +1168,42 @@ function processNextPromotionInQueue(runtime: TurnRuntime): void {
       },
     );
   }
+}
+
+/**
+ * 킹 위치 변경(스왑): 게임당 각 진영 1회 한정으로 보드 위의 다른 기물과 킹의 위치를 맞바꾼다.
+ */
+export function executeKingSwap(
+  runtime: TurnRuntime,
+  kingPieceId: string,
+  targetPieceId: string,
+): boolean {
+  const side = runtime.currentSide;
+  if (runtime.kingSwapUsed[side]) {
+    return false;
+  }
+  const kingBinding = runtime.physicsRuntime.pieces.get(kingPieceId);
+  const targetBinding = runtime.physicsRuntime.pieces.get(targetPieceId);
+  if (kingBinding === undefined || targetBinding === undefined) {
+    return false;
+  }
+  if (kingBinding.instance.type !== "King" || kingBinding.instance.side !== side) {
+    return false;
+  }
+  if (kingPieceId === targetPieceId) {
+    return false;
+  }
+
+  const success = swapPiecePositions(
+    runtime.physicsRuntime,
+    kingPieceId,
+    targetPieceId,
+  );
+  if (success) {
+    synchronizePieceMeshes(runtime.sceneRuntime, runtime.physicsRuntime);
+    runtime.kingSwapUsed[side] = true;
+    return true;
+  }
+  return false;
 }
 

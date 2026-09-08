@@ -254,7 +254,7 @@ export function updateStrikePreview(
   const omega = solution.initialDeltaOmega;
   const percent = Math.round(runtime.normalizedPower * 100);
   const isBishopSpin =
-    binding.instance.type === "Bishop" &&
+    (binding.instance.type === "Bishop" || binding.instance.type === "Queen") &&
     runtime.strikePointOverride !== null;
   const powerText =
     runtime.normalizedPower > 1.0

@@ -1772,3 +1772,123 @@ body {
   line-height: 1.35;
 }
 
+/* ==========================================================================
+   킹 위치 교환(스왑) 모달 스타일
+   ========================================================================== */
+
+.king-swap-modal-card {
+  max-width: 520px;
+}
+
+.king-swap-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+@media (max-width: 420px) {
+  .king-swap-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.king-swap-piece-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  color: #f8fafc;
+}
+
+.king-swap-piece-card:hover {
+  background: #1e293b;
+  border-color: #64748b;
+}
+
+.king-swap-piece-card:active {
+  transform: scale(0.98);
+}
+
+.king-swap-piece-symbol {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.king-swap-piece-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.king-swap-piece-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.king-swap-piece-tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.tag-opponent {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.tag-friendly {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.king-swap-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.king-swap-cancel-btn {
+  background: transparent;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  color: #94a3b8;
+  padding: 8px 18px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.king-swap-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+
+

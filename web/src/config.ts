@@ -351,9 +351,8 @@ export const BISHOP_DEFLECTION_IMPULSE_FACTOR = 0.65;
 // 8x8 보드에서 중심 기준 rank 8(백 도달)은 z >= 3.0 * cellSize, rank 1(흑 도달)은 z <= -3.0 * cellSize
 export const PAWN_PROMOTION_ZONE_RATIO = 3.0;
 
-// 프로모션 가능한 5종 기물 목록 (킹, 퀸, 룩, 비숍, 나이트)
+// 프로모션 가능한 4종 기물 목록 (퀸, 룩, 비숍, 나이트 - 킹 제외)
 export const PROMOTION_PIECE_CHOICES: readonly PieceType[] = [
-  "King",
   "Queen",
   "Rook",
   "Bishop",
