@@ -4,17 +4,14 @@ import {
   Color,
   CylinderGeometry,
   DirectionalLight,
-  DoubleSide,
   HemisphereLight,
   MathUtils,
   Mesh,
-  MeshBasicMaterial,
   MeshStandardMaterial,
   NearestFilter,
   PCFSoftShadowMap,
   PerspectiveCamera,
   Raycaster,
-  RingGeometry,
   Scene,
   SRGBColorSpace,
   WebGLRenderer,
@@ -1172,32 +1169,4 @@ export function resetScenePieces(
   }
 }
 
-/**
- * 킹 방어(철벽) 발동 시 킹 기물 밑면에 방어막 링 메시를 부착하여 시각적으로 철벽 상태임을 표시한다.
- */
-export function attachKingDefenseShield(
-  runtime: SceneRuntime,
-  kingPieceId: string,
-): void {
-  const mesh = runtime.pieceMeshes.get(kingPieceId);
-  if (mesh === undefined) {
-    return;
-  }
-  if (mesh.getObjectByName("king-defense-shield") !== undefined) {
-    return;
-  }
-  const ringGeo = new RingGeometry(0.32, 0.44, 32);
-  ringGeo.rotateX(-Math.PI / 2);
-  const ringMat = new MeshBasicMaterial({
-    color: 0x38bdf8,
-    transparent: true,
-    opacity: 0.9,
-    side: DoubleSide,
-    depthWrite: false,
-  });
-  const ring = new Mesh(ringGeo, ringMat);
-  ring.name = "king-defense-shield";
-  ring.position.y = 0.02;
-  mesh.add(ring);
-}
 

@@ -139,6 +139,8 @@ export interface TurnRuntime {
   kingSwapUsed: { white: boolean; black: boolean };
   // 킹 방어(철벽) 기믹 활성화 여부
   kingDefenseActive: { white: boolean; black: boolean };
+  // 킹 방어가 풀리기까지 남은 상대 턴 수 (발동 시 1로 설정, 상대 턴 종료 시 0으로 감소하며 해제)
+  kingDefenseTurnsRemaining: { white: number; black: number };
 }
 
 // 턴 교대가 즉시 튀지 않으면서 조작 흐름을 오래 막지 않는 실제 시간 길이다.
@@ -438,6 +440,7 @@ export function createTurnRuntime(
     kingSpecialUsed: { white: false, black: false },
     kingSwapUsed: { white: false, black: false },
     kingDefenseActive: { white: false, black: false },
+    kingDefenseTurnsRemaining: { white: 0, black: 0 },
   };
 }
 
@@ -855,22 +858,41 @@ function completeSettlement(runtime: TurnRuntime): void {
   runtime.restHoldSeconds = 0;
   runtime.settleSeconds = 0;
 
-  // 방어가 활성화된 킹이 보드 위에 생존해 있다면 정착 완료 후 다시 Fixed 상태로 고정하여 벽처럼 만든다.
-  for (const side of ["white", "black"] as const) {
-    if (runtime.kingDefenseActive[side]) {
+  const justFinishedSide = runtime.currentSide;
+  const otherSide = justFinishedSide === "white" ? "black" : "white";
+
+  // 1. 방어가 활성화된 진영의 킹이 자신의 턴을 마치고 보드 위에 생존해 있다면 Fixed 상태로 유지하여 벽처럼 고정한다.
+  if (runtime.kingDefenseActive[justFinishedSide]) {
+    for (const binding of runtime.physicsRuntime.pieces.values()) {
+      if (
+        binding.instance.type === "King" &&
+        binding.instance.side === justFinishedSide &&
+        !runtime.pendingRemovalIds.has(binding.instance.id) &&
+        binding.body.translation().y >= FALL_OUT_Y
+      ) {
+        binding.body.setBodyType(RAPIER.RigidBodyType.Fixed, true);
+        binding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        binding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      }
+    }
+  }
+
+  // 2. 상대방(justFinishedSide)의 공격 턴이 끝났을 때, 방어 중이던 킹(otherSide)의 방어 지속 턴을 차감한다.
+  //    1턴(상대방 턴 1회)이 경과했으므로 방어가 자동으로 해제(풀림)되어 Dynamic으로 복귀한다.
+  if (runtime.pendingTurnChange && runtime.kingDefenseActive[otherSide]) {
+    runtime.kingDefenseTurnsRemaining[otherSide] -= 1;
+    if (runtime.kingDefenseTurnsRemaining[otherSide] <= 0) {
+      runtime.kingDefenseActive[otherSide] = false;
       for (const binding of runtime.physicsRuntime.pieces.values()) {
         if (
           binding.instance.type === "King" &&
-          binding.instance.side === side &&
-          !runtime.pendingRemovalIds.has(binding.instance.id) &&
-          binding.body.translation().y >= FALL_OUT_Y
+          binding.instance.side === otherSide &&
+          binding.body.isFixed()
         ) {
-          binding.body.setBodyType(
-            RAPIER.RigidBodyType.Fixed,
-            true,
-          );
+          binding.body.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
           binding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
           binding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+          binding.body.sleep();
         }
       }
     }
@@ -1126,6 +1148,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.kingSpecialUsed = { white: false, black: false };
   runtime.kingSwapUsed = { white: false, black: false };
   runtime.kingDefenseActive = { white: false, black: false };
+  runtime.kingDefenseTurnsRemaining = { white: 0, black: 0 };
 }
 
 /**
@@ -1275,6 +1298,7 @@ export function executeKingDefense(
 
   runtime.kingSpecialUsed[side] = true;
   runtime.kingDefenseActive[side] = true;
+  runtime.kingDefenseTurnsRemaining[side] = 1;
   kingBinding.body.setBodyType(
     RAPIER.RigidBodyType.Fixed,
     true,
