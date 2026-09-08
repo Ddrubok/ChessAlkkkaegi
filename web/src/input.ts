@@ -186,7 +186,7 @@ export interface InputPolicy {
   queueLaunch: (request: LaunchRequest) => LaunchQueueOutcome;
   onModeChanged: (mode: InputMode) => void;
   canKingSwap?: (pieceId: string) => boolean;
-  onKingSwap?: (pieceId: string) => void;
+  onKingSwap?: (kingPieceId: string, targetPieceId: string) => void;
 }
 
 export interface InputRuntime {
@@ -237,6 +237,10 @@ export interface InputRuntime {
   strikeMode: boolean;
   // 3D 직접 클릭과 같은 override를 편집하는 확대 정면 패널 런타임이다.
   strikePointPanel: StrikePointPanelRuntime;
+  // 킹 위치 변경 대상 기물 선택 모드 활성화 여부
+  kingSwapMode: boolean;
+  // 킹 위치 변경 안내 배너 엘리먼트
+  kingSwapBanner: HTMLElement;
 }
 
 // 탭과 카메라 공전 드래그를 같은 캔버스 포인터에서 구별하는 최대 이동 거리다.
@@ -852,7 +856,7 @@ function updateAdaptiveCloseDistance(runtime: InputRuntime): void {
 /**
  * 선택을 교체하고 당구식에서는 즉시 power 0 미리보기와 44도 카메라 복원을 시작한다.
  */
-function selectPiece(
+export function selectPiece(
   runtime: InputRuntime,
   pieceId: string | null,
 ): void {
@@ -915,6 +919,8 @@ function cancelInteraction(
   if (clearSelection) {
     runtime.adaptiveCloseDistance = null;
     runtime.strikeMode = false;
+    runtime.kingSwapMode = false;
+    runtime.kingSwapBanner.hidden = true;
     runtime.orbitTouchPointerIds.clear();
     clearStrikePointOverride(runtime.aimParametersRuntime);
     updateActionBar(runtime);
@@ -1210,7 +1216,8 @@ function updateActionBar(runtime: InputRuntime): void {
   for (const button of runtime.actionBar.querySelectorAll("button")) {
     if (button.dataset.action === "swap") {
       button.hidden = !canSwap;
-      button.setAttribute("aria-pressed", "false");
+      button.textContent = runtime.kingSwapMode ? "스왑 취소" : "위치 변경";
+      button.setAttribute("aria-pressed", String(runtime.kingSwapMode));
     } else {
       button.hidden = runtime.mode !== "billiards";
       const active =
@@ -1430,6 +1437,50 @@ export function switchInputMode(
 }
 
 /**
+ * 킹 위치 교환 모드에서 3D 렌더 메시 또는 화면 좌표 최근접 기물을 찾는다.
+ */
+function findSwapTargetPiece(
+  runtime: InputRuntime,
+  event: PointerEvent,
+): string | null {
+  const directHit = raycastNearestPiece(runtime, event);
+  if (directHit !== null && runtime.physicsRuntime.pieces.has(directHit)) {
+    const binding = runtime.physicsRuntime.pieces.get(directHit);
+    if (binding && binding.body.translation().y >= -1.0) {
+      return directHit;
+    }
+  }
+  const rect = runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    return null;
+  }
+  const camera = runtime.sceneRuntime.camera;
+  const worldPos = new Vector3();
+  const projected = new Vector3();
+  const candidates: ScreenSpacePieceCandidate[] = [];
+  for (const [pieceId, binding] of runtime.physicsRuntime.pieces) {
+    if (binding.body.translation().y < -1.0) {
+      continue;
+    }
+    const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
+    if (mesh === undefined) {
+      continue;
+    }
+    mesh.getWorldPosition(worldPos);
+    projected.copy(worldPos).project(camera);
+    if (projected.z < -1 || projected.z > 1) {
+      continue;
+    }
+    candidates.push({
+      pieceId,
+      clientX: rect.left + ((projected.x + 1) / 2) * rect.width,
+      clientY: rect.top + ((1 - projected.y) / 2) * rect.height,
+    });
+  }
+  return findNearestTouchPieceInScreenSpace(event, candidates);
+}
+
+/**
  * 빨간 점을 캡처 단계에서 먼저 판정하고 미히트는 기존 OrbitControls 흐름에 넘긴다.
  */
 function handleCanvasPointerDown(
@@ -1450,6 +1501,27 @@ function handleCanvasPointerDown(
   const isBilliardsTouch =
     runtime.mode === "billiards" &&
     isTouchPointerEvent(event);
+
+  if (runtime.kingSwapMode) {
+    const swapTargetId = findSwapTargetPiece(runtime, event);
+    runtime.activePointerId = event.pointerId;
+    runtime.activeCaptureElement = isBilliardsTouch ? null : canvas;
+    runtime.gesture = {
+      source: "billiards-canvas",
+      startX: event.clientX,
+      startY: event.clientY,
+      maximumDistance: 0,
+      candidatePieceId: swapTargetId,
+      maxDragPixels: MAX_DRAG_PIXELS,
+    };
+    if (isBilliardsTouch) {
+      runtime.orbitTouchPointerIds.add(event.pointerId);
+    } else {
+      canvas.setPointerCapture(event.pointerId);
+    }
+    return;
+  }
+
   const selectedCanAim =
     selectedId !== null &&
     runtime.policy.canSelectPiece(selectedId);
@@ -1753,6 +1825,33 @@ function handleCanvasPointerUp(
   const tapped =
     gesture.maximumDistance <= TAP_MAX_DISTANCE_PIXELS;
   const candidatePieceId = gesture.candidatePieceId;
+
+  if (runtime.kingSwapMode) {
+    if (tapped) {
+      const selectedKingId = runtime.aimRuntime.selectedPieceId;
+      if (
+        candidatePieceId !== null &&
+        selectedKingId !== null &&
+        candidatePieceId !== selectedKingId
+      ) {
+        runtime.kingSwapMode = false;
+        runtime.kingSwapBanner.hidden = true;
+        cancelInteraction(runtime, true);
+        runtime.policy.onKingSwap?.(selectedKingId, candidatePieceId);
+        return;
+      } else {
+        runtime.kingSwapMode = false;
+        runtime.kingSwapBanner.hidden = true;
+        updateActionBar(runtime);
+        cancelInteraction(runtime, false);
+        return;
+      }
+    } else {
+      cancelInteraction(runtime, false);
+      return;
+    }
+  }
+
   if (tapped && candidatePieceId !== null) {
     playPieceClickSound();
   }
@@ -1932,6 +2031,11 @@ export function createInputRuntime(
   }
   const strikePointPanel =
     createStrikePointPanel(overlayContainer);
+  const kingSwapBanner = document.createElement("div");
+  kingSwapBanner.className = "king-swap-banner";
+  kingSwapBanner.textContent = "교환할 기물을 터치/클릭하세요 (취소: 빈 곳 클릭)";
+  kingSwapBanner.hidden = true;
+  overlayContainer.append(kingSwapBanner);
   const runtime: InputRuntime = {
     sceneRuntime,
     physicsRuntime,
@@ -1966,6 +2070,8 @@ export function createInputRuntime(
     actionBarPanelWasVisible: false,
     strikeMode: false,
     strikePointPanel,
+    kingSwapMode: false,
+    kingSwapBanner,
   };
 
   for (const eventName of [
@@ -2068,7 +2174,9 @@ export function createInputRuntime(
       if (action === "swap") {
         const selectedId = runtime.aimRuntime.selectedPieceId;
         if (selectedId !== null) {
-          runtime.policy.onKingSwap?.(selectedId);
+          runtime.kingSwapMode = !runtime.kingSwapMode;
+          runtime.kingSwapBanner.hidden = !runtime.kingSwapMode;
+          updateActionBar(runtime);
         }
         return;
       }

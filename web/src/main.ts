@@ -55,6 +55,7 @@ import {
   handleInputPieceRemoved,
   lockInputForMatchOver,
   resetInputAfterMatch,
+  selectPiece,
   switchInputMode,
 } from "./input";
 import {
@@ -110,7 +111,6 @@ import {
   resetPieceHitSoundTracking,
 } from "./sound";
 import { openPromotionModal } from "./promotion-modal";
-import { openKingSwapModal } from "./king-swap-modal";
 import {
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
@@ -637,21 +637,13 @@ async function bootstrap(): Promise<void> {
         }
         return true;
       },
-      onKingSwap: (pieceId) => {
-        const side = turnRuntime.currentSide;
-        openKingSwapModal(
-          pieceId,
-          side,
-          physicsRuntime,
-          (targetPieceId) => {
-            const swapped = executeKingSwap(turnRuntime, pieceId, targetPieceId);
-            if (swapped) {
-              playSoundEffect("power90");
-              cancelInputInteraction(inputRuntime, true);
-            }
-          },
-          app,
-        );
+      onKingSwap: (kingPieceId, targetPieceId) => {
+        const swapped = executeKingSwap(turnRuntime, kingPieceId, targetPieceId);
+        if (swapped) {
+          playSoundEffect("power90");
+          cancelInputInteraction(inputRuntime, true);
+          selectPiece(inputRuntime, kingPieceId);
+        }
       },
       queueLaunch: (request) => {
         const binding = physicsRuntime.pieces.get(request.pieceId);
