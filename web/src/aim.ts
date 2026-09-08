@@ -78,6 +78,8 @@ export interface ActiveAim {
   isKnight?: boolean;
   // 룩 기물 고유 150% 오버드라이브 조준 여부다.
   isRook?: boolean;
+  // 비숍 기물 고유 스핀 대각선 굴절(리코셰) 조준 여부다.
+  isBishop?: boolean;
   // 타점(스핀) 적용 여부다. 스핀이 있으면 최대 100%, 스핀이 없으면 최대 150%다.
   hasCustomSpin?: boolean;
 }
@@ -106,6 +108,19 @@ export function isRookPiece(
     return true;
   }
   return pieceId.toLowerCase().includes("rook");
+}
+
+/**
+ * 말 식별자 또는 바인딩에서 비숍 기물 여부를 판정한다.
+ */
+export function isBishopPiece(
+  pieceId: string,
+  bindings?: ReadonlyMap<string, PieceBodyBinding>,
+): boolean {
+  if (bindings?.get(pieceId)?.instance.type === "Bishop") {
+    return true;
+  }
+  return pieceId.toLowerCase().includes("bishop");
 }
 
 interface RenderPulse {
@@ -1222,9 +1237,18 @@ export function selectAimPiece(
 
 /**
  * 조준 세기에 따른 안내선 및 UI 색상을 계산한다.
- * 0~100%는 흰색에서 빨간색, 100% 초과 오버드라이브 구간은 빨간색에서 황금빛 불꽃(Gold)으로 전환된다.
+ * 비숍 스핀 모드는 신비로운 보랏빛/사이언, 룩 100% 초과 오버드라이브는 황금빛 불꽃(Gold), 일반은 흰색에서 빨간색으로 전환된다.
  */
-export function computeAimColor(normalizedPower: number): Color {
+export function computeAimColor(
+  normalizedPower: number,
+  isBishopSpin = false,
+): Color {
+  if (isBishopSpin) {
+    return new Color(0xffffff).lerp(
+      new Color(0xa855f7),
+      Math.max(Math.min(normalizedPower, 1.0), 0),
+    );
+  }
   if (normalizedPower <= 1.0) {
     return new Color(0xffffff).lerp(
       new Color(0xff3b30),
@@ -1239,16 +1263,22 @@ export function computeAimColor(normalizedPower: number): Color {
 }
 
 /**
- * 조준 세기 백분율 수치와 시각 효과(불꽃 아이콘, 네온 글로우, 스케일 펄스)를 UI에 반영한다.
+ * 조준 세기 백분율 수치와 시각 효과(불꽃/소용돌이 아이콘, 네온 글로우, 스케일 펄스)를 UI에 반영한다.
  */
 export function applyPowerReadoutVisuals(
   powerReadout: HTMLDivElement,
   normalizedPower: number,
   color: Color,
+  isBishopSpin = false,
 ): void {
   const percent = Math.round(normalizedPower * 100);
   powerReadout.style.color = color.getStyle();
-  if (normalizedPower > 1.0) {
+  if (isBishopSpin) {
+    powerReadout.textContent = `${percent}% 🌀 [스핀 굴절]`;
+    powerReadout.style.textShadow =
+      "0 0 10px #a855f7, 0 0 20px #3b82f6, 0 0 30px #06b6d4";
+    powerReadout.style.transform = "translateX(-50%)";
+  } else if (normalizedPower > 1.0) {
     const t = Math.min(
       (normalizedPower - 1.0) / (ROOK_MAX_OVERDRIVE_POWER - 1.0),
       1.0,
@@ -1278,10 +1308,12 @@ export function beginAim(
   isKnightOverride?: boolean,
   isRookOverride?: boolean,
   hasCustomSpin?: boolean,
+  isBishopOverride?: boolean,
 ): void {
   selectAimPiece(runtime, pieceId);
   const isKnight = isKnightOverride ?? isKnightPiece(pieceId);
   const isRook = isRookOverride ?? isRookPiece(pieceId);
+  const isBishop = isBishopOverride ?? isBishopPiece(pieceId);
   const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
   const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
   const initialDirection = isKnight
@@ -1304,6 +1336,7 @@ export function beginAim(
     tracksPowerSounds,
     isKnight,
     isRook,
+    isBishop,
     hasCustomSpin: hasCustomSpin ?? false,
   };
   if (tracksPowerSounds) {
@@ -1330,6 +1363,7 @@ export function beginDirectedAim(
   isKnightOverride?: boolean,
   isRookOverride?: boolean,
   hasCustomSpin?: boolean,
+  isBishopOverride?: boolean,
 ): void {
   assertFiniteGuideVector("방향 조준 시작 방향", direction);
   if (direction.lengthSq() < 1e-12) {
@@ -1337,6 +1371,7 @@ export function beginDirectedAim(
   }
   const isKnight = isKnightOverride ?? isKnightPiece(pieceId);
   const isRook = isRookOverride ?? isRookPiece(pieceId);
+  const isBishop = isBishopOverride ?? isBishopPiece(pieceId);
   const normalizedDirection = direction.clone().normalize();
   const right = normalizedDirection
     .clone()
@@ -1356,6 +1391,7 @@ export function beginDirectedAim(
     isKnight,
     isRook,
     hasCustomSpin,
+    isBishop,
   );
 }
 
@@ -1406,12 +1442,14 @@ export function updateDirectedAim(
   if (activeAim.tracksPowerSounds) {
     updateAimPowerSounds(Math.min(activeAim.normalizedPower, 1.0));
   }
-  const color = computeAimColor(activeAim.normalizedPower);
+  const isBishopSpin = Boolean(activeAim.isBishop && activeAim.hasCustomSpin);
+  const color = computeAimColor(activeAim.normalizedPower, isBishopSpin);
   if (activeAim.showsPowerReadout) {
     applyPowerReadoutVisuals(
       runtime.powerReadout,
       activeAim.normalizedPower,
       color,
+      isBishopSpin,
     );
   }
   setAimGuideColor(runtime, color);
@@ -1468,11 +1506,13 @@ export function updateAimPointer(
     activeAim.direction.copy(horizontalDir);
   }
 
-  const color = computeAimColor(activeAim.normalizedPower);
+  const isBishopSpin = Boolean(activeAim.isBishop && activeAim.hasCustomSpin);
+  const color = computeAimColor(activeAim.normalizedPower, isBishopSpin);
   applyPowerReadoutVisuals(
     runtime.powerReadout,
     activeAim.normalizedPower,
     color,
+    isBishopSpin,
   );
   setAimGuideColor(runtime, color);
   setAimGuidesVisible(runtime, true);

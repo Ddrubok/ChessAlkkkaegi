@@ -24,6 +24,7 @@ import {
   handleAimPieceRemoved,
   isKnightPiece,
   isRookPiece,
+  isBishopPiece,
   selectAimPiece,
   setAimApplicationPoint,
   startLaunchPulse,
@@ -743,6 +744,7 @@ function refreshBilliardsPreview(
       : horizontalOverride.clone().normalize();
   if (runtime.aimRuntime.activeAim?.pieceId !== pieceId) {
     const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+    const isBishop = isBishopPiece(pieceId, runtime.physicsRuntime.pieces);
     const hasCustomSpin =
       runtime.aimParametersRuntime.strikePointOverride !== null;
     beginDirectedAim(
@@ -753,6 +755,7 @@ function refreshBilliardsPreview(
       undefined,
       isRook,
       hasCustomSpin,
+      isBishop,
     );
   }
   const solution = updateStrikePreview(
@@ -1072,6 +1075,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
           throw new Error("클래식 조준 시작 포인터가 없습니다.");
         }
         const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+        const isBishop = isBishopPiece(pieceId, runtime.physicsRuntime.pieces);
         const hasCustomSpin =
           runtime.aimParametersRuntime.strikePointOverride !== null;
         beginAim(
@@ -1085,6 +1089,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
           undefined,
           isRook,
           hasCustomSpin,
+          isBishop,
         );
         const binding = runtime.physicsRuntime.pieces.get(pieceId);
         const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
@@ -1149,6 +1154,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
       },
       onAimBegin: (runtime, pieceId) => {
         const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+        const isBishop = isBishopPiece(pieceId, runtime.physicsRuntime.pieces);
         const hasCustomSpin =
           runtime.aimParametersRuntime.strikePointOverride !== null;
         beginDirectedAim(
@@ -1159,6 +1165,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
           undefined,
           isRook,
           hasCustomSpin,
+          isBishop,
         );
       },
       onAimCancel: (runtime) => {

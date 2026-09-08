@@ -343,4 +343,8 @@ export function computeKnightEffectivePower(normalizedPower: number): number {
 export const ROOK_MAX_OVERDRIVE_POWER = 1.5;
 export const ROOK_SPIN_MAX_POWER = 1.0;
 
+// 비숍(Bishop) 고유 기믹: 기물 충돌 시 스핀 비례 대각선 굴절(Ricochet) 및 회전 토크 증폭
+export const BISHOP_SPIN_TORQUE_MULTIPLIER = 2.2;
+export const BISHOP_DEFLECTION_IMPULSE_FACTOR = 0.65;
+
 

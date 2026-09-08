@@ -253,10 +253,15 @@ export function updateStrikePreview(
   const velocity = solution.initialDeltaVelocity;
   const omega = solution.initialDeltaOmega;
   const percent = Math.round(runtime.normalizedPower * 100);
+  const isBishopSpin =
+    binding.instance.type === "Bishop" &&
+    runtime.strikePointOverride !== null;
   const powerText =
     runtime.normalizedPower > 1.0
       ? `세기 ${percent}% 🔥 [오버드라이브]`
-      : `세기 ${percent}%`;
+      : isBishopSpin
+        ? `세기 ${percent}% 🌀 [스핀 굴절]`
+        : `세기 ${percent}%`;
   runtime.feedback.textContent = [
     `${powerText} · 피치 ${solution.cameraPitchDegrees.toFixed(1)}°`,
     `고도 ${solution.elevationDegrees.toFixed(1)}°`,

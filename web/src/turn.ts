@@ -1,5 +1,7 @@
 import { MathUtils, Spherical, Vector3 } from "three";
 import {
+  BISHOP_DEFLECTION_IMPULSE_FACTOR,
+  BISHOP_SPIN_TORQUE_MULTIPLIER,
   CAMERA_PITCH_DEG,
   computeKnightEffectivePower,
   FALL_OUT_Y,
@@ -101,6 +103,8 @@ export interface TurnRuntime {
   ccdPieceId: string | null;
   // 타점 패널에서 기본 중심이 아닌 커스텀 타점으로 발사되었는지 여부
   lastLaunchHasCustomStrike: boolean;
+  // 비숍 스핀 리코셰가 같은 기물에 중복 적용되지 않도록 이번 턴에서 충돌 처리된 기물 id 집합이다.
+  bishopRicochetedPieceIds: Set<string>;
   // 발사 강도와 라이브 물리값을 재생성 없이 참조하는 런타임 설정이다.
   tuningSettings: RuntimeTuningSettings;
 }
@@ -379,6 +383,7 @@ export function createTurnRuntime(
     cameraPerspectiveSide: null,
     ccdPieceId: null,
     lastLaunchHasCustomStrike: false,
+    bishopRicochetedPieceIds: new Set(),
     tuningSettings,
   };
 }
@@ -678,7 +683,18 @@ export function applyPendingLaunchBeforeStep(
   }
   binding.body.enableCcd(true);
   runtime.ccdPieceId = request.pieceId;
+  runtime.bishopRicochetedPieceIds.clear();
   binding.body.applyImpulseAtPoint(impulse, applicationPoint, true);
+  if (binding.instance.type === "Bishop") {
+    // 편심 타점 시 회전 토크를 추가 인가하여 2.2배의 맹렬한 스핀 각속도를 형성
+    const leverX = applicationPoint.x - preLaunchPosition.x;
+    const leverZ = applicationPoint.z - preLaunchPosition.z;
+    const torqueY = leverX * impulse.z - leverZ * impulse.x;
+    if (Math.abs(torqueY) > 1e-6) {
+      const extraTorqueY = torqueY * (BISHOP_SPIN_TORQUE_MULTIPLIER - 1);
+      binding.body.applyTorqueImpulse({ x: 0, y: extraTorqueY, z: 0 }, true);
+    }
+  }
   const velocityAfter = binding.body.linvel();
   const deltaVelocity = new Vector3(
     velocityAfter.x,
@@ -817,6 +833,89 @@ function disableLaunchCcdAfterTurn(runtime: TurnRuntime): void {
 }
 
 /**
+ * 비숍이 고속 회전(스핀) 중 다른 기물과 충돌할 때, 스핀 방향과 크기에 비례하는 횡방향 임펄스를 가해
+ * 예리한 대각선 각도(45°~75°)로 굴절 튕겨나가는 리코셰(Ricochet) 역학을 인가한다.
+ */
+function applyBishopSpinRicochet(runtime: TurnRuntime): void {
+  if (runtime.ccdPieceId === null) {
+    return;
+  }
+  const launcher = runtime.physicsRuntime.pieces.get(runtime.ccdPieceId);
+  if (launcher === undefined || launcher.instance.type !== "Bishop") {
+    return;
+  }
+  const spinY = launcher.body.angvel().y;
+  if (Math.abs(spinY) < 0.5) {
+    return;
+  }
+  const launcherPos = launcher.body.translation();
+  const launcherLinvel = launcher.body.linvel();
+  const speed = Math.hypot(launcherLinvel.x, launcherLinvel.z);
+
+  for (const other of runtime.physicsRuntime.pieces.values()) {
+    if (other.instance.id === launcher.instance.id) {
+      continue;
+    }
+    if (runtime.bishopRicochetedPieceIds.has(other.instance.id)) {
+      continue;
+    }
+    let hasContact = false;
+    runtime.physicsRuntime.world.contactPair(
+      launcher.collider,
+      other.collider,
+      (manifold) => {
+        if (manifold.numSolverContacts() > 0) {
+          hasContact = true;
+        }
+      },
+    );
+    if (!hasContact) {
+      continue;
+    }
+    runtime.bishopRicochetedPieceIds.add(other.instance.id);
+
+    const otherPos = other.body.translation();
+    const dx = otherPos.x - launcherPos.x;
+    const dz = otherPos.z - launcherPos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 1e-6) {
+      continue;
+    }
+    const nx = dx / dist;
+    const nz = dz / dist;
+    // 충돌 법선에 수직인 접선 벡터 (XZ 평면)
+    const tx = -nz;
+    const tz = nx;
+
+    // spinY > 0 이면 시계 반대방향(CCW)이므로 비숍 표면이 충돌면에서 +t로 비비며 비숍은 -t로 반작용 굴절
+    const tangentSign = spinY > 0 ? -1 : 1;
+    const mass = launcher.body.mass();
+    const deflectionSpeed =
+      Math.min(Math.abs(spinY) * 0.15, 1.2) *
+      Math.max(speed, 3.5) *
+      BISHOP_DEFLECTION_IMPULSE_FACTOR;
+    const impulseMagnitude = mass * deflectionSpeed;
+
+    const impulseX = tx * tangentSign * impulseMagnitude;
+    const impulseZ = tz * tangentSign * impulseMagnitude;
+
+    launcher.body.applyImpulse({ x: impulseX, y: 0, z: impulseZ }, true);
+    // 상대 기물에게도 반작용 임펄스 및 회전 토크 전이
+    other.body.applyImpulse(
+      { x: -impulseX * 0.7, y: 0, z: -impulseZ * 0.7 },
+      true,
+    );
+    other.body.applyTorqueImpulse({ x: 0, y: -spinY * 0.006, z: 0 }, true);
+
+    // 비숍의 스핀 일부가 굴절 운동에너지로 전환되어 회전 감쇠
+    launcher.body.setAngvel(
+      { x: 0, y: spinY * 0.55, z: 0 },
+      true,
+    );
+  }
+}
+
+/**
  * fixed step 직후 낙하 제거를 먼저 수행한 다음 선속도와 각속도로 정착 및 턴을 판정한다.
  */
 export function updateTurnAfterStep(
@@ -829,6 +928,7 @@ export function updateTurnAfterStep(
     runtime.sceneRuntime,
     runtime.physicsRuntime,
   );
+  applyBishopSpinRicochet(runtime);
   removeFallenPieces(runtime);
   if (runtime.phase !== "settling") {
     return;
