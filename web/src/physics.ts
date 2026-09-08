@@ -144,6 +144,8 @@ export interface PhysicsRuntime {
   boardTop: number;
   // 렌더 판과 매 리셋마다 일치 여부를 검사하는 현재 물리 바닥 반폭이다.
   boardHalfExtent: number;
+  // 체스 판 셀 크기
+  cellSize: number;
   pieces: Map<string, PieceBodyBinding>;
   // 스테이지 3~8의 파괴·불파괴 변형을 같은 바디 생성 경로로 관리하는 외곽 벽 조각표다.
   breakableWalls: Map<string, BreakableWallPhysicsBinding>;
@@ -871,6 +873,85 @@ export function replacePieceBody(
 }
 
 /**
+ * 폰 승급(프로모션): 기물 종류(type)를 바꾸고 새로운 기물의 콜라이더 점군 및 질량 특성으로 바디를 교체한다.
+ */
+export function promotePieceBody(
+  runtime: PhysicsRuntime,
+  instanceId: string,
+  newType: PieceType,
+  meta: ChessSetMeta,
+): PieceBodyBinding {
+  const existing = runtime.pieces.get(instanceId);
+  if (existing === undefined) {
+    throw new Error(`승급할 물리 개체 id ${instanceId}를 찾지 못했습니다.`);
+  }
+  const pieceMeta = meta.pieces[newType];
+  if (pieceMeta === undefined) {
+    throw new Error(`${newType} 메타데이터를 찾지 못했습니다.`);
+  }
+
+  // 인스턴스 타입 갱신
+  existing.instance.type = newType;
+
+  const colliderDescriptor = createPieceColliderDescriptor(
+    newType,
+    pieceMeta.colliderPoints,
+    PIECE_DENSITY,
+    existing.uniformScale,
+  );
+
+  const translation = existing.body.translation();
+  const rotation = existing.body.rotation();
+  const linearVelocity = existing.body.linvel();
+  const angularVelocity = existing.body.angvel();
+
+  const state: BodyCreationState = {
+    translation: {
+      x: translation.x,
+      y: translation.y,
+      z: translation.z,
+    },
+    rotation: {
+      x: rotation.x,
+      y: rotation.y,
+      z: rotation.z,
+      w: rotation.w,
+    },
+    linearVelocity: {
+      x: linearVelocity.x,
+      y: linearVelocity.y,
+      z: linearVelocity.z,
+    },
+    angularVelocity: {
+      x: angularVelocity.x,
+      y: angularVelocity.y,
+      z: angularVelocity.z,
+    },
+  };
+
+  const spawnTranslation = { ...existing.spawnTranslation };
+  const spawnRotation = { ...existing.spawnRotation };
+  const localPieceHeight = pieceMeta.bounds.y * existing.uniformScale;
+
+  runtime.world.removeCollider(existing.collider, true);
+  runtime.world.removeRigidBody(existing.body);
+  runtime.pieces.delete(instanceId);
+
+  return createPieceBodyFromState(
+    runtime,
+    existing.instance,
+    colliderDescriptor,
+    state,
+    spawnTranslation,
+    spawnRotation,
+    localPieceHeight,
+    existing.uniformScale,
+    0,
+    true,
+  );
+}
+
+/**
  * Rapier WASM과 월드, 평평한 보드 콜라이더, 32개 말 바디를 순서대로 준비한다.
  */
 export async function createPhysicsRuntime(
@@ -909,6 +990,7 @@ export async function createPhysicsRuntime(
     boardFloorLayoutKey: board.layoutKey,
     boardTop: board.top,
     boardHalfExtent,
+    cellSize: meta.cellSize,
     pieces: new Map(),
     breakableWalls: new Map(),
     destroyedBreakableWallIds: new Set(),

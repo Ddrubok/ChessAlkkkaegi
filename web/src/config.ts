@@ -347,4 +347,24 @@ export const ROOK_SPIN_MAX_POWER = 1.0;
 export const BISHOP_SPIN_TORQUE_MULTIPLIER = 2.2;
 export const BISHOP_DEFLECTION_IMPULSE_FACTOR = 0.65;
 
+// 폰(Pawn) 고유 기믹: 상대 끝 진영(Rank 8 백 / Rank 1 흑) 생존 시 프로모션 판정 영역 비율
+// 8x8 보드에서 중심 기준 rank 8(백 도달)은 z >= 3.0 * cellSize, rank 1(흑 도달)은 z <= -3.0 * cellSize
+export const PAWN_PROMOTION_ZONE_RATIO = 3.0;
 
+// 프로모션 가능한 5종 기물 목록 (킹, 퀸, 룩, 비숍, 나이트)
+export const PROMOTION_PIECE_CHOICES: readonly PieceType[] = [
+  "King",
+  "Queen",
+  "Rook",
+  "Bishop",
+  "Knight",
+];
+
+export function isPieceInOpponentEndZone(
+  side: "white" | "black",
+  z: number,
+  cellSize: number,
+): boolean {
+  const threshold = PAWN_PROMOTION_ZONE_RATIO * cellSize - 0.05;
+  return side === "white" ? z >= threshold : z <= -threshold;
+}

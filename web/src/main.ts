@@ -93,19 +93,23 @@ import {
   applyStrategyDecksToPhysics,
   createPhysicsRuntime,
   preSettlePhysics,
+  promotePieceBody,
   rebuildPhysicsBoard,
   resetPhysicsPieces,
 } from "./physics";
 import {
   createSceneRuntime,
+  promotePieceMesh,
   rebuildSceneBoard,
   resetScenePieces,
   synchronizePieceMeshes,
 } from "./scene";
 import {
   initializeSound,
+  playSoundEffect,
   resetPieceHitSoundTracking,
 } from "./sound";
+import { openPromotionModal } from "./promotion-modal";
 import {
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
@@ -318,6 +322,7 @@ async function bootstrap(): Promise<void> {
     physicsRuntime,
     sceneRuntime,
     tuningRuntime.settings,
+    assets.meta.cellSize,
   );
   const runCardState = createRunCardState();
   const stageRunPoints = createStageRunPointState();
@@ -657,6 +662,19 @@ async function bootstrap(): Promise<void> {
   setPieceRemovalHandler(turnRuntime, (pieceId) =>
     handleInputPieceRemoved(inputRuntime, pieceId),
   );
+  turnRuntime.onPromotionReady = (pieceId, side, _choices, onSelect) => {
+    playSoundEffect("power90");
+    openPromotionModal(pieceId, side, onSelect, app);
+  };
+  turnRuntime.onPiecePromoted = (pieceId, newType) => {
+    promotePieceBody(physicsRuntime, pieceId, newType, assets.meta);
+    const stageOptions = {
+      gameMode: gameModeRuntime?.mode ?? "hotseat",
+      stageNumber: gameModeRuntime?.stageNumber ?? 1,
+    };
+    promotePieceMesh(sceneRuntime, assets, pieceId, newType, stageOptions);
+    playSoundEffect("power90");
+  };
   const aiRuntime = createAiRuntime(
     physicsRuntime,
     sceneRuntime,

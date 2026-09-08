@@ -1074,6 +1074,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         if (event === undefined) {
           throw new Error("클래식 조준 시작 포인터가 없습니다.");
         }
+        const isKnight = isKnightPiece(pieceId, runtime.physicsRuntime.pieces);
         const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
         const isBishop = isBishopPiece(pieceId, runtime.physicsRuntime.pieces);
         const hasCustomSpin =
@@ -1086,7 +1087,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
           freezeCameraBasis(runtime.sceneRuntime.camera),
           true,
           true,
-          undefined,
+          isKnight,
           isRook,
           hasCustomSpin,
           isBishop,
@@ -1153,6 +1154,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         return runtime.preparedStrikeSolution.applicationPoint.clone();
       },
       onAimBegin: (runtime, pieceId) => {
+        const isKnight = isKnightPiece(pieceId, runtime.physicsRuntime.pieces);
         const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
         const isBishop = isBishopPiece(pieceId, runtime.physicsRuntime.pieces);
         const hasCustomSpin =
@@ -1162,7 +1164,7 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
           pieceId,
           getBilliardsHorizontalDirection(runtime),
           true,
-          undefined,
+          isKnight,
           isRook,
           hasCustomSpin,
           isBishop,

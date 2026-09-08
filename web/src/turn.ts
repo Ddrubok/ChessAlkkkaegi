@@ -5,11 +5,14 @@ import {
   CAMERA_PITCH_DEG,
   computeKnightEffectivePower,
   FALL_OUT_Y,
+  isPieceInOpponentEndZone,
   KNIGHT_LAUNCH_ANGLE,
   MAX_SETTLE_SECONDS,
+  PROMOTION_PIECE_CHOICES,
   REST_ANGULAR_EPS,
   REST_HOLD_SECONDS,
   REST_LINEAR_EPS,
+  type PieceType,
 } from "./config";
 import type { LaunchRequest } from "./aim";
 import type { GameMode } from "./game-mode";
@@ -36,6 +39,7 @@ export type TurnPhase =
   | "settling"
   | "camera-rotating"
   | "ready"
+  | "promotion"
   | "match-over";
 export type TurnCameraMode = "classic" | "billiards";
 
@@ -107,6 +111,25 @@ export interface TurnRuntime {
   bishopRicochetedPieceIds: Set<string>;
   // 발사 강도와 라이브 물리값을 재생성 없이 참조하는 런타임 설정이다.
   tuningSettings: RuntimeTuningSettings;
+  // 폰 승급 대기 상태 관리 (폰 id -> 상대 끝 진영 도달 턴 및 진영)
+  pendingPromotionPawns: Map<string, { reachedTurn: number; side: PieceSide }>;
+  // 승급 선택을 외부(모달 UI)에 요청하는 연결점
+  onPromotionReady:
+    | ((
+        pieceId: string,
+        side: PieceSide,
+        choices: readonly PieceType[],
+        onSelect: (chosenType: PieceType) => void,
+      ) => void)
+    | null;
+  // 승급이 확정되었을 때 물리/메시 교체를 수행하는 연결점
+  onPiecePromoted: ((pieceId: string, newType: PieceType) => void) | null;
+  // 총 완료된 턴 횟수
+  turnNumber: number;
+  // 순차 처리용 승급 대기 큐
+  promotionQueue: string[];
+  // 체스 보드 셀 크기
+  cellSize: number;
 }
 
 // 턴 교대가 즉시 튀지 않으면서 조작 흐름을 오래 막지 않는 실제 시간 길이다.
@@ -257,6 +280,7 @@ function beginTurnCameraRotation(runtime: TurnRuntime): void {
     runtime.cameraRotation = null;
     runtime.phase = "ready";
     controls.enabled = true;
+    checkAndTriggerPromotion(runtime);
     return;
   }
 
@@ -265,6 +289,7 @@ function beginTurnCameraRotation(runtime: TurnRuntime): void {
     runtime.cameraRotation = null;
     runtime.phase = "ready";
     controls.enabled = true;
+    checkAndTriggerPromotion(runtime);
     return;
   }
   const startedAt = performance.now();
@@ -347,6 +372,7 @@ export function updateTurnCamera(
     runtime.cameraRotation = null;
     runtime.phase = "ready";
     runtime.sceneRuntime.controls.enabled = true;
+    checkAndTriggerPromotion(runtime);
   }
 }
 
@@ -357,6 +383,7 @@ export function createTurnRuntime(
   physicsRuntime: PhysicsRuntime,
   sceneRuntime: SceneRuntime,
   tuningSettings: RuntimeTuningSettings,
+  cellSize?: number,
 ): TurnRuntime {
   return {
     physicsRuntime,
@@ -385,6 +412,14 @@ export function createTurnRuntime(
     lastLaunchHasCustomStrike: false,
     bishopRicochetedPieceIds: new Set(),
     tuningSettings,
+    pendingPromotionPawns: new Map(),
+    onPromotionReady: null,
+    onPiecePromoted: null,
+    turnNumber: 0,
+    promotionQueue: [],
+    cellSize:
+      cellSize ??
+      (physicsRuntime.cellSize ?? physicsRuntime.boardHalfExtent / 4.25),
   };
 }
 
@@ -757,6 +792,10 @@ function removeFallenPieces(runtime: TurnRuntime): void {
       runtime.sceneRuntime.scene.remove(mesh);
       runtime.sceneRuntime.pieceMeshes.delete(pieceId);
     }
+    runtime.pendingPromotionPawns.delete(pieceId);
+    runtime.promotionQueue = runtime.promotionQueue.filter(
+      (id) => id !== pieceId,
+    );
     runtime.onPieceRemoved?.(pieceId);
   }
   runtime.pendingRemovalIds.clear();
@@ -810,6 +849,43 @@ function completeSettlement(runtime: TurnRuntime): void {
     runtime.onMatchOver?.(winner);
     return;
   }
+
+  // 살아남은 폰들의 상대 끝 진영 도달 및 생존 상태 판정
+  for (const binding of runtime.physicsRuntime.pieces.values()) {
+    if (
+      binding.instance.type !== "Pawn" ||
+      runtime.pendingRemovalIds.has(binding.instance.id)
+    ) {
+      continue;
+    }
+    const pos = binding.body.translation();
+    const inEndZone = isPieceInOpponentEndZone(
+      binding.instance.side,
+      pos.z,
+      runtime.cellSize,
+    );
+    const pieceId = binding.instance.id;
+    if (inEndZone) {
+      if (!runtime.pendingPromotionPawns.has(pieceId)) {
+        runtime.pendingPromotionPawns.set(pieceId, {
+          reachedTurn: runtime.turnNumber,
+          side: binding.instance.side,
+        });
+        console.info(
+          `[승급 대기] 폰 ${pieceId}(${binding.instance.side})가 턴 ${runtime.turnNumber}에 상대 진영 끝에 안착했습니다.`,
+        );
+      }
+    } else {
+      if (runtime.pendingPromotionPawns.has(pieceId)) {
+        runtime.pendingPromotionPawns.delete(pieceId);
+        console.info(
+          `[승급 취소] 폰 ${pieceId}가 상대 진영 끝을 벗어났습니다.`,
+        );
+      }
+    }
+  }
+
+  runtime.turnNumber += 1;
   runtime.currentSide =
     runtime.currentSide === "white" ? "black" : "white";
   // 스테이지 대전도 2인 대전과 같은 턴 카메라 회전을 쓴다 (07-26 개발자 결정으로 백 시점 고정 폐기).
@@ -993,4 +1069,95 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.forcedSettleCountedForCurrentSettle = false;
   runtime.cameraRotation = null;
   runtime.ccdPieceId = null;
+  runtime.pendingPromotionPawns.clear();
+  runtime.promotionQueue = [];
+  runtime.turnNumber = 0;
 }
+
+/**
+ * 현재 턴 시작 시, 상대 끝 진영에서 1턴 이상 생존한 폰이 있는지 확인하고 승급 절차를 시작한다.
+ */
+export function checkAndTriggerPromotion(runtime: TurnRuntime): void {
+  if (runtime.phase !== "ready") {
+    return;
+  }
+
+  for (const [pieceId, record] of runtime.pendingPromotionPawns.entries()) {
+    if (record.side !== runtime.currentSide) {
+      continue;
+    }
+    const binding = runtime.physicsRuntime.pieces.get(pieceId);
+    if (
+      !binding ||
+      binding.instance.type !== "Pawn" ||
+      runtime.pendingRemovalIds.has(pieceId)
+    ) {
+      runtime.pendingPromotionPawns.delete(pieceId);
+      continue;
+    }
+    // 상대방의 1턴 반격을 버텨내고 살아남음 (도달 턴 + 2턴 이상 경과: 내 턴 -> 상대 턴 -> 다시 내 턴)
+    if (runtime.turnNumber >= record.reachedTurn + 2) {
+      if (!runtime.promotionQueue.includes(pieceId)) {
+        runtime.promotionQueue.push(pieceId);
+      }
+    }
+  }
+
+  processNextPromotionInQueue(runtime);
+}
+
+/**
+ * 큐에 대기 중인 승급을 순차적으로 처리한다.
+ */
+function processNextPromotionInQueue(runtime: TurnRuntime): void {
+  if (runtime.promotionQueue.length === 0) {
+    return;
+  }
+  const pieceId = runtime.promotionQueue[0];
+  const binding = runtime.physicsRuntime.pieces.get(pieceId);
+  if (
+    !binding ||
+    binding.instance.type !== "Pawn" ||
+    runtime.pendingRemovalIds.has(pieceId)
+  ) {
+    runtime.promotionQueue.shift();
+    runtime.pendingPromotionPawns.delete(pieceId);
+    processNextPromotionInQueue(runtime);
+    return;
+  }
+
+  // AI(흑) 차례인 경우 자동 승급 (Queen)
+  if (runtime.currentSide === "black" && runtime.gameMode === "stage") {
+    runtime.promotionQueue.shift();
+    runtime.pendingPromotionPawns.delete(pieceId);
+    runtime.onPiecePromoted?.(pieceId, "Queen");
+    console.info(`[AI 승급] 흑 폰 ${pieceId}가 퀸(Queen)으로 승급했습니다.`);
+    if (runtime.promotionQueue.length > 0) {
+      processNextPromotionInQueue(runtime);
+    }
+    return;
+  }
+
+  runtime.phase = "promotion";
+  runtime.sceneRuntime.controls.enabled = false;
+
+  if (runtime.onPromotionReady !== null) {
+    runtime.onPromotionReady(
+      pieceId,
+      runtime.currentSide,
+      PROMOTION_PIECE_CHOICES,
+      (chosenType: PieceType) => {
+        runtime.promotionQueue.shift();
+        runtime.pendingPromotionPawns.delete(pieceId);
+        runtime.onPiecePromoted?.(pieceId, chosenType);
+        if (runtime.promotionQueue.length > 0) {
+          processNextPromotionInQueue(runtime);
+        } else {
+          runtime.phase = "ready";
+          runtime.sceneRuntime.controls.enabled = true;
+        }
+      },
+    );
+  }
+}
+
