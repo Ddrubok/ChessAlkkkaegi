@@ -125,6 +125,8 @@ body {
   right: calc(50% + 125px);
   left: auto;
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 0.25rem;
   padding: 0.25rem;
   border: 1px solid rgb(255 255 255 / 14%);
@@ -177,7 +179,6 @@ body {
   text-align: center;
 }
 
-.input-mode-toggle button,
 .return-menu-button,
 .tuning-actions button {
   padding: 0.45rem 0.7rem;
@@ -186,6 +187,27 @@ body {
   color: #f8f2e7;
   background: rgb(255 255 255 / 7%);
   cursor: pointer;
+}
+
+.input-mode-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  height: 26px;
+  padding: 0 0.75rem;
+  margin: 0;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 0.45rem;
+  color: #f8f2e7;
+  background: rgb(255 255 255 / 7%);
+  cursor: pointer;
+  box-sizing: border-box;
+  vertical-align: middle;
 }
 
 .input-mode-toggle button[aria-pressed="true"] {
@@ -1034,17 +1056,24 @@ body {
     z-index: 20;
     height: 28px;
     box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .input-mode-toggle button {
-    padding: 0 5px;
+    padding: 0 6px;
     font-size: 11px;
     font-weight: 700;
     border-radius: 4px;
-    height: 22px;
+    height: 24px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    line-height: 1;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin: 0;
   }
 
   /* 상단 우측 1단: 메뉴로 버튼 (우측 상단 끝) */
@@ -1313,6 +1342,27 @@ body {
     top: 12px;
     left: 0.75rem;
     height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+    gap: 3px;
+    box-sizing: border-box;
+  }
+
+  .input-mode-toggle button {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-family: inherit;
+    box-sizing: border-box;
+    margin: 0;
   }
 
   .return-menu-button {
