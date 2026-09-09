@@ -189,7 +189,7 @@ export function applySoundSettings(): void {
 /**
  * 준비된 효과음 버퍼를 독립 소스로 재생해 겹치는 UI 반응도 서로 끊지 않게 한다.
  */
-function playSoundEffect(id: SoundEffectId): void {
+export function playSoundEffect(id: SoundEffectId): void {
   const runtime = soundRuntime;
   if (
     runtime === null ||
@@ -532,6 +532,9 @@ export function scanLivePieceHitSounds(
       }
       const leftVelocity = left.body.linvel();
       const rightVelocity = right.body.linvel();
+      const isDefendedKing =
+        (left.instance.type === "King" && left.body.isFixed()) ||
+        (right.instance.type === "King" && right.body.isFixed());
       considerContact(
         `piece:${left.instance.id}|piece:${right.instance.id}`,
         Math.hypot(
@@ -539,7 +542,7 @@ export function scanLivePieceHitSounds(
           leftVelocity.y - rightVelocity.y,
           leftVelocity.z - rightVelocity.z,
         ),
-        "hit",
+        isDefendedKing ? "rock" : "hit",
       );
     }
   }

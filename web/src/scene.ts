@@ -24,7 +24,7 @@ import {
   computeBoardSurfaceLayout,
   createBoardFloorGeometry,
 } from "./board";
-import { CAMERA_PITCH_DEG } from "./config";
+import { CAMERA_PITCH_DEG, type PieceType } from "./config";
 import {
   computeBoardHoleRectangles,
   createBoardFloorLayoutKey,
@@ -690,6 +690,39 @@ function addPieceMesh(
 }
 
 /**
+ * 폰 승급: 씬 내 기물 메시의 형상(Geometry) 및 스케일을 새 기물 종류에 맞게 교체한다.
+ */
+export function promotePieceMesh(
+  runtime: SceneRuntime,
+  assets: ChessAssets,
+  pieceId: string,
+  newType: PieceType,
+  stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
+): void {
+  const mesh = runtime.pieceMeshes.get(pieceId);
+  if (mesh === undefined) {
+    throw new Error(`승급할 렌더 메시 id ${pieceId}를 찾지 못했습니다.`);
+  }
+  const geometry = assets.geometries.get(newType);
+  if (geometry === undefined) {
+    throw new Error(`${newType} 공유 지오메트리를 찾지 못했습니다.`);
+  }
+  mesh.geometry = geometry;
+  const side: PieceSide = pieceId.startsWith("white") ? "white" : "black";
+  const dummyInstance: PieceInstance = {
+    id: pieceId,
+    type: newType,
+    side,
+    startingSquare: { file: "a", rank: 1 },
+  };
+  mesh.scale.setScalar(
+    computeStagePieceScale(dummyInstance, assets.meta, stageOptions),
+  );
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+}
+
+/**
  * 카메라·조명·절차 보드와 개별 말 메시를 구성하고 리사이즈 동기화를 연결한다.
  */
 export function createSceneRuntime(
@@ -1135,3 +1168,5 @@ export function resetScenePieces(
     );
   }
 }
+
+

@@ -1,11 +1,19 @@
 import { MathUtils, Spherical, Vector3 } from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
 import {
+  BISHOP_DEFLECTION_IMPULSE_FACTOR,
+  BISHOP_SPIN_TORQUE_MULTIPLIER,
   CAMERA_PITCH_DEG,
+  computeKnightEffectivePower,
   FALL_OUT_Y,
+  isPieceInOpponentEndZone,
+  KNIGHT_LAUNCH_ANGLE,
   MAX_SETTLE_SECONDS,
+  PROMOTION_PIECE_CHOICES,
   REST_ANGULAR_EPS,
   REST_HOLD_SECONDS,
   REST_LINEAR_EPS,
+  type PieceType,
 } from "./config";
 import type { LaunchRequest } from "./aim";
 import type { GameMode } from "./game-mode";
@@ -21,9 +29,11 @@ import type {
 import {
   applyPendingBreakableWallDestructions,
   scanBreakableWallContacts,
+  swapPiecePositions,
 } from "./physics";
 import {
   synchronizeBreakableWallMeshes,
+  synchronizePieceMeshes,
   type SceneRuntime,
 } from "./scene";
 import type { RuntimeTuningSettings } from "./tuning";
@@ -32,6 +42,7 @@ export type TurnPhase =
   | "settling"
   | "camera-rotating"
   | "ready"
+  | "promotion"
   | "match-over";
 export type TurnCameraMode = "classic" | "billiards";
 
@@ -99,8 +110,37 @@ export interface TurnRuntime {
   ccdPieceId: string | null;
   // 타점 패널에서 기본 중심이 아닌 커스텀 타점으로 발사되었는지 여부
   lastLaunchHasCustomStrike: boolean;
+  // 비숍 스핀 리코셰가 같은 기물에 중복 적용되지 않도록 이번 턴에서 충돌 처리된 기물 id 집합이다.
+  bishopRicochetedPieceIds: Set<string>;
   // 발사 강도와 라이브 물리값을 재생성 없이 참조하는 런타임 설정이다.
   tuningSettings: RuntimeTuningSettings;
+  // 폰 승급 대기 상태 관리 (폰 id -> 상대 끝 진영 도달 턴 및 진영)
+  pendingPromotionPawns: Map<string, { reachedTurn: number; side: PieceSide }>;
+  // 승급 선택을 외부(모달 UI)에 요청하는 연결점
+  onPromotionReady:
+    | ((
+        pieceId: string,
+        side: PieceSide,
+        choices: readonly PieceType[],
+        onSelect: (chosenType: PieceType) => void,
+      ) => void)
+    | null;
+  // 승급이 확정되었을 때 물리/메시 교체를 수행하는 연결점
+  onPiecePromoted: ((pieceId: string, newType: PieceType) => void) | null;
+  // 총 완료된 턴 횟수
+  turnNumber: number;
+  // 순차 처리용 승급 대기 큐
+  promotionQueue: string[];
+  // 체스 보드 셀 크기
+  cellSize: number;
+  // 킹 특수 기믹(위치 변경 또는 방어) 사용 여부 (게임당 각 진영 1회 한정, 둘 중 하나만 사용 가능)
+  kingSpecialUsed: { white: boolean; black: boolean };
+  // 킹 위치 변경 기믹 사용 여부 (하위 호환)
+  kingSwapUsed: { white: boolean; black: boolean };
+  // 킹 방어(철벽) 기믹 활성화 여부
+  kingDefenseActive: { white: boolean; black: boolean };
+  // 킹 방어가 풀리기까지 남은 상대 턴 수 (발동 시 1로 설정, 상대 턴 종료 시 0으로 감소하며 해제)
+  kingDefenseTurnsRemaining: { white: number; black: number };
 }
 
 // 턴 교대가 즉시 튀지 않으면서 조작 흐름을 오래 막지 않는 실제 시간 길이다.
@@ -110,6 +150,9 @@ const TURN_CAMERA_ROTATION_SECONDS = 0.55;
  * 선속도와 각속도가 모두 문턱 아래인지 확인해 회전 중인 말을 정지로 오판하지 않는다.
  */
 function isBodySlow(binding: PieceBodyBinding): boolean {
+  if (binding.body.isFixed()) {
+    return true;
+  }
   const linearVelocity = binding.body.linvel();
   const angularVelocity = binding.body.angvel();
   return (
@@ -158,6 +201,9 @@ export function collectGroundedPieceIds(
     ),
   );
   for (const binding of runtime.physicsRuntime.pieces.values()) {
+    if (binding.body.isFixed() || runtime.kingDefenseActive[binding.instance.side]) {
+      grounded.add(binding.instance.id);
+    }
     colliderOwners.set(binding.collider.handle, binding.instance.id);
     neighbors.set(binding.instance.id, new Set());
   }
@@ -251,6 +297,7 @@ function beginTurnCameraRotation(runtime: TurnRuntime): void {
     runtime.cameraRotation = null;
     runtime.phase = "ready";
     controls.enabled = true;
+    checkAndTriggerPromotion(runtime);
     return;
   }
 
@@ -259,6 +306,7 @@ function beginTurnCameraRotation(runtime: TurnRuntime): void {
     runtime.cameraRotation = null;
     runtime.phase = "ready";
     controls.enabled = true;
+    checkAndTriggerPromotion(runtime);
     return;
   }
   const startedAt = performance.now();
@@ -341,6 +389,7 @@ export function updateTurnCamera(
     runtime.cameraRotation = null;
     runtime.phase = "ready";
     runtime.sceneRuntime.controls.enabled = true;
+    checkAndTriggerPromotion(runtime);
   }
 }
 
@@ -351,6 +400,7 @@ export function createTurnRuntime(
   physicsRuntime: PhysicsRuntime,
   sceneRuntime: SceneRuntime,
   tuningSettings: RuntimeTuningSettings,
+  cellSize?: number,
 ): TurnRuntime {
   return {
     physicsRuntime,
@@ -377,7 +427,20 @@ export function createTurnRuntime(
     cameraPerspectiveSide: null,
     ccdPieceId: null,
     lastLaunchHasCustomStrike: false,
+    bishopRicochetedPieceIds: new Set(),
     tuningSettings,
+    pendingPromotionPawns: new Map(),
+    onPromotionReady: null,
+    onPiecePromoted: null,
+    turnNumber: 0,
+    promotionQueue: [],
+    cellSize:
+      cellSize ??
+      (physicsRuntime.cellSize ?? physicsRuntime.boardHalfExtent / 4.25),
+    kingSpecialUsed: { white: false, black: false },
+    kingSwapUsed: { white: false, black: false },
+    kingDefenseActive: { white: false, black: false },
+    kingDefenseTurnsRemaining: { white: 0, black: 0 },
   };
 }
 
@@ -620,6 +683,14 @@ export function applyPendingLaunchBeforeStep(
     return;
   }
 
+  // 킹 방어 활성화 상태로 Fixed였던 기물이라면 발사를 위해 Dynamic으로 전환
+  if (binding.body.isFixed()) {
+    binding.body.setBodyType(
+      RAPIER.RigidBodyType.Dynamic,
+      true,
+    );
+  }
+
   const preLaunchPosition = binding.body.translation();
   const preLaunchRotation = binding.body.rotation();
   const applicationPoint = request.applicationPoint;
@@ -629,15 +700,39 @@ export function applyPendingLaunchBeforeStep(
       `발사 속도 배수 ${speedMultiplier}가 유한한 양수가 아닙니다.`,
     );
   }
+  const effectivePower =
+    binding.instance.type === "Knight"
+      ? computeKnightEffectivePower(request.normalizedPower)
+      : request.normalizedPower;
   const targetSpeed =
-    request.normalizedPower *
+    effectivePower *
     runtime.tuningSettings.maxLaunchSpeed *
     speedMultiplier;
+
+  let launchDirection = request.direction.clone();
+  if (binding.instance.type === "Knight" && launchDirection.y < 0.2) {
+    const horiz = new Vector3(launchDirection.x, 0, launchDirection.z);
+    if (horiz.lengthSq() > 1e-12) {
+      horiz.normalize();
+    } else {
+      horiz.set(0, 0, 1);
+    }
+    const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
+    const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
+    launchDirection.set(
+      horiz.x * cosAngle,
+      sinAngle,
+      horiz.z * cosAngle,
+    ).normalize();
+  } else {
+    launchDirection.normalize();
+  }
+
   const impulseMagnitude = binding.body.mass() * targetSpeed;
   const impulse = {
-    x: request.direction.x * impulseMagnitude,
-    y: request.direction.y * impulseMagnitude,
-    z: request.direction.z * impulseMagnitude,
+    x: launchDirection.x * impulseMagnitude,
+    y: launchDirection.y * impulseMagnitude,
+    z: launchDirection.z * impulseMagnitude,
   };
   const velocityBefore = binding.body.linvel();
   const before = new Vector3(
@@ -652,7 +747,18 @@ export function applyPendingLaunchBeforeStep(
   }
   binding.body.enableCcd(true);
   runtime.ccdPieceId = request.pieceId;
+  runtime.bishopRicochetedPieceIds.clear();
   binding.body.applyImpulseAtPoint(impulse, applicationPoint, true);
+  if (binding.instance.type === "Bishop" || binding.instance.type === "Queen") {
+    // 편심 타점 시 회전 토크를 추가 인가하여 2.2배의 맹렬한 스핀 각속도를 형성
+    const leverX = applicationPoint.x - preLaunchPosition.x;
+    const leverZ = applicationPoint.z - preLaunchPosition.z;
+    const torqueY = leverX * impulse.z - leverZ * impulse.x;
+    if (Math.abs(torqueY) > 1e-6) {
+      const extraTorqueY = torqueY * (BISHOP_SPIN_TORQUE_MULTIPLIER - 1);
+      binding.body.applyTorqueImpulse({ x: 0, y: extraTorqueY, z: 0 }, true);
+    }
+  }
   const velocityAfter = binding.body.linvel();
   const deltaVelocity = new Vector3(
     velocityAfter.x,
@@ -715,6 +821,10 @@ function removeFallenPieces(runtime: TurnRuntime): void {
       runtime.sceneRuntime.scene.remove(mesh);
       runtime.sceneRuntime.pieceMeshes.delete(pieceId);
     }
+    runtime.pendingPromotionPawns.delete(pieceId);
+    runtime.promotionQueue = runtime.promotionQueue.filter(
+      (id) => id !== pieceId,
+    );
     runtime.onPieceRemoved?.(pieceId);
   }
   runtime.pendingRemovalIds.clear();
@@ -747,6 +857,47 @@ function completeSettlement(runtime: TurnRuntime): void {
   disableLaunchCcdAfterTurn(runtime);
   runtime.restHoldSeconds = 0;
   runtime.settleSeconds = 0;
+
+  const justFinishedSide = runtime.currentSide;
+  const otherSide = justFinishedSide === "white" ? "black" : "white";
+
+  // 1. 방어가 활성화된 진영의 킹이 자신의 턴을 마치고 보드 위에 생존해 있다면 Fixed 상태로 유지하여 벽처럼 고정한다.
+  if (runtime.kingDefenseActive[justFinishedSide]) {
+    for (const binding of runtime.physicsRuntime.pieces.values()) {
+      if (
+        binding.instance.type === "King" &&
+        binding.instance.side === justFinishedSide &&
+        !runtime.pendingRemovalIds.has(binding.instance.id) &&
+        binding.body.translation().y >= FALL_OUT_Y
+      ) {
+        binding.body.setBodyType(RAPIER.RigidBodyType.Fixed, true);
+        binding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        binding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      }
+    }
+  }
+
+  // 2. 상대방(justFinishedSide)의 공격 턴이 끝났을 때, 방어 중이던 킹(otherSide)의 방어 지속 턴을 차감한다.
+  //    1턴(상대방 턴 1회)이 경과했으므로 방어가 자동으로 해제(풀림)되어 Dynamic으로 복귀한다.
+  if (runtime.pendingTurnChange && runtime.kingDefenseActive[otherSide]) {
+    runtime.kingDefenseTurnsRemaining[otherSide] -= 1;
+    if (runtime.kingDefenseTurnsRemaining[otherSide] <= 0) {
+      runtime.kingDefenseActive[otherSide] = false;
+      for (const binding of runtime.physicsRuntime.pieces.values()) {
+        if (
+          binding.instance.type === "King" &&
+          binding.instance.side === otherSide &&
+          binding.body.isFixed()
+        ) {
+          binding.body.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
+          binding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          binding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+          binding.body.sleep();
+        }
+      }
+    }
+  }
+
   if (!runtime.pendingTurnChange) {
     runtime.phase = "ready";
     return;
@@ -768,6 +919,43 @@ function completeSettlement(runtime: TurnRuntime): void {
     runtime.onMatchOver?.(winner);
     return;
   }
+
+  // 살아남은 폰들의 상대 끝 진영 도달 및 생존 상태 판정
+  for (const binding of runtime.physicsRuntime.pieces.values()) {
+    if (
+      binding.instance.type !== "Pawn" ||
+      runtime.pendingRemovalIds.has(binding.instance.id)
+    ) {
+      continue;
+    }
+    const pos = binding.body.translation();
+    const inEndZone = isPieceInOpponentEndZone(
+      binding.instance.side,
+      pos.z,
+      runtime.cellSize,
+    );
+    const pieceId = binding.instance.id;
+    if (inEndZone) {
+      if (!runtime.pendingPromotionPawns.has(pieceId)) {
+        runtime.pendingPromotionPawns.set(pieceId, {
+          reachedTurn: runtime.turnNumber,
+          side: binding.instance.side,
+        });
+        console.info(
+          `[승급 대기] 폰 ${pieceId}(${binding.instance.side})가 턴 ${runtime.turnNumber}에 상대 진영 끝에 안착했습니다.`,
+        );
+      }
+    } else {
+      if (runtime.pendingPromotionPawns.has(pieceId)) {
+        runtime.pendingPromotionPawns.delete(pieceId);
+        console.info(
+          `[승급 취소] 폰 ${pieceId}가 상대 진영 끝을 벗어났습니다.`,
+        );
+      }
+    }
+  }
+
+  runtime.turnNumber += 1;
   runtime.currentSide =
     runtime.currentSide === "white" ? "black" : "white";
   // 스테이지 대전도 2인 대전과 같은 턴 카메라 회전을 쓴다 (07-26 개발자 결정으로 백 시점 고정 폐기).
@@ -791,6 +979,92 @@ function disableLaunchCcdAfterTurn(runtime: TurnRuntime): void {
 }
 
 /**
+ * 비숍이 고속 회전(스핀) 중 다른 기물과 충돌할 때, 스핀 방향과 크기에 비례하는 횡방향 임펄스를 가해
+ * 예리한 대각선 각도(45°~75°)로 굴절 튕겨나가는 리코셰(Ricochet) 역학을 인가한다.
+ */
+function applyBishopSpinRicochet(runtime: TurnRuntime): void {
+  if (runtime.ccdPieceId === null) {
+    return;
+  }
+  const launcher = runtime.physicsRuntime.pieces.get(runtime.ccdPieceId);
+  if (
+    launcher === undefined ||
+    (launcher.instance.type !== "Bishop" && launcher.instance.type !== "Queen")
+  ) {
+    return;
+  }
+  const spinY = launcher.body.angvel().y;
+  if (Math.abs(spinY) < 0.5) {
+    return;
+  }
+  const launcherPos = launcher.body.translation();
+  const launcherLinvel = launcher.body.linvel();
+  const speed = Math.hypot(launcherLinvel.x, launcherLinvel.z);
+
+  for (const other of runtime.physicsRuntime.pieces.values()) {
+    if (other.instance.id === launcher.instance.id) {
+      continue;
+    }
+    if (runtime.bishopRicochetedPieceIds.has(other.instance.id)) {
+      continue;
+    }
+    let hasContact = false;
+    runtime.physicsRuntime.world.contactPair(
+      launcher.collider,
+      other.collider,
+      (manifold) => {
+        if (manifold.numSolverContacts() > 0) {
+          hasContact = true;
+        }
+      },
+    );
+    if (!hasContact) {
+      continue;
+    }
+    runtime.bishopRicochetedPieceIds.add(other.instance.id);
+
+    const otherPos = other.body.translation();
+    const dx = otherPos.x - launcherPos.x;
+    const dz = otherPos.z - launcherPos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 1e-6) {
+      continue;
+    }
+    const nx = dx / dist;
+    const nz = dz / dist;
+    // 충돌 법선에 수직인 접선 벡터 (XZ 평면)
+    const tx = -nz;
+    const tz = nx;
+
+    // spinY > 0 이면 시계 반대방향(CCW)이므로 비숍 표면이 충돌면에서 +t로 비비며 비숍은 -t로 반작용 굴절
+    const tangentSign = spinY > 0 ? -1 : 1;
+    const mass = launcher.body.mass();
+    const deflectionSpeed =
+      Math.min(Math.abs(spinY) * 0.15, 1.2) *
+      Math.max(speed, 3.5) *
+      BISHOP_DEFLECTION_IMPULSE_FACTOR;
+    const impulseMagnitude = mass * deflectionSpeed;
+
+    const impulseX = tx * tangentSign * impulseMagnitude;
+    const impulseZ = tz * tangentSign * impulseMagnitude;
+
+    launcher.body.applyImpulse({ x: impulseX, y: 0, z: impulseZ }, true);
+    // 상대 기물에게도 반작용 임펄스 및 회전 토크 전이
+    other.body.applyImpulse(
+      { x: -impulseX * 0.7, y: 0, z: -impulseZ * 0.7 },
+      true,
+    );
+    other.body.applyTorqueImpulse({ x: 0, y: -spinY * 0.006, z: 0 }, true);
+
+    // 비숍의 스핀 일부가 굴절 운동에너지로 전환되어 회전 감쇠
+    launcher.body.setAngvel(
+      { x: 0, y: spinY * 0.55, z: 0 },
+      true,
+    );
+  }
+}
+
+/**
  * fixed step 직후 낙하 제거를 먼저 수행한 다음 선속도와 각속도로 정착 및 턴을 판정한다.
  */
 export function updateTurnAfterStep(
@@ -803,6 +1077,7 @@ export function updateTurnAfterStep(
     runtime.sceneRuntime,
     runtime.physicsRuntime,
   );
+  applyBishopSpinRicochet(runtime);
   removeFallenPieces(runtime);
   if (runtime.phase !== "settling") {
     return;
@@ -867,4 +1142,170 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.forcedSettleCountedForCurrentSettle = false;
   runtime.cameraRotation = null;
   runtime.ccdPieceId = null;
+  runtime.pendingPromotionPawns.clear();
+  runtime.promotionQueue = [];
+  runtime.turnNumber = 0;
+  runtime.kingSpecialUsed = { white: false, black: false };
+  runtime.kingSwapUsed = { white: false, black: false };
+  runtime.kingDefenseActive = { white: false, black: false };
+  runtime.kingDefenseTurnsRemaining = { white: 0, black: 0 };
 }
+
+/**
+ * 현재 턴 시작 시, 상대 끝 진영에서 1턴 이상 생존한 폰이 있는지 확인하고 승급 절차를 시작한다.
+ */
+export function checkAndTriggerPromotion(runtime: TurnRuntime): void {
+  if (runtime.phase !== "ready") {
+    return;
+  }
+
+  for (const [pieceId, record] of runtime.pendingPromotionPawns.entries()) {
+    if (record.side !== runtime.currentSide) {
+      continue;
+    }
+    const binding = runtime.physicsRuntime.pieces.get(pieceId);
+    if (
+      !binding ||
+      binding.instance.type !== "Pawn" ||
+      runtime.pendingRemovalIds.has(pieceId)
+    ) {
+      runtime.pendingPromotionPawns.delete(pieceId);
+      continue;
+    }
+    // 상대방의 1턴 반격을 버텨내고 살아남음 (도달 턴 + 2턴 이상 경과: 내 턴 -> 상대 턴 -> 다시 내 턴)
+    if (runtime.turnNumber >= record.reachedTurn + 2) {
+      if (!runtime.promotionQueue.includes(pieceId)) {
+        runtime.promotionQueue.push(pieceId);
+      }
+    }
+  }
+
+  processNextPromotionInQueue(runtime);
+}
+
+/**
+ * 큐에 대기 중인 승급을 순차적으로 처리한다.
+ */
+function processNextPromotionInQueue(runtime: TurnRuntime): void {
+  if (runtime.promotionQueue.length === 0) {
+    return;
+  }
+  const pieceId = runtime.promotionQueue[0];
+  const binding = runtime.physicsRuntime.pieces.get(pieceId);
+  if (
+    !binding ||
+    binding.instance.type !== "Pawn" ||
+    runtime.pendingRemovalIds.has(pieceId)
+  ) {
+    runtime.promotionQueue.shift();
+    runtime.pendingPromotionPawns.delete(pieceId);
+    processNextPromotionInQueue(runtime);
+    return;
+  }
+
+  // AI(흑) 차례인 경우 자동 승급 (Queen)
+  if (runtime.currentSide === "black" && runtime.gameMode === "stage") {
+    runtime.promotionQueue.shift();
+    runtime.pendingPromotionPawns.delete(pieceId);
+    runtime.onPiecePromoted?.(pieceId, "Queen");
+    console.info(`[AI 승급] 흑 폰 ${pieceId}가 퀸(Queen)으로 승급했습니다.`);
+    if (runtime.promotionQueue.length > 0) {
+      processNextPromotionInQueue(runtime);
+    }
+    return;
+  }
+
+  runtime.phase = "promotion";
+  runtime.sceneRuntime.controls.enabled = false;
+
+  if (runtime.onPromotionReady !== null) {
+    runtime.onPromotionReady(
+      pieceId,
+      runtime.currentSide,
+      PROMOTION_PIECE_CHOICES,
+      (chosenType: PieceType) => {
+        runtime.promotionQueue.shift();
+        runtime.pendingPromotionPawns.delete(pieceId);
+        runtime.onPiecePromoted?.(pieceId, chosenType);
+        if (runtime.promotionQueue.length > 0) {
+          processNextPromotionInQueue(runtime);
+        } else {
+          runtime.phase = "ready";
+          runtime.sceneRuntime.controls.enabled = true;
+        }
+      },
+    );
+  }
+}
+
+/**
+ * 킹 위치 변경(스왑): 게임당 각 진영 1회 한정으로 보드 위의 다른 기물과 킹의 위치를 맞바꾼다.
+ * 위치 변경과 방어 둘 중 하나만 사용할 수 있다.
+ */
+export function executeKingSwap(
+  runtime: TurnRuntime,
+  kingPieceId: string,
+  targetPieceId: string,
+): boolean {
+  const side = runtime.currentSide;
+  if (runtime.kingSpecialUsed[side] || runtime.kingSwapUsed[side] || runtime.kingDefenseActive[side]) {
+    return false;
+  }
+  const kingBinding = runtime.physicsRuntime.pieces.get(kingPieceId);
+  const targetBinding = runtime.physicsRuntime.pieces.get(targetPieceId);
+  if (kingBinding === undefined || targetBinding === undefined) {
+    return false;
+  }
+  if (kingBinding.instance.type !== "King" || kingBinding.instance.side !== side) {
+    return false;
+  }
+  if (kingPieceId === targetPieceId) {
+    return false;
+  }
+
+  const success = swapPiecePositions(
+    runtime.physicsRuntime,
+    kingPieceId,
+    targetPieceId,
+  );
+  if (success) {
+    synchronizePieceMeshes(runtime.sceneRuntime, runtime.physicsRuntime);
+    runtime.kingSpecialUsed[side] = true;
+    runtime.kingSwapUsed[side] = true;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 킹 방어(철벽): 게임당 각 진영 1회 한정(스왑과 택1)으로 킹을 벽처럼 고정하여 다른 기물이 부딪혀도 꿈쩍하지 않고 벽처럼 튕겨내게 한다.
+ */
+export function executeKingDefense(
+  runtime: TurnRuntime,
+  kingPieceId: string,
+): boolean {
+  const side = runtime.currentSide;
+  if (runtime.kingSpecialUsed[side] || runtime.kingSwapUsed[side] || runtime.kingDefenseActive[side]) {
+    return false;
+  }
+  const kingBinding = runtime.physicsRuntime.pieces.get(kingPieceId);
+  if (kingBinding === undefined) {
+    return false;
+  }
+  if (kingBinding.instance.type !== "King" || kingBinding.instance.side !== side) {
+    return false;
+  }
+
+  runtime.kingSpecialUsed[side] = true;
+  runtime.kingDefenseActive[side] = true;
+  runtime.kingDefenseTurnsRemaining[side] = 1;
+  kingBinding.body.setBodyType(
+    RAPIER.RigidBodyType.Fixed,
+    true,
+  );
+  kingBinding.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  kingBinding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  return true;
+}
+
+

@@ -22,6 +22,9 @@ import {
   cancelAim,
   freezeCameraBasis,
   handleAimPieceRemoved,
+  isKnightPiece,
+  isRookPiece,
+  isBishopPiece,
   selectAimPiece,
   setAimApplicationPoint,
   startLaunchPulse,
@@ -49,7 +52,9 @@ import {
   CAM_MIN_DISTANCE,
   CAM_PITCH_MAX,
   CAM_PITCH_MIN,
+  KNIGHT_LAUNCH_ANGLE,
   MAX_DRAG_PIXELS,
+  ROOK_MAX_OVERDRIVE_POWER,
   TOUCH_MAX_DRAG_MIN_PIXELS,
   TOUCH_MAX_DRAG_VIEWPORT_RATIO,
   TOUCH_PIECE_HIT_RADIUS_PIXELS,
@@ -180,6 +185,9 @@ export interface InputPolicy {
   isCameraRotating: () => boolean;
   queueLaunch: (request: LaunchRequest) => LaunchQueueOutcome;
   onModeChanged: (mode: InputMode) => void;
+  canKingSwap?: (pieceId: string) => boolean;
+  onKingSwap?: (kingPieceId: string, targetPieceId: string) => void;
+  onKingDefense?: (kingPieceId: string) => void;
 }
 
 export interface InputRuntime {
@@ -230,6 +238,10 @@ export interface InputRuntime {
   strikeMode: boolean;
   // 3D 직접 클릭과 같은 override를 편집하는 확대 정면 패널 런타임이다.
   strikePointPanel: StrikePointPanelRuntime;
+  // 킹 위치 변경 대상 기물 선택 모드 활성화 여부
+  kingSwapMode: boolean;
+  // 킹 위치 변경 안내 배너 엘리먼트
+  kingSwapBanner: HTMLElement;
 }
 
 // 탭과 카메라 공전 드래그를 같은 캔버스 포인터에서 구별하는 최대 이동 거리다.
@@ -488,13 +500,14 @@ export function computeRedDotPullPower(
   startY: number,
   currentY: number,
   maxDragPixels = MAX_DRAG_PIXELS,
+  maxPower = 1.0,
 ): number {
   const downwardPixels = Math.max(currentY - startY, 0);
   const normalizedPower = downwardPixels / maxDragPixels;
-  // 시작 좌표와 소수 거리의 덧셈 오차로 최대점이 0.999…가 되는 경우만 정확히 1로 맞춘다.
-  return normalizedPower >= 1 - Number.EPSILON
-    ? 1
-    : Math.min(normalizedPower, 1);
+  // 시작 좌표와 소수 거리의 덧셈 오차로 최대점이 maxPower - eps인 경우를 보정한다.
+  return normalizedPower >= maxPower - Number.EPSILON
+    ? maxPower
+    : Math.min(normalizedPower, maxPower);
 }
 
 /**
@@ -737,7 +750,20 @@ function refreshBilliardsPreview(
       ? getBilliardsHorizontalDirection(runtime)
       : horizontalOverride.clone().normalize();
   if (runtime.aimRuntime.activeAim?.pieceId !== pieceId) {
-    beginDirectedAim(runtime.aimRuntime, pieceId, horizontal, true);
+    const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+    const isBishop = isBishopPiece(pieceId, runtime.physicsRuntime.pieces);
+    const hasCustomSpin =
+      runtime.aimParametersRuntime.strikePointOverride !== null;
+    beginDirectedAim(
+      runtime.aimRuntime,
+      pieceId,
+      horizontal,
+      true,
+      undefined,
+      isRook,
+      hasCustomSpin,
+      isBishop,
+    );
   }
   const solution = updateStrikePreview(
     runtime.aimParametersRuntime,
@@ -831,7 +857,7 @@ function updateAdaptiveCloseDistance(runtime: InputRuntime): void {
 /**
  * 선택을 교체하고 당구식에서는 즉시 power 0 미리보기와 44도 카메라 복원을 시작한다.
  */
-function selectPiece(
+export function selectPiece(
   runtime: InputRuntime,
   pieceId: string | null,
 ): void {
@@ -894,6 +920,8 @@ function cancelInteraction(
   if (clearSelection) {
     runtime.adaptiveCloseDistance = null;
     runtime.strikeMode = false;
+    runtime.kingSwapMode = false;
+    runtime.kingSwapBanner.hidden = true;
     runtime.orbitTouchPointerIds.clear();
     clearStrikePointOverride(runtime.aimParametersRuntime);
     updateActionBar(runtime);
@@ -1055,12 +1083,23 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         if (event === undefined) {
           throw new Error("클래식 조준 시작 포인터가 없습니다.");
         }
+        const isKnight = isKnightPiece(pieceId, runtime.physicsRuntime.pieces);
+        const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+        const isBishop = isBishopPiece(pieceId, runtime.physicsRuntime.pieces);
+        const hasCustomSpin =
+          runtime.aimParametersRuntime.strikePointOverride !== null;
         beginAim(
           runtime.aimRuntime,
           pieceId,
           event.clientX,
           event.clientY,
           freezeCameraBasis(runtime.sceneRuntime.camera),
+          true,
+          true,
+          isKnight,
+          isRook,
+          hasCustomSpin,
+          isBishop,
         );
         const binding = runtime.physicsRuntime.pieces.get(pieceId);
         const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
@@ -1095,7 +1134,27 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         if (runtime.preparedStrikeSolution === null) {
           throw new Error("당구식 발사 방향이 준비되지 않았습니다.");
         }
-        return runtime.preparedStrikeSolution.direction.clone();
+        const dir = runtime.preparedStrikeSolution.direction.clone();
+        const selectedId = runtime.aimRuntime.selectedPieceId;
+        if (
+          selectedId &&
+          isKnightPiece(selectedId, runtime.physicsRuntime.pieces)
+        ) {
+          const horiz = new Vector3(dir.x, 0, dir.z);
+          if (horiz.lengthSq() > 1e-12) {
+            horiz.normalize();
+          } else {
+            horiz.set(0, 0, 1);
+          }
+          const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
+          const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
+          return new Vector3(
+            horiz.x * cosAngle,
+            sinAngle,
+            horiz.z * cosAngle,
+          ).normalize();
+        }
+        return dir;
       },
       computeApplicationPoint: (runtime) => {
         if (runtime.preparedStrikeSolution === null) {
@@ -1104,11 +1163,20 @@ function createStrategies(): Record<InputMode, InputModeStrategy> {
         return runtime.preparedStrikeSolution.applicationPoint.clone();
       },
       onAimBegin: (runtime, pieceId) => {
+        const isKnight = isKnightPiece(pieceId, runtime.physicsRuntime.pieces);
+        const isRook = isRookPiece(pieceId, runtime.physicsRuntime.pieces);
+        const isBishop = isBishopPiece(pieceId, runtime.physicsRuntime.pieces);
+        const hasCustomSpin =
+          runtime.aimParametersRuntime.strikePointOverride !== null;
         beginDirectedAim(
           runtime.aimRuntime,
           pieceId,
           getBilliardsHorizontalDirection(runtime),
           true,
+          isKnight,
+          isRook,
+          hasCustomSpin,
+          isBishop,
         );
       },
       onAimCancel: (runtime) => {
@@ -1134,19 +1202,35 @@ function updateModeToggle(runtime: InputRuntime): void {
  * 담돌받기 / 타점선택 앙션 바를 현재 상태로 보여준다.
  */
 function updateActionBar(runtime: InputRuntime): void {
+  const selectedPieceId = runtime.aimRuntime.selectedPieceId;
+  const canSwap =
+    selectedPieceId !== null &&
+    Boolean(runtime.policy.canKingSwap?.(selectedPieceId));
+
   const selected =
-    runtime.mode === "billiards" &&
-    runtime.aimRuntime.selectedPieceId !== null;
+    (runtime.mode === "billiards" || canSwap) &&
+    selectedPieceId !== null;
 
   runtime.actionBar.hidden = !selected;
   // 선택·동작 전환 직후 다음 입력 프레임에서 위치를 반드시 다시 계산한다.
   runtime.actionBarLastPositionedAt = Number.NEGATIVE_INFINITY;
   for (const button of runtime.actionBar.querySelectorAll("button")) {
-    const active =
-      button.dataset.action === "strike"
-        ? runtime.strikeMode
-        : !runtime.strikeMode;
-    button.setAttribute("aria-pressed", String(active));
+    if (button.dataset.action === "swap") {
+      button.hidden = !canSwap;
+      button.textContent = runtime.kingSwapMode ? "스왑 취소" : "위치 변경";
+      button.setAttribute("aria-pressed", String(runtime.kingSwapMode));
+    } else if (button.dataset.action === "defend") {
+      button.hidden = !canSwap || runtime.kingSwapMode;
+      button.textContent = "철벽 방어";
+      button.setAttribute("aria-pressed", "false");
+    } else {
+      button.hidden = runtime.mode !== "billiards";
+      const active =
+        button.dataset.action === "strike"
+          ? runtime.strikeMode
+          : !runtime.strikeMode;
+      button.setAttribute("aria-pressed", String(active));
+    }
   }
   if (!selected) {
     return;
@@ -1358,6 +1442,50 @@ export function switchInputMode(
 }
 
 /**
+ * 킹 위치 교환 모드에서 3D 렌더 메시 또는 화면 좌표 최근접 기물을 찾는다.
+ */
+function findSwapTargetPiece(
+  runtime: InputRuntime,
+  event: PointerEvent,
+): string | null {
+  const directHit = raycastNearestPiece(runtime, event);
+  if (directHit !== null && runtime.physicsRuntime.pieces.has(directHit)) {
+    const binding = runtime.physicsRuntime.pieces.get(directHit);
+    if (binding && binding.body.translation().y >= -1.0) {
+      return directHit;
+    }
+  }
+  const rect = runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    return null;
+  }
+  const camera = runtime.sceneRuntime.camera;
+  const worldPos = new Vector3();
+  const projected = new Vector3();
+  const candidates: ScreenSpacePieceCandidate[] = [];
+  for (const [pieceId, binding] of runtime.physicsRuntime.pieces) {
+    if (binding.body.translation().y < -1.0) {
+      continue;
+    }
+    const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
+    if (mesh === undefined) {
+      continue;
+    }
+    mesh.getWorldPosition(worldPos);
+    projected.copy(worldPos).project(camera);
+    if (projected.z < -1 || projected.z > 1) {
+      continue;
+    }
+    candidates.push({
+      pieceId,
+      clientX: rect.left + ((projected.x + 1) / 2) * rect.width,
+      clientY: rect.top + ((1 - projected.y) / 2) * rect.height,
+    });
+  }
+  return findNearestTouchPieceInScreenSpace(event, candidates);
+}
+
+/**
  * 빨간 점을 캡처 단계에서 먼저 판정하고 미히트는 기존 OrbitControls 흐름에 넘긴다.
  */
 function handleCanvasPointerDown(
@@ -1378,6 +1506,27 @@ function handleCanvasPointerDown(
   const isBilliardsTouch =
     runtime.mode === "billiards" &&
     isTouchPointerEvent(event);
+
+  if (runtime.kingSwapMode) {
+    const swapTargetId = findSwapTargetPiece(runtime, event);
+    runtime.activePointerId = event.pointerId;
+    runtime.activeCaptureElement = isBilliardsTouch ? null : canvas;
+    runtime.gesture = {
+      source: "billiards-canvas",
+      startX: event.clientX,
+      startY: event.clientY,
+      maximumDistance: 0,
+      candidatePieceId: swapTargetId,
+      maxDragPixels: MAX_DRAG_PIXELS,
+    };
+    if (isBilliardsTouch) {
+      runtime.orbitTouchPointerIds.add(event.pointerId);
+    } else {
+      canvas.setPointerCapture(event.pointerId);
+    }
+    return;
+  }
+
   const selectedCanAim =
     selectedId !== null &&
     runtime.policy.canSelectPiece(selectedId);
@@ -1589,13 +1738,23 @@ function handleCanvasPointerMove(
     );
   } else if (gesture.source === "red-dot") {
     event.preventDefault();
+    const selectedPieceId = runtime.aimRuntime.selectedPieceId;
+    const isRook =
+      selectedPieceId !== null &&
+      isRookPiece(selectedPieceId, runtime.physicsRuntime.pieces);
+    const hasCustomSpin =
+      runtime.aimParametersRuntime.strikePointOverride !== null;
+    const maxPower =
+      isRook && !hasCustomSpin ? ROOK_MAX_OVERDRIVE_POWER : 1.0;
     setAimPower(
       runtime.aimParametersRuntime,
       computeRedDotPullPower(
         gesture.startY,
         event.clientY,
         gesture.maxDragPixels,
+        maxPower,
       ),
+      maxPower,
     );
     const solution = runtime.preparedStrikeSolution;
     if (solution !== null) {
@@ -1671,6 +1830,33 @@ function handleCanvasPointerUp(
   const tapped =
     gesture.maximumDistance <= TAP_MAX_DISTANCE_PIXELS;
   const candidatePieceId = gesture.candidatePieceId;
+
+  if (runtime.kingSwapMode) {
+    if (tapped) {
+      const selectedKingId = runtime.aimRuntime.selectedPieceId;
+      if (
+        candidatePieceId !== null &&
+        selectedKingId !== null &&
+        candidatePieceId !== selectedKingId
+      ) {
+        runtime.kingSwapMode = false;
+        runtime.kingSwapBanner.hidden = true;
+        cancelInteraction(runtime, true);
+        runtime.policy.onKingSwap?.(selectedKingId, candidatePieceId);
+        return;
+      } else {
+        runtime.kingSwapMode = false;
+        runtime.kingSwapBanner.hidden = true;
+        updateActionBar(runtime);
+        cancelInteraction(runtime, false);
+        return;
+      }
+    } else {
+      cancelInteraction(runtime, false);
+      return;
+    }
+  }
+
   if (tapped && candidatePieceId !== null) {
     playPieceClickSound();
   }
@@ -1682,6 +1868,15 @@ function handleCanvasPointerUp(
     const point = raycastSelectedPieceSurface(runtime, event);
     if (point !== null) {
       setStrikePointOverride(runtime.aimParametersRuntime, point);
+      if (runtime.aimRuntime.activeAim !== null) {
+        runtime.aimRuntime.activeAim.hasCustomSpin = true;
+        if (
+          runtime.aimRuntime.activeAim.isRook &&
+          runtime.aimRuntime.activeAim.normalizedPower > 1.0
+        ) {
+          runtime.aimRuntime.activeAim.normalizedPower = 1.0;
+        }
+      }
       beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
       try {
         refreshBilliardsPreview(runtime);
@@ -1809,17 +2004,32 @@ export function createInputRuntime(
   const actionButtons: Record<string, HTMLButtonElement> = {
     launch: document.createElement("button"),
     strike: document.createElement("button"),
+    swap: document.createElement("button"),
+    defend: document.createElement("button"),
   };
 
   actionButtons.launch.type = "button";
   actionButtons.launch.dataset.action = "launch";
   actionButtons.strike.type = "button";
   actionButtons.strike.dataset.action = "strike";
-  actionBar.append(actionButtons.launch, actionButtons.strike);
+  actionButtons.swap.type = "button";
+  actionButtons.swap.dataset.action = "swap";
+  actionButtons.swap.hidden = true;
+  actionButtons.defend.type = "button";
+  actionButtons.defend.dataset.action = "defend";
+  actionButtons.defend.hidden = true;
+  actionBar.append(
+    actionButtons.launch,
+    actionButtons.strike,
+    actionButtons.swap,
+    actionButtons.defend,
+  );
 
   const updateActionBarLabels = () => {
     actionButtons.launch.textContent = I18nManager.t("ingame.launch");
     actionButtons.strike.textContent = I18nManager.t("ingame.strike_select");
+    actionButtons.swap.textContent = "위치 변경";
+    actionButtons.defend.textContent = "철벽 방어";
   };
   updateActionBarLabels();
   sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
@@ -1836,6 +2046,11 @@ export function createInputRuntime(
   }
   const strikePointPanel =
     createStrikePointPanel(overlayContainer);
+  const kingSwapBanner = document.createElement("div");
+  kingSwapBanner.className = "king-swap-banner";
+  kingSwapBanner.textContent = "교환할 기물을 터치/클릭하세요 (취소: 빈 곳 클릭)";
+  kingSwapBanner.hidden = true;
+  overlayContainer.append(kingSwapBanner);
   const runtime: InputRuntime = {
     sceneRuntime,
     physicsRuntime,
@@ -1870,6 +2085,8 @@ export function createInputRuntime(
     actionBarPanelWasVisible: false,
     strikeMode: false,
     strikePointPanel,
+    kingSwapMode: false,
+    kingSwapBanner,
   };
 
   for (const eventName of [
@@ -1918,6 +2135,15 @@ export function createInputRuntime(
         runtime.aimParametersRuntime,
         point,
       );
+      if (runtime.aimRuntime.activeAim !== null) {
+        runtime.aimRuntime.activeAim.hasCustomSpin = true;
+        if (
+          runtime.aimRuntime.activeAim.isRook &&
+          runtime.aimRuntime.activeAim.normalizedPower > 1.0
+        ) {
+          runtime.aimRuntime.activeAim.normalizedPower = 1.0;
+        }
+      }
       try {
         if (runtime.mode === "billiards") {
           refreshBilliardsPreview(runtime);
@@ -1932,6 +2158,9 @@ export function createInputRuntime(
   );
   strikePointPanel.resetButton.addEventListener("click", () => {
     clearStrikePointOverride(runtime.aimParametersRuntime);
+    if (runtime.aimRuntime.activeAim !== null) {
+      runtime.aimRuntime.activeAim.hasCustomSpin = false;
+    }
     if (runtime.aimRuntime.selectedPieceId === null) {
       return;
     }
@@ -1956,12 +2185,28 @@ export function createInputRuntime(
   updateActionBar(runtime);
   for (const button of actionBar.querySelectorAll("button")) {
     button.addEventListener("click", () => {
+      const action = button.dataset.action;
+      if (action === "swap") {
+        const selectedId = runtime.aimRuntime.selectedPieceId;
+        if (selectedId !== null) {
+          runtime.kingSwapMode = !runtime.kingSwapMode;
+          runtime.kingSwapBanner.hidden = !runtime.kingSwapMode;
+          updateActionBar(runtime);
+        }
+        return;
+      }
+      if (action === "defend") {
+        const selectedId = runtime.aimRuntime.selectedPieceId;
+        if (selectedId !== null) {
+          runtime.policy.onKingDefense?.(selectedId);
+        }
+        return;
+      }
       if (runtime.mode !== "billiards") {
         // 클래식은 즉시 드래그 전용이라 숨은 동작 버튼을 강제로 눌러도 타점 모드에 들어가지 않는다.
         runtime.strikeMode = false;
         return;
       }
-      const action = button.dataset.action;
       if (action === "strike") {
         runtime.strikeMode = true;
         if (runtime.aimRuntime.selectedPieceId !== null) {

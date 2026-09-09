@@ -55,6 +55,7 @@ import {
   handleInputPieceRemoved,
   lockInputForMatchOver,
   resetInputAfterMatch,
+  selectPiece,
   switchInputMode,
 } from "./input";
 import {
@@ -93,19 +94,23 @@ import {
   applyStrategyDecksToPhysics,
   createPhysicsRuntime,
   preSettlePhysics,
+  promotePieceBody,
   rebuildPhysicsBoard,
   resetPhysicsPieces,
 } from "./physics";
 import {
   createSceneRuntime,
+  promotePieceMesh,
   rebuildSceneBoard,
   resetScenePieces,
   synchronizePieceMeshes,
 } from "./scene";
 import {
   initializeSound,
+  playSoundEffect,
   resetPieceHitSoundTracking,
 } from "./sound";
+import { openPromotionModal } from "./promotion-modal";
 import {
   createTuningRuntime,
   reapplyTuningPhysicsSettings,
@@ -142,6 +147,8 @@ import {
 import {
   canSelectTurnPiece,
   createTurnRuntime,
+  executeKingDefense,
+  executeKingSwap,
   queueTurnLaunch,
   resetTurnRuntime,
   setMatchOverHandler,
@@ -318,6 +325,7 @@ async function bootstrap(): Promise<void> {
     physicsRuntime,
     sceneRuntime,
     tuningRuntime.settings,
+    assets.meta.cellSize,
   );
   const runCardState = createRunCardState();
   const stageRunPoints = createStageRunPointState();
@@ -610,6 +618,46 @@ async function bootstrap(): Promise<void> {
             canSelectTurnPiece(turnRuntime, pieceId),
       isCameraRotating: () =>
         turnRuntime.phase === "camera-rotating",
+      canKingSwap: (pieceId) => {
+        if (turnRuntime.phase !== "ready") {
+          return false;
+        }
+        const side = turnRuntime.currentSide;
+        if (
+          turnRuntime.kingSpecialUsed[side] ||
+          turnRuntime.kingSwapUsed[side] ||
+          turnRuntime.kingDefenseActive[side]
+        ) {
+          return false;
+        }
+        const binding = physicsRuntime.pieces.get(pieceId);
+        if (binding?.instance.type !== "King" || binding.instance.side !== side) {
+          return false;
+        }
+        if (gameModeRuntime?.mode === "stage" && side === "black") {
+          return false;
+        }
+        if (gameModeRuntime?.mode === "online") {
+          return onlineRuntime?.canSelectLocalPiece(pieceId) === true;
+        }
+        return true;
+      },
+      onKingSwap: (kingPieceId, targetPieceId) => {
+        const swapped = executeKingSwap(turnRuntime, kingPieceId, targetPieceId);
+        if (swapped) {
+          playSoundEffect("power90");
+          cancelInputInteraction(inputRuntime, true);
+          selectPiece(inputRuntime, kingPieceId);
+        }
+      },
+      onKingDefense: (kingPieceId) => {
+        const defended = executeKingDefense(turnRuntime, kingPieceId);
+        if (defended) {
+          playSoundEffect("button");
+          cancelInputInteraction(inputRuntime, true);
+          selectPiece(inputRuntime, kingPieceId);
+        }
+      },
       queueLaunch: (request) => {
         const binding = physicsRuntime.pieces.get(request.pieceId);
         const gameMode = gameModeRuntime?.mode ?? "hotseat";
@@ -657,6 +705,19 @@ async function bootstrap(): Promise<void> {
   setPieceRemovalHandler(turnRuntime, (pieceId) =>
     handleInputPieceRemoved(inputRuntime, pieceId),
   );
+  turnRuntime.onPromotionReady = (pieceId, side, _choices, onSelect) => {
+    playSoundEffect("power90");
+    openPromotionModal(pieceId, side, onSelect, app);
+  };
+  turnRuntime.onPiecePromoted = (pieceId, newType) => {
+    promotePieceBody(physicsRuntime, pieceId, newType, assets.meta);
+    const stageOptions = {
+      gameMode: gameModeRuntime?.mode ?? "hotseat",
+      stageNumber: gameModeRuntime?.stageNumber ?? 1,
+    };
+    promotePieceMesh(sceneRuntime, assets, pieceId, newType, stageOptions);
+    playSoundEffect("power90");
+  };
   const aiRuntime = createAiRuntime(
     physicsRuntime,
     sceneRuntime,

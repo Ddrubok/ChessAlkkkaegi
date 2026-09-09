@@ -327,3 +327,43 @@ export type PieceType = (typeof PIECE_TYPES)[number];
 export function deriveBoardHalfExtent(cellSize: number): number {
   return ((8 + BOARD_BORDER_CELLS * 2) * cellSize) / 2;
 }
+
+// 나이트(Knight) 고유 기믹: 포물선 발사 고정 앙각 (65도 - 바로 앞 폰을 높이 뛰어넘는 궤적)
+export const KNIGHT_LAUNCH_ANGLE_DEG = 65;
+export const KNIGHT_LAUNCH_ANGLE = (KNIGHT_LAUNCH_ANGLE_DEG * Math.PI) / 180;
+
+// 나이트 최소 발사 파워 보정 (약하게 쏴도 바로 앞 폰에 부딪히지 않고 폰 너머로 도약하도록 보장)
+export const KNIGHT_MIN_LAUNCH_POWER = 0.38;
+export function computeKnightEffectivePower(normalizedPower: number): number {
+  const clamped = Math.min(Math.max(normalizedPower, 0), 1);
+  return KNIGHT_MIN_LAUNCH_POWER + (1 - KNIGHT_MIN_LAUNCH_POWER) * clamped;
+}
+
+// 룩(Rook) 고유 기믹: 기본 무회전(중앙 타점) 시 최대 150% 오버드라이브 파워, 스핀 부여 시 최대 100%
+export const ROOK_MAX_OVERDRIVE_POWER = 1.5;
+export const ROOK_SPIN_MAX_POWER = 1.0;
+
+// 비숍(Bishop) 고유 기믹: 기물 충돌 시 스핀 비례 대각선 굴절(Ricochet) 및 회전 토크 증폭
+export const BISHOP_SPIN_TORQUE_MULTIPLIER = 2.2;
+export const BISHOP_DEFLECTION_IMPULSE_FACTOR = 0.65;
+
+// 폰(Pawn) 고유 기믹: 상대 끝 진영(Rank 8 백 / Rank 1 흑) 생존 시 프로모션 판정 영역 비율
+// 8x8 보드에서 중심 기준 rank 8(백 도달)은 z >= 3.0 * cellSize, rank 1(흑 도달)은 z <= -3.0 * cellSize
+export const PAWN_PROMOTION_ZONE_RATIO = 3.0;
+
+// 프로모션 가능한 4종 기물 목록 (퀸, 룩, 비숍, 나이트 - 킹 제외)
+export const PROMOTION_PIECE_CHOICES: readonly PieceType[] = [
+  "Queen",
+  "Rook",
+  "Bishop",
+  "Knight",
+];
+
+export function isPieceInOpponentEndZone(
+  side: "white" | "black",
+  z: number,
+  cellSize: number,
+): boolean {
+  const threshold = PAWN_PROMOTION_ZONE_RATIO * cellSize - 0.05;
+  return side === "white" ? z >= threshold : z <= -threshold;
+}
