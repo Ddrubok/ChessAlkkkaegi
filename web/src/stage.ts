@@ -458,12 +458,21 @@ export function computeStageSpawnPose(
       options.cardTuning,
     );
   if (!usesProneStart) {
-    return {
-      translation: { x: center.x, y: SPAWN_GAP, z: center.z },
-      rotation:
+    let rotation: { x: number; y: number; z: number; w: number };
+    if (instance.type === "Knight") {
+      rotation =
+        instance.side === "black"
+          ? { x: 0, y: -Math.SQRT1_2, z: 0, w: Math.SQRT1_2 }
+          : { x: 0, y: Math.SQRT1_2, z: 0, w: Math.SQRT1_2 };
+    } else {
+      rotation =
         instance.side === "black"
           ? { x: 0, y: 1, z: 0, w: 0 }
-          : { x: 0, y: 0, z: 0, w: 1 },
+          : { x: 0, y: 0, z: 0, w: 1 };
+    }
+    return {
+      translation: { x: center.x, y: SPAWN_GAP, z: center.z },
+      rotation,
     };
   }
   const halfSqrt = Math.SQRT1_2;
