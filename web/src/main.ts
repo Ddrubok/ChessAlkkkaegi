@@ -1342,7 +1342,7 @@ async function bootstrap(): Promise<void> {
       const remainingWhite = [...physicsRuntime.pieces.values()].filter(
         (p) => p.instance.side === "white",
       );
-      const initialBlackCount = tutorialManager.currentStep === 5 ? 3 : 1;
+      const initialBlackCount = tutorialManager.getStepPieces(tutorialManager.currentStep).filter((p) => p.side === "black").length;
       const hadHit = remainingBlack.length < initialBlackCount || remainingWhite.length > 0;
       const hasCustomStrikePoint =
         turnRuntime.lastLaunchHasCustomStrike ||

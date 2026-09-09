@@ -114,6 +114,7 @@ export class TutorialManager {
   public getStepPieces(step: number): PieceInstance[] {
     switch (step) {
       case 1:
+        // Step 1: 폰(Pawn) 슬링샷 기본 발사와 전진
         return [
           {
             id: "white-pawn-d2",
@@ -122,79 +123,101 @@ export class TutorialManager {
             startingSquare: { file: "d", rank: 2 },
           },
           {
-            id: "black-pawn-d5",
+            id: "black-pawn-d6",
             type: "Pawn",
             side: "black",
-            startingSquare: { file: "d", rank: 5 },
+            startingSquare: { file: "d", rank: 6 },
           },
         ];
 
       case 2:
+        // Step 2: 나이트(Knight) 65도 포물선 도약 기믹 (앞 폰을 뛰어넘어 적 타격)
         return [
           {
-            id: "white-pawn-d2",
-            type: "Pawn",
+            id: "white-knight-d2",
+            type: "Knight",
             side: "white",
             startingSquare: { file: "d", rank: 2 },
           },
           {
-            id: "black-pawn-f5",
+            id: "white-pawn-d4",
+            type: "Pawn",
+            side: "white",
+            startingSquare: { file: "d", rank: 4 },
+          },
+          {
+            id: "black-pawn-d7",
             type: "Pawn",
             side: "black",
-            startingSquare: { file: "f", rank: 5 },
+            startingSquare: { file: "d", rank: 7 },
           },
         ];
 
       case 3:
+        // Step 3: 비숍(Bishop) 스핀 쿠션 마스터 기믹 (타점 설정 후 스핀 타격)
         return [
           {
-            id: "white-pawn-d2",
-            type: "Pawn",
+            id: "white-bishop-d2",
+            type: "Bishop",
             side: "white",
             startingSquare: { file: "d", rank: 2 },
           },
           {
-            id: "black-pawn-d5",
+            id: "black-pawn-d6",
             type: "Pawn",
             side: "black",
-            startingSquare: { file: "d", rank: 5 },
+            startingSquare: { file: "d", rank: 6 },
           },
         ];
 
       case 4:
+        // Step 4: 킹(King)의 특수 생존기: 스왑과 철벽 방어 (전방 폰과 스왑 후 적 장외)
         return [
           {
-            id: "white-pawn-d3",
-            type: "Pawn",
+            id: "white-king-d2",
+            type: "King",
             side: "white",
-            startingSquare: { file: "d", rank: 3 },
+            startingSquare: { file: "d", rank: 2 },
           },
           {
-            id: "black-knight-d8",
-            type: "Knight",
+            id: "white-pawn-f6",
+            type: "Pawn",
+            side: "white",
+            startingSquare: { file: "f", rank: 6 },
+          },
+          {
+            id: "black-pawn-f8",
+            type: "Pawn",
             side: "black",
-            startingSquare: { file: "d", rank: 8 },
+            startingSquare: { file: "f", rank: 8 },
           },
         ];
 
       case 5:
       default:
+        // Step 5: 기믹 총동원 실전 미니 대전
         return [
           {
-            id: "white-pawn-c2",
+            id: "white-pawn-d2",
             type: "Pawn",
             side: "white",
-            startingSquare: { file: "c", rank: 2 },
+            startingSquare: { file: "d", rank: 2 },
           },
           {
-            id: "white-pawn-e2",
-            type: "Pawn",
+            id: "white-knight-b1",
+            type: "Knight",
             side: "white",
-            startingSquare: { file: "e", rank: 2 },
+            startingSquare: { file: "b", rank: 1 },
           },
           {
-            id: "white-rook-d1",
-            type: "Rook",
+            id: "white-bishop-f1",
+            type: "Bishop",
+            side: "white",
+            startingSquare: { file: "f", rank: 1 },
+          },
+          {
+            id: "white-queen-d1",
+            type: "Queen",
             side: "white",
             startingSquare: { file: "d", rank: 1 },
           },
@@ -205,16 +228,16 @@ export class TutorialManager {
             startingSquare: { file: "e", rank: 1 },
           },
           {
-            id: "black-pawn-c7",
+            id: "black-pawn-d7",
             type: "Pawn",
             side: "black",
-            startingSquare: { file: "c", rank: 7 },
+            startingSquare: { file: "d", rank: 7 },
           },
           {
-            id: "black-pawn-e7",
-            type: "Pawn",
+            id: "black-knight-b8",
+            type: "Knight",
             side: "black",
-            startingSquare: { file: "e", rank: 7 },
+            startingSquare: { file: "b", rank: 8 },
           },
           {
             id: "black-king-e8",
