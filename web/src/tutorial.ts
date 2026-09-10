@@ -456,10 +456,11 @@ export class TutorialManager {
     }
 
     const stepInfo = getTutorialStepInfo(this.currentStep, this.tutorialType);
-    const badgePrefix =
+    const rawBadge =
       this.tutorialType === "advanced"
         ? I18nManager.t("lobby.mode_tutorial_advanced")
         : I18nManager.t("lobby.mode_tutorial");
+    const badgePrefix = rawBadge.replace(/\n/g, " ");
 
     this.overlayElement.innerHTML = `
       <div class="tutorial-coach-card">
