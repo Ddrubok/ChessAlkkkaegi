@@ -216,18 +216,18 @@ async function bootstrap(): Promise<void> {
   const metaRuntime = createMetaRuntime();
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
   let startModeAction:
-    | ((mode: GameMode, selectedStage?: number) => Promise<void>)
+    | ((mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>)
     | null = null;
   let returnToMenuAction: (() => Promise<void>) | null = null;
   let confirmAbandonAction: (() => Promise<void>) | null = null;
   const menuRuntime = createMainMenu(
     app,
     metaRuntime,
-    async (mode, selectedStage) => {
+    async (mode, selectedStage, tutorialType) => {
       if (startModeAction === null) {
         throw new Error("게임 월드가 아직 준비되지 않았습니다.");
       }
-      await startModeAction(mode, selectedStage);
+      await startModeAction(mode, selectedStage, tutorialType);
     },
     async () => {
       if (returnToMenuAction === null) {
@@ -1524,7 +1524,11 @@ async function bootstrap(): Promise<void> {
     );
     gameLoopStarted = true;
   };
-  startModeAction = async (mode, selectedStage): Promise<void> => {
+  startModeAction = async (
+    mode,
+    selectedStage,
+    tutorialType = "basic",
+  ): Promise<void> => {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
@@ -1687,7 +1691,7 @@ async function bootstrap(): Promise<void> {
     hideDisconnectOverlay();
     if (mode === "tutorial") {
       const step = selectedStage ?? 1;
-      tutorialManager.start(step);
+      tutorialManager.start(step, tutorialType);
       if (step === 3) {
         switchInputMode(inputRuntime, "billiards");
       }

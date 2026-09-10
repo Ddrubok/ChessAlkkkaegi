@@ -32,7 +32,7 @@ export interface MainMenuRuntime {
   visible: boolean;
   confirming: boolean;
   userProfile: UserProfile | null;
-  onStartMode: (mode: GameMode, selectedStage?: number) => Promise<void>;
+  onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>;
   onReturnToMenu: () => Promise<void>;
   onConfirmAbandon: () => Promise<void>;
   onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
@@ -546,7 +546,10 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
 
     <!-- 게임 모드 선택 목록 (모바일 친화적 2x2 그리드) -->
     <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; width:100%; box-sizing:border-box;">
-      <button type="button" data-game-mode="tutorial" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#059669; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_tutorial")}</button>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; width:100%;">
+        <button type="button" data-game-mode="tutorial" data-tutorial-type="basic" style="padding:14px 4px; font-size:13px; font-weight:700; border-radius:8px; background:#059669; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_tutorial")}</button>
+        <button type="button" data-game-mode="tutorial" data-tutorial-type="advanced" style="padding:14px 4px; font-size:13px; font-weight:700; border-radius:8px; background:#0d9488; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_tutorial_advanced")}</button>
+      </div>
       <button type="button" data-game-mode="stage" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#2563eb; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_stage")}</button>
       <button type="button" data-game-mode="online" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#7c3aed; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_online")}</button>
       <button type="button" data-game-mode="hotseat" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_2p")}</button>
@@ -594,9 +597,10 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       }
 
       if (mode === "tutorial") {
+        const tutorialType = (button.dataset.tutorialType as "basic" | "advanced") ?? "basic";
         runtime.busy = true;
         renderMainMenu(runtime);
-        void runtime.onStartMode("tutorial", 1)
+        void runtime.onStartMode("tutorial", 1, tutorialType)
           .then(() => hideMainMenuAfterModeStart(runtime))
           .catch((err) => {
             console.error(err);
@@ -658,12 +662,12 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     });
   }
 
-  // 최초 접속 시 튜토리얼 권장 팝업 1회 표시
+  // 최초 접속 시 기본 튜토리얼 권장 팝업 1회 표시
   TutorialManager.checkFirstVisitAndPrompt(
     () => {
       runtime.busy = true;
       renderMainMenu(runtime);
-      void runtime.onStartMode("tutorial", 1)
+      void runtime.onStartMode("tutorial", 1, "basic")
         .then(() => hideMainMenuAfterModeStart(runtime))
         .catch((err) => {
           console.error(err);
@@ -680,7 +684,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
 export function createMainMenu(
   container: HTMLElement,
   metaRuntime: MetaRuntime,
-  onStartMode: (mode: GameMode, selectedStage?: number) => Promise<void>,
+  onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>,
   onReturnToMenu: () => Promise<void>,
   onConfirmAbandon: () => Promise<void>,
 ): MainMenuRuntime {
