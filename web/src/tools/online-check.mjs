@@ -1366,9 +1366,9 @@ try {
     );
   assertCondition(
     simultaneousRematch.hostOnline.matchId ===
-      "rematch-white-1" &&
+      "rematch-check-simultaneous-rematch-white-1" &&
       simultaneousRematch.guestOnline.matchId ===
-        "rematch-white-1" &&
+        "rematch-check-simultaneous-rematch-white-1" &&
       simultaneousRematch.hostOnline.nextTurnIndex === 0 &&
       simultaneousRematch.guestOnline.nextTurnIndex === 0 &&
       simultaneousHostHash.sha256 ===
@@ -1380,7 +1380,7 @@ try {
     `동시 재대결 요청이 하나의 방장 요청으로 합쳐지지 않았습니다: id=${simultaneousRematch.hostOnline.matchId}/${simultaneousRematch.guestOnline.matchId}, prepared=${simultaneousRematch.counters.hostPrepared}/${simultaneousRematch.counters.guestPrepared}, started=${simultaneousRematch.counters.hostStarted}/${simultaneousRematch.counters.guestStarted}`,
   );
   console.log(
-    `[통과 n] 동시 재대결 요청: winnerOffer=white-1, matchId=rematch-white-1, reset=1/1, turn=0, hash=${simultaneousHostHash.sha256}`,
+    `[통과 n] 동시 재대결 요청: winnerOffer=white-1, matchId=${simultaneousRematch.hostOnline.matchId}, reset=1/1, turn=0, hash=${simultaneousHostHash.sha256}`,
   );
   closeRematchPair(simultaneousRematch);
 

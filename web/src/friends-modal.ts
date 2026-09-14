@@ -5,6 +5,7 @@ import {
   type FriendRequestItem,
 } from "./social-service";
 import type { UserProfile } from "./supabase-auth";
+import { escapeHtml } from "./html";
 
 export interface FriendsModalCallbacks {
   onStartFriendlyMatch: (
@@ -180,8 +181,8 @@ export async function openFriendsModal(
             <div style="display:flex; flex-direction:column; gap:2px;">
               <div style="display:flex; align-items:center; gap:6px;">
                 <span style="font-size:10px;">${statusDot}</span>
-                <strong style="color:#f8fafc; font-size:14px;">${friend.nickname}</strong>
-                <span style="font-size:11px; color:${statusColor};">(${statusText})</span>
+                <strong style="color:#f8fafc; font-size:14px;">${escapeHtml(friend.nickname)}</strong>
+                <span style="font-size:11px; color:${statusColor};">(${escapeHtml(statusText)})</span>
               </div>
               <div style="font-size:11px; color:#94a3b8;">
                 ${I18nManager.t("online.classic_tab")}: <strong style="color:#60a5fa;">${friend.classicMmr}</strong> | ${I18nManager.t("online.strategy_tab")}: <strong style="color:#c084fc;">${friend.strategyMmr}</strong>
@@ -212,7 +213,7 @@ export async function openFriendsModal(
               waitOverlay.style.cssText = "position:fixed; inset:0; z-index:110; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.8);";
               waitOverlay.innerHTML = `
                 <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:24px; text-align:center; max-width:320px;">
-                  <h3 style="margin:0 0 8px; color:#f8fafc;">⚔️ ${I18nManager.t("friends.challenge_sent", { name: friend.nickname })}</h3>
+                  <h3 style="margin:0 0 8px; color:#f8fafc;">⚔️ ${escapeHtml(I18nManager.t("friends.challenge_sent", { name: friend.nickname }))}</h3>
                   <p style="color:#94a3b8; font-size:13px; margin:0 0 16px;">${I18nManager.t("friends.waiting_response", { time: 15 })}</p>
                   <button id="cancel-challenge-btn" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:700; cursor:pointer;">${I18nManager.t("common.cancel")}</button>
                 </div>
@@ -281,7 +282,7 @@ export async function openFriendsModal(
           `;
           row.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:2px;">
-              <strong style="color:#f8fafc; font-size:14px;">${req.senderNickname}</strong>
+              <strong style="color:#f8fafc; font-size:14px;">${escapeHtml(req.senderNickname)}</strong>
               <div style="font-size:11px; color:#94a3b8;">MMR: ${req.senderClassicMmr}</div>
             </div>
             <div style="display:flex; gap:6px;">

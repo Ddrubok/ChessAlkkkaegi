@@ -1,6 +1,7 @@
 import { I18nManager } from "./i18n";
 import { SocialService } from "./social-service";
 import type { UserProfile } from "./supabase-auth";
+import { escapeHtml } from "./html";
 
 /**
  * 랭킹 순위표 모달 렌더러
@@ -136,7 +137,7 @@ export async function openRankingModal(
         row.innerHTML = `
           <span style="font-weight:800; color:${item.rank <= 3 ? "#f59e0b" : "#94a3b8"};">${rankBadge}</span>
           <span style="font-weight:${isMe ? "800" : "600"}; color:${isMe ? "#38bdf8" : "#f8fafc"}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${item.nickname} ${isMe ? " (나)" : ""}
+            ${escapeHtml(item.nickname)} ${isMe ? " (나)" : ""}
           </span>
           <span style="text-align:right; font-weight:700; color:#fbbf24;">${item.mmr}</span>
           <span style="text-align:right; font-size:12px; color:#94a3b8;">${item.wins}승 ${item.losses}패</span>
@@ -164,7 +165,7 @@ export async function openRankingModal(
           <span style="color:#94a3b8; white-space:nowrap;">${I18nManager.t("ranking.my_rank")}:</span>
           <strong style="color:#38bdf8; font-size:15px; white-space:nowrap;">${rankText}</strong>
           ${percentileText}
-          <span style="color:#cbd5e1; font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">[${userProfile.nickname}]</span>
+          <span style="color:#cbd5e1; font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">[${escapeHtml(userProfile.nickname)}]</span>
         </div>
         <div style="font-weight:700; color:#fbbf24; white-space:nowrap; margin-left:8px;">
           MMR: ${myRankInfo?.mmr ?? currentMmr}
@@ -177,7 +178,7 @@ export async function openRankingModal(
       myBar.innerHTML = `
         <div style="display:flex; align-items:center; gap:6px; overflow:hidden;">
           <span style="color:#f59e0b; font-weight:700; font-size:12px; white-space:nowrap;">[게스트]</span>
-          <span style="color:#94a3b8; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${userProfile.nickname} (랭킹 등록을 위해 회원가입 필요)</span>
+          <span style="color:#94a3b8; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(userProfile.nickname)} (랭킹 등록을 위해 회원가입 필요)</span>
         </div>
         <div style="font-weight:700; color:#fbbf24; white-space:nowrap; margin-left:8px;">
           MMR: ${currentMmr}

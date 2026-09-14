@@ -890,8 +890,11 @@ export function promotePieceBody(
     throw new Error(`${newType} 메타데이터를 찾지 못했습니다.`);
   }
 
-  // 인스턴스 타입 갱신
-  existing.instance.type = newType;
+  // 인스턴스 타입 갱신: 공유 PIECE_INSTANCES 오염을 방지하기 위해 새 인스턴스 객체로 복사한다.
+  const updatedInstance: PieceInstance = {
+    ...existing.instance,
+    type: newType,
+  };
 
   const colliderDescriptor = createPieceColliderDescriptor(
     newType,
@@ -939,7 +942,7 @@ export function promotePieceBody(
 
   return createPieceBodyFromState(
     runtime,
-    existing.instance,
+    updatedInstance,
     colliderDescriptor,
     state,
     spawnTranslation,

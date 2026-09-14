@@ -462,6 +462,15 @@ export function setTurnGameMode(
   mode: GameMode,
 ): void {
   runtime.gameMode = mode;
+  if (mode === "online") {
+    // Ponytail: Online king swap, defense, and promotion require synchronized events/state before enablement.
+    runtime.promotionQueue.length = 0;
+    runtime.pendingPromotionPawns.clear();
+    if (runtime.phase === "promotion") {
+      runtime.phase = "ready";
+      runtime.sceneRuntime.controls.enabled = true;
+    }
+  }
 }
 
 /**
@@ -921,36 +930,39 @@ function completeSettlement(runtime: TurnRuntime): void {
   }
 
   // 살아남은 폰들의 상대 끝 진영 도달 및 생존 상태 판정
-  for (const binding of runtime.physicsRuntime.pieces.values()) {
-    if (
-      binding.instance.type !== "Pawn" ||
-      runtime.pendingRemovalIds.has(binding.instance.id)
-    ) {
-      continue;
-    }
-    const pos = binding.body.translation();
-    const inEndZone = isPieceInOpponentEndZone(
-      binding.instance.side,
-      pos.z,
-      runtime.cellSize,
-    );
-    const pieceId = binding.instance.id;
-    if (inEndZone) {
-      if (!runtime.pendingPromotionPawns.has(pieceId)) {
-        runtime.pendingPromotionPawns.set(pieceId, {
-          reachedTurn: runtime.turnNumber,
-          side: binding.instance.side,
-        });
-        console.info(
-          `[승급 대기] 폰 ${pieceId}(${binding.instance.side})가 턴 ${runtime.turnNumber}에 상대 진영 끝에 안착했습니다.`,
-        );
+  // Ponytail: Online promotion requires synchronized events/state before enablement.
+  if (runtime.gameMode !== "online") {
+    for (const binding of runtime.physicsRuntime.pieces.values()) {
+      if (
+        binding.instance.type !== "Pawn" ||
+        runtime.pendingRemovalIds.has(binding.instance.id)
+      ) {
+        continue;
       }
-    } else {
-      if (runtime.pendingPromotionPawns.has(pieceId)) {
-        runtime.pendingPromotionPawns.delete(pieceId);
-        console.info(
-          `[승급 취소] 폰 ${pieceId}가 상대 진영 끝을 벗어났습니다.`,
-        );
+      const pos = binding.body.translation();
+      const inEndZone = isPieceInOpponentEndZone(
+        binding.instance.side,
+        pos.z,
+        runtime.cellSize,
+      );
+      const pieceId = binding.instance.id;
+      if (inEndZone) {
+        if (!runtime.pendingPromotionPawns.has(pieceId)) {
+          runtime.pendingPromotionPawns.set(pieceId, {
+            reachedTurn: runtime.turnNumber,
+            side: binding.instance.side,
+          });
+          console.info(
+            `[승급 대기] 폰 ${pieceId}(${binding.instance.side})가 턴 ${runtime.turnNumber}에 상대 진영 끝에 안착했습니다.`,
+          );
+        }
+      } else {
+        if (runtime.pendingPromotionPawns.has(pieceId)) {
+          runtime.pendingPromotionPawns.delete(pieceId);
+          console.info(
+            `[승급 취소] 폰 ${pieceId}가 상대 진영 끝을 벗어났습니다.`,
+          );
+        }
       }
     }
   }
@@ -1155,6 +1167,12 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
  * 현재 턴 시작 시, 상대 끝 진영에서 1턴 이상 생존한 폰이 있는지 확인하고 승급 절차를 시작한다.
  */
 export function checkAndTriggerPromotion(runtime: TurnRuntime): void {
+  // Ponytail: Online promotion requires synchronized events/state before enablement.
+  if (runtime.gameMode === "online") {
+    runtime.pendingPromotionPawns.clear();
+    runtime.promotionQueue.length = 0;
+    return;
+  }
   if (runtime.phase !== "ready") {
     return;
   }
@@ -1187,6 +1205,16 @@ export function checkAndTriggerPromotion(runtime: TurnRuntime): void {
  * 큐에 대기 중인 승급을 순차적으로 처리한다.
  */
 function processNextPromotionInQueue(runtime: TurnRuntime): void {
+  // Ponytail: Online promotion requires synchronized events/state before enablement.
+  if (runtime.gameMode === "online") {
+    runtime.promotionQueue.length = 0;
+    runtime.pendingPromotionPawns.clear();
+    if (runtime.phase === "promotion") {
+      runtime.phase = "ready";
+      runtime.sceneRuntime.controls.enabled = true;
+    }
+    return;
+  }
   if (runtime.promotionQueue.length === 0) {
     return;
   }
@@ -1235,6 +1263,16 @@ function processNextPromotionInQueue(runtime: TurnRuntime): void {
         }
       },
     );
+  } else {
+    // Ensure no orphan promotion phase: if UI callback is absent, restore ready phase and controls.
+    runtime.promotionQueue.shift();
+    runtime.pendingPromotionPawns.delete(pieceId);
+    if (runtime.promotionQueue.length > 0) {
+      processNextPromotionInQueue(runtime);
+    } else {
+      runtime.phase = "ready";
+      runtime.sceneRuntime.controls.enabled = true;
+    }
   }
 }
 
@@ -1247,6 +1285,10 @@ export function executeKingSwap(
   kingPieceId: string,
   targetPieceId: string,
 ): boolean {
+  // Ponytail: Online king swap/defense requires synchronized events/state before enablement.
+  if (runtime.gameMode === "online") {
+    return false;
+  }
   const side = runtime.currentSide;
   if (runtime.kingSpecialUsed[side] || runtime.kingSwapUsed[side] || runtime.kingDefenseActive[side]) {
     return false;
@@ -1284,6 +1326,10 @@ export function executeKingDefense(
   runtime: TurnRuntime,
   kingPieceId: string,
 ): boolean {
+  // Ponytail: Online king swap/defense requires synchronized events/state before enablement.
+  if (runtime.gameMode === "online") {
+    return false;
+  }
   const side = runtime.currentSide;
   if (runtime.kingSpecialUsed[side] || runtime.kingSwapUsed[side] || runtime.kingDefenseActive[side]) {
     return false;

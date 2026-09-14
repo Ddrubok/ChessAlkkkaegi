@@ -131,9 +131,8 @@ import { SupabaseMatchUi } from "./supabase-match-ui";
 import { SupabaseMatchmaker } from "./supabase-matchmaker";
 import { SocialService } from "./social-service";
 import { openChallengeReceivedModal } from "./challenge-modal";
-import { I18nManager } from "./i18n";
 import { getSupabaseClient } from "./supabase-client";
-import type { UserProfile } from "./supabase-auth";
+import { getOrCreateUserProfile, type UserProfile } from "./supabase-auth";
 import {
   computeEnemyStageStepValues,
   computeEnemyStageSizeMultiplier,
@@ -340,129 +339,56 @@ async function bootstrap(): Promise<void> {
   let activeMyProfile: UserProfile | null = null;
 
   const recordOnlineMatchSettlement = async (matchWinner: MatchWinner): Promise<void> => {
-    if (!activeMatchOpponent || !activeMyProfile) {
-      return;
-    }
-
-    const mySide = onlineRuntime?.mySide ?? "white";
-    const isDraw = matchWinner === "draw";
-    const whiteIsWinner = matchWinner === "white";
-    const isWhite = mySide === "white";
-    const isMeWinner = matchWinner === mySide;
-    const winnerId = isDraw ? activeMyProfile.id : (isWhite === whiteIsWinner ? activeMyProfile.id : activeMatchOpponent.id);
-    const loserId = isDraw ? activeMatchOpponent.id : (isWhite === whiteIsWinner ? activeMatchOpponent.id : activeMyProfile.id);
-
-    const isStrategyMode = activeOnlineMatchMode === "strategy";
-    const myCurrentMmr = isStrategyMode ? (activeMyProfile.strategyMmr ?? activeMyProfile.mmr) : (activeMyProfile.classicMmr ?? activeMyProfile.mmr);
-    const oppMmr = activeMatchOpponent.mmr;
-
-    let myDelta = 0;
     const sb = getSupabaseClient();
-    if (sb) {
-      try {
-        const deltaRes = await SupabaseMatchmaker.recordMatchResult(sb, {
-          mode: activeOnlineMatchMode,
-          winnerId,
-          loserId,
-          isDraw,
-          whitePlayerId: isWhite ? activeMyProfile.id : activeMatchOpponent.id,
-          blackPlayerId: isWhite ? activeMatchOpponent.id : activeMyProfile.id,
-          whiteIsWinner,
-        });
-        if (deltaRes) {
-          myDelta = isDraw ? deltaRes.winnerDelta : (isMeWinner ? deltaRes.winnerDelta : deltaRes.loserDelta);
-        }
-      } catch (err) {
-        console.warn("Supabase recordMatchResult 예외:", err);
+    const matchId = onlineRuntime?.matchId;
+    const me = activeMyProfile;
+    const opponent = activeMatchOpponent;
+    const mySide = onlineRuntime?.mySide;
+    const mode = activeOnlineMatchMode;
+    if (!sb || !matchId || !me || !opponent || !mySide) return;
+    const whiteId = mySide === "white" ? me.id : opponent.id;
+    const blackId = mySide === "black" ? me.id : opponent.id;
+    const winnerId = matchWinner === "draw" ? null : matchWinner === "white" ? whiteId : blackId;
+    const isCurrentResult = () => onlineRuntime?.matchId === matchId &&
+      turnRuntime.phase === "match-over" && menuRuntime.userProfile?.id === me.id;
+    const showStatus = (message: string, retry = false): void => {
+      if (!isCurrentResult()) return;
+      matchRuntime.resultDetails.hidden = false;
+      matchRuntime.resultDetails.textContent = message;
+      if (retry) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "정산 다시 확인";
+        button.onclick = () => { button.disabled = true; void recordOnlineMatchSettlement(matchWinner); };
+        matchRuntime.resultDetails.appendChild(button);
       }
-    }
-
-    // Supabase RPC 응답이 없거나 실패한 경우 정확한 로컬 Elo 계산
-    if (myDelta === 0) {
-      const expected = 1.0 / (1.0 + Math.pow(10, (oppMmr - myCurrentMmr) / 400));
-      const score = isDraw ? 0.5 : (isMeWinner ? 1.0 : 0.0);
-      myDelta = Math.round(32 * (score - expected));
-      if (isMeWinner && myDelta <= 0) myDelta = 16;
-      if (!isMeWinner && !isDraw && myDelta >= 0) myDelta = -16;
-    }
-
-    const newMmr = Math.max(100, myCurrentMmr + myDelta);
-    if (isStrategyMode) {
-      activeMyProfile.strategyMmr = newMmr;
-      if (isDraw) {
-        activeMyProfile.strategyDraws = (activeMyProfile.strategyDraws ?? 0) + 1;
-      } else if (isMeWinner) {
-        activeMyProfile.strategyWins = (activeMyProfile.strategyWins ?? 0) + 1;
-      } else {
-        activeMyProfile.strategyLosses = (activeMyProfile.strategyLosses ?? 0) + 1;
-      }
-      localStorage.setItem("ca_local_strategy_mmr", String(newMmr));
-      localStorage.setItem("ca_local_strategy_wins", String(activeMyProfile.strategyWins));
-      localStorage.setItem("ca_local_strategy_draws", String(activeMyProfile.strategyDraws));
-      localStorage.setItem("ca_local_strategy_losses", String(activeMyProfile.strategyLosses));
-    } else {
-      activeMyProfile.classicMmr = newMmr;
-      activeMyProfile.mmr = newMmr;
-      if (isDraw) {
-        activeMyProfile.classicDraws = (activeMyProfile.classicDraws ?? 0) + 1;
-      } else if (isMeWinner) {
-        activeMyProfile.classicWins = (activeMyProfile.classicWins ?? 0) + 1;
-      } else {
-        activeMyProfile.classicLosses = (activeMyProfile.classicLosses ?? 0) + 1;
-      }
-      localStorage.setItem("ca_local_classic_mmr", String(newMmr));
-      localStorage.setItem("ca_local_mmr", String(newMmr));
-      localStorage.setItem("ca_local_classic_wins", String(activeMyProfile.classicWins));
-      localStorage.setItem("ca_local_classic_draws", String(activeMyProfile.classicDraws));
-      localStorage.setItem("ca_local_classic_losses", String(activeMyProfile.classicLosses));
-    }
-
-    activeMyProfile.wins = (activeMyProfile.classicWins ?? 0) + (activeMyProfile.strategyWins ?? 0);
-    activeMyProfile.draws = (activeMyProfile.classicDraws ?? 0) + (activeMyProfile.strategyDraws ?? 0);
-    activeMyProfile.losses = (activeMyProfile.classicLosses ?? 0) + (activeMyProfile.strategyLosses ?? 0);
-    localStorage.setItem("ca_local_wins", String(activeMyProfile.wins));
-    localStorage.setItem("ca_local_draws", String(activeMyProfile.draws));
-    localStorage.setItem("ca_local_losses", String(activeMyProfile.losses));
-
-    menuRuntime.userProfile = activeMyProfile;
-    renderMainMenu(menuRuntime);
-
-    if (sb && activeMyProfile) {
-      void sb.from("profiles").upsert({
-        id: activeMyProfile.id,
-        nickname: activeMyProfile.nickname,
-        mmr: activeMyProfile.classicMmr,
-        classic_mmr: activeMyProfile.classicMmr,
-        strategy_mmr: activeMyProfile.strategyMmr,
-        wins: activeMyProfile.wins,
-        losses: activeMyProfile.losses,
-        draws: activeMyProfile.draws,
-        classic_wins: activeMyProfile.classicWins,
-        classic_draws: activeMyProfile.classicDraws,
-        classic_losses: activeMyProfile.classicLosses,
-        strategy_wins: activeMyProfile.strategyWins,
-        strategy_draws: activeMyProfile.strategyDraws,
-        strategy_losses: activeMyProfile.strategyLosses,
+    };
+    showStatus("상대방의 대전 결과를 확인하고 있습니다.");
+    try {
+      const { data: currentAuth } = await sb.auth.getSession();
+      if (currentAuth.session?.user.id !== me.id) return;
+      const result = await SupabaseMatchmaker.recordMatchResult(sb, {
+        matchId, mode, winnerId, whitePlayerId: whiteId, blackPlayerId: blackId,
       });
+      if (result.status === "pending") {
+        showStatus("상대방 확인 대기 중입니다. 확인 완료 전에는 전적이 변경되지 않습니다.", true);
+        return;
+      }
+      // 서버가 정산한 값을 읽는다. 로컬 Elo 계산이나 프로필 전적 쓰기는 하지 않는다.
+      const { data } = await sb.auth.getSession();
+      if (data.session?.user.id !== me.id || menuRuntime.userProfile?.id !== me.id) return;
+      const profile = await getOrCreateUserProfile(sb);
+      if (profile.id !== me.id || menuRuntime.userProfile?.id !== me.id) return;
+      menuRuntime.userProfile = profile;
+      if (activeMyProfile?.id === profile.id) activeMyProfile = profile;
+      renderMainMenu(menuRuntime);
+      const delta = mySide === "white" ? result.whiteDelta : result.blackDelta;
+      const rating = mode === "strategy" ? profile.strategyMmr : profile.classicMmr;
+      showStatus("상대: " + opponent.nickname + " · MMR 변동: " + (delta > 0 ? "+" : "") + delta + " · 현재: " + rating);
+    } catch (error) {
+      console.warn("대전 정산 실패:", error);
+      showStatus("정산을 완료하지 못했습니다. 다시 확인해주세요.", true);
     }
-
-    const modeBadge = isStrategyMode ? `[${I18nManager.t("online.strategy_tab")}]` : `[${I18nManager.t("online.classic_tab")}]`;
-    const recordStr = isStrategyMode
-      ? `${activeMyProfile.strategyWins}승 ${activeMyProfile.strategyDraws}무 ${activeMyProfile.strategyLosses}패`
-      : `${activeMyProfile.classicWins}승 ${activeMyProfile.classicDraws}무 ${activeMyProfile.classicLosses}패`;
-    const deltaStr = myDelta > 0 ? `+${myDelta}` : `${myDelta}`;
-    matchRuntime.resultDetails.hidden = false;
-    matchRuntime.resultDetails.innerHTML = `
-      <div style="margin-top:12px; padding:12px 14px; background:#0f172a; border:1px solid #334155; border-radius:10px; font-size:13px; text-align:center;">
-        <div style="color:#f8fafc; font-weight:700; font-size:14px; margin-bottom:8px;">${modeBadge} 대전 정산</div>
-        <div style="color:#94a3b8; margin-bottom:6px;">상대: <strong style="color:#f8fafc;">${activeMatchOpponent.nickname}</strong> (${oppMmr})</div>
-        <div style="font-size:15px; margin-bottom:6px;">
-          MMR 변동: <strong style="color:${myDelta > 0 ? "#22c55e" : myDelta < 0 ? "#ef4444" : "#94a3b8"}; font-weight:800;">${deltaStr}</strong> 
-          <span style="font-size:13px; color:#94a3b8;">(현재: <strong style="color:#38bdf8;">${newMmr}</strong>)</span>
-        </div>
-        <div style="color:#94a3b8; font-size:12px;">모드 전적: <strong style="color:#f8fafc;">${recordStr}</strong></div>
-      </div>
-    `;
   };
 
   const handleTurnTimeout = (): void => {
@@ -638,7 +564,8 @@ async function bootstrap(): Promise<void> {
           return false;
         }
         if (gameModeRuntime?.mode === "online") {
-          return onlineRuntime?.canSelectLocalPiece(pieceId) === true;
+          // ponytail: 온라인 특수기는 행동·복구 상태 동기화가 지원될 때 활성화한다.
+          return false;
         }
         return true;
       },
@@ -1182,9 +1109,11 @@ async function bootstrap(): Promise<void> {
         }
         setStageNumber(gameModeRuntime, stageNumber);
       },
-      (lastClearedStage) => {
+      (lastClearedStage, startedAtStage) => {
         // Y 패널 점프만 정상 승리 정산의 직전 단계 기준을 맞추며 일반 진행은 기존 기록 함수를 유지한다.
         stageRunPoints.lastClearedStage = lastClearedStage;
+        delete stageRunPoints.startedAtStage;
+        if (startedAtStage !== undefined) stageRunPoints.startedAtStage = startedAtStage;
       },
       async (gameMode, stageNumber) => {
         await resetBoard({ gameMode, stageNumber });
@@ -1194,10 +1123,11 @@ async function bootstrap(): Promise<void> {
   gameModeRuntime = createGameModeRuntime(async (mode) => {
     const previousMode = gameModeRuntime?.mode ?? "hotseat";
     const previousCards = cloneRunCardState(runCardState);
-    const previousLastClearedStage =
-      stageRunPoints.lastClearedStage;
+    const previousRunPoints = { ...stageRunPoints };
+    const nextRunPoints = createStageRunPointState(mode === "stage" ? gameModeRuntime?.stageNumber ?? 1 : 1);
     resetRunCardState(runCardState);
-    stageRunPoints.lastClearedStage = 0;
+    delete stageRunPoints.startedAtStage;
+    Object.assign(stageRunPoints, nextRunPoints);
     setTurnGameMode(turnRuntime, mode);
     setTuningGameMode(tuningRuntime, mode);
     setCardTuningGameMode(cardTuningRuntime, mode);
@@ -1206,8 +1136,8 @@ async function bootstrap(): Promise<void> {
       await resetBoard({ gameMode: mode, stageNumber });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
-      stageRunPoints.lastClearedStage =
-        previousLastClearedStage;
+      delete stageRunPoints.startedAtStage;
+      Object.assign(stageRunPoints, previousRunPoints);
       setTurnGameMode(turnRuntime, previousMode);
       setTuningGameMode(tuningRuntime, previousMode);
       setCardTuningGameMode(cardTuningRuntime, previousMode);
@@ -1533,9 +1463,6 @@ async function bootstrap(): Promise<void> {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
     void AdManager.hideBanner();
-    if (mode === "stage" && typeof selectedStage === "number") {
-      setStageNumber(gameModeRuntime, selectedStage);
-    }
     if (mode === "online") {
       onlineSelfTestRuntime?.destroy();
       const { createOnlineRuntime, openOnlineLobby } = await import("./online");
@@ -1698,7 +1625,7 @@ async function bootstrap(): Promise<void> {
     } else {
       tutorialManager.stop();
     }
-    await switchGameMode(gameModeRuntime, mode, true);
+    await switchGameMode(gameModeRuntime, mode, true, mode === "stage" || mode === "tutorial" ? selectedStage ?? 1 : 1);
     ensureGameLoopStarted();
   };
 
@@ -1786,6 +1713,7 @@ async function bootstrap(): Promise<void> {
             onlineRuntime?.mySide ?? null,
           );
           renderRematchControls(onlineRuntime?.getRematchStatus() ?? null);
+          await recordOnlineMatchSettlement(winner);
           void SocialService.updateMyStatus("online");
           void AdManager.showBanner();
         },

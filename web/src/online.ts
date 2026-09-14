@@ -357,7 +357,7 @@ export interface OnlineRuntime {
 // ready·resume이 초기 핸들러 설치보다 먼저 도착해도 다시 받을 수 있는 실제 시간 간격이다.
 const READY_RETRY_MILLISECONDS = 500;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
-const MATCH_ID_PATTERN = /^[a-zA-Z0-9-]{8,64}$/u;
+const MATCH_ID_PATTERN = /^[a-zA-Z0-9-]{8,128}$/u;
 const REMATCH_OFFER_ID_PATTERN = /^(white|black)-[1-9][0-9]*$/u;
 const LOBBY_CODE_PREFIX = "ca-online-1";
 
@@ -374,8 +374,8 @@ function createOnlineMatchId(): string {
 /**
  * 외부 입력의 매치 식별자를 프로토콜에서 사용할 수 있는 짧은 문자열로 검증한다.
  */
-function parseMatchId(value: unknown, label: string): string {
-  if (typeof value !== "string" || !MATCH_ID_PATTERN.test(value)) {
+function parseMatchId(value: unknown, label: string, maxLength = 128): string {
+  if (typeof value !== "string" || value.length > maxLength || !MATCH_ID_PATTERN.test(value)) {
     throw new Error(`${label} 매치 식별자가 유효하지 않습니다.`);
   }
   return value;
@@ -824,7 +824,9 @@ export function createOnlineRuntime(
   let matchId = parseMatchId(
     options.matchId ?? "legacy-online-match",
     "온라인 런타임",
+    64,
   );
+  const sessionMatchId = matchId;
   let hooksAttached = false;
   let launchOrigin: "local" | "remote" = "local";
   let remoteLaunchTurnIndex: number | null = null;
@@ -914,7 +916,7 @@ export function createOnlineRuntime(
 
   // 요청 ID만으로 양쪽이 별도 왕복 없이 같은 새 매치 식별자를 만든다.
   const deriveRematchMatchId = (offerId: string): string =>
-    parseMatchId(`rematch-${offerId}`, "재대결");
+    parseMatchId(`${sessionMatchId}-rematch-${offerId}`, "재대결");
 
   // 실시간 Ping HUD 뱃지 UI 생성 (메뉴 버튼 아래 배치)
   const pingBadge = document.createElement("div");

@@ -601,7 +601,7 @@ export async function jumpCardTuningStage(
   targetStageNumber: number,
   readSnapshot: () => CardTuningRelayoutSnapshot,
   setStageNumber: (stageNumber: number) => void,
-  setLastClearedStage: (stageNumber: number) => void,
+  setLastClearedStage: (stageNumber: number, startedAtStage?: number) => void,
   resetBoard: (
     gameMode: GameMode,
     stageNumber: number,
@@ -622,7 +622,10 @@ export async function jumpCardTuningStage(
   setStageNumber(targetStageNumber);
   try {
     // 디버그로 건너뛴 단계도 직전 단계까지 클리어한 것으로 맞춰 정상 승리 정산과 카드 흐름을 재사용한다.
-    setLastClearedStage(targetStageNumber - 1);
+    const originalPoints = JSON.parse(before.stageRunPointsSignature) as { startedAtStage?: number };
+    const startedAtStage = originalPoints.startedAtStage === undefined
+      ? undefined : Math.min(originalPoints.startedAtStage, targetStageNumber);
+    setLastClearedStage(targetStageNumber - 1, startedAtStage);
     await resetBoard("stage", targetStageNumber);
     const after = readSnapshot();
     if (
@@ -632,6 +635,7 @@ export async function jumpCardTuningStage(
         targetStageNumber,
         JSON.stringify({
           lastClearedStage: targetStageNumber - 1,
+          startedAtStage,
         }),
       )
     ) {
@@ -646,7 +650,7 @@ export async function jumpCardTuningStage(
       // 대상 단계용 임시 정산 기준도 원래 값으로 되돌린 뒤 복구 보드를 검증한다.
       const originalStageRunPoints = JSON.parse(
         before.stageRunPointsSignature,
-      ) as { lastClearedStage?: unknown };
+      ) as { lastClearedStage?: unknown; startedAtStage?: number };
       if (
         !Number.isInteger(
           originalStageRunPoints.lastClearedStage,
@@ -658,6 +662,7 @@ export async function jumpCardTuningStage(
       }
       setLastClearedStage(
         originalStageRunPoints.lastClearedStage as number,
+        originalStageRunPoints.startedAtStage,
       );
       await resetBoard("stage", before.stageNumber);
       const recovered = readSnapshot();

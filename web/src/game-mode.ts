@@ -18,7 +18,13 @@ export async function switchGameMode(
   runtime: GameModeRuntime,
   mode: GameMode,
   forceReset = false,
+  initialStage = 1,
 ): Promise<void> {
+  if (!Number.isInteger(initialStage) || initialStage < 1) {
+    throw new Error(
+      `설정할 스테이지 번호 ${initialStage}가 1 이상의 정수가 아닙니다.`,
+    );
+  }
   if (
     runtime.switching ||
     (!forceReset && runtime.mode === mode)
@@ -28,7 +34,7 @@ export async function switchGameMode(
   const previousMode = runtime.mode;
   const previousStageNumber = runtime.stageNumber;
   runtime.switching = true;
-  runtime.stageNumber = 1;
+  runtime.stageNumber = initialStage;
   try {
     await runtime.onModeChanged(mode);
     runtime.mode = mode;

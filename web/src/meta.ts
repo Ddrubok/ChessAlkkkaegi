@@ -71,6 +71,8 @@ export interface MetaRuntime {
 export interface StageRunPointState {
   // 아직 영구 저장하지 않은 이번 런의 마지막 클리어 스테이지다.
   lastClearedStage: number;
+  // 중간 단계에서 시작한 런은 앞 단계의 포인트를 지급하지 않는다.
+  startedAtStage?: number;
 }
 
 export interface PurchaseResult {
@@ -679,8 +681,11 @@ export function resetPermanentUpgrades(runtime: MetaRuntime): number {
 /**
  * 새 런이 아직 어느 스테이지도 클리어하지 않은 임시 정산 상태를 만든다.
  */
-export function createStageRunPointState(): StageRunPointState {
-  return { lastClearedStage: 0 };
+export function createStageRunPointState(startStage = 1): StageRunPointState {
+  if (!Number.isInteger(startStage) || startStage < 1 || startStage > STAGE_RUN_LENGTH) {
+    throw new Error(`시작 스테이지 ${startStage}가 유효하지 않습니다.`);
+  }
+  return startStage === 1 ? { lastClearedStage: 0 } : { lastClearedStage: startStage - 1, startedAtStage: startStage };
 }
 
 /**
@@ -727,7 +732,7 @@ export function recordStageRunClear(
     );
   }
   state.lastClearedStage = stageNumber;
-  return computeStageRunPayout(state.lastClearedStage);
+  return computeStageRunPayout(state.lastClearedStage) - computeStageRunPayout((state.startedAtStage ?? 1) - 1);
 }
 
 /**
@@ -737,8 +742,9 @@ export function settleStageRunPoints(
   runtime: MetaRuntime,
   state: StageRunPointState,
 ): number {
-  const payout = computeStageRunPayout(state.lastClearedStage);
+  const payout = computeStageRunPayout(state.lastClearedStage) - computeStageRunPayout((state.startedAtStage ?? 1) - 1);
   state.lastClearedStage = 0;
+  delete state.startedAtStage;
   if (payout > 0) {
     runtime.state.points += payout;
     saveMetaState(runtime);
@@ -754,8 +760,9 @@ export function discardStageRunPoints(
 ): number {
   const discarded = computeStageRunPayout(
     state.lastClearedStage,
-  );
+  ) - computeStageRunPayout((state.startedAtStage ?? 1) - 1);
   state.lastClearedStage = 0;
+  delete state.startedAtStage;
   return discarded;
 }
 

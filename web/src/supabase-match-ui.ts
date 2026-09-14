@@ -25,6 +25,7 @@ import { PieceStatWorkbench, bindWorkbenchModal } from "./piece-stat-workbench";
 import type { PiecePreviewServices } from "./piece-preview-renderer";
 import type { PieceType } from "./config";
 import { EnergySystem, SVG_COIN_ICON } from "./energy-system";
+import { escapeHtml } from "./html";
 
 export interface SupabaseMatchUiCallbacks {
   onMatchStarted: (
@@ -180,7 +181,7 @@ export class SupabaseMatchUi {
     if (this.userEmail) {
       authBar.innerHTML = `
         <div style="color:#38bdf8; font-weight:600;">
-          ${this.userEmail}
+          ${escapeHtml(this.userEmail)}
         </div>
       `;
       const signOutBtn = document.createElement("button");
@@ -249,7 +250,7 @@ export class SupabaseMatchUi {
       } else {
         profileSection.innerHTML = `
           <div style="color:#f87171; font-size:13px; text-align:center;">
-            서버 접속 오류: ${err.message || "연결 실패"}
+            서버 접속 오류: ${escapeHtml(err.message || "연결 실패")}
           </div>
         `;
       }
@@ -712,7 +713,7 @@ export class SupabaseMatchUi {
           ${mode === "signup" ? `
             <div>
               <label style="display:block; font-size:12px; color:#cbd5e1; margin-bottom:4px;">닉네임 (2~20자)</label>
-              <input id="auth-nickname" type="text" placeholder="체스마스터" value="${this.profile?.nickname || ""}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #475569; border-radius:6px; padding:9px; color:#f8fafc; font-size:13px;" />
+              <input id="auth-nickname" type="text" placeholder="체스마스터" value="${escapeHtml(this.profile?.nickname || "")}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #475569; border-radius:6px; padding:9px; color:#f8fafc; font-size:13px;" />
             </div>
           ` : ""}
         </div>

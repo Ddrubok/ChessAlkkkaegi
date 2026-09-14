@@ -45,6 +45,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://yoajmckkrpgvcljrffww.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_dGhcuP6U2Qa9OaTlNOzrQg_yNU34WfL' }}
 
+      - run: npm run check:regressions
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

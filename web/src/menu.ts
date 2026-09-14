@@ -19,6 +19,7 @@ import {
 import { getSupabaseClient } from "./supabase-client";
 import { AdManager } from "./ad-manager";
 import { TutorialManager } from "./tutorial";
+import { escapeHtml } from "./html";
 
 export interface MainMenuRuntime {
   overlay: HTMLElement;
@@ -364,7 +365,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
           <div style="display:flex; flex-direction:column; gap:10px;">
             <div>
               <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">${I18nManager.t("lobby.nickname_label")}</label>
-              <input type="text" id="guest-nickname-input" value="${savedNick}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
+              <input type="text" id="guest-nickname-input" value="${escapeHtml(savedNick)}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
             </div>
             <button id="btn-guest-submit" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-top:4px;">
               ${I18nManager.t("lobby.guest_btn")}
@@ -526,7 +527,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:14px 16px; margin-bottom:18px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <div style="font-size:15px; font-weight:700; color:#f8fafc;">
-          ${user.nickname} <span style="font-size:12px; color:#94a3b8; font-weight:normal; margin-left:6px;">| ${I18nManager.t("common.points")}: <strong style="color:#38bdf8;">${points} P</strong></span>
+          ${escapeHtml(user.nickname)} <span style="font-size:12px; color:#94a3b8; font-weight:normal; margin-left:6px;">| ${I18nManager.t("common.points")}: <strong style="color:#38bdf8;">${points} P</strong></span>
         </div>
         <button id="btn-logout" style="background:transparent; border:none; color:#94a3b8; font-size:12px; cursor:pointer; text-decoration:underline; padding:2px 4px;">
           ${I18nManager.t("common.logout")}

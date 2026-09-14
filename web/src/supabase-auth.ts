@@ -68,24 +68,28 @@ function getOrCreateGuestUuid(): string {
 /**
  * 현재 로그인된 유저 세션을 보장하고 익명 계정 또는 로컬 게스트 ID로 세션을 활성화한다.
  */
-export async function ensureAuthUser(client: SupabaseClient): Promise<{ id: string; email?: string }> {
+export async function ensureAuthUser(client: SupabaseClient): Promise<{ id: string; email?: string; isGuest?: boolean }> {
   try {
-    const { data: sessionData } = await client.auth.getSession();
-    if (sessionData?.session?.user) {
-      return sessionData.session.user;
+    if (client?.auth?.getSession) {
+      const { data: sessionData } = await client.auth.getSession();
+      if (sessionData?.session?.user) {
+        return { ...sessionData.session.user, isGuest: false };
+      }
     }
 
     // 익명 로그인 시도 (Supabase Auth Anonymous)
-    const { data: anonData, error: anonErr } = await client.auth.signInAnonymously();
-    if (!anonErr && anonData?.user) {
-      return anonData.user;
+    if (client?.auth?.signInAnonymously) {
+      const { data: anonData, error: anonErr } = await client.auth.signInAnonymously();
+      if (!anonErr && anonData?.user) {
+        return { ...anonData.user, isGuest: false };
+      }
     }
   } catch (err) {
     console.warn("Supabase Auth 세션 조회 예외:", err);
   }
 
   // Auth가 비활성화되었거나 미인증 정책인 경우 로컬 게스트 UUID로 폴백
-  return { id: getOrCreateGuestUuid() };
+  return { id: getOrCreateGuestUuid(), isGuest: true };
 }
 
 /**
@@ -93,6 +97,11 @@ export async function ensureAuthUser(client: SupabaseClient): Promise<{ id: stri
  */
 export async function getOrCreateUserProfile(client: SupabaseClient): Promise<UserProfile> {
   const user = await ensureAuthUser(client);
+  const assertCurrentUser = async () => {
+    if (user.isGuest) return;
+    const { data } = await client.auth.getSession();
+    if (data.session?.user.id !== user.id) throw new Error("계정이 변경되었습니다. 다시 로그인해주세요.");
+  };
 
   const { data: existing, error: fetchErr } = await client
     .from("profiles")
@@ -101,41 +110,34 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
     .maybeSingle();
 
   if (fetchErr) {
+    if (!user.isGuest) throw fetchErr;
     console.warn("프로필 조회 경고:", fetchErr.message);
   }
+  await assertCurrentUser();
 
   if (existing) {
-    const localClassicMmr = localStorage.getItem("ca_local_classic_mmr") ? Number(localStorage.getItem("ca_local_classic_mmr")) : null;
-    const dbClassicMmr = existing.classic_mmr !== null && existing.classic_mmr !== undefined ? Number(existing.classic_mmr) : (existing.mmr !== null && existing.mmr !== undefined ? Number(existing.mmr) : null);
-    const classicMmr = localClassicMmr ?? dbClassicMmr ?? 1200;
+    // 인증 계정의 전적은 항상 서버 권위 값을 사용 (이전 계정의 로컬 캐시 유입 차단)
+    const classicMmr = existing.classic_mmr !== null && existing.classic_mmr !== undefined
+      ? Number(existing.classic_mmr)
+      : (existing.mmr !== null && existing.mmr !== undefined ? Number(existing.mmr) : 1200);
 
-    const localStrategyMmr = localStorage.getItem("ca_local_strategy_mmr") ? Number(localStorage.getItem("ca_local_strategy_mmr")) : null;
-    const dbStrategyMmr = existing.strategy_mmr !== null && existing.strategy_mmr !== undefined ? Number(existing.strategy_mmr) : (existing.mmr !== null && existing.mmr !== undefined ? Number(existing.mmr) : null);
-    const strategyMmr = localStrategyMmr ?? dbStrategyMmr ?? 1200;
+    const strategyMmr = existing.strategy_mmr !== null && existing.strategy_mmr !== undefined
+      ? Number(existing.strategy_mmr)
+      : (existing.mmr !== null && existing.mmr !== undefined ? Number(existing.mmr) : 1200);
 
-    const localClassicWins = localStorage.getItem("ca_local_classic_wins") ? Number(localStorage.getItem("ca_local_classic_wins")) : null;
-    const classicWins = localClassicWins ?? Number(existing.classic_wins ?? 0);
+    const classicWins = Number(existing.classic_wins ?? 0);
+    const classicDraws = Number(existing.classic_draws ?? 0);
+    const classicLosses = Number(existing.classic_losses ?? 0);
 
-    const localClassicDraws = localStorage.getItem("ca_local_classic_draws") ? Number(localStorage.getItem("ca_local_classic_draws")) : null;
-    const classicDraws = localClassicDraws ?? Number(existing.classic_draws ?? 0);
+    const strategyWins = Number(existing.strategy_wins ?? 0);
+    const strategyDraws = Number(existing.strategy_draws ?? 0);
+    const strategyLosses = Number(existing.strategy_losses ?? 0);
 
-    const localClassicLosses = localStorage.getItem("ca_local_classic_losses") ? Number(localStorage.getItem("ca_local_classic_losses")) : null;
-    const classicLosses = localClassicLosses ?? Number(existing.classic_losses ?? 0);
+    const totalWins = Number(existing.wins ?? (classicWins + strategyWins));
+    const totalDraws = Number(existing.draws ?? (classicDraws + strategyDraws));
+    const totalLosses = Number(existing.losses ?? (classicLosses + strategyLosses));
 
-    const localStrategyWins = localStorage.getItem("ca_local_strategy_wins") ? Number(localStorage.getItem("ca_local_strategy_wins")) : null;
-    const strategyWins = localStrategyWins ?? Number(existing.strategy_wins ?? 0);
-
-    const localStrategyDraws = localStorage.getItem("ca_local_strategy_draws") ? Number(localStorage.getItem("ca_local_strategy_draws")) : null;
-    const strategyDraws = localStrategyDraws ?? Number(existing.strategy_draws ?? 0);
-
-    const localStrategyLosses = localStorage.getItem("ca_local_strategy_losses") ? Number(localStorage.getItem("ca_local_strategy_losses")) : null;
-    const strategyLosses = localStrategyLosses ?? Number(existing.strategy_losses ?? 0);
-
-    const totalWins = classicWins + strategyWins;
-    const totalDraws = classicDraws + strategyDraws;
-    const totalLosses = classicLosses + strategyLosses;
-
-    // 로컬 스토리지에 동기화 저장
+    // 로컬 스토리지에 서버 기준 상태 동기화 (이전 계정 캐시 덮어쓰기)
     localStorage.setItem("ca_local_classic_mmr", String(classicMmr));
     localStorage.setItem("ca_local_strategy_mmr", String(strategyMmr));
     localStorage.setItem("ca_local_mmr", String(classicMmr));
@@ -152,13 +154,29 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
       localStorage.setItem(NICKNAME_STORAGE_KEY, existing.nickname);
     }
 
-    const referralCode = existing.referral_code || generateReferralCode();
+    let referralCode = existing.referral_code;
+    if (!referralCode) {
+      referralCode = generateReferralCode();
+      try {
+        const { error: refErr } = await client
+          .from("profiles")
+          .update({ referral_code: referralCode, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (refErr) {
+          throw refErr;
+        }
+      } catch (err) {
+        console.warn("추천 코드 동기화 예외:", err);
+        throw err;
+      }
+    }
+    await assertCurrentUser();
     localStorage.setItem("ca_referral_code", referralCode);
 
     // 대기 중인 추천인 코드가 있다면 확인 (기존 회원이므로 안내 후 종료)
     void EnergySystem.claimPendingReferralReward(existing.id, client, false);
 
-    const synchronizedProfile: UserProfile = {
+    return {
       id: existing.id,
       nickname: existing.nickname,
       mmr: classicMmr,
@@ -178,44 +196,51 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
       createdAt: existing.created_at,
       updatedAt: existing.updated_at,
     };
-
-    // DB에 최신 상태 백그라운드 동기화
-    void client.from("profiles").upsert({
-      id: synchronizedProfile.id,
-      nickname: synchronizedProfile.nickname,
-      referral_code: referralCode,
-      mmr: classicMmr,
-      classic_mmr: classicMmr,
-      strategy_mmr: strategyMmr,
-      wins: totalWins,
-      losses: totalLosses,
-      draws: totalDraws,
-      classic_wins: classicWins,
-      classic_draws: classicDraws,
-      classic_losses: classicLosses,
-      strategy_wins: strategyWins,
-      strategy_draws: strategyDraws,
-      strategy_losses: strategyLosses,
-    });
-
-    return synchronizedProfile;
   }
 
-  // 신규 프로필 생성
+  // 신규 프로필 생성 또는 오프라인 게스트 처리
+  const isGuest = Boolean(user.isGuest);
   const savedNick = localStorage.getItem(NICKNAME_STORAGE_KEY) || generateRandomNickname();
-  const savedClassicMmr = Number(localStorage.getItem("ca_local_classic_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
-  const savedStrategyMmr = Number(localStorage.getItem("ca_local_strategy_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
-  const savedClassicWins = Number(localStorage.getItem("ca_local_classic_wins") || 0);
-  const savedClassicDraws = Number(localStorage.getItem("ca_local_classic_draws") || 0);
-  const savedClassicLosses = Number(localStorage.getItem("ca_local_classic_losses") || 0);
-  const savedStrategyWins = Number(localStorage.getItem("ca_local_strategy_wins") || 0);
-  const savedStrategyDraws = Number(localStorage.getItem("ca_local_strategy_draws") || 0);
-  const savedStrategyLosses = Number(localStorage.getItem("ca_local_strategy_losses") || 0);
+  const savedClassicMmr = isGuest
+    ? Number(localStorage.getItem("ca_guest_classic_mmr") || localStorage.getItem("ca_local_classic_mmr") || 1200)
+    : 1200;
+  const savedStrategyMmr = isGuest
+    ? Number(localStorage.getItem("ca_guest_strategy_mmr") || localStorage.getItem("ca_local_strategy_mmr") || 1200)
+    : 1200;
+  const savedClassicWins = isGuest
+    ? Number(localStorage.getItem("ca_guest_classic_wins") || localStorage.getItem("ca_local_classic_wins") || 0)
+    : 0;
+  const savedClassicDraws = isGuest
+    ? Number(localStorage.getItem("ca_guest_classic_draws") || localStorage.getItem("ca_local_classic_draws") || 0)
+    : 0;
+  const savedClassicLosses = isGuest
+    ? Number(localStorage.getItem("ca_guest_classic_losses") || localStorage.getItem("ca_local_classic_losses") || 0)
+    : 0;
+  const savedStrategyWins = isGuest
+    ? Number(localStorage.getItem("ca_guest_strategy_wins") || localStorage.getItem("ca_local_strategy_wins") || 0)
+    : 0;
+  const savedStrategyDraws = isGuest
+    ? Number(localStorage.getItem("ca_guest_strategy_draws") || localStorage.getItem("ca_local_strategy_draws") || 0)
+    : 0;
+  const savedStrategyLosses = isGuest
+    ? Number(localStorage.getItem("ca_guest_strategy_losses") || localStorage.getItem("ca_local_strategy_losses") || 0)
+    : 0;
   const savedWins = savedClassicWins + savedStrategyWins;
   const savedDraws = savedClassicDraws + savedStrategyDraws;
   const savedLosses = savedClassicLosses + savedStrategyLosses;
-  const referralCode = localStorage.getItem("ca_referral_code") || generateReferralCode();
+  const referralCode = (isGuest && localStorage.getItem("ca_referral_code")) || generateReferralCode();
   localStorage.setItem("ca_referral_code", referralCode);
+
+  if (isGuest) {
+    localStorage.setItem("ca_guest_classic_mmr", String(savedClassicMmr));
+    localStorage.setItem("ca_guest_strategy_mmr", String(savedStrategyMmr));
+    localStorage.setItem("ca_guest_classic_wins", String(savedClassicWins));
+    localStorage.setItem("ca_guest_classic_draws", String(savedClassicDraws));
+    localStorage.setItem("ca_guest_classic_losses", String(savedClassicLosses));
+    localStorage.setItem("ca_guest_strategy_wins", String(savedStrategyWins));
+    localStorage.setItem("ca_guest_strategy_draws", String(savedStrategyDraws));
+    localStorage.setItem("ca_guest_strategy_losses", String(savedStrategyLosses));
+  }
 
   const initialProfile: UserProfile = {
     id: user.id,
@@ -235,42 +260,81 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
     referralCode,
   };
 
-  try {
-    const { data: created, error: insertErr } = await client
-      .from("profiles")
-      .upsert({ ...initialProfile, referral_code: referralCode }, { onConflict: "id" })
-      .select()
-      .single();
+  if (!isGuest) {
+    try {
+      // RLS 및 서버 전적 권한 격리에 맞추어 camelCase 및 전적 컬럼을 제외하고 비-전적 컬럼만 전달
+      const { data: created, error: insertErr } = await client
+        .from("profiles")
+        .upsert(
+          {
+            id: user.id,
+            nickname: savedNick,
+            referral_code: referralCode,
+          },
+          { onConflict: "id" }
+        )
+        .select()
+        .single();
 
-    // 신규 프로필 생성 후 대기 중인 추천인 코드가 있다면 보상 청구 (신규 회원)
-    void EnergySystem.claimPendingReferralReward(user.id, client, true);
+      if (insertErr) {
+        throw insertErr;
+      } else if (created) {
+        await assertCurrentUser();
+        void EnergySystem.claimPendingReferralReward(user.id, client, true);
+        const classicMmr = Number(created.classic_mmr ?? created.mmr ?? 1200);
+        const strategyMmr = Number(created.strategy_mmr ?? created.mmr ?? 1200);
+        const classicWins = Number(created.classic_wins ?? 0);
+        const classicDraws = Number(created.classic_draws ?? 0);
+        const classicLosses = Number(created.classic_losses ?? 0);
+        const strategyWins = Number(created.strategy_wins ?? 0);
+        const strategyDraws = Number(created.strategy_draws ?? 0);
+        const strategyLosses = Number(created.strategy_losses ?? 0);
+        const wins = Number(created.wins ?? (classicWins + strategyWins));
+        const draws = Number(created.draws ?? (classicDraws + strategyDraws));
+        const losses = Number(created.losses ?? (classicLosses + strategyLosses));
 
-    if (!insertErr && created) {
-      const classicMmr = Number(created.classic_mmr ?? created.mmr ?? 1200);
-      const strategyMmr = Number(created.strategy_mmr ?? created.mmr ?? 1200);
-      return {
-        id: created.id,
-        nickname: created.nickname,
-        mmr: classicMmr,
-        classicMmr,
-        strategyMmr,
-        wins: Number(created.wins ?? savedWins),
-        losses: Number(created.losses ?? savedLosses),
-        draws: Number(created.draws ?? savedDraws),
-        classicWins: Number(created.classic_wins ?? savedClassicWins),
-        classicDraws: Number(created.classic_draws ?? savedClassicDraws),
-        classicLosses: Number(created.classic_losses ?? savedClassicLosses),
-        strategyWins: Number(created.strategy_wins ?? savedStrategyWins),
-        strategyDraws: Number(created.strategy_draws ?? savedStrategyDraws),
-        strategyLosses: Number(created.strategy_losses ?? savedStrategyLosses),
-        referralCode: created.referral_code ?? referralCode,
-        referredBy: created.referred_by,
-        createdAt: created.created_at,
-        updatedAt: created.updated_at,
-      };
+        localStorage.setItem("ca_local_classic_mmr", String(classicMmr));
+        localStorage.setItem("ca_local_strategy_mmr", String(strategyMmr));
+        localStorage.setItem("ca_local_mmr", String(classicMmr));
+        localStorage.setItem("ca_local_classic_wins", String(classicWins));
+        localStorage.setItem("ca_local_classic_draws", String(classicDraws));
+        localStorage.setItem("ca_local_classic_losses", String(classicLosses));
+        localStorage.setItem("ca_local_strategy_wins", String(strategyWins));
+        localStorage.setItem("ca_local_strategy_draws", String(strategyDraws));
+        localStorage.setItem("ca_local_strategy_losses", String(strategyLosses));
+        localStorage.setItem("ca_local_wins", String(wins));
+        localStorage.setItem("ca_local_draws", String(draws));
+        localStorage.setItem("ca_local_losses", String(losses));
+        if (created.nickname) {
+          localStorage.setItem(NICKNAME_STORAGE_KEY, created.nickname);
+        }
+
+        return {
+          id: created.id,
+          nickname: created.nickname,
+          mmr: classicMmr,
+          classicMmr,
+          strategyMmr,
+          wins,
+          losses,
+          draws,
+          classicWins,
+          classicDraws,
+          classicLosses,
+          strategyWins,
+          strategyDraws,
+          strategyLosses,
+          referralCode: created.referral_code ?? referralCode,
+          referredBy: created.referred_by,
+          createdAt: created.created_at,
+          updatedAt: created.updated_at,
+        };
+      }
+      throw new Error("생성된 프로필을 조회하지 못했습니다.");
+    } catch (err) {
+      console.warn("프로필 DB 동기화 예외:", err);
+      throw err;
     }
-  } catch (err) {
-    console.warn("프로필 DB 동기화 경고:", err);
   }
 
   return initialProfile;
@@ -284,7 +348,7 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   nickname: string,
-): Promise<{ success: boolean; error?: string; user?: UserProfile }> {
+): Promise<{ success: boolean; error?: string; user?: UserProfile; needsEmailConfirmation?: boolean }> {
   const cleanEmail = email.trim();
   const cleanNick = nickname.trim();
 
@@ -317,7 +381,53 @@ export async function signUpWithEmail(
     return { success: false, error: "회원가입 세션 생성에 실패했습니다." };
   }
 
-  // 프로필 테이블 등록
+  // 이메일 확인 대기 상태 (session 없음): 인증되지 않은 상태를 로그인 완료처럼 표시하지 않음
+  if (!signUpData.session) {
+    return {
+      success: false,
+      needsEmailConfirmation: true,
+      error: "가입 확인 이메일이 발송되었습니다. 이메일 인증을 완료한 후 로그인해주세요.",
+    };
+  }
+
+  // 세션이 활성화된 경우: 프로필 테이블 등록
+  // RLS 제한(비-전적 컬럼 허용) 및 SQL 가입 트리거와 호환되도록 camelCase/전적 컬럼 제외
+  const referralCode = generateReferralCode();
+  const { error: profileErr } = await client
+    .from("profiles")
+    .upsert(
+      {
+        id: authUser.id,
+        nickname: cleanNick,
+        referral_code: referralCode,
+      },
+      { onConflict: "id" }
+    );
+
+  if (profileErr) {
+    return { success: false, error: profileErr.message };
+  }
+
+  // 대기 중인 추천인 코드가 있다면 보상 청구
+  void EnergySystem.claimPendingReferralReward(authUser.id, client, true);
+
+  // 로컬 스토리지에 신규 계정 정보 동기화 (기존 전적 오염 방지)
+  localStorage.setItem(NICKNAME_STORAGE_KEY, cleanNick);
+  localStorage.setItem("ca_guest_user_uuid", authUser.id);
+  localStorage.setItem("ca_referral_code", referralCode);
+  localStorage.setItem("ca_local_mmr", "1200");
+  localStorage.setItem("ca_local_classic_mmr", "1200");
+  localStorage.setItem("ca_local_strategy_mmr", "1200");
+  localStorage.setItem("ca_local_wins", "0");
+  localStorage.setItem("ca_local_losses", "0");
+  localStorage.setItem("ca_local_draws", "0");
+  localStorage.setItem("ca_local_classic_wins", "0");
+  localStorage.setItem("ca_local_classic_draws", "0");
+  localStorage.setItem("ca_local_classic_losses", "0");
+  localStorage.setItem("ca_local_strategy_wins", "0");
+  localStorage.setItem("ca_local_strategy_draws", "0");
+  localStorage.setItem("ca_local_strategy_losses", "0");
+
   const newProfile: UserProfile = {
     id: authUser.id,
     nickname: cleanNick,
@@ -333,26 +443,8 @@ export async function signUpWithEmail(
     strategyWins: 0,
     strategyDraws: 0,
     strategyLosses: 0,
+    referralCode,
   };
-
-  await client
-    .from("profiles")
-    .upsert(newProfile, { onConflict: "id" });
-
-  localStorage.setItem(NICKNAME_STORAGE_KEY, cleanNick);
-  localStorage.setItem("ca_guest_user_uuid", authUser.id);
-  localStorage.setItem("ca_local_mmr", "1200");
-  localStorage.setItem("ca_local_classic_mmr", "1200");
-  localStorage.setItem("ca_local_strategy_mmr", "1200");
-  localStorage.setItem("ca_local_wins", "0");
-  localStorage.setItem("ca_local_losses", "0");
-  localStorage.setItem("ca_local_draws", "0");
-  localStorage.setItem("ca_local_classic_wins", "0");
-  localStorage.setItem("ca_local_classic_draws", "0");
-  localStorage.setItem("ca_local_classic_losses", "0");
-  localStorage.setItem("ca_local_strategy_wins", "0");
-  localStorage.setItem("ca_local_strategy_draws", "0");
-  localStorage.setItem("ca_local_strategy_losses", "0");
 
   return { success: true, user: newProfile };
 }
@@ -389,9 +481,32 @@ export async function signInWithEmail(
  */
 export async function signOutUser(client: SupabaseClient): Promise<void> {
   try {
-    await client.auth.signOut();
+    if (client?.auth?.signOut) {
+      await client.auth.signOut();
+    }
   } catch {}
   localStorage.removeItem("ca_guest_user_uuid");
+  localStorage.removeItem("ca_logged_in_user");
+
+  // 이전 계정 전적 격리를 위해 로컬 전적 캐시 정리
+  const statKeys = [
+    "ca_local_classic_mmr",
+    "ca_local_strategy_mmr",
+    "ca_local_mmr",
+    "ca_local_classic_wins",
+    "ca_local_classic_draws",
+    "ca_local_classic_losses",
+    "ca_local_strategy_wins",
+    "ca_local_strategy_draws",
+    "ca_local_strategy_losses",
+    "ca_local_wins",
+    "ca_local_draws",
+    "ca_local_losses",
+    "ca_referral_code",
+  ];
+  for (const key of statKeys) {
+    localStorage.removeItem(key);
+  }
 }
 
 /**

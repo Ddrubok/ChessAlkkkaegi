@@ -30,19 +30,17 @@ export interface MatchmakingStatus {
 }
 
 export interface MatchResultPayload {
+  matchId: string;
   mode: "classic" | "strategy";
   winnerId: string | null;
-  loserId: string | null;
-  isDraw: boolean;
   whitePlayerId: string;
   blackPlayerId: string;
-  whiteIsWinner: boolean;
 }
 
 export interface EloDeltaResult {
-  winnerDelta: number;
-  loserDelta: number;
-  isDraw: boolean;
+  status: "pending" | "settled";
+  whiteDelta: number;
+  blackDelta: number;
 }
 
 interface PresencePayload {
@@ -818,36 +816,30 @@ export class SupabaseMatchmaker {
   }
 
   /**
-   * 경기 결과 Supabase RPC (finish_match) 정산 호출
+   * 양쪽의 동일한 결과 보고가 모이면 서버에서 한 번만 정산한다.
    */
   public static async recordMatchResult(
     client: SupabaseClient,
     result: MatchResultPayload,
-  ): Promise<EloDeltaResult | null> {
-    try {
-      const winnerId = result.winnerId || result.whitePlayerId;
-      const loserId = result.loserId || result.blackPlayerId;
-
-      const { data, error } = await client.rpc("finish_match", {
-        p_winner_id: winnerId,
-        p_loser_id: loserId,
-        p_is_draw: result.isDraw,
-        p_white_is_winner: result.whiteIsWinner,
+  ): Promise<EloDeltaResult> {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const { data, error } = await client.rpc("finish_match_v2", {
+        p_match_id: result.matchId,
+        p_mode: result.mode,
+        p_white_id: result.whitePlayerId,
+        p_black_id: result.blackPlayerId,
+        p_winner_id: result.winnerId,
       });
-
-      if (error) {
-        console.warn("finish_match RPC 호출 실패:", error.message);
-        return null;
+      if (error) throw new Error(`대전 정산 실패: ${error.message}`);
+      if (data?.status === "settled") {
+        if (!Number.isFinite(data.white_delta) || !Number.isFinite(data.black_delta)) {
+          throw new Error("대전 정산 응답의 점수가 올바르지 않습니다.");
+        }
+        return { status: "settled", whiteDelta: data.white_delta, blackDelta: data.black_delta };
       }
-
-      return {
-        winnerDelta: Number(data?.winner_delta ?? 16),
-        loserDelta: Number(data?.loser_delta ?? -16),
-        isDraw: Boolean(data?.is_draw ?? false),
-      };
-    } catch (err) {
-      console.warn("MMR 정산 처리 예외:", err);
-      return null;
+      if (data?.status !== "pending") throw new Error("대전 정산 응답이 올바르지 않습니다.");
+      if (attempt < 19) await new Promise(resolve => setTimeout(resolve, 500));
     }
+    return { status: "pending", whiteDelta: 0, blackDelta: 0 };
   }
 }

@@ -1,5 +1,6 @@
 import { I18nManager } from "./i18n";
 import { SocialService, type ChallengeRequestPayload } from "./social-service";
+import { escapeHtml } from "./html";
 
 export interface ChallengeModalCallbacks {
   onAccept: (payload: ChallengeRequestPayload) => void;
@@ -54,8 +55,8 @@ export function openChallengeReceivedModal(
       ${I18nManager.t("friends.challenge_received_title")}
     </h2>
     <p style="color:#94a3b8; font-size:14px; margin:0 0 16px;">
-      <strong style="color:#38bdf8; font-size:15px;">${payload.challengerNickname}</strong> (MMR ${payload.challengerMmr})님이<br>
-      <span style="color:#fbbf24; font-weight:700;">[${modeName}]</span> 대전을 신청했습니다!
+      <strong style="color:#38bdf8; font-size:15px;">${escapeHtml(payload.challengerNickname)}</strong> (MMR ${escapeHtml(payload.challengerMmr)})님이<br>
+      <span style="color:#fbbf24; font-weight:700;">[${escapeHtml(modeName)}]</span> 대전을 신청했습니다!
     </p>
 
     <div id="challenge-timer" style="font-size:13px; font-weight:700; color:#f59e0b; margin-bottom:20px;">
