@@ -586,6 +586,12 @@ export class SupabaseMatchUi {
         adBtn.style.cursor = "wait";
         if (strongEl) strongEl.textContent = `⏳ ${s.adCooldownSec}초 후 시청 가능`;
         if (spanEl) spanEl.textContent = `오늘 남은 횟수: ${s.dailyAdLimit - s.adCountToday}/${s.dailyAdLimit}`;
+      } else if (!s.adAvailable) {
+        adBtn.disabled = true;
+        adBtn.style.opacity = "0.6";
+        adBtn.style.cursor = "not-allowed";
+        if (strongEl) strongEl.textContent = "현재 이용 가능한 광고가 없습니다";
+        if (spanEl) spanEl.textContent = "코인은 시간이 지나면 자동으로 충전됩니다.";
       } else {
         adBtn.disabled = false;
         adBtn.style.opacity = "1";
@@ -623,6 +629,7 @@ export class SupabaseMatchUi {
         closeModal();
       } else {
         updateAdBtnState();
+        if (overlay.isConnected) alert("광고가 완료되지 않아 보상이 지급되지 않았습니다.");
       }
     };
 

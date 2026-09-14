@@ -44,8 +44,13 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://yoajmckkrpgvcljrffww.supabase.co' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_dGhcuP6U2Qa9OaTlNOzrQg_yNU34WfL' }}
+          VITE_WEB_ADS_MODE: ${{ vars.VITE_WEB_ADS_MODE || 'off' }}
+          VITE_ADSENSE_CLIENT_ID: ${{ vars.VITE_ADSENSE_CLIENT_ID || 'ca-pub-1173757866262139' }}
+          VITE_ADSENSE_SLOT_ID: ${{ vars.VITE_ADSENSE_SLOT_ID }}
+          VITE_AD_TEST_MODE: 'false'
 
       - run: npm run check:regressions
+      - run: npm run check:ads
 
       - uses: actions/configure-pages@v5
 

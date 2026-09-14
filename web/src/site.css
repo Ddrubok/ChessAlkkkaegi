@@ -1,0 +1,29 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; color: #e2e8f0; background: #100d0a; line-height: 1.8; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header, main, footer { width: min(100% - 40px, 840px); margin-inline: auto; }
+header { padding-block: 24px; border-bottom: 1px solid #40392f; }
+a { color: #ead092; text-underline-offset: 4px; }
+a:hover { color: #fff0c9; }
+a:focus-visible { outline: 2px solid #ead092; outline-offset: 4px; }
+.brand { font-size: 22px; font-weight: 750; text-decoration: none; }
+nav, footer { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+nav { margin-top: 14px; }
+nav a, footer a { padding-block: 6px; }
+main { padding-block: 28px 42px; }
+h1 { font-size: clamp(27px, 6vw, 36px); line-height: 1.35; margin: 0 0 22px; color: #fff2d6; }
+h2 { font-size: 21px; line-height: 1.5; color: #f4eee5; margin-top: 0; }
+.lead { font-size: 18px; color: #c6bdad; }
+section { margin-top: 34px; padding-top: 24px; border-top: 1px solid #40392f; }
+p, li { overflow-wrap: anywhere; }
+ul, ol { padding-left: 24px; }
+li + li { margin-top: 10px; }
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; text-align: left; }
+caption { text-align: left; margin-bottom: 8px; color: #c6bdad; }
+th, td { border-bottom: 1px solid #40392f; padding: 10px 8px; }
+footer { align-items: center; border-top: 1px solid #40392f; padding-block: 20px 36px; font-size: 13px; color: #c6bdad; }
+[data-display-ad]:not([hidden]) { margin-top: 48px; border-top: 1px solid #40392f; padding-top: 20px; }
+[data-display-ad]:not([hidden])::before { content: '광고'; display: block; font-size: 12px; color: #c6bdad; }
+.skip-link { position: absolute; top: -60px; left: 12px; padding: 8px; background: #100d0a; }
+.skip-link:focus { top: 8px; }

@@ -118,7 +118,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
     },
     build: {
       rollupOptions: {
-        input: "index.html",
+        input: portableBuild ? "index.html" : ["index.html", "about.html", "guide.html", "tiers.html", "updates.html"],
         ...(portableBuild
           ? {
               output: {

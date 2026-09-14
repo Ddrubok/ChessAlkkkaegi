@@ -80,6 +80,17 @@ const BGM_URL = resolveRuntimeAssetUrl("bgm");
 
 // 모듈 하나가 메뉴와 대국 전체에서 같은 BGM·버퍼·제한 상태를 공유한다.
 let soundRuntime: SoundRuntime | null = null;
+let adSoundMuted = false;
+
+/** Mute advertising breaks without changing saved player preferences. */
+export function setAdSoundMuted(muted: boolean): void {
+  adSoundMuted = muted;
+  applySoundSettings();
+  if (muted && soundRuntime?.context.state === "running") void soundRuntime.context.suspend();
+  if (!muted && soundRuntime?.unlocked && soundRuntime.context.state === "suspended" && !document.hidden) {
+    void soundRuntime.context.resume();
+  }
+}
 
 /**
  * 효과음이나 자동재생 실패가 게임 진행을 막지 않도록 같은 경고는 한 번만 남긴다.
@@ -180,7 +191,7 @@ export function updateSoundSettings(patch: Partial<SoundSettings>): SoundSetting
 
 export function applySoundSettings(): void {
   if (soundRuntime === null) return;
-  const effectiveBgm = currentSoundSettings.muted
+  const effectiveBgm = currentSoundSettings.muted || adSoundMuted
     ? 0
     : SOUND_BGM_VOLUME * currentSoundSettings.masterVolume * currentSoundSettings.bgmVolume;
   soundRuntime.bgm.volume = Math.max(0, Math.min(1, effectiveBgm));
@@ -206,7 +217,7 @@ export function playSoundEffect(id: SoundEffectId): void {
     const source = runtime.context.createBufferSource();
     const gain = runtime.context.createGain();
     source.buffer = buffer;
-    const effectiveSfx = currentSoundSettings.muted
+    const effectiveSfx = currentSoundSettings.muted || adSoundMuted
       ? 0
       : SOUND_SFX_VOLUME * currentSoundSettings.masterVolume * currentSoundSettings.sfxVolume;
     gain.gain.value = Math.max(0, Math.min(1, effectiveSfx));
@@ -350,7 +361,7 @@ export function initializeSound(): void {
   };
 
   const handleResume = (): void => {
-    if (runtime.unlocked && !currentSoundSettings.muted) {
+    if (runtime.unlocked && !currentSoundSettings.muted && !adSoundMuted) {
       void runtime.bgm.play().catch(() => {});
       if (runtime.context.state === "suspended") {
         void runtime.context.resume();

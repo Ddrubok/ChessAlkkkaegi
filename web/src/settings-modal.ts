@@ -6,6 +6,7 @@
 
 import { I18nManager, SUPPORTED_LANGUAGES, type LanguageCode } from "./i18n";
 import { getSoundSettings, updateSoundSettings } from "./sound";
+import { AdManager } from "./ad-manager";
 
 export function openSettingsModal(parentContainer?: HTMLElement): void {
   const container = parentContainer ?? document.body;
@@ -72,9 +73,11 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
 
       <!-- 탭 본문 -->
       <div id="settings-tab-content" style="min-height:220px; display:flex; flex-direction:column; justify-content:center;"></div>
+      ${AdManager.hasPrivacyOptions() ? '<button id="ad-privacy-options" type="button">광고 개인정보 설정</button>' : ''}
     `;
 
     // 닫기 이벤트
+    card.querySelector("#ad-privacy-options")?.addEventListener("click", () => { void AdManager.showPrivacyOptions(); });
     card.querySelector("#settings-modal-close")?.addEventListener("click", () => modal.remove());
 
     // 탭 전환 이벤트

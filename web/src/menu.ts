@@ -316,6 +316,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       </div>
 
       <div id="auth-tab-content"></div>
+      <nav class="site-menu-links" aria-label="게임 안내"><a href="./about.html">소개·문의</a><a href="./guide.html">조작법·규칙</a><a href="./tiers.html">티어</a><a href="./updates.html">업데이트</a><a href="./privacy.html">개인정보</a></nav>
       <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:12px; font-size:13px; min-height:16px; color:#ef4444;"></p>
     `;
 
@@ -557,6 +558,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       <button type="button" data-game-mode="online" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#7c3aed; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_online")}</button>
       <button type="button" data-game-mode="hotseat" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_2p")}</button>
     </div>
+    <nav class="site-menu-links" aria-label="게임 안내"><a href="./about.html">소개·문의</a><a href="./guide.html">조작법·규칙</a><a href="./tiers.html">티어</a><a href="./updates.html">업데이트</a><a href="./privacy.html">개인정보</a></nav>
     <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:14px; font-size:13px;"></p>
   `;
 

@@ -1893,6 +1893,16 @@ body {
   color: #38bdf8;
 }
 
+.site-menu-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 14px;
+  font-size: 12px;
+}
+.site-menu-links a { color: #cbd5e1; padding: 6px 0; }
+.site-menu-links a:focus-visible { outline: 2px solid #ffe7a3; outline-offset: 3px; }
+
 .strike-action-bar button[data-action="defend"]:hover {
   background: rgba(56, 189, 248, 0.18);
 }

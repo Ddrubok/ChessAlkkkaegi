@@ -4,8 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 /**
  * 행동력/코인 경제 순환 및 서버 검증 추천인(Referral) 시스템
  * 
- * 구글 계정 보호(Anti-Ban Policy) 광고 정책:
- * - 1일 최대 시청 한도: 5회 (과도한 시청 및 무효 트래픽 방지)
+ * 게임 내 코인 지급 규칙 (Google의 승인 기준이 아님):
+ * - 1일 최대 시청 한도: 5회
  * - 1회 시청당 보상: +2 코인 (하루 최대 +10 코인 무료 충전)
  * - 시청 간격 쿨다운: 60초 (연타/매크로 시청 방지)
  */
@@ -15,7 +15,7 @@ const SYNCED_LOGS_KEY = "ca_synced_referral_log_ids";
 const MAX_AUTO_RECHARGE_COINS = 5;
 const INITIAL_FREE_COINS = 10;
 const RECHARGE_INTERVAL_MS = 20 * 60 * 1000; // 20분 (1200초)
-const MAX_DAILY_ADS = 5; // ★ 구글 계정 정지 방지: 1일 최대 5회 권장치
+const MAX_DAILY_ADS = 5;
 const AD_COOLDOWN_MS = 60 * 1000; // ★ 시청 간격 쿨다운 60초
 const PENDING_REF_KEY = "pending_referrer_code";
 
@@ -137,7 +137,7 @@ export const EnergySystem = {
     const adCooldownSec = Math.ceil(adCooldownRemainingMs / 1000);
 
     const hasDailyLimitRemaining = data.adCountToday < MAX_DAILY_ADS;
-    const adAvailable = hasDailyLimitRemaining && adCooldownSec <= 0;
+    const adAvailable = hasDailyLimitRemaining && adCooldownSec <= 0 && AdManager.isRewardAvailable();
 
     return {
       coins: data.coins,
@@ -191,6 +191,7 @@ export const EnergySystem = {
    * 보상형 광고 시청 후 +2 코인 지급 (일일 5회 + 60초 쿨다운 검증)
    */
   watchAdForCoins: async (): Promise<boolean> => {
+    if (!AdManager.isRewardAvailable()) return false;
     const state = EnergySystem.getState();
     if (state.adCountToday >= MAX_DAILY_ADS) {
       alert("오늘 광고 시청 한도(5회)를 모두 달성하셨습니다. 내일 다시 이용해주세요!");
@@ -201,18 +202,13 @@ export const EnergySystem = {
       return false;
     }
 
-    return new Promise<boolean>((resolve) => {
-      AdManager.showRewardVideo((_rewardAmount) => {
+    return AdManager.showRewardVideo((_rewardAmount) => {
         const data = loadStoredData();
         data.coins += 2;
         data.adCountToday += 1;
         data.lastAdWatchedAt = Date.now();
         saveStoredData(data);
         EnergySystem.notify();
-        resolve(true);
-      }).then((success) => {
-        if (!success) resolve(false);
-      });
     });
   },
 
