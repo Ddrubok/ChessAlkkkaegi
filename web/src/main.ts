@@ -1,4 +1,7 @@
 import "./style.css";
+import { getTier } from "./tier";
+import { formatTier, formatTierProgress } from "./tier-view";
+import { I18nManager } from "./i18n";
 import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
@@ -384,7 +387,10 @@ async function bootstrap(): Promise<void> {
       renderMainMenu(menuRuntime);
       const delta = mySide === "white" ? result.whiteDelta : result.blackDelta;
       const rating = mode === "strategy" ? profile.strategyMmr : profile.classicMmr;
-      showStatus("상대: " + opponent.nickname + " · MMR 변동: " + (delta > 0 ? "+" : "") + delta + " · 현재: " + rating);
+      const previousRating = rating - delta;
+      const levelChange = getTier(rating).level - getTier(previousRating).level;
+      const promotion = levelChange === 0 ? "" : I18nManager.t(levelChange > 0 ? "tier.promoted" : "tier.demoted") + ": " + formatTier(previousRating) + " → ";
+      showStatus("상대: " + opponent.nickname + " · " + promotion + formatTier(rating) + " · " + (delta > 0 ? "+" : "") + delta + "점 · " + formatTierProgress(rating));
     } catch (error) {
       console.warn("대전 정산 실패:", error);
       showStatus("정산을 완료하지 못했습니다. 다시 확인해주세요.", true);

@@ -1,6 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase-client";
 import type { UserProfile } from "./supabase-auth";
+import { KING_MMR } from "./tier";
 
 export type UserStatus = "online" | "in_game" | "in_queue" | "offline";
 
@@ -160,137 +161,129 @@ export class SocialService {
   }
 
   /**
-   * 랭킹 리더보드 조회 (클래식 / 전략)
+   * 랭킹 리더보드 조회 (클래식 / 전략 / 킹 필터)
    */
   public static async getLeaderboard(
     mode: "classic" | "strategy" = "classic",
     limit: number = 50,
-  ): Promise<LeaderboardEntry[]> {
+    kingOnly: boolean = false,
+  ): Promise<LeaderboardEntry[] | null> {
     const sb = getSupabaseClient();
-    if (!sb) return [];
+    if (!sb) return null;
 
     try {
-      // 1. RPC 함수 호출 시도
-      const { data, error } = await sb.rpc("get_leaderboard", {
-        p_mode: mode,
-        p_limit: limit,
-      });
-
-      if (!error && Array.isArray(data) && data.length > 0) {
-        return data.map((item: Record<string, unknown>, idx: number) => ({
-          rank: Number(item.rank ?? idx + 1),
-          id: String(item.id),
-          nickname: String(item.nickname || "플레이어"),
-          mmr: Number(item.mmr ?? 1000),
-          wins: Number(item.wins ?? 0),
-          losses: Number(item.losses ?? 0),
-          draws: Number(item.draws ?? 0),
-        }));
-      }
-
-      // 2. RPC 미설치 시 테이블 직접 쿼리 폴백
       const mmrCol = mode === "classic" ? "classic_mmr" : "strategy_mmr";
       const winsCol = mode === "classic" ? "classic_wins" : "strategy_wins";
       const lossesCol = mode === "classic" ? "classic_losses" : "strategy_losses";
       const drawsCol = mode === "classic" ? "classic_draws" : "strategy_draws";
 
-      const { data: rows, error: qErr } = await sb
+      let query = sb
         .from("profiles")
-        .select(`id, nickname, ${mmrCol}, ${winsCol}, ${lossesCol}, ${drawsCol}`)
+        .select(`id, nickname, ${mmrCol}, ${winsCol}, ${lossesCol}, ${drawsCol}`);
+
+      if (kingOnly) {
+        query = query.gte(mmrCol, KING_MMR);
+      }
+
+      const { data: rows, error: qErr } = await query
         .order(mmrCol, { ascending: false })
         .order(winsCol, { ascending: false })
+        .order("id", { ascending: true })
         .limit(limit);
 
-      if (qErr || !rows) return [];
+      if (qErr || !rows) return null;
 
-      return rows.map((r: Record<string, unknown>, idx: number) => ({
-        rank: idx + 1,
-        id: String(r.id),
-        nickname: String(r.nickname || "플레이어"),
-        mmr: Number(r[mmrCol] ?? 1000),
-        wins: Number(r[winsCol] ?? 0),
-        losses: Number(r[lossesCol] ?? 0),
-        draws: Number(r[drawsCol] ?? 0),
-      }));
+      let currentRank = 1;
+      return rows.map((r: Record<string, unknown>, idx: number) => {
+        const mmr = Number(r[mmrCol] ?? 1000);
+        if (idx > 0) {
+          const prevRow = rows[idx - 1] as Record<string, unknown>;
+          const prevMmr = Number(prevRow[mmrCol] ?? 1000);
+          if (mmr < prevMmr) {
+            currentRank = idx + 1;
+          }
+        }
+        return {
+          rank: currentRank,
+          id: String(r.id),
+          nickname: String(r.nickname || "플레이어"),
+          mmr,
+          wins: Number(r[winsCol] ?? 0),
+          losses: Number(r[lossesCol] ?? 0),
+          draws: Number(r[drawsCol] ?? 0),
+        };
+      });
     } catch (err) {
       console.error("getLeaderboard error:", err);
-      return [];
+      return null;
     }
   }
 
   /**
-   * 내 순위 조회 (클래식 / 전략)
+   * 내 순위 조회 (클래식 / 전략 / 킹 필터)
    */
   public static async getMyRank(
     userId: string,
     mode: "classic" | "strategy" = "classic",
+    kingOnly: boolean = false,
   ): Promise<MyRankResult | null> {
     if (!userId || userId === "local_guest") return null;
     const sb = getSupabaseClient();
     if (!sb) return null;
 
     try {
-      // 1. RPC 함수 호출 시도
-      const { data, error } = await sb.rpc("get_my_rank", {
-        p_user_id: userId,
-        p_mode: mode,
-      });
-
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const item = data[0] as Record<string, unknown>;
-        return {
-          rank: Number(item.my_rank ?? 1),
-          mmr: Number(item.my_mmr ?? 1200),
-          totalPlayers: Number(item.total_players ?? 1),
-        };
-      }
-
-      // 2. 테이블 직접 카운트 폴백
       const mmrCol = mode === "classic" ? "classic_mmr" : "strategy_mmr";
-      const { data: me } = await sb
+
+      // 1. 내 MMR 조회
+      const { data: me, error: meErr } = await sb
         .from("profiles")
         .select(`id, ${mmrCol}`)
         .eq("id", userId)
         .maybeSingle();
 
-      if (!me) {
-        if (this.myProfile && this.myProfile.id === userId) {
-          const myMmr = mode === "classic" ? (this.myProfile.classicMmr ?? this.myProfile.mmr ?? 1200) : (this.myProfile.strategyMmr ?? this.myProfile.mmr ?? 1200);
-          return {
-            rank: 1,
-            mmr: myMmr,
-            totalPlayers: 1,
-          };
-        }
+      if (meErr || !me) {
         return null;
       }
 
       const myMmr = Number((me as Record<string, unknown>)[mmrCol] ?? 1200);
 
-      const { count: higherCount } = await sb
+      // 2. 킹 랭킹 모드인데 내 MMR이 킹 기준 미만이면 킹 순위 없음
+      if (kingOnly && myMmr < KING_MMR) {
+        return null;
+      }
+
+      // 3. 나보다 MMR이 엄격히 높은(#people strictly higher) 플레이어 수 카운트
+      // (kingOnly 모드라도 myMmr >= KING_MMR이 보장되므로 gt(mmrCol, myMmr) 대상은 자동으로 킹)
+      const higherQuery = sb
         .from("profiles")
         .select("id", { count: "exact", head: true })
         .gt(mmrCol, myMmr);
 
-      const { count: totalCount } = await sb
+      const { count: higherCount, error: higherErr } = await higherQuery;
+      if (higherErr) return null;
+
+      // 4. 전체 플레이어 수 카운트 (킹 모드면 킹 기준 이상만)
+      let totalQuery = sb
         .from("profiles")
         .select("id", { count: "exact", head: true });
 
+      if (kingOnly) {
+        totalQuery = totalQuery.gte(mmrCol, KING_MMR);
+      }
+
+      const { count: totalCount, error: totalErr } = await totalQuery;
+      if (totalErr) return null;
+
+      const higher = higherCount ?? 0;
+      const total = totalCount ?? 0;
+
       return {
-        rank: (higherCount ?? 0) + 1,
+        rank: higher + 1,
         mmr: myMmr,
-        totalPlayers: Math.max((higherCount ?? 0) + 1, totalCount ?? 1),
+        totalPlayers: Math.max(higher + 1, total),
       };
     } catch (err) {
       console.error("getMyRank error:", err);
-      if (this.myProfile && this.myProfile.id === userId) {
-        const myMmr = mode === "classic" ? (this.myProfile.classicMmr ?? this.myProfile.mmr ?? 1200) : (this.myProfile.strategyMmr ?? this.myProfile.mmr ?? 1200);
-        return {
-          rank: 1,
-          mmr: myMmr,
-          totalPlayers: 1,
-        };
-      }
       return null;
     }
   }

@@ -1,6 +1,7 @@
 import { I18nManager } from "./i18n";
 import { SocialService, type ChallengeRequestPayload } from "./social-service";
 import { escapeHtml } from "./html";
+import { renderTierBadge } from "./tier-view";
 
 export interface ChallengeModalCallbacks {
   onAccept: (payload: ChallengeRequestPayload) => void;
@@ -54,8 +55,11 @@ export function openChallengeReceivedModal(
     <h2 style="margin:0 0 6px; font-size:18px; font-weight:800;">
       ${I18nManager.t("friends.challenge_received_title")}
     </h2>
-    <p style="color:#94a3b8; font-size:14px; margin:0 0 16px;">
-      <strong style="color:#38bdf8; font-size:15px;">${escapeHtml(payload.challengerNickname)}</strong> (MMR ${escapeHtml(payload.challengerMmr)})님이<br>
+    <p style="color:#94a3b8; font-size:14px; margin:0 0 16px; line-height:1.5;">
+      <span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center;">
+        <strong style="color:#38bdf8; font-size:15px;">${escapeHtml(payload.challengerNickname)}</strong>
+        ${renderTierBadge(payload.challengerMmr, false)}
+      </span>님이<br>
       <span style="color:#fbbf24; font-weight:700;">[${escapeHtml(modeName)}]</span> 대전을 신청했습니다!
     </p>
 

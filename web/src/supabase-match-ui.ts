@@ -26,6 +26,7 @@ import type { PiecePreviewServices } from "./piece-preview-renderer";
 import type { PieceType } from "./config";
 import { EnergySystem, SVG_COIN_ICON } from "./energy-system";
 import { escapeHtml } from "./html";
+import { formatTier, renderTierBadge } from "./tier-view";
 
 export interface SupabaseMatchUiCallbacks {
   onMatchStarted: (
@@ -351,7 +352,7 @@ export class SupabaseMatchUi {
     container.innerHTML = "";
 
     const topRow = document.createElement("div");
-    topRow.style.cssText = "display:flex; justify-content:space-between; align-items:center;";
+    topRow.style.cssText = "display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;";
 
     const nameWrapper = document.createElement("div");
     nameWrapper.style.cssText = "display:flex; align-items:center; gap:8px;";
@@ -380,25 +381,19 @@ export class SupabaseMatchUi {
     nameWrapper.appendChild(nickDisplay);
     nameWrapper.appendChild(editBtn);
 
-    const mmrContainer = document.createElement("div");
-    mmrContainer.style.cssText = "display:flex; gap:6px; font-size:12px; font-weight:700;";
-    mmrContainer.innerHTML = `
-      <span style="background:#1d4ed8; color:#fff; padding:4px 8px; border-radius:6px;">${I18nManager.t("lobby.classic_mmr")} ${profile.classicMmr ?? profile.mmr}</span>
-      <span style="background:#6d28d9; color:#fff; padding:4px 8px; border-radius:6px;">${I18nManager.t("lobby.strategy_mmr")} ${profile.strategyMmr ?? profile.mmr}</span>
-    `;
-
     topRow.appendChild(nameWrapper);
-    topRow.appendChild(mmrContainer);
 
     const statGrid = document.createElement("div");
-    statGrid.style.cssText = "display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:12px; border-top:1px solid #1e293b; padding-top:10px;";
+    statGrid.style.cssText = "display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:8px; font-size:12px; border-top:1px solid #1e293b; padding-top:10px;";
     statGrid.innerHTML = `
-      <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #1e3a8a;">
-        <div style="color:#60a5fa; font-weight:700; margin-bottom:4px;">${I18nManager.t("online.classic_record")}</div>
+      <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #1e3a8a; display:flex; flex-direction:column; gap:6px;">
+        <div style="color:#60a5fa; font-weight:700;">${I18nManager.t("online.classic_tab")}</div>
+        <div>${renderTierBadge(profile.classicMmr ?? profile.mmr, true)}</div>
         <div style="color:#94a3b8;">${I18nManager.t("lobby.win_draw_loss", { wins: profile.classicWins, draws: profile.classicDraws, losses: profile.classicLosses })}</div>
       </div>
-      <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #581c87;">
-        <div style="color:#c084fc; font-weight:700; margin-bottom:4px;">${I18nManager.t("online.strategy_record")}</div>
+      <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #581c87; display:flex; flex-direction:column; gap:6px;">
+        <div style="color:#c084fc; font-weight:700;">${I18nManager.t("online.strategy_tab")}</div>
+        <div>${renderTierBadge(profile.strategyMmr ?? profile.mmr, true)}</div>
         <div style="color:#94a3b8;">${I18nManager.t("lobby.win_draw_loss", { wins: profile.strategyWins, draws: profile.strategyDraws, losses: profile.strategyLosses })}</div>
       </div>
     `;
@@ -498,7 +493,7 @@ export class SupabaseMatchUi {
         if (rangeEl) rangeEl.textContent = I18nManager.t("online.search_range", { diff: status.allowedMmrDiff });
 
         if (status.opponent && oppEl) {
-          oppEl.textContent = I18nManager.t("online.opponent_found", { name: status.opponent.nickname, mmr: status.opponent.mmr });
+          oppEl.textContent = I18nManager.t("online.opponent_found", { name: status.opponent.nickname, mmr: formatTier(status.opponent.mmr) });
         }
       },
       async (transport, mySide, matchId, opponent) => {

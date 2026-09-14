@@ -20,6 +20,7 @@ import { getSupabaseClient } from "./supabase-client";
 import { AdManager } from "./ad-manager";
 import { TutorialManager } from "./tutorial";
 import { escapeHtml } from "./html";
+import { renderTierBadge, renderTierGuide } from "./tier-view";
 
 export interface MainMenuRuntime {
   overlay: HTMLElement;
@@ -510,44 +511,47 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   panel.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
       <h1 id="main-menu-title" style="font-size:22px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc; flex-shrink:0;">${I18nManager.t("lobby.title")}</h1>
-      <div style="display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; min-width:0;">
         <button id="menu-ranking-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-          🏆 ${I18nManager.t("common.ranking_btn")}
+          ${I18nManager.t("common.ranking_btn")}
         </button>
         <button id="menu-friends-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-          👥 ${I18nManager.t("common.friends_btn")}
+          ${I18nManager.t("common.friends_btn")}
         </button>
         <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-          ⚙️ ${I18nManager.t("common.settings")}
+          ${I18nManager.t("common.settings")}
         </button>
       </div>
     </div>
 
     <!-- 유저 프로필 카드 -->
     <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:14px 16px; margin-bottom:18px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <div style="font-size:15px; font-weight:700; color:#f8fafc;">
-          ${escapeHtml(user.nickname)} <span style="font-size:12px; color:#94a3b8; font-weight:normal; margin-left:6px;">| ${I18nManager.t("common.points")}: <strong style="color:#38bdf8;">${points} P</strong></span>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
+        <div style="min-width:0; font-size:15px; font-weight:700; color:#f8fafc; overflow-wrap:anywhere;">
+          ${escapeHtml(user.nickname)} <span style="display:block; font-size:12px; color:#94a3b8; font-weight:normal; margin-top:4px;">${I18nManager.t("common.points")}: <strong style="color:#cbd5e1;">${points} P</strong></span>
         </div>
-        <button id="btn-logout" style="background:transparent; border:none; color:#94a3b8; font-size:12px; cursor:pointer; text-decoration:underline; padding:2px 4px;">
+        <button id="btn-logout" style="background:transparent; border:none; color:#94a3b8; font-size:12px; cursor:pointer; text-decoration:underline; padding:10px 4px; white-space:nowrap; flex-shrink:0;">
           ${I18nManager.t("common.logout")}
         </button>
       </div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:12px;">
-        <div style="background:#1e293b; padding:8px 10px; border-radius:6px; border:1px solid #1e3a8a;">
-          <div style="color:#60a5fa; font-weight:700; margin-bottom:2px;">${I18nManager.t("lobby.classic_mmr")} ${user.classicMmr ?? user.mmr}</div>
+      <div class="menu-tier-columns">
+        <div class="menu-tier-column">
+          <div style="color:#60a5fa; font-weight:700;">${I18nManager.t("online.classic_tab")}</div>
+          <div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div>
           <div style="color:#94a3b8;">${I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 })}</div>
         </div>
-        <div style="background:#1e293b; padding:8px 10px; border-radius:6px; border:1px solid #581c87;">
-          <div style="color:#c084fc; font-weight:700; margin-bottom:2px;">${I18nManager.t("lobby.strategy_mmr")} ${user.strategyMmr ?? user.mmr}</div>
+        <div class="menu-tier-column">
+          <div style="color:#c084fc; font-weight:700;">${I18nManager.t("online.strategy_tab")}</div>
+          <div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div>
           <div style="color:#94a3b8;">${I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 })}</div>
         </div>
       </div>
     </div>
 
+    ${renderTierGuide()}
     <!-- 게임 모드 선택 목록 (모바일 친화적 2x2 그리드) -->
-    <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; width:100%; box-sizing:border-box;">
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; width:100%;">
+    <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; width:100%; box-sizing:border-box;">
+      <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:6px; width:100%;">
         <button type="button" data-game-mode="tutorial" data-tutorial-type="basic" style="padding:6px 4px; font-size:13px; font-weight:700; border-radius:8px; background:#059669; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; min-height:48px; line-height:1.25; white-space:pre-line; word-break:keep-all;">${I18nManager.t("lobby.mode_tutorial")}</button>
         <button type="button" data-game-mode="tutorial" data-tutorial-type="advanced" style="padding:6px 4px; font-size:12px; font-weight:700; border-radius:8px; background:#0d9488; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; min-height:48px; line-height:1.25; white-space:pre-line; word-break:keep-all;">${I18nManager.t("lobby.mode_tutorial_advanced")}</button>
       </div>

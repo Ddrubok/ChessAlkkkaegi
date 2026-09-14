@@ -6,6 +6,7 @@ import {
 } from "./social-service";
 import type { UserProfile } from "./supabase-auth";
 import { escapeHtml } from "./html";
+import { renderTierBadge } from "./tier-view";
 
 export interface FriendsModalCallbacks {
   onStartFriendlyMatch: (
@@ -184,8 +185,9 @@ export async function openFriendsModal(
                 <strong style="color:#f8fafc; font-size:14px;">${escapeHtml(friend.nickname)}</strong>
                 <span style="font-size:11px; color:${statusColor};">(${escapeHtml(statusText)})</span>
               </div>
-              <div style="font-size:11px; color:#94a3b8;">
-                ${I18nManager.t("online.classic_tab")}: <strong style="color:#60a5fa;">${friend.classicMmr}</strong> | ${I18nManager.t("online.strategy_tab")}: <strong style="color:#c084fc;">${friend.strategyMmr}</strong>
+              <div style="font-size:11px; color:#94a3b8; display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:2px;">
+                <span style="display:inline-flex; align-items:center; gap:4px;">${I18nManager.t("online.classic_tab")}: ${renderTierBadge(friend.classicMmr, false)}</span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">${I18nManager.t("online.strategy_tab")}: ${renderTierBadge(friend.strategyMmr, false)}</span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:6px;">
@@ -283,7 +285,9 @@ export async function openFriendsModal(
           row.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:2px;">
               <strong style="color:#f8fafc; font-size:14px;">${escapeHtml(req.senderNickname)}</strong>
-              <div style="font-size:11px; color:#94a3b8;">MMR: ${req.senderClassicMmr}</div>
+              <div style="font-size:11px; color:#94a3b8; display:inline-flex; align-items:center; gap:4px;">
+                <span>${I18nManager.t("online.classic_tab")}:</span> ${renderTierBadge(req.senderClassicMmr, false)}
+              </div>
             </div>
             <div style="display:flex; gap:6px;">
               <button class="btn-accept" style="background:#16a34a; color:white; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;">

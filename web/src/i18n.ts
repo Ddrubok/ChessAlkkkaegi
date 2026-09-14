@@ -36,6 +36,23 @@ export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
 
 export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>>> = {
   ko: {
+    tier: {
+      scope_all: "전체",
+      column: "티어",
+      king_score: "킹 점수",
+      loading: "순위 확인 중…",
+      load_error: "순위를 불러오지 못했습니다.",
+      retry: "다시 시도",
+      king_empty: "아직 킹 티어 플레이어가 없습니다.",
+      you: "나",
+      your_tier: "내 티어",
+      to_king: "킹까지 {points}점",
+      rank_unavailable: "내 순위를 확인하지 못했습니다.",
+      sign_in: "로그인하면 내 순위를 확인할 수 있습니다.",
+      points: "{points}점", next: "{tier}까지 {points}점", king_progress: "킹 랭킹에서 순위 확인",
+      guide: "티어와 승급 기준", promoted: "승급", demoted: "강등",
+      rules: "폰 5는 {start} MMR에서 시작하며, 룩 1까지 {step}점마다 승급합니다. 퀸은 {queen}점, 킹은 {king}점부터입니다. 킹 점수는 MMR에서 {king}을 뺀 값입니다. 기준 아래로 내려가면 강등됩니다. 클래식·전략 티어는 별도입니다.",
+    },
     common: {
       settings: "설정",
       sound: "사운드",
@@ -310,6 +327,23 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   },
 
   en: {
+    tier: {
+      scope_all: "All",
+      column: "Tier",
+      king_score: "King points",
+      loading: "Loading rankings…",
+      load_error: "Could not load rankings.",
+      retry: "Retry",
+      king_empty: "No players have reached King yet.",
+      you: "you",
+      your_tier: "Your tier",
+      to_king: "{points} points to King",
+      rank_unavailable: "Your rank is unavailable.",
+      sign_in: "Sign in to see your rank.",
+      points: "{points} pts", next: "{points} pts to {tier}", king_progress: "See your position on the King leaderboard",
+      guide: "Tiers and promotion", promoted: "Promoted", demoted: "Demoted",
+      rules: "Start at Pawn 5 with {start} MMR. Advance every {step} points through Rook 1. Queen starts at {queen}; King at {king}. King points are MMR minus {king}. Falling below a threshold causes demotion. Classic and Strategy tiers are separate.",
+    },
     common: {
       settings: "Settings",
       sound: "Sound",
@@ -584,6 +618,20 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   },
 
   ja: {
+    tier: {
+      scope_all: "全体",
+      column: "ティア",
+      king_score: "キングポイント",
+      loading: "順位を確認中…",
+      load_error: "順位を読み込めませんでした。",
+      retry: "再試行",
+      king_empty: "まだキングに到達したプレイヤーはいません。",
+      you: "自分",
+      your_tier: "自分のティア",
+      to_king: "キングまであと{points}ポイント",
+      rank_unavailable: "自分の順位を確認できませんでした。",
+      sign_in: "ログインすると自分の順位を確認できます。",
+    },
     common: {
       settings: "設定",
       sound: "サウンド",
@@ -821,6 +869,20 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   },
 
   "zh-CN": {
+    tier: {
+      scope_all: "全部",
+      column: "段位",
+      king_score: "国王积分",
+      loading: "正在加载排名…",
+      load_error: "无法加载排名。",
+      retry: "重试",
+      king_empty: "暂无玩家达到国王段位。",
+      you: "我",
+      your_tier: "我的段位",
+      to_king: "距离国王还差{points}分",
+      rank_unavailable: "暂时无法获取我的排名。",
+      sign_in: "登录后可查看自己的排名。",
+    },
     common: {
       settings: "设置",
       sound: "声音",
@@ -1058,6 +1120,20 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   },
 
   de: {
+    tier: {
+      scope_all: "Alle",
+      column: "Rangstufe",
+      king_score: "Königspunkte",
+      loading: "Rangliste wird geladen…",
+      load_error: "Rangliste konnte nicht geladen werden.",
+      retry: "Erneut versuchen",
+      king_empty: "Noch niemand hat König erreicht.",
+      you: "du",
+      your_tier: "Deine Rangstufe",
+      to_king: "Noch {points} Punkte bis König",
+      rank_unavailable: "Dein Rang ist nicht verfügbar.",
+      sign_in: "Melde dich an, um deinen Rang zu sehen.",
+    },
     common: {
       settings: "Einstellungen",
       sound: "Ton",
@@ -1295,6 +1371,20 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   },
 
   fr: {
+    tier: {
+      scope_all: "Tous",
+      column: "Palier",
+      king_score: "Points Roi",
+      loading: "Chargement du classement…",
+      load_error: "Impossible de charger le classement.",
+      retry: "Réessayer",
+      king_empty: "Personne n’a encore atteint le palier Roi.",
+      you: "vous",
+      your_tier: "Votre palier",
+      to_king: "Encore {points} points avant Roi",
+      rank_unavailable: "Votre rang est indisponible.",
+      sign_in: "Connectez-vous pour voir votre rang.",
+    },
     common: {
       settings: "Paramètres",
       sound: "Son",
@@ -1532,6 +1622,20 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   },
 
   es: {
+    tier: {
+      scope_all: "Todos",
+      column: "Categoría",
+      king_score: "Puntos de Rey",
+      loading: "Cargando clasificación…",
+      load_error: "No se pudo cargar la clasificación.",
+      retry: "Reintentar",
+      king_empty: "Nadie ha alcanzado Rey todavía.",
+      you: "tú",
+      your_tier: "Tu categoría",
+      to_king: "Faltan {points} puntos para Rey",
+      rank_unavailable: "Tu puesto no está disponible.",
+      sign_in: "Inicia sesión para ver tu puesto.",
+    },
     common: {
       settings: "Ajustes",
       sound: "Sonido",
@@ -1769,6 +1873,20 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   },
 
   ru: {
+    tier: {
+      scope_all: "Все",
+      column: "Лига",
+      king_score: "Очки короля",
+      loading: "Загрузка рейтинга…",
+      load_error: "Не удалось загрузить рейтинг.",
+      retry: "Повторить",
+      king_empty: "Пока никто не достиг лиги «Король».",
+      you: "вы",
+      your_tier: "Ваша лига",
+      to_king: "До короля: {points} очк.",
+      rank_unavailable: "Ваше место недоступно.",
+      sign_in: "Войдите, чтобы увидеть своё место.",
+    },
     common: {
       settings: "Настройки",
       sound: "Звук",
@@ -2006,6 +2124,20 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   },
 
   "pt-BR": {
+    tier: {
+      scope_all: "Todos",
+      column: "Categoria",
+      king_score: "Pontos de Rei",
+      loading: "Carregando classificação…",
+      load_error: "Não foi possível carregar a classificação.",
+      retry: "Tentar novamente",
+      king_empty: "Ninguém chegou a Rei ainda.",
+      you: "você",
+      your_tier: "Sua categoria",
+      to_king: "Faltam {points} pontos para Rei",
+      rank_unavailable: "Sua posição não está disponível.",
+      sign_in: "Entre para ver sua posição.",
+    },
     common: {
       settings: "Configurações",
       sound: "Som",
