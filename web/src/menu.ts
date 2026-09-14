@@ -34,6 +34,8 @@ export interface MainMenuRuntime {
   confirming: boolean;
   userProfile: UserProfile | null;
   onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>;
+  /** 퍼즐 목록을 여는 선택적 연결점입니다. 퍼즐 모듈이 없는 빌드에서는 버튼을 숨깁니다. */
+  onOpenPuzzles?: () => void;
   onReturnToMenu: () => Promise<void>;
   onConfirmAbandon: () => Promise<void>;
   onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
@@ -74,22 +76,23 @@ export function openPveLobbyModal(
   const renderContent = () => {
     if (workbench) selectedPiece = workbench.selection;
     workbench?.dispose(); workbench = null;
-    card.dataset.workbench = String(activeTab === "upgrades");
+    card.dataset.activeTab = activeTab;
+    modal.setAttribute("aria-label", I18nManager.t("lobby.stage_modal_title"));
     card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
-        <h2 style="margin:0; font-size:18px; font-weight:700;">${I18nManager.t("lobby.stage_modal_title")}</h2>
-        <div style="display:flex; align-items:center; gap:12px;">
-          <span id="pve-points-held" style="font-size:13px; color:#38bdf8; font-weight:600;">${I18nManager.t("lobby.stage_points_held", { points: runtime.metaRuntime.state.points })}</span>
-          <button id="pve-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">${I18nManager.t("common.close")}</button>
+      <header class="pve-lobby-header">
+        <h2>${I18nManager.t("lobby.stage_modal_title")}</h2>
+        <div class="pve-lobby-header-actions">
+          <span id="pve-points-held">${I18nManager.t("lobby.stage_points_held", { points: runtime.metaRuntime.state.points })}</span>
+          <button type="button" id="pve-close-btn">${I18nManager.t("common.close")}</button>
         </div>
+      </header>
+
+      <div class="pve-lobby-tabs" role="tablist" aria-label="${I18nManager.t("lobby.stage_modal_title")}">
+        <button type="button" id="tab-stages" role="tab" aria-selected="${activeTab === "stages"}" aria-controls="pve-tab-body">${I18nManager.t("lobby.stage_tab_stages")}</button>
+        <button type="button" id="tab-upgrades" role="tab" aria-selected="${activeTab === "upgrades"}" aria-controls="pve-tab-body">${I18nManager.t("lobby.stage_tab_upgrades")}</button>
       </div>
 
-      <div style="display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;">
-        <button id="tab-stages" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "stages" ? "#3b82f6" : "transparent"}; color:${activeTab === "stages" ? "#fff" : "#94a3b8"};">${I18nManager.t("lobby.stage_tab_stages")}</button>
-        <button id="tab-upgrades" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${activeTab === "upgrades" ? "#3b82f6" : "transparent"}; color:${activeTab === "upgrades" ? "#fff" : "#94a3b8"};">${I18nManager.t("lobby.stage_tab_upgrades")}</button>
-      </div>
-
-      <div id="pve-tab-body"></div>
+      <div id="pve-tab-body" role="tabpanel" aria-labelledby="${activeTab === "stages" ? "tab-stages" : "tab-upgrades"}"></div>
     `;
 
     card.querySelector("#pve-close-btn")?.addEventListener("click", close);
@@ -113,8 +116,14 @@ export function openPveLobbyModal(
         selectedStage = unlockedMaxStage;
       }
 
+      const stagePanel = document.createElement("section");
+      stagePanel.className = "pve-stage-panel";
+      const heading = document.createElement("header");
+      heading.className = "pve-stage-heading";
+      heading.innerHTML = `<h3>${I18nManager.t("lobby.stage_tab_stages")}</h3><p>${I18nManager.t("lobby.stage_desc", { stage: selectedStage, max: maxClearedStage })}</p>`;
+      stagePanel.append(heading);
       const grid = document.createElement("div");
-      grid.style.cssText = "display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; margin-top:8px;";
+      grid.className = "pve-stage-grid";
       for (let s = 1; s <= 10; s++) {
         const btn = document.createElement("button");
         const isCleared = s <= maxClearedStage;
@@ -122,48 +131,36 @@ export function openPveLobbyModal(
         const isSelected = selectedStage === s && isUnlocked;
 
         let statusText = isCleared ? I18nManager.t("lobby.stage_cleared") : s === unlockedMaxStage ? I18nManager.t("lobby.stage_challenge") : I18nManager.t("lobby.stage_locked");
-        let bgColor = isSelected ? "#0284c7" : isCleared ? "#1e3a8a" : isUnlocked ? "#0f172a" : "#1e293b";
-        let borderColor = isSelected ? "#38bdf8" : isCleared ? "#3b82f6" : isUnlocked ? "#475569" : "#334155";
-        let textColor = isUnlocked ? "#ffffff" : "#64748b";
-
+        btn.type = "button";
+        btn.className = "pve-stage-card";
+        btn.dataset.stage = String(s);
+        btn.dataset.cleared = String(isCleared);
+        btn.setAttribute("aria-pressed", String(isSelected));
         btn.disabled = !isUnlocked;
         btn.innerHTML = `
-          <div style="font-weight:700; font-size:14px;">Stage ${s}</div>
-          <div style="font-size:11px; margin-top:4px; opacity:0.85; color:${isCleared ? "#86efac" : isUnlocked ? "#93c5fd" : "#64748b"};">${statusText}</div>
-        `;
-        btn.style.cssText = `
-          padding: 12px 6px;
-          border-radius: 8px;
-          border: 1px solid ${borderColor};
-          background: ${bgColor};
-          color: ${textColor};
-          cursor: ${isUnlocked ? "pointer" : "not-allowed"};
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
+          <strong>${I18nManager.t("lobby.stage_label", { stage: s })}</strong>
+          <span>${statusText}</span>
         `;
         if (isUnlocked) {
           btn.onclick = () => {
             selectedStage = s;
             renderContent();
+            card.querySelector<HTMLButtonElement>(`[data-stage="${s}"]`)?.focus();
           };
         }
         grid.appendChild(btn);
       }
-      body.appendChild(grid);
+      stagePanel.appendChild(grid);
 
       const startBox = document.createElement("div");
-      startBox.style.cssText = "margin-top:20px; display:flex; flex-direction:column; gap:10px;";
+      startBox.className = "pve-stage-footer";
       startBox.innerHTML = `
-        <div style="background:#0f172a; padding:12px; border-radius:8px; border:1px solid #334155; font-size:13px; color:#94a3b8;">
-          ${I18nManager.t("lobby.stage_desc", { stage: selectedStage, max: maxClearedStage })}
-        </div>
-        <button id="pve-start-btn" style="background:#16a34a; color:#fff; border:none; border-radius:8px; padding:14px; font-weight:700; font-size:15px; cursor:pointer;">
+        <button type="button" id="pve-start-btn">
           ${I18nManager.t("lobby.stage_start_btn", { stage: selectedStage })}
         </button>
       `;
-      body.appendChild(startBox);
+      stagePanel.appendChild(startBox);
+      body.appendChild(stagePanel);
 
       startBox.querySelector("#pve-start-btn")?.addEventListener("click", async () => {
         close();
@@ -552,6 +549,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
         <button type="button" data-game-mode="tutorial" data-tutorial-type="advanced" style="padding:6px 4px; font-size:12px; font-weight:700; border-radius:8px; background:#0d9488; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; min-height:48px; line-height:1.25; white-space:pre-line; word-break:keep-all;">${I18nManager.t("lobby.mode_tutorial_advanced")}</button>
       </div>
       <button type="button" data-game-mode="stage" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#2563eb; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_stage")}</button>
+      <button type="button" id="menu-puzzle-btn" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#d97706; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_puzzle")}</button>
       <button type="button" data-game-mode="online" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#7c3aed; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_online")}</button>
       <button type="button" data-game-mode="hotseat" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_2p")}</button>
     </div>
@@ -573,6 +571,16 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
     openSettingsModal(runtime.overlay);
   });
+
+  const puzzleButton = panel.querySelector<HTMLButtonElement>("#menu-puzzle-btn");
+  if (puzzleButton) {
+    puzzleButton.hidden = !runtime.onOpenPuzzles;
+    puzzleButton.disabled = !runtime.ready || runtime.busy || !runtime.onOpenPuzzles;
+    puzzleButton.addEventListener("click", () => {
+      if (runtime.busy || !runtime.ready) return;
+      runtime.onOpenPuzzles?.();
+    });
+  }
 
   panel.querySelector("#btn-logout")?.addEventListener("click", async () => {
     const sb = getSupabaseClient();
@@ -688,6 +696,7 @@ export function createMainMenu(
   onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>,
   onReturnToMenu: () => Promise<void>,
   onConfirmAbandon: () => Promise<void>,
+  onOpenPuzzles?: () => void,
 ): MainMenuRuntime {
   const overlay = document.createElement("section");
   overlay.className = "main-menu-overlay";
@@ -777,6 +786,7 @@ export function createMainMenu(
     confirming: false,
     userProfile: initialProfile,
     onStartMode,
+    onOpenPuzzles,
     onReturnToMenu,
     onConfirmAbandon,
   };

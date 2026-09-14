@@ -13,6 +13,7 @@ import {
   REST_ANGULAR_EPS,
   REST_HOLD_SECONDS,
   REST_LINEAR_EPS,
+  ROOK_MAX_OVERDRIVE_POWER,
   type PieceType,
 } from "./config";
 import type { LaunchRequest } from "./aim";
@@ -100,6 +101,9 @@ export interface TurnRuntime {
     | null;
   // 낙하 제거와 정착이 끝난 한 턴의 상태 해시 시점을 기록 계층에 알리는 연결점이다.
   onTurnSettled: (() => void) | null;
+  // 퍼즐은 기록용 후크와 별도로 실제 정착 결과를 소비한다.
+  onPuzzleSettled?: () => void;
+  onPuzzlePhysicsStep?: (step: number) => void;
   // 당구식에서만 선택 중심과 근접 거리를 판 전체 보기로 함께 복원하도록 현재 모드를 보존한다.
   turnCameraMode: TurnCameraMode;
   // 턴 교대 카메라와 흑 AI 제어 여부를 구분하는 현재 대전 모드다.
@@ -642,6 +646,20 @@ export function queueTurnLaunch(
   runtime: TurnRuntime,
   request: TurnLaunchRequest,
 ): LaunchQueueResult {
+  if (runtime.gameMode === "puzzle") {
+    const binding = runtime.physicsRuntime.pieces.get(request.pieceId);
+    const center = binding?.body.worldCom();
+    const centerStrike = center !== undefined && Math.hypot(
+      request.applicationPoint.x - center.x,
+      request.applicationPoint.y - center.y,
+      request.applicationPoint.z - center.z,
+    ) <= 0.04;
+    const maxPower = binding?.instance.type === "Rook" && centerStrike
+      ? ROOK_MAX_OVERDRIVE_POWER : 1;
+    if (!Number.isFinite(request.normalizedPower) || request.normalizedPower < 0 || request.normalizedPower > maxPower) {
+      return { accepted: false, reason: `발사 세기는 0~${maxPower * 100}% 범위여야 합니다.` };
+    }
+  }
   if (!canSelectTurnPiece(runtime, request.pieceId)) {
     return {
       accepted: false,
@@ -774,7 +792,7 @@ export function applyPendingLaunchBeforeStep(
     velocityAfter.y,
     velocityAfter.z,
   ).sub(before);
-  const targetDelta = request.direction.clone().multiplyScalar(targetSpeed);
+  const targetDelta = launchDirection.clone().multiplyScalar(targetSpeed);
   const relativeError =
     targetSpeed > 0
       ? deltaVelocity.distanceTo(targetDelta) / targetSpeed
@@ -912,6 +930,15 @@ function completeSettlement(runtime: TurnRuntime): void {
     return;
   }
   runtime.pendingTurnChange = false;
+  if (runtime.gameMode === "puzzle") {
+    runtime.turnNumber += 1;
+    runtime.currentSide = "white";
+    runtime.phase = "ready";
+    runtime.cameraRotation = null;
+    runtime.sceneRuntime.controls.enabled = true;
+    runtime.onPuzzleSettled?.();
+    return;
+  }
   if (runtime.onTurnSettled !== null) {
     invokePassiveHook("대국 기록 정착 후크", () => {
       runtime.onTurnSettled?.();
@@ -1090,6 +1117,7 @@ export function updateTurnAfterStep(
     runtime.physicsRuntime,
   );
   applyBishopSpinRicochet(runtime);
+  if (runtime.gameMode === "puzzle") runtime.onPuzzlePhysicsStep?.(runtime.physicsStepNumber);
   removeFallenPieces(runtime);
   if (runtime.phase !== "settling") {
     return;
@@ -1168,7 +1196,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
  */
 export function checkAndTriggerPromotion(runtime: TurnRuntime): void {
   // Ponytail: Online promotion requires synchronized events/state before enablement.
-  if (runtime.gameMode === "online") {
+  if (runtime.gameMode === "online" || runtime.gameMode === "puzzle") {
     runtime.pendingPromotionPawns.clear();
     runtime.promotionQueue.length = 0;
     return;
@@ -1286,7 +1314,7 @@ export function executeKingSwap(
   targetPieceId: string,
 ): boolean {
   // Ponytail: Online king swap/defense requires synchronized events/state before enablement.
-  if (runtime.gameMode === "online") {
+  if (runtime.gameMode === "online" || runtime.gameMode === "puzzle") {
     return false;
   }
   const side = runtime.currentSide;
@@ -1327,7 +1355,7 @@ export function executeKingDefense(
   kingPieceId: string,
 ): boolean {
   // Ponytail: Online king swap/defense requires synchronized events/state before enablement.
-  if (runtime.gameMode === "online") {
+  if (runtime.gameMode === "online" || runtime.gameMode === "puzzle") {
     return false;
   }
   const side = runtime.currentSide;

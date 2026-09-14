@@ -1,0 +1,139 @@
+{
+  "launchNote": "실제 queueTurnLaunch → applyPendingLaunchBeforeStep → world.step → updateTurnAfterStep 경로. 물리 상수·카탈로그 규칙 고정.",
+  "solutions": {
+    "P10": {
+      "puzzleId": "P10",
+      "verdict": "gold",
+      "solved": true,
+      "normalizedPositions": {
+        "p10-player-bishop": {
+          "x": -0.48,
+          "z": -0.35,
+          "positionValidated": false
+        },
+        "p10-target-pawn": {
+          "x": 0.18,
+          "z": 0.2,
+          "positionValidated": false
+        },
+        "p10-protected-pawn": {
+          "x": 0.52,
+          "z": 0.4,
+          "positionValidated": false
+        }
+      },
+      "shots": [
+        {
+          "pieceId": "p10-player-bishop",
+          "angleDeg": 40,
+          "power": 0.45,
+          "offsetX": -0.06,
+          "offsetZ": -0.05,
+          "applicationPointWorld": {
+            "x": -1.4828250980377198,
+            "y": 0.27688658237457275,
+            "z": -1.086760449409485
+          },
+          "launchInitialSpeed": 4.949999799898265,
+          "settled": true,
+          "evidence": {
+            "shotPieceId": "p10-player-bishop",
+            "shotStartStep": 0,
+            "pieceContacts": [
+              {
+                "step": 54,
+                "firstPieceId": "p10-player-bishop",
+                "secondPieceId": "p10-target-pawn"
+              },
+              {
+                "step": 70,
+                "firstPieceId": "p10-player-bishop",
+                "secondPieceId": "p10-target-pawn"
+              }
+            ],
+            "protectedPieceContacts": [],
+            "wallContacts": [
+              {
+                "step": 103,
+                "pieceId": "p10-player-bishop",
+                "wallId": "board-floor-0",
+                "kind": "board-floor"
+              },
+              {
+                "step": 110,
+                "pieceId": "p10-player-bishop",
+                "wallId": "board-floor-0",
+                "kind": "board-floor"
+              },
+              {
+                "step": 136,
+                "pieceId": "p10-player-bishop",
+                "wallId": "board-floor-0",
+                "kind": "board-floor"
+              },
+              {
+                "step": 148,
+                "pieceId": "p10-player-bishop",
+                "wallId": "board-floor-0",
+                "kind": "board-floor"
+              },
+              {
+                "step": 154,
+                "pieceId": "p10-player-bishop",
+                "wallId": "board-floor-0",
+                "kind": "board-floor"
+              }
+            ],
+            "destroyedWalls": [],
+            "fallenPieces": [],
+            "wallContactBeforeShotTargetContact": false
+          }
+        },
+        {
+          "pieceId": "p10-player-bishop",
+          "angleDeg": 111.46798252606601,
+          "power": 0.4,
+          "offsetX": 0.05,
+          "offsetZ": 0.05,
+          "applicationPointWorld": {
+            "x": 1.153075623512268,
+            "y": 0.14817973971366882,
+            "z": -0.31285683512687684
+          },
+          "launchInitialSpeed": 4.399999628948292,
+          "settled": true,
+          "evidence": {
+            "shotPieceId": "p10-player-bishop",
+            "shotStartStep": 350,
+            "pieceContacts": [
+              {
+                "step": 382,
+                "firstPieceId": "p10-player-bishop",
+                "secondPieceId": "p10-target-pawn"
+              }
+            ],
+            "protectedPieceContacts": [],
+            "wallContacts": [],
+            "destroyedWalls": [],
+            "fallenPieces": [
+              {
+                "step": 1086,
+                "pieceId": "p10-target-pawn",
+                "reason": "outside",
+                "crossingX": 0.9080278381318705,
+                "crossingZ": -3.4088028202180087,
+                "classificationBasis": "body-center-board-top-crossing"
+              }
+            ],
+            "wallContactBeforeShotTargetContact": false
+          }
+        }
+      ],
+      "evaluation": {
+        "medal": 3,
+        "status": "success",
+        "failureReasons": []
+      }
+    }
+  }
+}
