@@ -6,6 +6,16 @@ import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
 import { tutorialManager } from "./tutorial";
+import { PuzzlePhysicsTracker } from "./puzzle-physics";
+import { applyPuzzleSpawnDefinitions } from "./puzzle-spawn";
+import { PuzzleUI } from "./puzzle-ui";
+import {
+  PUZZLE_CATALOG, getPuzzleDefinition, getPuzzleProgress,
+  loadPuzzleProgress, savePuzzleProgress, isPuzzleUnlocked,
+  evaluatePuzzleAttempt, applyPuzzleEvaluation,
+  type PuzzleDefinition, type PuzzleEvaluationInput,
+} from "./puzzle";
+import { appendPuzzlePhysicsEvidence } from "./puzzle-evidence";
 import {
   createAiRuntime,
   isAiTelegraphActive,
@@ -116,6 +126,9 @@ import {
 import { openPromotionModal } from "./promotion-modal";
 import {
   createTuningRuntime,
+  applyPuzzleTuningDefaults,
+  restoreLocalTuningSettings,
+  setPuzzleTuningLocked,
   reapplyTuningPhysicsSettings,
   setTuningGameMode,
   updateTuningAppliedValues,
@@ -334,6 +347,15 @@ async function bootstrap(): Promise<void> {
   let replayDevelopmentRuntime: ReplayDevelopmentRuntime | null =
     null;
   let gameModeRuntime: GameModeRuntime | null = null;
+  let puzzleInputBlocked = false;
+  let puzzleUI: PuzzleUI | null = null;
+  let activePuzzle: PuzzleDefinition | null = null;
+  let puzzleAttempt: PuzzleEvaluationInput | null = null;
+  let puzzleTracker: PuzzlePhysicsTracker | null = null;
+  let puzzleProgress = loadPuzzleProgress();
+  let puzzleHintLevel: 0 | 1 | 2 = 0;
+  let puzzleFinished = false;
+  let onPuzzleLaunch: ((request: Parameters<typeof queueTurnLaunch>[1]) => void) | null = null;
   let onlineRuntime: OnlineRuntime | null = null;
   let onlineSelfTestRuntime: OnlineSelfTestRuntime | null =
     null;
@@ -398,6 +420,7 @@ async function bootstrap(): Promise<void> {
   };
 
   const handleTurnTimeout = (): void => {
+    if (gameModeRuntime?.mode === "puzzle") return;
     if (turnRuntime.phase !== "ready") return;
 
     // 현재 턴인 진영의 살아있는 말 중 하나 찾기
@@ -428,7 +451,7 @@ async function bootstrap(): Promise<void> {
   const turnHud = createTurnHud(app, turnRuntime, {
     getGameMode: () => gameModeRuntime?.mode ?? "hotseat",
     getMySide: () => onlineRuntime?.mySide ?? null,
-    isMenuVisible: () => !menuRuntime.overlay.hidden,
+    isMenuVisible: () => !menuRuntime.overlay.hidden || gameModeRuntime?.mode === "puzzle",
     onTimeoutLaunch: handleTurnTimeout,
   });
   let appliedEnemyBuffStepScale =
@@ -536,6 +559,8 @@ async function bootstrap(): Promise<void> {
     {
       isInputBlocked: () =>
         turnRuntime.phase === "match-over" ||
+        puzzleInputBlocked ||
+        puzzleUI?.blocking === true ||
         onlineConnectionBlocked ||
         gameModeRuntime?.switching === true ||
         isMenuBlocking(menuRuntime),
@@ -551,6 +576,7 @@ async function bootstrap(): Promise<void> {
       isCameraRotating: () =>
         turnRuntime.phase === "camera-rotating",
       canKingSwap: (pieceId) => {
+        if (gameModeRuntime?.mode === "puzzle") return false;
         if (turnRuntime.phase !== "ready") {
           return false;
         }
@@ -622,10 +648,12 @@ async function bootstrap(): Promise<void> {
           ...request,
           speedMultiplier,
         };
-        return gameMode === "online" &&
+        const accepted = gameMode === "online" &&
           onlineRuntime !== null
           ? onlineRuntime.queueLocalLaunch(launchRequest)
           : queueTurnLaunch(turnRuntime, launchRequest);
+        if (accepted.accepted && gameMode === "puzzle") onPuzzleLaunch?.(launchRequest);
+        return accepted;
       },
       onModeChanged: (mode) =>
         setTurnCameraMode(turnRuntime, mode),
@@ -817,7 +845,21 @@ async function bootstrap(): Promise<void> {
         cardTuningRuntime.settings,
       ),
     };
-    const targetInstances = stageOptions.gameMode === "tutorial"
+    const boardPuzzle = stageOptions.gameMode === "puzzle" ? activePuzzle : null;
+    const boardOptions: StageSpawnOptions = boardPuzzle
+      ? boardPuzzle.boardTemplate === "basic"
+        ? { gameMode: "puzzle", stageNumber: 1 }
+        : { gameMode: "stage", stageNumber: boardPuzzle.boardStage }
+      : stageOptions;
+    const targetInstances = boardPuzzle
+      ? boardPuzzle.pieces.map((piece, index) => ({
+          id: piece.id, type: piece.type, side: piece.side,
+          startingSquare: {
+            file: (["a", "b", "c", "d", "e", "f", "g", "h"] as const)[index],
+            rank: piece.side === "white" ? 2 as const : 7 as const,
+          },
+        }))
+      : stageOptions.gameMode === "tutorial"
       ? tutorialManager.getStepPieces(stageOptions.stageNumber)
       : PIECE_INSTANCES;
     const spawnInstances = selectStageSpawnInstances(
@@ -829,20 +871,20 @@ async function bootstrap(): Promise<void> {
     lockInputForMatchOver(inputRuntime);
     const nextBoardHalfExtent = computeStageBoardHalfExtent(
       assets.meta.cellSize,
-      stageOptions.gameMode,
-      stageOptions.stageNumber,
+      boardOptions.gameMode,
+      boardOptions.stageNumber,
     );
     rebuildPhysicsBoard(
       physicsRuntime,
       assets.meta,
       nextBoardHalfExtent,
-      stageOptions,
+      boardOptions,
     );
     rebuildSceneBoard(
       sceneRuntime,
       assets,
       nextBoardHalfExtent,
-      stageOptions,
+      boardOptions,
     );
     assertBoardAgreement(
       sceneRuntime.boardTop,
@@ -863,6 +905,14 @@ async function bootstrap(): Promise<void> {
       stageOptions,
     );
     reapplyTuningPhysicsSettings(tuningRuntime);
+    if (boardPuzzle) {
+      applyPuzzleSpawnDefinitions(boardPuzzle.pieces.map((piece) => ({
+        pieceId: piece.id,
+        normalizedX: piece.position.x,
+        normalizedZ: piece.position.z,
+        prone: piece.pose === "prone",
+      })), { physicsRuntime, pieceMeshes: sceneRuntime.pieceMeshes, boardHalfExtent: nextBoardHalfExtent });
+    }
     preSettlePhysics(physicsRuntime);
     resetPieceHitSoundTracking();
     synchronizePieceMeshes(sceneRuntime, physicsRuntime);
@@ -1137,6 +1187,10 @@ async function bootstrap(): Promise<void> {
     setTurnGameMode(turnRuntime, mode);
     setTuningGameMode(tuningRuntime, mode);
     setCardTuningGameMode(cardTuningRuntime, mode);
+    if (mode === "puzzle") {
+      applyPuzzleTuningDefaults(tuningRuntime);
+      setPuzzleTuningLocked(tuningRuntime, true);
+    }
     try {
       const stageNumber = gameModeRuntime?.stageNumber ?? 1;
       await resetBoard({ gameMode: mode, stageNumber });
@@ -1451,6 +1505,17 @@ async function bootstrap(): Promise<void> {
       tuningRuntime,
       (now, frameDelta) => {
         turnHud.update(now, frameDelta);
+        if (activePuzzle && gameModeRuntime?.mode === "puzzle") {
+          puzzleUI?.updateMarkers(activePuzzle.pieces.flatMap((piece) => {
+            const binding = physicsRuntime.pieces.get(piece.id);
+            if (!binding || (!piece.protected && !activePuzzle!.required.requiredFallIds.includes(piece.id))) return [];
+            const position = binding.body.translation();
+            const projected = new Vector3(position.x, position.y + 0.2, position.z).project(sceneRuntime.camera);
+            if (projected.z < -1 || projected.z > 1) return [];
+            return [{ id: piece.id, x: (projected.x + 1) / 2, y: (1 - projected.y) / 2,
+              role: piece.protected ? "protect" as const : "target" as const, label: "" }];
+          }));
+        }
         onlineRuntime?.update(now);
         onlineSelfTestRuntime?.updatePeers(now);
       },
@@ -1810,6 +1875,14 @@ async function bootstrap(): Promise<void> {
     renderRematchControls(null);
     hideDisconnectOverlay();
     tutorialManager.stop();
+    puzzleUI?.hide();
+    puzzleTracker = null;
+    puzzleAttempt = null;
+    activePuzzle = null;
+    puzzleInputBlocked = false;
+    menuRuntime.returnButton.style.display = "";
+    setPuzzleTuningLocked(tuningRuntime, false);
+    restoreLocalTuningSettings(tuningRuntime);
     await switchGameMode(gameModeRuntime, "hotseat", true);
     hideMatchResult(matchRuntime);
     void AdManager.showBanner();
@@ -1897,6 +1970,129 @@ async function bootstrap(): Promise<void> {
       "[온라인 셀프테스트] window.__onlineSelfTest.start() 호출 준비가 끝났습니다.",
     );
   }
+  const updatePuzzleHud = (): void => {
+    if (!activePuzzle || !puzzleAttempt) return;
+    puzzleUI?.update({
+      shotsRemaining: Math.max(0, activePuzzle.launchBudget - puzzleAttempt.launches),
+      hintLevel: puzzleHintLevel,
+    });
+  };
+  const startPuzzle = async (id: string): Promise<void> => {
+    const puzzle = getPuzzleDefinition(id);
+    if (!puzzle || !isPuzzleUnlocked(puzzleProgress, puzzle)) return;
+    puzzleInputBlocked = true;
+    puzzleTracker = null;
+    activePuzzle = puzzle;
+    puzzleHintLevel = 0;
+    puzzleFinished = false;
+    puzzleAttempt = {
+      launches: 0, fallenIDs: [], contactEvents: [], protectedContactIDs: [],
+      holeOutIDs: [], wallDestroyedCounts: {}, customHitUsed: false, rookShots: [],
+    };
+    applyPuzzleTuningDefaults(tuningRuntime);
+    setPuzzleTuningLocked(tuningRuntime, true);
+    try {
+      await startModeAction!("puzzle");
+      hideMainMenuAfterModeStart(menuRuntime);
+      menuRuntime.returnButton.hidden = true;
+      menuRuntime.returnButton.style.display = "none";
+      hideMatchResult(matchRuntime);
+      switchInputMode(inputRuntime, "billiards");
+      const firstPlayer = puzzle.pieces.find((piece) => piece.side === "white");
+      if (firstPlayer) selectPiece(inputRuntime, firstPlayer.id);
+      puzzleTracker = new PuzzlePhysicsTracker(physicsRuntime);
+      puzzleUI?.showPlaying(id, { shotsRemaining: puzzle.launchBudget, hintLevel: 0 });
+    } catch (error) {
+      console.error("퍼즐 시작 실패", error);
+      await returnToMainMenu(menuRuntime);
+      puzzleUI?.showResult(id, {
+        success: false, objectiveMet: false, goldMet: false, medal: 0,
+        failureCode: "data-error",
+      });
+    } finally {
+      puzzleInputBlocked = false;
+    }
+  };
+  const showPuzzleLibrary = async (): Promise<void> => {
+    if (gameModeRuntime?.mode === "puzzle") await returnToMainMenu(menuRuntime);
+    await AdManager.hideBanner();
+    puzzleUI?.showLibrary();
+  };
+  puzzleUI = new PuzzleUI(app, {
+    puzzles: PUZZLE_CATALOG.map((puzzle, index) => ({
+      id: puzzle.puzzleId, index: index + 1, chapter: puzzle.chapter,
+      board: puzzle.pieces.map((piece) => ({
+        id: piece.id, type: piece.type, color: piece.side,
+        x: (piece.position.x + 1) / 2, y: (piece.position.z + 1) / 2,
+        rotation: piece.pose === "prone" ? 90 : 0,
+      })),
+    })),
+    progress: () => ({
+      clearedIds: PUZZLE_CATALOG.filter((puzzle) => (getPuzzleProgress(puzzleProgress, puzzle.puzzleId, puzzle.revision)?.bestMedal ?? 0) > 0).map((puzzle) => puzzle.puzzleId),
+      medals: Object.fromEntries(PUZZLE_CATALOG.map((puzzle) => [puzzle.puzzleId, getPuzzleProgress(puzzleProgress, puzzle.puzzleId, puzzle.revision)?.bestMedal ?? 0])),
+    }),
+    onStart: startPuzzle,
+    onRetry: startPuzzle,
+    onHint: (_id, level) => { puzzleHintLevel = Math.max(puzzleHintLevel, level) as 1 | 2; updatePuzzleHud(); },
+    onLibrary: () => { void showPuzzleLibrary().catch((error) => console.error("퍼즐 목록 복귀 실패", error)); },
+    onExit: () => {
+      if (gameModeRuntime?.mode === "puzzle") void returnToMainMenu(menuRuntime).catch((error) => console.error("퍼즐 종료 실패", error));
+      else {
+        puzzleUI?.hide();
+        void AdManager.showBanner();
+      }
+    },
+  });
+  menuRuntime.onOpenPuzzles = () => { void showPuzzleLibrary().catch((error) => console.error("퍼즐 목록 열기 실패", error)); };
+  onPuzzleLaunch = (request) => {
+    if (!activePuzzle || !puzzleAttempt || !puzzleTracker || puzzleFinished) return;
+    puzzleAttempt.launches += 1;
+    const binding = physicsRuntime.pieces.get(request.pieceId);
+    const position = binding?.body.worldCom();
+    const customHit = !!position && Math.hypot(request.applicationPoint.x - position.x, request.applicationPoint.z - position.z) > 0.04;
+    puzzleAttempt.customHitUsed ||= customHit;
+    if (binding?.instance.type === "Rook") {
+      puzzleAttempt.rookShots = [...(puzzleAttempt.rookShots ?? []), { pieceId: request.pieceId, centerHit: !customHit, power: request.normalizedPower }];
+    }
+    puzzleTracker.beginShot(request.pieceId, turnRuntime.physicsStepNumber, activePuzzle.pieces.filter((piece) => piece.protected).map((piece) => piece.id));
+    updatePuzzleHud();
+  };
+  turnRuntime.onPuzzlePhysicsStep = (step) => {
+    if (!activePuzzle || !puzzleAttempt || !puzzleTracker || puzzleAttempt.launches === 0 || puzzleFinished) return;
+    const evidence = puzzleTracker.sample(step);
+    appendPuzzlePhysicsEvidence(puzzleAttempt, {
+      ...evidence,
+      pieceContacts: evidence.pieceContacts.filter((event) => event.step === step),
+      protectedPieceContacts: evidence.protectedPieceContacts.filter((event) => event.step === step),
+      wallContacts: evidence.wallContacts.filter((event) => event.step === step),
+      destroyedWalls: evidence.destroyedWalls.filter((event) => event.step === step),
+      fallenPieces: evidence.fallenPieces.filter((event) => event.step === step),
+    }, activePuzzle);
+  };
+  turnRuntime.onPuzzleSettled = () => {
+    if (!activePuzzle || !puzzleAttempt || !puzzleTracker || puzzleFinished) return;
+    puzzleAttempt.settled = true;
+    const evaluation = evaluatePuzzleAttempt(activePuzzle, puzzleAttempt);
+    if (evaluation.status === "success" || evaluation.status === "failed") {
+      puzzleFinished = true;
+      turnRuntime.phase = "match-over";
+      lockInputForMatchOver(inputRuntime);
+      puzzleProgress = applyPuzzleEvaluation(puzzleProgress, activePuzzle, evaluation, {
+        launches: puzzleAttempt.launches, hintsUsedThisAttempt: puzzleHintLevel,
+        customHitUsed: puzzleAttempt.customHitUsed,
+      }).store;
+      savePuzzleProgress(puzzleProgress);
+      puzzleUI?.showResult(activePuzzle.puzzleId, {
+        success: evaluation.status === "success", objectiveMet: evaluation.requiredComplete,
+        goldMet: evaluation.medal === 3, medal: evaluation.medal,
+        failureCode: evaluation.failureReasons[0]?.code,
+      });
+    } else {
+      const nextPlayer = activePuzzle.pieces.find((piece) => piece.side === "white" && physicsRuntime.pieces.has(piece.id));
+      if (nextPlayer) selectPiece(inputRuntime, nextPlayer.id);
+      updatePuzzleHud();
+    }
+  };
   setMainMenuReady(menuRuntime, true);
   tutorialManager.init(
     metaRuntime,

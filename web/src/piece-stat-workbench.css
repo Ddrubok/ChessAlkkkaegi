@@ -18,6 +18,8 @@
 .psw-piece-symbol { font-size: 25px; line-height: 1.1; color: #edd8b1; }
 .psw-pieces small { font-size: 10px; color: var(--psw-muted); }
 .psw-pieces [data-lock]:empty { display: none; }
+.psw-preview-column { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.psw-preview-column > [data-action="reset"] { width: 100%; white-space: normal; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
 .psw-preview { overflow: hidden; border: 1px solid var(--psw-border); background: #101b2d; border-radius: 14px; text-align: center; }
 .psw-preview-title { padding: 15px 12px 0; font-size: 19px; font-weight: 700; }
 .psw-canvas-wrap { position: relative; width: 100%; height: 310px; }
@@ -54,6 +56,7 @@
 .psw-size button { flex-shrink: 0; }
 .psw-status { min-height: 34px; padding: 9px 0; color: #bfe5b3; font-size: 12px; }
 .psw-status[data-error="true"] { color: #ffb6ae; }
+.piece-stat-workbench[data-mode="research"] .psw-status:empty { min-height: 0; padding: 0; }
 .psw-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
 .psw-footer .psw-primary { background: #7154b7; border-color: #a78bdd; padding-inline: 24px; }
 .psw-confirm { width: min(420px, calc(100vw - 32px)); border: 1px solid #64748b; border-radius: 14px; padding: 24px; color: #f4f0e6; background: #182338; }
@@ -72,6 +75,32 @@
 .piece-stat-modal-card > * { flex-shrink: 0; }
 .piece-stat-modal-card #pve-tab-body { min-height: 280px; }
 .piece-stat-modal-card #pve-close-btn, .piece-stat-modal-card #tab-stages, .piece-stat-modal-card #tab-upgrades, .piece-stat-modal-card #pvp-tab-classic, .piece-stat-modal-card #pvp-tab-strategy { min-height: 44px; }
+.pve-lobby-modal .piece-stat-modal-card { max-width: 980px; height: min(960px, calc(100dvh - 40px)); overflow: hidden; }
+.pve-lobby-modal .pve-lobby-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #34445e; }
+.pve-lobby-header h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.pve-lobby-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-left: auto; }
+.pve-lobby-header #pve-points-held { font-size: 13px; color: #38bdf8; font-weight: 600; }
+.pve-lobby-header #pve-close-btn { background: transparent; border: 0; color: #b3c0d2; font: inherit; cursor: pointer; padding: 8px; }
+.pve-lobby-tabs { display: flex; gap: 8px; padding: 4px; background: #0f172a; border-radius: 10px; }
+.pve-lobby-tabs button { flex: 1; min-width: 0; border: 0; border-radius: 6px; padding: 8px; font: 700 14px/1.4 system-ui, sans-serif; cursor: pointer; background: transparent; color: #b3c0d2; overflow-wrap: anywhere; }
+.pve-lobby-tabs button[aria-selected="true"] { background: #3b82f6; color: #fff; }
+.pve-lobby-modal .piece-stat-modal-card #pve-tab-body { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
+.pve-lobby-modal .psw-header .psw-resource { display: none; }
+.pve-stage-panel { display: flex; flex-direction: column; gap: 18px; min-height: 100%; }
+.pve-stage-heading h3 { margin: 0; font: 700 19px/1.5 system-ui, sans-serif; }
+.pve-stage-heading p { margin: 3px 0 0; color: #b3c0d2; font: 12px/1.5 system-ui, sans-serif; }
+.pve-stage-grid { flex: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-rows: minmax(120px, 1fr); gap: 12px; }
+.pve-stage-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 0; padding: 18px 10px; border: 1px solid #34445e; border-radius: 12px; background: #142137; color: #f4f0e6; font: 14px/1.5 system-ui, sans-serif; cursor: pointer; overflow-wrap: anywhere; }
+.pve-stage-card strong { font-size: 18px; }
+.pve-stage-card span { color: #b3c0d2; font-size: 12px; }
+.pve-stage-card[data-cleared="true"] { border-color: #3b82f6; background: #1e3a5f; }
+.pve-stage-card[data-cleared="true"] span { color: #86efac; }
+.pve-stage-card[aria-pressed="true"] { border-color: #60a5fa; background: #2458a6; box-shadow: inset 0 0 0 1px #60a5fa; }
+.pve-stage-card:hover:not(:disabled) { border-color: #a9bdd7; }
+.pve-stage-card:disabled { color: #94a3b8; background: #1b2739; cursor: not-allowed; }
+.pve-stage-footer { padding-top: 16px; border-top: 1px solid #34445e; }
+.pve-stage-footer button { width: 100%; min-height: 48px; padding: 12px 18px; border: 0; border-radius: 9px; background: #16a34a; color: #fff; font: 700 15px/1.5 system-ui, sans-serif; cursor: pointer; }
+.pve-lobby-modal button:focus-visible { outline: 3px solid #f5ce83; outline-offset: 2px; }
 @media (max-width: 780px) {
   .psw-layout { grid-template-columns: 1fr; gap: 14px; }
   .psw-pieces { flex-direction: row; overflow-x: auto; padding: 3px 3px 8px; }
@@ -83,6 +112,10 @@
   .psw-footer button { flex: 1; }
   .piece-stat-modal { padding: 8px; }
   .piece-stat-modal-card { max-height: calc(100dvh - 16px); padding: 16px; }
+  .pve-lobby-modal .piece-stat-modal-card { height: calc(100dvh - 16px); }
+  .pve-stage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(88px, 1fr); gap: 10px; }
+  .pve-stage-card { padding: 12px 8px; }
+  .pve-stage-card strong { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .piece-stat-workbench *, .piece-stat-workbench *::before, .piece-stat-workbench *::after { animation: none !important; transition: none !important; }

@@ -1,0 +1,358 @@
+{
+  "puzzleId": "P03",
+  "boardHalfExtent": 2.9614165750000003,
+  "candidateCount": 1,
+  "successCount": 1,
+  "geometry": {
+    "boardHalfExtent": 2.9614165750000003,
+    "boardTop": 0,
+    "holes": [],
+    "pocketWalls": [
+      {
+        "variant": "indestructible",
+        "id": "pocket-wall-north",
+        "index": 0,
+        "side": "north",
+        "sideIndex": 0,
+        "center": {
+          "x": 0,
+          "y": 0.08,
+          "z": 2.9214165750000003
+        },
+        "halfExtents": {
+          "x": 2.120259328213241,
+          "y": 0.08,
+          "z": 0.04
+        }
+      },
+      {
+        "variant": "indestructible",
+        "id": "pocket-wall-east",
+        "index": 1,
+        "side": "east",
+        "sideIndex": 0,
+        "center": {
+          "x": 2.9214165750000003,
+          "y": 0.08,
+          "z": 0
+        },
+        "halfExtents": {
+          "x": 0.04,
+          "y": 0.08,
+          "z": 2.120259328213241
+        }
+      },
+      {
+        "variant": "indestructible",
+        "id": "pocket-wall-south",
+        "index": 2,
+        "side": "south",
+        "sideIndex": 0,
+        "center": {
+          "x": 0,
+          "y": 0.08,
+          "z": -2.9214165750000003
+        },
+        "halfExtents": {
+          "x": 2.120259328213241,
+          "y": 0.08,
+          "z": 0.04
+        }
+      },
+      {
+        "variant": "indestructible",
+        "id": "pocket-wall-west",
+        "index": 3,
+        "side": "west",
+        "sideIndex": 0,
+        "center": {
+          "x": -2.9214165750000003,
+          "y": 0.08,
+          "z": 0
+        },
+        "halfExtents": {
+          "x": 0.04,
+          "y": 0.08,
+          "z": 2.120259328213241
+        }
+      }
+    ]
+  },
+  "diagnostics": {
+    "strictSettleFailures": 0,
+    "wallContactCandidates": 1,
+    "targetOutCandidates": 1,
+    "failureReasons": {},
+    "bestAttempts": [
+      {
+        "normalizedPositions": {
+          "p03-player-rook": {
+            "x": -0.4,
+            "z": 0.9,
+            "positionValidated": false
+          },
+          "p03-target-pawn": {
+            "x": 0.96,
+            "z": 0.8,
+            "positionValidated": false
+          }
+        },
+        "shot": {
+          "angleDeg": 20,
+          "normalizedPower": 0.45454545454545453
+        },
+        "evaluation": {
+          "puzzleId": "P03",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "evidence": {
+          "shotPieceId": "p03-player-rook",
+          "shotStartStep": 0,
+          "pieceContacts": [
+            {
+              "step": 103,
+              "firstPieceId": "p03-player-rook",
+              "secondPieceId": "p03-target-pawn"
+            }
+          ],
+          "protectedPieceContacts": [],
+          "wallContacts": [
+            {
+              "step": 5,
+              "pieceId": "p03-player-rook",
+              "wallId": "pocket-wall-north",
+              "kind": "pocket-wall"
+            },
+            {
+              "step": 17,
+              "pieceId": "p03-player-rook",
+              "wallId": "pocket-wall-north",
+              "kind": "pocket-wall"
+            },
+            {
+              "step": 73,
+              "pieceId": "p03-player-rook",
+              "wallId": "board-floor-0",
+              "kind": "board-floor"
+            },
+            {
+              "step": 93,
+              "pieceId": "p03-player-rook",
+              "wallId": "board-floor-0",
+              "kind": "board-floor"
+            },
+            {
+              "step": 101,
+              "pieceId": "p03-player-rook",
+              "wallId": "board-floor-0",
+              "kind": "board-floor"
+            },
+            {
+              "step": 109,
+              "pieceId": "p03-player-rook",
+              "wallId": "pocket-wall-east",
+              "kind": "pocket-wall"
+            },
+            {
+              "step": 109,
+              "pieceId": "p03-player-rook",
+              "wallId": "board-floor-0",
+              "kind": "board-floor"
+            },
+            {
+              "step": 113,
+              "pieceId": "p03-player-rook",
+              "wallId": "pocket-wall-east",
+              "kind": "pocket-wall"
+            },
+            {
+              "step": 117,
+              "pieceId": "p03-player-rook",
+              "wallId": "pocket-wall-east",
+              "kind": "pocket-wall"
+            },
+            {
+              "step": 135,
+              "pieceId": "p03-player-rook",
+              "wallId": "board-floor-0",
+              "kind": "board-floor"
+            },
+            {
+              "step": 153,
+              "pieceId": "p03-player-rook",
+              "wallId": "board-floor-0",
+              "kind": "board-floor"
+            },
+            {
+              "step": 157,
+              "pieceId": "p03-player-rook",
+              "wallId": "board-floor-0",
+              "kind": "board-floor"
+            }
+          ],
+          "destroyedWalls": [],
+          "fallenPieces": [
+            {
+              "step": 191,
+              "pieceId": "p03-target-pawn",
+              "reason": "outside",
+              "crossingX": 3.7168694562047957,
+              "crossingZ": 2.6930343029709527,
+              "classificationBasis": "body-center-board-top-crossing"
+            }
+          ],
+          "wallContactBeforeShotTargetContact": true
+        }
+      }
+    ]
+  },
+  "successes": [
+    {
+      "normalizedPositions": {
+        "p03-player-rook": {
+          "x": -0.4,
+          "z": 0.9,
+          "positionValidated": false
+        },
+        "p03-target-pawn": {
+          "x": 0.96,
+          "z": 0.8,
+          "positionValidated": false
+        }
+      },
+      "shot": {
+        "angleDeg": 20,
+        "normalizedPower": 0.45454545454545453,
+        "applicationPointWorld": {
+          "x": -1.1839699745178223,
+          "y": 0.2567850649356842,
+          "z": 2.6655776500701904
+        }
+      },
+      "evaluation": {
+        "puzzleId": "P03",
+        "revision": 1,
+        "protectedContactIDs": [],
+        "status": "success",
+        "medal": 3,
+        "requiredComplete": true,
+        "failureReasons": [],
+        "medalChecks": {
+          "bronze": true,
+          "silver": true,
+          "gold": true
+        }
+      },
+      "evidence": {
+        "shotPieceId": "p03-player-rook",
+        "shotStartStep": 0,
+        "pieceContacts": [
+          {
+            "step": 103,
+            "firstPieceId": "p03-player-rook",
+            "secondPieceId": "p03-target-pawn"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 5,
+            "pieceId": "p03-player-rook",
+            "wallId": "pocket-wall-north",
+            "kind": "pocket-wall"
+          },
+          {
+            "step": 17,
+            "pieceId": "p03-player-rook",
+            "wallId": "pocket-wall-north",
+            "kind": "pocket-wall"
+          },
+          {
+            "step": 73,
+            "pieceId": "p03-player-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 93,
+            "pieceId": "p03-player-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 101,
+            "pieceId": "p03-player-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 109,
+            "pieceId": "p03-player-rook",
+            "wallId": "pocket-wall-east",
+            "kind": "pocket-wall"
+          },
+          {
+            "step": 109,
+            "pieceId": "p03-player-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 113,
+            "pieceId": "p03-player-rook",
+            "wallId": "pocket-wall-east",
+            "kind": "pocket-wall"
+          },
+          {
+            "step": 117,
+            "pieceId": "p03-player-rook",
+            "wallId": "pocket-wall-east",
+            "kind": "pocket-wall"
+          },
+          {
+            "step": 135,
+            "pieceId": "p03-player-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 153,
+            "pieceId": "p03-player-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 157,
+            "pieceId": "p03-player-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": [],
+        "fallenPieces": [
+          {
+            "step": 191,
+            "pieceId": "p03-target-pawn",
+            "reason": "outside",
+            "crossingX": 3.7168694562047957,
+            "crossingZ": 2.6930343029709527,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "wallContactBeforeShotTargetContact": true
+      }
+    }
+  ],
+  "failures": [],
+  "note": "strict applyPuzzleSpawnDefinitions → preSettlePhysics, actual queueTurnLaunch → applyPendingLaunchBeforeStep → world.step → updateTurnAfterStep, COM application point"
+}

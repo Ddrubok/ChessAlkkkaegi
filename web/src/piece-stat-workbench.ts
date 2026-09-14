@@ -57,7 +57,7 @@ export class PieceStatWorkbench {
       <header class="psw-header"><div><h3 id="${this.id}-title" data-text="title"></h3><p data-text="description"></p></div><strong class="psw-resource" data-text="resource"></strong></header>
       <div class="psw-layout">
         <nav class="psw-pieces">${PIECE_STAT_ORDER.map(type => `<button type="button" data-piece="${type}"><span class="psw-piece-symbol" aria-hidden="true">${symbols[type]}</span><span data-name></span><small data-levels></small><small data-lock></small></button>`).join("")}</nav>
-        <div class="psw-preview"><div class="psw-preview-title" data-text="piece"></div><div class="psw-canvas-wrap"><canvas class="psw-canvas" role="img"></canvas><p class="psw-fallback" data-text="fallback"></p><span class="psw-float" aria-hidden="true"></span></div><p data-label="previewHint"></p><button type="button" data-action="view" data-label="resetView"></button></div>
+        <div class="psw-preview-column"><div class="psw-preview"><div class="psw-preview-title" data-text="piece"></div><div class="psw-canvas-wrap"><canvas class="psw-canvas" role="img"></canvas><p class="psw-fallback" data-text="fallback"></p><span class="psw-float" aria-hidden="true"></span></div><p data-label="previewHint"></p><button type="button" data-action="view" data-label="resetView"></button></div></div>
         <div class="psw-editor"><div class="psw-tiers" role="tablist"><button type="button" role="tab" data-tier="basic" data-label="basic"></button><button type="button" role="tab" data-tier="advanced" data-label="advanced"></button></div>
           <p class="psw-lock-reason" id="${this.id}-lock" data-text="lock"></p>
           ${(["force", "weight"] as const).map(stat => `<section class="psw-stat psw-${stat}" data-stat="${stat}"><div class="psw-stat-heading"><h4 data-label="${stat}"></h4><span data-field="level"></span></div><div class="psw-effects"><span><small data-label="current"></small><strong data-field="current"></strong></span><span class="psw-next"><small data-label="next"></small><strong data-field="next"></strong></span></div><p class="psw-breakdown" data-field="breakdown"></p><div class="psw-controls"><button type="button" data-action="decrease" data-stat="${stat}">−</button><span data-field="cost"></span><button type="button" data-action="increase" data-stat="${stat}">+</button></div><p class="psw-reason" id="${this.id}-${stat}-reason" data-field="reason"></p></section>`).join("")}
@@ -67,6 +67,12 @@ export class PieceStatWorkbench {
       <p class="psw-status" role="status" aria-live="polite" aria-atomic="true"></p>
       <footer class="psw-footer"><button type="button" data-action="reset"></button><button type="button" class="psw-primary" data-action="primary"></button></footer>
       <dialog class="psw-confirm" aria-labelledby="${this.id}-confirm-title"><h4 id="${this.id}-confirm-title"></h4><p data-confirm-message></p><div><button type="button" data-confirm="cancel" data-label="cancel"></button><button type="button" data-confirm="accept" data-label="confirm"></button></div></dialog>`;
+    if (adapter.getSummary(this.selectedPiece).mode === "research") {
+      this.element.querySelector(".psw-preview-column")!.append(
+        this.element.querySelector<HTMLButtonElement>('[data-action="reset"]')!,
+      );
+      this.element.querySelector<HTMLElement>(".psw-footer")!.hidden = true;
+    }
     this.element.addEventListener("click", this.click);
     this.element.addEventListener("keydown", this.keydown);
     this.dialog.addEventListener("cancel", this.cancelConfirm);

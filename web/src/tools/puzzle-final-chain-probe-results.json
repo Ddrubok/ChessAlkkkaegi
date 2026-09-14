@@ -1,0 +1,362 @@
+[
+  {
+    "layout": "catalog",
+    "solutionCount": 16,
+    "solutions": [
+      {
+        "layout": "catalog",
+        "first": {
+          "shooterId": "p12-player-pawn",
+          "speed": 6,
+          "normalizedPower": 0.5454545454545454,
+          "angleDeg": 5,
+          "applicationPointWorld": {
+            "x": -2.3681938648223877,
+            "y": 0.20098531246185303,
+            "z": 0.3062054514884949
+          },
+          "pointOffset": {
+            "x": 0.00005054473876953125,
+            "y": 0.20213823020458221,
+            "z": -0.000057190656661987305
+          },
+          "fallen": [
+            {
+              "step": 197,
+              "pieceId": "p12-target-pawn-a",
+              "reason": "outside",
+              "crossingX": 3.6419000439366185,
+              "crossingZ": 0.31829027924418546,
+              "classificationBasis": "body-center-board-top-crossing"
+            },
+            {
+              "step": 305,
+              "pieceId": "p12-target-pawn-b",
+              "reason": "outside",
+              "crossingX": 3.106032234804839,
+              "crossingZ": 1.2992163027746282,
+              "classificationBasis": "body-center-board-top-crossing"
+            }
+          ],
+          "pieceContacts": [
+            {
+              "step": 86,
+              "firstPieceId": "p12-player-pawn",
+              "secondPieceId": "p12-target-pawn-a"
+            },
+            {
+              "step": 99,
+              "firstPieceId": "p12-target-pawn-a",
+              "secondPieceId": "p12-target-pawn-b"
+            }
+          ]
+        },
+        "second": {
+          "shooterId": "p12-player-pawn-b",
+          "speed": 6,
+          "normalizedPower": 0.5454545454545454,
+          "angleDeg": -90.01018387222844,
+          "applicationPointWorld": {
+            "x": -2.3682758808135986,
+            "y": 0.20098555088043213,
+            "z": 2.3687005043029785
+          },
+          "pointOffset": {
+            "x": 0.00005125999450683594,
+            "y": 0.20213823020458221,
+            "z": -0.0000553131103515625
+          },
+          "fallen": [
+            {
+              "step": 230,
+              "pieceId": "p12-target-pawn-c",
+              "reason": "outside",
+              "crossingX": -1.9514572634866025,
+              "crossingZ": -3.4863758025358087,
+              "classificationBasis": "body-center-board-top-crossing"
+            }
+          ],
+          "pieceContacts": [
+            {
+              "step": 43,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            },
+            {
+              "step": 46,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            },
+            {
+              "step": 61,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            }
+          ]
+        },
+        "evaluation": {
+          "puzzleId": "P12",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        }
+      },
+      {
+        "layout": "catalog",
+        "first": {
+          "shooterId": "p12-player-pawn",
+          "speed": 7,
+          "normalizedPower": 0.6363636363636364,
+          "angleDeg": 0,
+          "applicationPointWorld": {
+            "x": -2.3681938648223877,
+            "y": 0.20098531246185303,
+            "z": 0.3062054514884949
+          },
+          "pointOffset": {
+            "x": 0.00005054473876953125,
+            "y": 0.20213823020458221,
+            "z": -0.000057190656661987305
+          },
+          "fallen": [
+            {
+              "step": 182,
+              "pieceId": "p12-target-pawn-b",
+              "reason": "outside",
+              "crossingX": 3.5384776241310782,
+              "crossingZ": 1.163089747079617,
+              "classificationBasis": "body-center-board-top-crossing"
+            },
+            {
+              "step": 189,
+              "pieceId": "p12-player-pawn",
+              "reason": "outside",
+              "crossingX": 3.289421203409311,
+              "crossingZ": -0.6238303240644179,
+              "classificationBasis": "body-center-board-top-crossing"
+            },
+            {
+              "step": 336,
+              "pieceId": "p12-target-pawn-a",
+              "reason": "outside",
+              "crossingX": 3.111403656193803,
+              "crossingZ": 1.8566597124869662,
+              "classificationBasis": "body-center-board-top-crossing"
+            }
+          ],
+          "pieceContacts": [
+            {
+              "step": 72,
+              "firstPieceId": "p12-player-pawn",
+              "secondPieceId": "p12-target-pawn-a"
+            },
+            {
+              "step": 74,
+              "firstPieceId": "p12-player-pawn",
+              "secondPieceId": "p12-target-pawn-a"
+            },
+            {
+              "step": 86,
+              "firstPieceId": "p12-target-pawn-a",
+              "secondPieceId": "p12-target-pawn-b"
+            }
+          ]
+        },
+        "second": {
+          "shooterId": "p12-player-pawn-b",
+          "speed": 6,
+          "normalizedPower": 0.5454545454545454,
+          "angleDeg": -90.01018387222844,
+          "applicationPointWorld": {
+            "x": -2.3682758808135986,
+            "y": 0.20098555088043213,
+            "z": 2.3687005043029785
+          },
+          "pointOffset": {
+            "x": 0.00005125999450683594,
+            "y": 0.20213823020458221,
+            "z": -0.0000553131103515625
+          },
+          "fallen": [
+            {
+              "step": 230,
+              "pieceId": "p12-target-pawn-c",
+              "reason": "outside",
+              "crossingX": -1.9514572634866025,
+              "crossingZ": -3.4863758025358087,
+              "classificationBasis": "body-center-board-top-crossing"
+            }
+          ],
+          "pieceContacts": [
+            {
+              "step": 43,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            },
+            {
+              "step": 46,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            },
+            {
+              "step": 61,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            }
+          ]
+        },
+        "evaluation": {
+          "puzzleId": "P12",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        }
+      },
+      {
+        "layout": "catalog",
+        "first": {
+          "shooterId": "p12-player-pawn",
+          "speed": 7,
+          "normalizedPower": 0.6363636363636364,
+          "angleDeg": 2,
+          "applicationPointWorld": {
+            "x": -2.3681938648223877,
+            "y": 0.20098531246185303,
+            "z": 0.3062054514884949
+          },
+          "pointOffset": {
+            "x": 0.00005054473876953125,
+            "y": 0.20213823020458221,
+            "z": -0.000057190656661987305
+          },
+          "fallen": [
+            {
+              "step": 177,
+              "pieceId": "p12-target-pawn-a",
+              "reason": "outside",
+              "crossingX": 4.031976079614652,
+              "crossingZ": 0.24618917210501715,
+              "classificationBasis": "body-center-board-top-crossing"
+            },
+            {
+              "step": 210,
+              "pieceId": "p12-target-pawn-b",
+              "reason": "outside",
+              "crossingX": 3.2255503214229995,
+              "crossingZ": 1.201394203779062,
+              "classificationBasis": "body-center-board-top-crossing"
+            },
+            {
+              "step": 461,
+              "pieceId": "p12-player-pawn",
+              "reason": "outside",
+              "crossingX": 3.116127959342163,
+              "crossingZ": -0.07601090366444188,
+              "classificationBasis": "body-center-board-top-crossing"
+            }
+          ],
+          "pieceContacts": [
+            {
+              "step": 71,
+              "firstPieceId": "p12-player-pawn",
+              "secondPieceId": "p12-target-pawn-a"
+            },
+            {
+              "step": 74,
+              "firstPieceId": "p12-player-pawn",
+              "secondPieceId": "p12-target-pawn-a"
+            },
+            {
+              "step": 106,
+              "firstPieceId": "p12-player-pawn",
+              "secondPieceId": "p12-target-pawn-b"
+            },
+            {
+              "step": 113,
+              "firstPieceId": "p12-player-pawn",
+              "secondPieceId": "p12-target-pawn-b"
+            },
+            {
+              "step": 131,
+              "firstPieceId": "p12-player-pawn",
+              "secondPieceId": "p12-target-pawn-b"
+            }
+          ]
+        },
+        "second": {
+          "shooterId": "p12-player-pawn-b",
+          "speed": 6,
+          "normalizedPower": 0.5454545454545454,
+          "angleDeg": -90.01018387222844,
+          "applicationPointWorld": {
+            "x": -2.3682758808135986,
+            "y": 0.20098555088043213,
+            "z": 2.3687005043029785
+          },
+          "pointOffset": {
+            "x": 0.00005125999450683594,
+            "y": 0.20213823020458221,
+            "z": -0.0000553131103515625
+          },
+          "fallen": [
+            {
+              "step": 230,
+              "pieceId": "p12-target-pawn-c",
+              "reason": "outside",
+              "crossingX": -1.9514572634866025,
+              "crossingZ": -3.4863758025358087,
+              "classificationBasis": "body-center-board-top-crossing"
+            }
+          ],
+          "pieceContacts": [
+            {
+              "step": 43,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            },
+            {
+              "step": 46,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            },
+            {
+              "step": 61,
+              "firstPieceId": "p12-player-pawn-b",
+              "secondPieceId": "p12-target-pawn-c"
+            }
+          ]
+        },
+        "evaluation": {
+          "puzzleId": "P12",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        }
+      }
+    ]
+  }
+]

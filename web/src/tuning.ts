@@ -551,6 +551,45 @@ export function setTuningGameMode(
   runtime.onlineNotice.hidden = !useOnlineDefaults;
 }
 
+/** 퍼즐에서는 기기별 조절값과 무관하게 config 기본 튜닝값을 사용한다. */
+export function applyPuzzleTuningDefaults(
+  runtime: TuningRuntime,
+): void {
+  const defaults = createDefaultRuntimeTuningSettings();
+  for (const key of Object.keys(defaults) as TuningKey[]) {
+    setTuningValue(runtime, key, defaults[key], false);
+  }
+}
+
+/** 퍼즐 종료 시 진입 전에 보존한 기기별 로컬 튜닝값을 다시 활성화한다. */
+export function restoreLocalTuningSettings(
+  runtime: TuningRuntime,
+): void {
+  for (const key of Object.keys(runtime.localSettings) as TuningKey[]) {
+    setTuningValue(runtime, key, runtime.localSettings[key], false);
+  }
+}
+
+/** 퍼즐 진행 중 개발용 조절 입력을 잠그거나 원래 모드의 잠금 상태로 되돌린다. */
+export function setPuzzleTuningLocked(
+  runtime: TuningRuntime,
+  locked: boolean,
+): void {
+  for (const elements of runtime.controls.values()) {
+    for (const element of elements) {
+      if (element instanceof HTMLInputElement) {
+        element.disabled = locked || runtime.onlineDefaultsActive;
+      }
+    }
+  }
+  const resetButton = runtime.panel.querySelector<HTMLButtonElement>(
+    "[data-tuning-reset]",
+  );
+  if (resetButton !== null) {
+    resetButton.disabled = locked || runtime.onlineDefaultsActive;
+  }
+}
+
 /**
  * 재생성된 말 바디에 현재 조절판의 물리값을 다시 적용해 화면 값과 실제 값을 보존한다.
  */

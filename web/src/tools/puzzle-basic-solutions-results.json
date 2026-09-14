@@ -1,0 +1,1979 @@
+[
+  {
+    "puzzleId": "P01",
+    "boardHalfExtent": 2.2780127500000003,
+    "solutionCount": 12,
+    "solutions": [
+      {
+        "speed": 3,
+        "normalizedPower": 0.2727272727272727,
+        "angleDeg": 37,
+        "direction": {
+          "x": 0.79863551,
+          "y": 0,
+          "z": 0.60181502
+        },
+        "pointOffset": {
+          "x": 0.00011163949966430664,
+          "y": 0.20213682949543,
+          "z": 0.0007458925247192383
+        },
+        "bodyTranslationWorld": {
+          "x": -0.9562551379203796,
+          "y": -0.0011137723922729492,
+          "z": -0.683868944644928
+        },
+        "applicationPointWorld": {
+          "x": -0.9561434984207153,
+          "y": 0.20102305710315704,
+          "z": -0.6831230521202087
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P01",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 331,
+            "pieceId": "p01-target-pawn",
+            "reason": "outside",
+            "crossingX": 2.447209711405503,
+            "crossingZ": 1.1588733815927184,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 89,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          },
+          {
+            "step": 96,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 4,
+        "normalizedPower": 0.36363636363636365,
+        "angleDeg": 38,
+        "direction": {
+          "x": 0.78801075,
+          "y": 0,
+          "z": 0.61566148
+        },
+        "pointOffset": {
+          "x": 0.00011163949966430664,
+          "y": 0.20213682949543,
+          "z": 0.0007458925247192383
+        },
+        "bodyTranslationWorld": {
+          "x": -0.9562551379203796,
+          "y": -0.0011137723922729492,
+          "z": -0.683868944644928
+        },
+        "applicationPointWorld": {
+          "x": -0.9561434984207153,
+          "y": 0.20102305710315704,
+          "z": -0.6831230521202087
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P01",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 255,
+            "pieceId": "p01-target-pawn",
+            "reason": "outside",
+            "crossingX": 2.557582440550625,
+            "crossingZ": 1.100723472471553,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 65,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          },
+          {
+            "step": 71,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 92,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 96,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 100,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 123,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 4.5,
+        "normalizedPower": 0.4090909090909091,
+        "angleDeg": 38,
+        "direction": {
+          "x": 0.78801075,
+          "y": 0,
+          "z": 0.61566148
+        },
+        "pointOffset": {
+          "x": 0.00011163949966430664,
+          "y": 0.20213682949543,
+          "z": 0.0007458925247192383
+        },
+        "bodyTranslationWorld": {
+          "x": -0.9562551379203796,
+          "y": -0.0011137723922729492,
+          "z": -0.683868944644928
+        },
+        "applicationPointWorld": {
+          "x": -0.9561434984207153,
+          "y": 0.20102305710315704,
+          "z": -0.6831230521202087
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P01",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 222,
+            "pieceId": "p01-target-pawn",
+            "reason": "outside",
+            "crossingX": 2.5892033099909444,
+            "crossingZ": 1.0178833997626782,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 58,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          },
+          {
+            "step": 62,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 89,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 89,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 101,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 126,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 130,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 37,
+        "direction": {
+          "x": 0.79863551,
+          "y": 0,
+          "z": 0.60181502
+        },
+        "pointOffset": {
+          "x": 0.00011163949966430664,
+          "y": 0.20213682949543,
+          "z": 0.0007458925247192383
+        },
+        "bodyTranslationWorld": {
+          "x": -0.9562551379203796,
+          "y": -0.0011137723922729492,
+          "z": -0.683868944644928
+        },
+        "applicationPointWorld": {
+          "x": -0.9561434984207153,
+          "y": 0.20102305710315704,
+          "z": -0.6831230521202087
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P01",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 188,
+            "pieceId": "p01-target-pawn",
+            "reason": "outside",
+            "crossingX": 2.6631952499120586,
+            "crossingZ": 1.3380777167662385,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 52,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          },
+          {
+            "step": 55,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 84,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 88,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 91,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 110,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 115,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 133,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 138,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 149,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 153,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 157,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 163,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 40,
+        "direction": {
+          "x": 0.76604444,
+          "y": 0,
+          "z": 0.64278761
+        },
+        "pointOffset": {
+          "x": 0.00011163949966430664,
+          "y": 0.20213682949543,
+          "z": 0.0007458925247192383
+        },
+        "bodyTranslationWorld": {
+          "x": -0.9562551379203796,
+          "y": -0.0011137723922729492,
+          "z": -0.683868944644928
+        },
+        "applicationPointWorld": {
+          "x": -0.9561434984207153,
+          "y": 0.20102305710315704,
+          "z": -0.6831230521202087
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P01",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 229,
+            "pieceId": "p01-target-pawn",
+            "reason": "outside",
+            "crossingX": 2.6237243364120792,
+            "crossingZ": 0.7808355956174201,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 53,
+            "firstPieceId": "p01-player-pawn",
+            "secondPieceId": "p01-target-pawn"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 85,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 87,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 92,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 95,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 99,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 111,
+            "pieceId": "p01-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 124,
+            "pieceId": "p01-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      }
+    ]
+  },
+  {
+    "puzzleId": "P02",
+    "boardHalfExtent": 2.2780127500000003,
+    "solutionCount": 25,
+    "solutions": [
+      {
+        "speed": 4.5,
+        "normalizedPower": 0.4090909090909091,
+        "angleDeg": 35,
+        "direction": {
+          "x": 0.81915204,
+          "y": 0,
+          "z": 0.57357644
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P02",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 258,
+            "pieceId": "p02-target-bishop",
+            "reason": "outside",
+            "crossingX": 2.7808523943838166,
+            "crossingZ": 1.9586460926902967,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 67,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          },
+          {
+            "step": 71,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 81,
+            "pieceId": "p02-target-bishop",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 101,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 119,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 127,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 36,
+        "direction": {
+          "x": 0.80901699,
+          "y": 0,
+          "z": 0.58778525
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P02",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 242,
+            "pieceId": "p02-target-bishop",
+            "reason": "outside",
+            "crossingX": 2.771460602008395,
+            "crossingZ": 1.6180945696976803,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 60,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          },
+          {
+            "step": 63,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 72,
+            "pieceId": "p02-target-bishop",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 103,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 105,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 126,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 37,
+        "direction": {
+          "x": 0.79863551,
+          "y": 0,
+          "z": 0.60181502
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P02",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 231,
+            "pieceId": "p02-target-bishop",
+            "reason": "outside",
+            "crossingX": 2.7734765495238665,
+            "crossingZ": 1.3046983610251053,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 61,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          },
+          {
+            "step": 64,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 96,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 122,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 136,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 148,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 159,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 166,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 172,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 178,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 183,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 186,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 6,
+        "normalizedPower": 0.5454545454545454,
+        "angleDeg": 32,
+        "direction": {
+          "x": 0.8480481,
+          "y": 0,
+          "z": 0.52991926
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P02",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 241,
+            "pieceId": "p02-target-bishop",
+            "reason": "outside",
+            "crossingX": 1.9827797080495744,
+            "crossingZ": 2.765479042655024,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 51,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          },
+          {
+            "step": 54,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 67,
+            "pieceId": "p02-target-bishop",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 75,
+            "pieceId": "p02-target-bishop",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 92,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 99,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 6,
+        "normalizedPower": 0.5454545454545454,
+        "angleDeg": 34,
+        "direction": {
+          "x": 0.82903757,
+          "y": 0,
+          "z": 0.5591929
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P02",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 216,
+            "pieceId": "p02-target-bishop",
+            "reason": "outside",
+            "crossingX": 2.7645160533659725,
+            "crossingZ": 2.375636180626403,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 50,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          },
+          {
+            "step": 53,
+            "firstPieceId": "p02-player-pawn",
+            "secondPieceId": "p02-target-bishop"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 69,
+            "pieceId": "p02-target-bishop",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 79,
+            "pieceId": "p02-target-bishop",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 86,
+            "pieceId": "p02-target-bishop",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 96,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 102,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 132,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 136,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 139,
+            "pieceId": "p02-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      }
+    ]
+  },
+  {
+    "puzzleId": "P04",
+    "boardHalfExtent": 2.2780127500000003,
+    "solutionCount": 4,
+    "solutions": [
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 36,
+        "direction": {
+          "x": 0.80901699,
+          "y": 0,
+          "z": 0.58778525
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P04",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 213,
+            "pieceId": "p04-target-pawn-b",
+            "reason": "outside",
+            "crossingX": 2.729361040196162,
+            "crossingZ": 1.507551101567014,
+            "classificationBasis": "body-center-board-top-crossing"
+          },
+          {
+            "step": 383,
+            "pieceId": "p04-target-pawn-a",
+            "reason": "outside",
+            "crossingX": 1.034996137218323,
+            "crossingZ": 2.4418355510722836,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 42,
+            "firstPieceId": "p04-player-pawn",
+            "secondPieceId": "p04-target-pawn-a"
+          },
+          {
+            "step": 45,
+            "firstPieceId": "p04-player-pawn",
+            "secondPieceId": "p04-target-pawn-a"
+          },
+          {
+            "step": 71,
+            "firstPieceId": "p04-target-pawn-a",
+            "secondPieceId": "p04-target-pawn-b"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 67,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 76,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 81,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 95,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 98,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 108,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 38,
+        "direction": {
+          "x": 0.78801075,
+          "y": 0,
+          "z": 0.61566148
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P04",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 252,
+            "pieceId": "p04-target-pawn-b",
+            "reason": "outside",
+            "crossingX": 2.5168033299434693,
+            "crossingZ": 2.6538809783530004,
+            "classificationBasis": "body-center-board-top-crossing"
+          },
+          {
+            "step": 306,
+            "pieceId": "p04-target-pawn-a",
+            "reason": "outside",
+            "crossingX": 2.4261327502953445,
+            "crossingZ": 0.5613474430288453,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 42,
+            "firstPieceId": "p04-player-pawn",
+            "secondPieceId": "p04-target-pawn-a"
+          },
+          {
+            "step": 45,
+            "firstPieceId": "p04-player-pawn",
+            "secondPieceId": "p04-target-pawn-a"
+          },
+          {
+            "step": 73,
+            "firstPieceId": "p04-target-pawn-a",
+            "secondPieceId": "p04-target-pawn-b"
+          },
+          {
+            "step": 83,
+            "firstPieceId": "p04-target-pawn-a",
+            "secondPieceId": "p04-target-pawn-b"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 77,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 78,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 82,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 84,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 86,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 96,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 98,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 109,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 112,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 117,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 8,
+        "normalizedPower": 0.7272727272727273,
+        "angleDeg": 38,
+        "direction": {
+          "x": 0.78801075,
+          "y": 0,
+          "z": 0.61566148
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P04",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 153,
+            "pieceId": "p04-target-pawn-b",
+            "reason": "outside",
+            "crossingX": 3.1590858175784726,
+            "crossingZ": 1.1725403202203455,
+            "classificationBasis": "body-center-board-top-crossing"
+          },
+          {
+            "step": 179,
+            "pieceId": "p04-target-pawn-a",
+            "reason": "outside",
+            "crossingX": 1.5159705625961388,
+            "crossingZ": 2.807920951111942,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 27,
+            "firstPieceId": "p04-player-pawn",
+            "secondPieceId": "p04-target-pawn-a"
+          },
+          {
+            "step": 44,
+            "firstPieceId": "p04-target-pawn-a",
+            "secondPieceId": "p04-target-pawn-b"
+          },
+          {
+            "step": 47,
+            "firstPieceId": "p04-target-pawn-a",
+            "secondPieceId": "p04-target-pawn-b"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 65,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 66,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 71,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 76,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 80,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 87,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 97,
+            "pieceId": "p04-target-pawn-a",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 10,
+        "normalizedPower": 0.9090909090909091,
+        "angleDeg": 38,
+        "direction": {
+          "x": 0.78801075,
+          "y": 0,
+          "z": 0.61566148
+        },
+        "pointOffset": {
+          "x": 0.00006520748138427734,
+          "y": 0.2021324187517166,
+          "z": 0.00153350830078125
+        },
+        "bodyTranslationWorld": {
+          "x": -1.1394532918930054,
+          "y": -0.0011283904314041138,
+          "z": -0.7989124655723572
+        },
+        "applicationPointWorld": {
+          "x": -1.139388084411621,
+          "y": 0.2010040283203125,
+          "z": -0.7973789572715759
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P04",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 140,
+            "pieceId": "p04-target-pawn-a",
+            "reason": "outside",
+            "crossingX": 3.073700502683138,
+            "crossingZ": 0.7830345273022715,
+            "classificationBasis": "body-center-board-top-crossing"
+          },
+          {
+            "step": 174,
+            "pieceId": "p04-target-pawn-b",
+            "reason": "outside",
+            "crossingX": 2.504359824738171,
+            "crossingZ": 2.8300508604134094,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 21,
+            "firstPieceId": "p04-player-pawn",
+            "secondPieceId": "p04-target-pawn-a"
+          },
+          {
+            "step": 23,
+            "firstPieceId": "p04-player-pawn",
+            "secondPieceId": "p04-target-pawn-a"
+          },
+          {
+            "step": 39,
+            "firstPieceId": "p04-target-pawn-a",
+            "secondPieceId": "p04-target-pawn-b"
+          },
+          {
+            "step": 63,
+            "firstPieceId": "p04-player-pawn",
+            "secondPieceId": "p04-target-pawn-b"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 70,
+            "pieceId": "p04-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      }
+    ]
+  },
+  {
+    "puzzleId": "P06",
+    "boardHalfExtent": 2.2780127500000003,
+    "solutionCount": 30,
+    "solutions": [
+      {
+        "speed": 4,
+        "normalizedPower": 0.36363636363636365,
+        "angleDeg": 37,
+        "direction": {
+          "x": 0.79863551,
+          "y": 0,
+          "z": 0.60181502
+        },
+        "pointOffset": {
+          "x": 0.00005161762237548828,
+          "y": 0.20213823020458221,
+          "z": -0.00005441904067993164
+        },
+        "bodyTranslationWorld": {
+          "x": -1.0942238569259644,
+          "y": -0.0011526942253112793,
+          "z": -0.8188274502754211
+        },
+        "applicationPointWorld": {
+          "x": -1.0941722393035889,
+          "y": 0.20098553597927094,
+          "z": -0.8188818693161011
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P06",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 262,
+            "pieceId": "p06-target-rook",
+            "reason": "outside",
+            "crossingX": 2.545610456506756,
+            "crossingZ": 1.0628305663357596,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 73,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          },
+          {
+            "step": 77,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 85,
+            "pieceId": "p06-target-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 98,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 4,
+        "normalizedPower": 0.36363636363636365,
+        "angleDeg": 38,
+        "direction": {
+          "x": 0.78801075,
+          "y": 0,
+          "z": 0.61566148
+        },
+        "pointOffset": {
+          "x": 0.00005161762237548828,
+          "y": 0.20213823020458221,
+          "z": -0.00005441904067993164
+        },
+        "bodyTranslationWorld": {
+          "x": -1.0942238569259644,
+          "y": -0.0011526942253112793,
+          "z": -0.8188274502754211
+        },
+        "applicationPointWorld": {
+          "x": -1.0941722393035889,
+          "y": 0.20098553597927094,
+          "z": -0.8188818693161011
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P06",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 294,
+            "pieceId": "p06-target-rook",
+            "reason": "outside",
+            "crossingX": 2.5189163035452253,
+            "crossingZ": 0.793852398128086,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 74,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          },
+          {
+            "step": 78,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 83,
+            "pieceId": "p06-target-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 110,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 113,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 32,
+        "direction": {
+          "x": 0.8480481,
+          "y": 0,
+          "z": 0.52991926
+        },
+        "pointOffset": {
+          "x": 0.00005161762237548828,
+          "y": 0.20213823020458221,
+          "z": -0.00005441904067993164
+        },
+        "bodyTranslationWorld": {
+          "x": -1.0942238569259644,
+          "y": -0.0011526942253112793,
+          "z": -0.8188274502754211
+        },
+        "applicationPointWorld": {
+          "x": -1.0941722393035889,
+          "y": 0.20098553597927094,
+          "z": -0.8188818693161011
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P06",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 274,
+            "pieceId": "p06-target-rook",
+            "reason": "outside",
+            "crossingX": 2.129828662470933,
+            "crossingZ": 2.6947480509033594,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 59,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 76,
+            "pieceId": "p06-target-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 83,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 98,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 115,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 125,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 35,
+        "direction": {
+          "x": 0.81915204,
+          "y": 0,
+          "z": 0.57357644
+        },
+        "pointOffset": {
+          "x": 0.00005161762237548828,
+          "y": 0.20213823020458221,
+          "z": -0.00005441904067993164
+        },
+        "bodyTranslationWorld": {
+          "x": -1.0942238569259644,
+          "y": -0.0011526942253112793,
+          "z": -0.8188274502754211
+        },
+        "applicationPointWorld": {
+          "x": -1.0941722393035889,
+          "y": 0.20098553597927094,
+          "z": -0.8188818693161011
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P06",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 211,
+            "pieceId": "p06-target-rook",
+            "reason": "outside",
+            "crossingX": 2.6224826196523887,
+            "crossingZ": 1.6022222686864653,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 58,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          },
+          {
+            "step": 61,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 94,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 96,
+            "pieceId": "p06-target-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 101,
+            "pieceId": "p06-target-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 103,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 132,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 143,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      },
+      {
+        "speed": 5,
+        "normalizedPower": 0.45454545454545453,
+        "angleDeg": 37,
+        "direction": {
+          "x": 0.79863551,
+          "y": 0,
+          "z": 0.60181502
+        },
+        "pointOffset": {
+          "x": 0.00005161762237548828,
+          "y": 0.20213823020458221,
+          "z": -0.00005441904067993164
+        },
+        "bodyTranslationWorld": {
+          "x": -1.0942238569259644,
+          "y": -0.0011526942253112793,
+          "z": -0.8188274502754211
+        },
+        "applicationPointWorld": {
+          "x": -1.0941722393035889,
+          "y": 0.20098553597927094,
+          "z": -0.8188818693161011
+        },
+        "shooterAlive": true,
+        "evaluation": {
+          "puzzleId": "P06",
+          "revision": 1,
+          "protectedContactIDs": [],
+          "status": "success",
+          "medal": 3,
+          "requiredComplete": true,
+          "failureReasons": [],
+          "medalChecks": {
+            "bronze": true,
+            "silver": true,
+            "gold": true
+          }
+        },
+        "launches": 1,
+        "settled": true,
+        "fallen": [
+          {
+            "step": 213,
+            "pieceId": "p06-target-rook",
+            "reason": "outside",
+            "crossingX": 2.6901871754934796,
+            "crossingZ": 1.1719064113531512,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "pieceContacts": [
+          {
+            "step": 58,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          },
+          {
+            "step": 61,
+            "firstPieceId": "p06-player-pawn",
+            "secondPieceId": "p06-target-rook"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 82,
+            "pieceId": "p06-target-rook",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 93,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 106,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 131,
+            "pieceId": "p06-player-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": []
+      }
+    ]
+  }
+]

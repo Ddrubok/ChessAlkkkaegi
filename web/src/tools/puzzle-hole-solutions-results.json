@@ -1,0 +1,330 @@
+{
+  "p05": {
+    "puzzleId": "P05",
+    "normalizedPositions": {
+      "p05-player-rook": {
+        "x": 0.55,
+        "z": 0.6,
+        "positionValidated": false
+      },
+      "p05-target-pawn": {
+        "x": 0.15,
+        "z": 0.2,
+        "positionValidated": false
+      }
+    },
+    "normalizedPower": 0.6363636363636364,
+    "angleDeg": -135.00586729958547,
+    "point": "center",
+    "shot": {
+      "evidence": {
+        "shotPieceId": "p05-player-rook",
+        "shotStartStep": 0,
+        "pieceContacts": [
+          {
+            "step": 24,
+            "firstPieceId": "p05-player-rook",
+            "secondPieceId": "p05-target-pawn"
+          },
+          {
+            "step": 26,
+            "firstPieceId": "p05-player-rook",
+            "secondPieceId": "p05-target-pawn"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 24,
+            "pieceId": "p05-player-rook",
+            "wallId": "board-floor-2",
+            "kind": "board-floor"
+          },
+          {
+            "step": 31,
+            "pieceId": "p05-target-pawn",
+            "wallId": "board-floor-2",
+            "kind": "board-floor"
+          },
+          {
+            "step": 66,
+            "pieceId": "p05-target-pawn",
+            "wallId": "board-floor-0",
+            "kind": "board-floor"
+          },
+          {
+            "step": 68,
+            "pieceId": "p05-target-pawn",
+            "wallId": "board-floor-1",
+            "kind": "board-floor"
+          },
+          {
+            "step": 78,
+            "pieceId": "p05-player-rook",
+            "wallId": "board-floor-3",
+            "kind": "board-floor"
+          },
+          {
+            "step": 113,
+            "pieceId": "p05-player-rook",
+            "wallId": "board-floor-3",
+            "kind": "board-floor"
+          },
+          {
+            "step": 115,
+            "pieceId": "p05-player-rook",
+            "wallId": "board-floor-3",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": [],
+        "fallenPieces": [
+          {
+            "step": 127,
+            "pieceId": "p05-target-pawn",
+            "reason": "hole",
+            "holeId": "hole-stage5-center",
+            "crossingX": -0.16783220082493766,
+            "crossingZ": -0.03666531950194072,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "wallContactBeforeShotTargetContact": false
+      },
+      "settled": true,
+      "start": {
+        "x": 1.6276246309280396,
+        "y": -0.00109940767288208,
+        "z": 1.7754924297332764
+      },
+      "applicationPoint": {
+        "x": 1.6276997327804565,
+        "y": 0.2568071782588959,
+        "z": 1.7764111757278442
+      },
+      "end": {
+        "x": 2.528791666030884,
+        "y": -0.0011428296566009521,
+        "z": -0.32633450627326965
+      },
+      "initialSpeed": 7.000000169784793,
+      "phase": "ready"
+    },
+    "evaluation": {
+      "puzzleId": "P05",
+      "revision": 1,
+      "protectedContactIDs": [],
+      "status": "success",
+      "medal": 3,
+      "requiredComplete": true,
+      "failureReasons": [],
+      "medalChecks": {
+        "bronze": true,
+        "silver": true,
+        "gold": true
+      }
+    }
+  },
+  "p09": {
+    "puzzleId": "P09",
+    "normalizedPositions": {
+      "p09-player-knight": {
+        "x": 0.32000000000000006,
+        "z": -0.78,
+        "positionValidated": false
+      },
+      "p09-target-pawn": {
+        "x": 0.92,
+        "z": -0.78,
+        "positionValidated": false
+      }
+    },
+    "normalizedPower": 0.09090909090909091,
+    "angleDeg": -4.913282564319313,
+    "point": "center",
+    "knightLaunchInitialSpeed": 4.80000004785155,
+    "shot": {
+      "evidence": {
+        "shotPieceId": "p09-player-knight",
+        "shotStartStep": 0,
+        "pieceContacts": [
+          {
+            "step": 83,
+            "firstPieceId": "p09-player-knight",
+            "secondPieceId": "p09-target-pawn"
+          },
+          {
+            "step": 144,
+            "firstPieceId": "p09-player-knight",
+            "secondPieceId": "p09-target-pawn"
+          },
+          {
+            "step": 160,
+            "firstPieceId": "p09-player-knight",
+            "secondPieceId": "p09-target-pawn"
+          }
+        ],
+        "protectedPieceContacts": [],
+        "wallContacts": [
+          {
+            "step": 94,
+            "pieceId": "p09-target-pawn",
+            "wallId": "wall-east-0",
+            "kind": "breakable-wall"
+          },
+          {
+            "step": 94,
+            "pieceId": "p09-target-pawn",
+            "wallId": "wall-east-1",
+            "kind": "breakable-wall"
+          },
+          {
+            "step": 121,
+            "pieceId": "p09-player-knight",
+            "wallId": "wall-south-6",
+            "kind": "breakable-wall"
+          },
+          {
+            "step": 121,
+            "pieceId": "p09-player-knight",
+            "wallId": "wall-south-7",
+            "kind": "breakable-wall"
+          },
+          {
+            "step": 139,
+            "pieceId": "p09-target-pawn",
+            "wallId": "board-floor-6",
+            "kind": "board-floor"
+          },
+          {
+            "step": 151,
+            "pieceId": "p09-target-pawn",
+            "wallId": "board-floor-6",
+            "kind": "board-floor"
+          },
+          {
+            "step": 159,
+            "pieceId": "p09-player-knight",
+            "wallId": "board-floor-6",
+            "kind": "board-floor"
+          },
+          {
+            "step": 164,
+            "pieceId": "p09-player-knight",
+            "wallId": "wall-east-0",
+            "kind": "breakable-wall"
+          },
+          {
+            "step": 164,
+            "pieceId": "p09-player-knight",
+            "wallId": "wall-east-1",
+            "kind": "breakable-wall"
+          },
+          {
+            "step": 186,
+            "pieceId": "p09-player-knight",
+            "wallId": "board-floor-6",
+            "kind": "board-floor"
+          },
+          {
+            "step": 191,
+            "pieceId": "p09-player-knight",
+            "wallId": "board-floor-6",
+            "kind": "board-floor"
+          },
+          {
+            "step": 195,
+            "pieceId": "p09-player-knight",
+            "wallId": "board-floor-6",
+            "kind": "board-floor"
+          },
+          {
+            "step": 214,
+            "pieceId": "p09-player-knight",
+            "wallId": "board-floor-6",
+            "kind": "board-floor"
+          },
+          {
+            "step": 217,
+            "pieceId": "p09-target-pawn",
+            "wallId": "board-floor-4",
+            "kind": "board-floor"
+          },
+          {
+            "step": 221,
+            "pieceId": "p09-target-pawn",
+            "wallId": "board-floor-4",
+            "kind": "board-floor"
+          },
+          {
+            "step": 370,
+            "pieceId": "p09-player-knight",
+            "wallId": "board-floor-4",
+            "kind": "board-floor"
+          },
+          {
+            "step": 394,
+            "pieceId": "p09-player-knight",
+            "wallId": "board-floor-4",
+            "kind": "board-floor"
+          }
+        ],
+        "destroyedWalls": [
+          {
+            "step": 165,
+            "wallId": "wall-east-0"
+          },
+          {
+            "step": 165,
+            "wallId": "wall-east-1"
+          }
+        ],
+        "fallenPieces": [
+          {
+            "step": 363,
+            "pieceId": "p09-target-pawn",
+            "reason": "hole",
+            "holeId": "hole-stage6-southwest",
+            "crossingX": 1.0844890987446019,
+            "crossingZ": -0.7508568036937662,
+            "classificationBasis": "body-center-board-top-crossing"
+          }
+        ],
+        "wallContactBeforeShotTargetContact": false
+      },
+      "settled": true,
+      "start": {
+        "x": 0.9476296305656433,
+        "y": -0.0012077689170837402,
+        "z": -2.3099241256713867
+      },
+      "applicationPoint": {
+        "x": 0.9481212496757507,
+        "y": 0.2568449378013611,
+        "z": -2.2982168197631836
+      },
+      "end": {
+        "x": 1.5152831077575684,
+        "y": 0.2134331315755844,
+        "z": -1.3202364444732666
+      },
+      "initialSpeed": 4.80000004785155,
+      "phase": "ready"
+    },
+    "evaluation": {
+      "puzzleId": "P09",
+      "revision": 1,
+      "protectedContactIDs": [],
+      "status": "success",
+      "medal": 3,
+      "requiredComplete": true,
+      "failureReasons": [],
+      "medalChecks": {
+        "bronze": true,
+        "silver": true,
+        "gold": true
+      }
+    }
+  },
+  "launchNote": "실제 queueTurnLaunch → applyPendingLaunchBeforeStep → world.step → updateTurnAfterStep. 중앙 타점은 worldCom(), Knight는 direction.y<0.2에서 게임의 자동 고도를 적용."
+}
