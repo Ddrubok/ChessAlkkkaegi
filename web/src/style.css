@@ -825,6 +825,7 @@ body {
 
 .main-menu-panel .lobby-header h1 {
   min-width: 0;
+  flex: 1 1 auto;
   max-width: 100%;
   margin: 0;
   color: #f8fafc;
@@ -832,7 +833,9 @@ body {
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: left;
 }
 
@@ -1323,90 +1326,93 @@ body {
   overflow-wrap: anywhere;
 }
 
-.lobby-profile-sheet,
-.lobby-tutorial-sheet {
+.lobby-profile {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #0f172a;
 }
 
-.lobby-profile-header {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.lobby-profile-info {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.lobby-profile-avatar {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.lobby-profile-name,
-.lobby-profile-points,
-.lobby-profile-value {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.lobby-profile-name {
+.lobby-profile > .lobby-chip,
+.lobby-profile-chip {
+  width: 100%;
   margin: 0;
-  color: #f8fafc;
-  font-size: 16px;
-  font-weight: 700;
+  border: 0;
+  border-radius: 0;
+  background: #0f172a;
+}
+
+.lobby-profile-body {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 180ms ease;
+}
+
+.lobby-profile.is-expanded .lobby-profile-body,
+.lobby-profile[data-expanded="true"] .lobby-profile-body {
+  grid-template-rows: 1fr;
+}
+
+.lobby-profile-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  padding: 0;
+  border-top: 0;
+}
+
+.lobby-profile.is-expanded .lobby-profile-panel,
+.lobby-profile[data-expanded="true"] .lobby-profile-panel {
+  padding: 0 12px 10px;
+  border-top: 1px solid #334155;
+}
+
+.lobby-profile-panel .menu-tier-columns {
+  min-width: 0;
+}
+
+.lobby-profile-panel .menu-tier-column {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lobby-profile-panel .menu-tier-column > :last-child {
+  margin-top: 0;
 }
 
 .lobby-profile-points,
-.lobby-profile-value {
+.lobby-chip-points {
   color: #94a3b8;
   font-size: 12px;
 }
 
-.lobby-profile-sheet .menu-tier-columns {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+.lobby-profile-points strong,
+.lobby-chip-points strong {
+  color: #cbd5e1;
 }
 
-.lobby-profile-sheet .menu-tier-column {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.lobby-profile-chevron,
+.lobby-chip-chevron {
+  transition: transform 180ms ease;
 }
 
-.lobby-profile-sheet .menu-tier-column:first-child > :first-child {
-  color: #60a5fa;
+.lobby-profile.is-expanded .lobby-profile-chevron,
+.lobby-profile[data-expanded="true"] .lobby-profile-chevron,
+.lobby-profile.is-expanded .lobby-chip-chevron,
+.lobby-profile[data-expanded="true"] .lobby-chip-chevron {
+  transform: rotate(90deg);
 }
 
-.lobby-profile-sheet .menu-tier-column:nth-child(2) > :first-child {
-  color: #c084fc;
+.lobby-profile-logout.lobby-icon-btn {
+  margin-left: auto;
 }
 
-.lobby-profile-logout,
-.lobby-sheet-action {
-  min-width: 44px;
-  min-height: 44px;
-  margin-top: 14px;
-  padding: 10px 12px;
-  border: 1px solid #475569;
-  border-radius: 8px;
-  color: #f8fafc;
-  background: #1e293b;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.lobby-profile-sheet button,
 .lobby-tutorial-sheet button {
   min-width: 44px;
   min-height: 44px;
@@ -1444,9 +1450,16 @@ body {
   .lobby-sheet-overlay,
   .lobby-sheet,
   .lobby-sheet-panel,
-  .lobby-sheet-backdrop {
+  .lobby-sheet-backdrop,
+  .lobby-profile-chevron,
+  .lobby-chip-chevron {
     animation: none !important;
     transition-duration: 0ms !important;
+  }
+
+  .lobby-profile-chevron,
+  .lobby-chip-chevron {
+    transition: none !important;
   }
 }
 
