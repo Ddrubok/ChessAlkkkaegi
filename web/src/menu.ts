@@ -18,9 +18,220 @@ import {
 } from "./supabase-auth";
 import { getSupabaseClient } from "./supabase-client";
 import { AdManager } from "./ad-manager";
-import { TutorialManager } from "./tutorial";
 import { escapeHtml } from "./html";
-import { renderTierBadge, renderTierGuide } from "./tier-view";
+import { formatTier, renderTierBadge, renderTierGuide } from "./tier-view";
+import { isBasicTutorialCompleted, pickLobbyRecommendation } from "./lobby-recommendation";
+import { resolveRuntimeAssetUrl } from "./portable-assets";
+
+const PVE_MAX_STAGE = 10;
+type LobbyMode = "stage" | "puzzle" | "online" | "hotseat" | "tutorial";
+
+function getInitialStage(storage: MetaRuntime["storage"]): number {
+  return Math.min(PVE_MAX_STAGE, getMaxClearedStage(storage) + 1);
+}
+
+function readLobbyStorage(key: string): string | null {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeRuntimeAssetUrl(asset: Parameters<typeof resolveRuntimeAssetUrl>[0]): string {
+  try {
+    return resolveRuntimeAssetUrl(asset);
+  } catch {
+    return "";
+  }
+}
+
+function renderHeaderActions(name?: "ranking" | "friends" | "settings" | "profile" | "tutorial" | "trophy" | "users" | "gear" | "globe" | "flag" | "bulb" | "gamepad" | "chevron", iconSize = 16): string {
+  if (!name) {
+    return `<div class="lobby-header-actions"><button id="menu-ranking-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.ranking_btn"))}" title="${escapeHtml(I18nManager.t("common.ranking_btn"))}">${renderHeaderActions("trophy", 20)}</button><button id="menu-friends-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.friends_btn"))}" title="${escapeHtml(I18nManager.t("common.friends_btn"))}">${renderHeaderActions("users", 20)}</button><button id="menu-sound-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.settings"))}" title="${escapeHtml(I18nManager.t("common.settings"))}">${renderHeaderActions("gear", 20)}</button></div>`;
+  }
+  const paths: Record<typeof name, string> = {
+    ranking: '<path d="M5 19v-8m7 8V5m7 14v-5"/><path d="M3 19h18"/>',
+    friends: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 19c.4-3.1 2.2-4.7 5.5-4.7s5.1 1.6 5.5 4.7M14 14.8c2.9-.4 5.1 1 5.6 4.2"/>',
+    settings: '<path d="M12 8.7a3.3 3.3 0 1 0 0 6.6 3.3 3.3 0 0 0 0-6.6Z"/><path d="m19.4 15 .1.1-1.7 2.9-.2-.1a2 2 0 0 0-2.1 0l-.2.1-1.7-2.9.1-.1a2 2 0 0 0 0-2.2l-.1-.1 1.7-2.9.2.1a2 2 0 0 0 2.1 0l.2-.1 1.7 2.9-.1.1a2 2 0 0 0 0 2.2ZM4.6 15l-.1.1 1.7 2.9.2-.1a2 2 0 0 1 2.1 0l.2.1 1.7-2.9-.1-.1a2 2 0 0 1 0-2.2l.1-.1-1.7-2.9-.2.1a2 2 0 0 1-2.1 0l-.2-.1-1.7 2.9.1.1a2 2 0 0 1 0 2.2Z"/>',
+    profile: '<circle cx="12" cy="8" r="3.2"/><path d="M5 20c.5-3.4 2.8-5.2 7-5.2s6.5 1.8 7 5.2"/>',
+    tutorial: '<circle cx="12" cy="12" r="8.5"/><path d="M12 10.5v5M12 7.5h.01"/>',
+    trophy: '<path d="M8 5h8v4a4 4 0 0 1-8 0V5Z"/><path d="M8 7H5v1a3 3 0 0 0 3 3M16 7h3v1a3 3 0 0 1-3 3M12 13v4M8 20h8M9 17h6"/>',
+    users: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 19c.4-3.1 2.2-4.7 5.5-4.7s5.1 1.6 5.5 4.7M14 14.8c2.9-.4 5.1 1 5.6 4.2"/>',
+    gear: '<circle cx="12" cy="12" r="3.2"/><path d="m19 13 .1.1-1.2 2.1-.2-.1a2 2 0 0 0-2.1 0l-.2.1-1.2-2.1.1-.1a2.1 2.1 0 0 0 0-2.1l-.1-.1 1.2-2.1.2.1a2 2 0 0 0 2.1 0l.2-.1 1.2 2.1-.1.1A2.1 2.1 0 0 0 19 13ZM5 13l-.1.1 1.2 2.1.2-.1a2 2 0 0 1 2.1 0l.2.1 1.2-2.1-.1-.1a2.1 2.1 0 0 1 0-2.1l.1-.1-1.2-2.1-.2.1a2 2 0 0 1-2.1 0l-.2-.1-1.2 2.1.1.1A2.1 2.1 0 0 1 5 13Z"/>',
+    globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.2 2.4 3.2 5.2 3.2 8.5S14.2 18.1 12 20.5c-2.2-2.4-3.2-5.2-3.2-8.5S9.8 5.9 12 3.5Z"/>',
+    flag: '<path d="M5 20V4m0 1c4-2 6 2 10 0v8c-4 2-6-2-10 0"/>',
+    bulb: '<path d="M9 18h6M10 21h4"/><path d="M8.5 14.5A5 5 0 1 1 15.5 14c-.9.7-1.5 1.6-1.5 2.8h-4c0-1.2-.6-2.1-1.5-2.8Z"/>',
+    gamepad: '<path d="M7 9h10a4 4 0 0 1 3.8 5.2l-1 3.1a2.4 2.4 0 0 1-4.2.7L14 16H10l-1.6 2a2.4 2.4 0 0 1-4.2-.7l-1-3.1A4 4 0 0 1 7 9Z"/><path d="M7 12v3m-1.5-1.5h3M16.5 13h.01M18.5 14.5h.01"/>',
+    chevron: '<path d="m9 6 6 6-6 6"/>',
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="${iconSize}" height="${iconSize}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name]}</svg>`;
+}
+
+function openLobbySheet(
+  overlay: HTMLElement,
+  options: {
+    title: string;
+    bodyHtml: string;
+    onMount?: (sheet: HTMLElement, close: () => void) => void;
+  },
+): void {
+  const sheet = document.createElement("section");
+  sheet.className = "lobby-sheet-overlay";
+  sheet.setAttribute("role", "dialog");
+  sheet.setAttribute("aria-modal", "true");
+  sheet.tabIndex = -1;
+  sheet.innerHTML = `<div class="lobby-sheet"><div class="lobby-sheet-handle" aria-hidden="true"></div><header class="lobby-sheet-header"><h2 id="lobby-sheet-title">${escapeHtml(options.title)}</h2><button type="button" class="lobby-sheet-close" aria-label="${escapeHtml(I18nManager.t("common.close"))}">${I18nManager.t("common.close")}</button></header><div class="lobby-sheet-body">${options.bodyHtml}</div></div>`;
+  sheet.setAttribute("aria-labelledby", "lobby-sheet-title");
+  const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const close = () => {
+    sheet.remove();
+    previousFocus?.focus();
+  };
+  sheet.addEventListener("click", (event) => {
+    if (event.target === sheet) close();
+  });
+  sheet.querySelector<HTMLButtonElement>(".lobby-sheet-close")?.addEventListener("click", close);
+  sheet.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+    }
+  });
+  overlay.append(sheet);
+  options.onMount?.(sheet, close);
+  sheet.querySelector<HTMLButtonElement>(".lobby-sheet-close")?.focus();
+}
+
+function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; tutorialType: "basic" | "advanced"; stage: number; assetId: "lobbyHeroStage" | "lobbyHeroTutorial" | "lobbyAvatar"; eyebrow: string; title: string; body: string; cta: string } {
+  const basicTutorialCompleted = isBasicTutorialCompleted(readLobbyStorage("has_completed_tutorial"));
+  const picked = pickLobbyRecommendation({
+    basicTutorialCompleted,
+    maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage),
+    maxStage: PVE_MAX_STAGE,
+  });
+  const recommendation = picked;
+  if (recommendation.kind === "tutorial") {
+    return {
+      mode: "tutorial",
+      tutorialType: "basic",
+      stage: 1,
+      assetId: "lobbyHeroTutorial",
+      eyebrow: I18nManager.t("lobby.hero_eyebrow_new"),
+      title: I18nManager.t("lobby.hero_title_tutorial"),
+      body: I18nManager.t("lobby.hero_sub_tutorial"),
+      cta: I18nManager.t("lobby.hero_cta_tutorial"),
+    };
+  }
+  if (recommendation.kind === "online") {
+    return {
+      mode: "online",
+      tutorialType: "basic",
+      stage: 1,
+      assetId: "lobbyHeroTutorial",
+      eyebrow: I18nManager.t("lobby.hero_eyebrow_ranked"),
+      title: I18nManager.t("lobby.mode_online"),
+      body: I18nManager.t("lobby.hero_sub_online", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }),
+      cta: I18nManager.t("lobby.hero_cta_online"),
+    };
+  }
+  const stage = recommendation.stage;
+  return {
+    mode: "stage",
+    tutorialType: "basic",
+    stage,
+    assetId: "lobbyHeroStage",
+    eyebrow: I18nManager.t("lobby.hero_eyebrow_continue"),
+    title: I18nManager.t("lobby.hero_title_stage", { stage }),
+    body: I18nManager.t("lobby.hero_sub_stage", { cleared: getMaxClearedStage(runtime.metaRuntime.storage), max: PVE_MAX_STAGE, points: runtime.metaRuntime.state.points }),
+    cta: I18nManager.t("lobby.hero_cta_stage"),
+  };
+}
+
+function renderProfileChip(user: UserProfile): string {
+  const avatar = safeRuntimeAssetUrl("lobbyAvatar");
+  return `<button type="button" id="menu-profile-btn" class="lobby-chip" aria-label="${escapeHtml(I18nManager.t("lobby.profile_chip_open"))}"><img src="${escapeHtml(avatar)}" alt="" width="30" height="30"><span class="lobby-chip-name">${escapeHtml(user.nickname)}</span><span class="lobby-chip-tier">${renderTierBadge(user.classicMmr ?? user.mmr, false)}</span><span class="lobby-chip-chevron">${renderHeaderActions("chevron")}</span></button>`;
+}
+
+function renderRecommendationCard(recommendation: ReturnType<typeof getRecommendation>, heroAsset: string): string {
+  return `<section class="lobby-hero" data-kind="${escapeHtml(recommendation.mode)}"><img class="lobby-hero-media" src="${escapeHtml(heroAsset)}" alt=""><div class="lobby-hero-scrim"></div><div class="lobby-hero-content"><div><span class="lobby-hero-eyebrow">${escapeHtml(recommendation.eyebrow)}</span><h2 class="lobby-hero-title">${escapeHtml(recommendation.title)}</h2><p class="lobby-hero-sub">${escapeHtml(recommendation.body)}</p></div><button type="button" id="menu-recommendation-btn" class="lobby-cta">${escapeHtml(recommendation.cta)}</button></div></section>`;
+}
+
+function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: number): string {
+  const cards = [
+    { mode: "online" as const, icon: "globe" as const, label: "lobby.mode_online", status: "lobby.card_online_status", detail: "" },
+    { mode: "stage" as const, icon: "flag" as const, label: "lobby.mode_stage_short", status: "lobby.card_stage_status", detail: "" },
+    { mode: "puzzle" as const, icon: "bulb" as const, label: "lobby.mode_puzzle", status: "lobby.card_puzzle_status", detail: "" },
+    { mode: "hotseat" as const, icon: "gamepad" as const, label: "lobby.mode_2p_short", status: "lobby.card_2p_status", detail: "" },
+  ];
+  let puzzleCount = 0;
+  try {
+    const stored = readLobbyStorage("ca_puzzle_cleared_v1");
+    const parsed = stored ? JSON.parse(stored) : [];
+    puzzleCount = Array.isArray(parsed) ? parsed.length : 0;
+  } catch { /* malformed optional fallback */ }
+  const statusByMode: Record<LobbyMode, string> = {
+    stage: I18nManager.t("lobby.card_stage_status", { cleared: maxClearedStage, max: PVE_MAX_STAGE }),
+    puzzle: I18nManager.t("lobby.card_puzzle_status", { count: puzzleCount }),
+    online: I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }),
+    hotseat: I18nManager.t("lobby.card_2p_status"),
+    tutorial: "",
+  };
+  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${cards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
+}
+
+function renderFooterLinks(): string {
+  return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><button type="button" data-lobby-footer="tutorial">${escapeHtml(I18nManager.t("lobby.footer_tutorial"))}</button><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>`;
+}
+
+function openProfileSheet(runtime: MainMenuRuntime, user: UserProfile): void {
+  const avatar = safeRuntimeAssetUrl("lobbyAvatar");
+  openLobbySheet(runtime.overlay, {
+    title: I18nManager.t("lobby.profile_sheet_title"),
+    bodyHtml: `<div class="lobby-profile-sheet"><header class="lobby-profile-header"><img class="lobby-profile-avatar" src="${escapeHtml(avatar)}" alt="" width="46" height="46"><div class="lobby-profile-info"><strong class="lobby-profile-name">${escapeHtml(user.nickname)}</strong><span class="lobby-profile-points">${escapeHtml(I18nManager.t("common.points"))} <span class="lobby-profile-value">${runtime.metaRuntime.state.points} P</span></span></div><button type="button" id="btn-logout" class="lobby-profile-logout lobby-sheet-action">${escapeHtml(I18nManager.t("common.logout"))}</button></header><div class="menu-tier-columns"><div class="menu-tier-column"><div class="tier-label tier-label-classic">${I18nManager.t("online.classic_tab")}</div><div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 }))}</div></div><div class="menu-tier-column"><div class="tier-label tier-label-strategy">${I18nManager.t("online.strategy_tab")}</div><div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 }))}</div></div></div>${renderTierGuide()}</div>`,
+    onMount: (sheet, close) => sheet.querySelector("#btn-logout")?.addEventListener("click", async () => { const sb = getSupabaseClient(); if (sb) await signOutUser(sb); close(); localStorage.removeItem("ca_logged_in_user"); runtime.userProfile = null; renderMainMenu(runtime); }),
+  });
+}
+
+function openTutorialSheet(runtime: MainMenuRuntime): void {
+  openLobbySheet(runtime.overlay, {
+    title: I18nManager.t("lobby.tutorial_sheet_title"),
+    bodyHtml: `<div class="lobby-tutorial-sheet"><p class="lobby-tutorial-copy">${escapeHtml(I18nManager.t("lobby.hero_sub_tutorial"))}</p><div class="lobby-tutorial-actions"><button type="button" data-sheet-mode="tutorial" data-tutorial-type="basic" class="lobby-sheet-action">${escapeHtml(I18nManager.t("lobby.tutorial_basic"))}</button><button type="button" data-sheet-mode="tutorial" data-tutorial-type="advanced" class="lobby-sheet-action">${escapeHtml(I18nManager.t("lobby.tutorial_advanced"))}</button></div></div>`,
+    onMount: (sheet, close) => sheet.querySelectorAll<HTMLButtonElement>("[data-sheet-mode]").forEach((button) => button.addEventListener("click", () => { const type = (button.dataset.tutorialType as "basic" | "advanced") ?? "basic"; close(); void startLobbyMode(runtime, "tutorial", 1, type); })),
+  });
+}
+
+async function startLobbyMode(
+  runtime: MainMenuRuntime,
+  mode: LobbyMode,
+  selectedStage = getInitialStage(runtime.metaRuntime.storage),
+  tutorialType: "basic" | "advanced" = "basic",
+): Promise<void> {
+  if (runtime.busy || !runtime.ready) return;
+  if (mode === "puzzle") {
+    runtime.onOpenPuzzles?.();
+    return;
+  }
+  runtime.busy = true;
+  renderMainMenu(runtime);
+  try {
+    if (mode === "tutorial") await runtime.onStartMode("tutorial", 1, tutorialType);
+    else if (mode === "stage") await runtime.onStartMode("stage", selectedStage);
+    else await runtime.onStartMode(mode);
+    hideMainMenuAfterModeStart(runtime);
+  } catch (error: unknown) {
+    console.error(error);
+    const status = runtime.overlay.querySelector<HTMLElement>("[data-menu-status]");
+    runtime.busy = false;
+    renderMainMenu(runtime);
+    const nextStatus = runtime.overlay.querySelector<HTMLElement>("[data-menu-status]");
+    const message = mode === "stage"
+      ? "스테이지 대전을 시작하지 못했습니다."
+      : "대전을 시작하지 못했습니다.";
+    if (nextStatus) nextStatus.textContent = message;
+    else if (status) status.textContent = message;
+  }
+}
 
 export interface MainMenuRuntime {
   overlay: HTMLElement;
@@ -48,6 +259,7 @@ export interface MainMenuRuntime {
 export function openPveLobbyModal(
   runtime: MainMenuRuntime,
   onStartStage: (stage: number) => Promise<void>,
+  initialStage?: number,
 ): void {
   const modal = document.createElement("div");
   runtime.closePveLobby?.();
@@ -72,7 +284,7 @@ export function openPveLobbyModal(
   runtime.closePveLobby = close;
 
   let activeTab: "stages" | "upgrades" = "stages";
-  let selectedStage = 1;
+  let selectedStage = Math.min(PVE_MAX_STAGE, Math.max(1, initialStage ?? 1));
 
   const renderContent = () => {
     if (workbench) selectedPiece = workbench.selection;
@@ -112,7 +324,7 @@ export function openPveLobbyModal(
 
     if (activeTab === "stages") {
       const maxClearedStage = getMaxClearedStage(runtime.metaRuntime.storage);
-      const unlockedMaxStage = Math.min(10, maxClearedStage + 1);
+      const unlockedMaxStage = Math.min(PVE_MAX_STAGE, maxClearedStage + 1);
       if (selectedStage > unlockedMaxStage) {
         selectedStage = unlockedMaxStage;
       }
@@ -125,7 +337,7 @@ export function openPveLobbyModal(
       stagePanel.append(heading);
       const grid = document.createElement("div");
       grid.className = "pve-stage-grid";
-      for (let s = 1; s <= 10; s++) {
+      for (let s = 1; s <= PVE_MAX_STAGE; s++) {
         const btn = document.createElement("button");
         const isCleared = s <= maxClearedStage;
         const isUnlocked = s <= unlockedMaxStage;
@@ -210,7 +422,7 @@ export function showMainMenu(runtime: MainMenuRuntime): void {
   renderMainMenu(runtime);
   void AdManager.showBanner();
   runtime.overlay
-    .querySelector<HTMLButtonElement>("[data-game-mode]")
+    .querySelector<HTMLButtonElement>(".lobby-modes [data-game-mode], [data-game-mode], #auth-tab-guest")
     ?.focus();
 }
 
@@ -284,31 +496,14 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     };
   }
 
-  const points = runtime.metaRuntime.state.points;
-  const user = runtime.userProfile;
+  const user = runtime.userProfile as UserProfile;
 
   if (user === null) {
     // -------------------------------------------------------------
     // 1. 미로그인 상태: 로그인 / 회원가입 / 게스트 로그인 뷰
     // -------------------------------------------------------------
     panel.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-        <h1 id="main-menu-title" style="font-size:22px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc; flex-shrink:0;">${I18nManager.t("lobby.title")}</h1>
-        <div style="display:flex; gap:6px; flex-wrap:nowrap; overflow-x:auto;">
-          <button id="menu-ranking-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-            🏆 ${I18nManager.t("common.ranking_btn")}
-          </button>
-          <button id="menu-friends-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-            👥 ${I18nManager.t("common.friends_btn")}
-          </button>
-          <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-            ⚙️ ${I18nManager.t("common.settings")}
-          </button>
-        </div>
-      </div>
-      <p style="font-size:13px; color:#94a3b8; margin:0 0 16px 0;">${I18nManager.t("lobby.subtitle")}</p>
-
-      <!-- 탭 선택 바 -->
+      <header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions()}</header>
       <div style="display:flex; gap:6px; background:#0f172a; padding:4px; border-radius:8px; margin-bottom:16px;">
         <button id="auth-tab-guest" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:#2563eb; color:white;">${I18nManager.t("lobby.guest_tab")}</button>
         <button id="auth-tab-login" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:transparent; color:#94a3b8;">${I18nManager.t("lobby.login_tab")}</button>
@@ -506,62 +701,11 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   // -------------------------------------------------------------
   // 2. 로그인 완료 상태: 유저 정보 + 게임 모드 선택 뷰
   // -------------------------------------------------------------
-  panel.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-      <h1 id="main-menu-title" style="font-size:22px; font-weight:800; margin:0; letter-spacing:-0.03em; color:#f8fafc; flex-shrink:0;">${I18nManager.t("lobby.title")}</h1>
-      <div style="display:flex; gap:6px; flex-wrap:wrap; min-width:0;">
-        <button id="menu-ranking-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-          ${I18nManager.t("common.ranking_btn")}
-        </button>
-        <button id="menu-friends-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-          ${I18nManager.t("common.friends_btn")}
-        </button>
-        <button id="menu-sound-btn" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; word-break:keep-all;">
-          ${I18nManager.t("common.settings")}
-        </button>
-      </div>
-    </div>
+  const maxClearedStage = getMaxClearedStage(runtime.metaRuntime.storage);
+  const recommendation = getRecommendation(runtime);
+  const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
 
-    <!-- 유저 프로필 카드 -->
-    <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:14px 16px; margin-bottom:18px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
-        <div style="min-width:0; font-size:15px; font-weight:700; color:#f8fafc; overflow-wrap:anywhere;">
-          ${escapeHtml(user.nickname)} <span style="display:block; font-size:12px; color:#94a3b8; font-weight:normal; margin-top:4px;">${I18nManager.t("common.points")}: <strong style="color:#cbd5e1;">${points} P</strong></span>
-        </div>
-        <button id="btn-logout" style="background:transparent; border:none; color:#94a3b8; font-size:12px; cursor:pointer; text-decoration:underline; padding:10px 4px; white-space:nowrap; flex-shrink:0;">
-          ${I18nManager.t("common.logout")}
-        </button>
-      </div>
-      <div class="menu-tier-columns">
-        <div class="menu-tier-column">
-          <div style="color:#60a5fa; font-weight:700;">${I18nManager.t("online.classic_tab")}</div>
-          <div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div>
-          <div style="color:#94a3b8;">${I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 })}</div>
-        </div>
-        <div class="menu-tier-column">
-          <div style="color:#c084fc; font-weight:700;">${I18nManager.t("online.strategy_tab")}</div>
-          <div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div>
-          <div style="color:#94a3b8;">${I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 })}</div>
-        </div>
-      </div>
-    </div>
-
-    ${renderTierGuide()}
-    <!-- 게임 모드 선택 목록 (모바일 친화적 2x2 그리드) -->
-    <div class="main-menu-modes" role="group" aria-label="대전 모드" style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; width:100%; box-sizing:border-box;">
-      <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:6px; width:100%;">
-        <button type="button" data-game-mode="tutorial" data-tutorial-type="basic" style="padding:6px 4px; font-size:13px; font-weight:700; border-radius:8px; background:#059669; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; min-height:48px; line-height:1.25; white-space:pre-line; word-break:keep-all;">${I18nManager.t("lobby.mode_tutorial")}</button>
-        <button type="button" data-game-mode="tutorial" data-tutorial-type="advanced" style="padding:6px 4px; font-size:12px; font-weight:700; border-radius:8px; background:#0d9488; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; min-height:48px; line-height:1.25; white-space:pre-line; word-break:keep-all;">${I18nManager.t("lobby.mode_tutorial_advanced")}</button>
-      </div>
-      <button type="button" data-game-mode="stage" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#2563eb; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_stage")}</button>
-      <button type="button" id="menu-puzzle-btn" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#d97706; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_puzzle")}</button>
-      <button type="button" data-game-mode="online" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#7c3aed; color:white; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_online")}</button>
-      <button type="button" data-game-mode="hotseat" style="padding:14px 10px; font-size:14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center;">${I18nManager.t("lobby.mode_2p")}</button>
-    </div>
-    <nav class="site-menu-links" aria-label="게임 안내"><a href="./about.html">소개·문의</a><a href="./guide.html">조작법·규칙</a><a href="./tiers.html">티어</a><a href="./updates.html">업데이트</a><a href="./privacy.html">개인정보</a></nav>
-    <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:14px; font-size:13px;"></p>
-  `;
-
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions()}</header>${renderProfileChip(user)}${renderRecommendationCard(recommendation, heroAsset)}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
     void openRankingModal(runtime.overlay, runtime.userProfile);
   });
@@ -578,119 +722,52 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     openSettingsModal(runtime.overlay);
   });
 
+  panel.querySelector("#menu-profile-btn")?.addEventListener("click", () => {
+    openProfileSheet(runtime, user);
+  });
+  panel.querySelector('[data-lobby-footer="tutorial"]')?.addEventListener("click", () => {
+    openTutorialSheet(runtime);
+  });
+  panel.querySelector("#menu-recommendation-btn")?.addEventListener("click", () => {
+    if (recommendation.mode === "stage") {
+      openPveLobbyModal(runtime, (stage) => startLobbyMode(runtime, "stage", stage), recommendation.stage);
+    } else {
+      void startLobbyMode(runtime, recommendation.mode, recommendation.stage, recommendation.tutorialType);
+    }
+  });
+
   const puzzleButton = panel.querySelector<HTMLButtonElement>("#menu-puzzle-btn");
   if (puzzleButton) {
     puzzleButton.hidden = !runtime.onOpenPuzzles;
     puzzleButton.disabled = !runtime.ready || runtime.busy || !runtime.onOpenPuzzles;
-    puzzleButton.addEventListener("click", () => {
-      if (runtime.busy || !runtime.ready) return;
-      runtime.onOpenPuzzles?.();
-    });
   }
 
-  panel.querySelector("#btn-logout")?.addEventListener("click", async () => {
-    const sb = getSupabaseClient();
-    if (sb) await signOutUser(sb);
-    localStorage.removeItem("ca_logged_in_user");
-    runtime.userProfile = null;
-    renderMainMenu(runtime);
-  });
-
   for (const button of panel.querySelectorAll<HTMLButtonElement>("[data-game-mode]")) {
-    button.disabled = !runtime.ready || runtime.busy;
+    button.disabled = !runtime.ready || runtime.busy || (button.dataset.gameMode === "puzzle" && !runtime.onOpenPuzzles);
     button.addEventListener("click", () => {
-      const mode = button.dataset.gameMode;
-      if (
-        runtime.busy ||
-        !runtime.ready ||
-        (mode !== "hotseat" &&
-          mode !== "stage" &&
-          mode !== "online" &&
-          mode !== "tutorial")
-      ) {
+      const mode = button.dataset.gameMode as LobbyMode | undefined;
+      if (!mode || runtime.busy || !runtime.ready) return;
+      if (mode === "stage") {
+        openPveLobbyModal(runtime, (stage) => startLobbyMode(runtime, "stage", stage));
         return;
       }
-
       if (mode === "tutorial") {
         const tutorialType = (button.dataset.tutorialType as "basic" | "advanced") ?? "basic";
-        runtime.busy = true;
-        renderMainMenu(runtime);
-        void runtime.onStartMode("tutorial", 1, tutorialType)
-          .then(() => hideMainMenuAfterModeStart(runtime))
-          .catch((err) => {
-            console.error(err);
-            runtime.busy = false;
-          });
+        void startLobbyMode(runtime, "tutorial", 1, tutorialType);
         return;
       }
-
-      if (mode === "stage") {
-        openPveLobbyModal(runtime, async (selectedStage) => {
-          runtime.busy = true;
-          renderMainMenu(runtime);
-          try {
-            await runtime.onStartMode("stage", selectedStage);
-            hideMainMenuAfterModeStart(runtime);
-          } catch (error: unknown) {
-            const fullError =
-              error instanceof Error
-                ? (error.stack ?? error.message)
-                : String(error);
-            console.error(fullError);
-            runtime.busy = false;
-            const status =
-              runtime.overlay.querySelector<HTMLElement>(
-                "[data-menu-status]",
-              );
-            if (status !== null) {
-              status.textContent = "스테이지 대전을 시작하지 못했습니다.";
-            }
-            renderMainMenu(runtime);
-          }
-        });
+      if (mode === "puzzle") {
+        void startLobbyMode(runtime, "puzzle");
         return;
       }
-
-      runtime.busy = true;
-      renderMainMenu(runtime);
-      void runtime.onStartMode(mode).then(
-        () => {
-          hideMainMenuAfterModeStart(runtime);
-        },
-        (error: unknown) => {
-          const fullError =
-            error instanceof Error
-              ? (error.stack ?? error.message)
-              : String(error);
-          console.error(fullError);
-          runtime.busy = false;
-          const status =
-            runtime.overlay.querySelector<HTMLElement>(
-              "[data-menu-status]",
-            );
-          if (status !== null) {
-            status.textContent = "대전을 시작하지 못했습니다.";
-          }
-          renderMainMenu(runtime);
-        },
-      );
+      if (mode === "online" || mode === "hotseat") {
+        void startLobbyMode(runtime, mode);
+        return;
+      }
     });
   }
 
   // 최초 접속 시 기본 튜토리얼 권장 팝업 1회 표시
-  TutorialManager.checkFirstVisitAndPrompt(
-    () => {
-      runtime.busy = true;
-      renderMainMenu(runtime);
-      void runtime.onStartMode("tutorial", 1, "basic")
-        .then(() => hideMainMenuAfterModeStart(runtime))
-        .catch((err) => {
-          console.error(err);
-          runtime.busy = false;
-        });
-    },
-    () => {},
-  );
 }
 
 /**

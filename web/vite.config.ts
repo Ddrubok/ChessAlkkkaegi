@@ -72,6 +72,21 @@ const PORTABLE_ASSET_DEFINITIONS: readonly PortableAssetDefinition[] = [
     source: "public/assets/sound/power_90.mp3",
     mimeType: "audio/mpeg",
   },
+  {
+    id: "lobbyHeroStage",
+    source: "public/assets/lobby/hero-stage.jpg",
+    mimeType: "image/jpeg",
+  },
+  {
+    id: "lobbyHeroTutorial",
+    source: "public/assets/lobby/hero-tutorial.jpg",
+    mimeType: "image/jpeg",
+  },
+  {
+    id: "lobbyAvatar",
+    source: "public/assets/lobby/avatar-knight.jpg",
+    mimeType: "image/jpeg",
+  },
 ];
 
 // 정상 빌드는 기존 public 상대 경로만 받으며 portable의 base64 본문과 완전히 분리된다.

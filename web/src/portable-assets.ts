@@ -12,7 +12,10 @@ export type PortableAssetId =
   | "iron"
   | "power10"
   | "power50"
-  | "power90";
+  | "power90"
+  | "lobbyHeroStage"
+  | "lobbyHeroTutorial"
+  | "lobbyAvatar";
 
 declare const __PORTABLE_BUILD__: boolean;
 declare const __PORTABLE_ASSET_URLS__: Readonly<
@@ -37,6 +40,9 @@ const FALLBACK_NORMAL_ASSET_PATHS: Readonly<
   power10: "assets/sound/power_10.mp3",
   power50: "assets/sound/power_50.mp3",
   power90: "assets/sound/power_90.mp3",
+  lobbyHeroStage: "assets/lobby/hero-stage.jpg",
+  lobbyHeroTutorial: "assets/lobby/hero-tutorial.jpg",
+  lobbyAvatar: "assets/lobby/avatar-knight.jpg",
 };
 
 const portableBuild =
