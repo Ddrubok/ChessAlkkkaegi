@@ -54,6 +54,8 @@ export class AccountProgressStorage {
   ready = true;
   status = "게스트 진행도는 이 기기에 저장됩니다.";
   conflict = false;
+  saveFailed = false;
+  private retryCount = 0;
   private snapshot: Snapshot = { data: {}, revision: 0, dirty: false };
   private client: SupabaseClient | null = null;
   private generation = 0;
@@ -113,6 +115,7 @@ export class AccountProgressStorage {
     if (!this.owner) { for (const [key, value] of Object.entries(values)) this.local()?.setItem(key, value); return; }
     this.snapshot.data = { ...this.snapshot.data, ...values };
     this.snapshot.dirty = true;
+    this.retryCount = 0;
     this.status = "진행도를 저장하는 중입니다…";
     this.persist();
     clearTimeout(this.timer);
@@ -135,6 +138,8 @@ export class AccountProgressStorage {
     this.client = client;
     this.owner = owner;
     this.conflict = false;
+    this.saveFailed = false;
+    this.retryCount = 0;
     this.snapshot = { data: {}, revision: 0, dirty: false };
     this.ready = owner === null;
     this.status = owner ? "계정 진행도를 불러오는 중입니다…" : "게스트 진행도는 이 기기에 저장됩니다.";
@@ -197,12 +202,22 @@ export class AccountProgressStorage {
           const remote = readSnapshot(data);
           this.snapshot.revision = remote.revision;
           this.snapshot.dirty = !equalData(sent, this.snapshot.data);
+          this.saveFailed = false;
+          this.retryCount = 0;
           this.status = "서버에 저장되었습니다.";
           this.persist();
           this.notify();
         } catch {
           if (generation !== this.generation) return false;
-          if (!this.conflict) this.status = "서버 저장 대기 중입니다. 연결 후 다시 시도해 주세요. 기기 기록은 보관됩니다.";
+          this.saveFailed = true;
+          if (!this.conflict) {
+            this.status = "연결 문제로 저장이 지연되고 있습니다. 자동으로 다시 시도합니다.";
+            if (this.retryCount++ < 3) {
+              this.timer = setTimeout(() => { void this.flush(); }, 10000);
+            } else {
+              this.status = "서버 저장이 지연되고 있습니다. 연결을 확인한 뒤 다시 시도해 주세요.";
+            }
+          }
           this.persist();
           this.notify();
           return false;
@@ -236,40 +251,7 @@ export class AccountProgressStorage {
     await this.activate(this.client, this.owner);
   }
 
-  canImport(): boolean {
-    return !!this.owner && this.ready && this.snapshot.revision === 0 && !this.snapshot.dirty &&
-      !this.readLocal("ca_progress_import_owner_v1") &&
-      !this.readLocal(`ca_progress_import_dismissed:${this.owner}`) &&
-      PROGRESS_KEYS.some(key => this.readLocal(key) !== null);
-  }
 
-  async importLocal(): Promise<void> {
-    if (!this.canImport()) return;
-    try {
-      const data: ProgressData = {};
-      for (const key of PROGRESS_KEYS) {
-        const value = this.readLocal(key);
-        if (value !== null) data[key] = value;
-      }
-      readData(data);
-      const local = this.local();
-      if (!local) throw new Error("저장소 없음");
-      // Claim once; preserve the legacy originals and the account's pending upload.
-      local.setItem(CACHE_PREFIX + this.owner, JSON.stringify({ data, revision: 0, dirty: true }));
-      local.setItem("ca_progress_import_owner_v1", this.owner!);
-      this.snapshot = { data, revision: 0, dirty: true };
-      this.notify(true);
-      await this.flush();
-    } catch {
-      this.status = "기기 기록의 형식 또는 저장소를 확인하지 못했습니다. 원본은 그대로 보관됩니다.";
-      this.notify();
-    }
-  }
-
-  dismissImport(): void {
-    if (this.owner) this.local()?.setItem(`ca_progress_import_dismissed:${this.owner}`, "true");
-    this.notify();
-  }
 }
 
 export const progressStorage = new AccountProgressStorage();

@@ -604,10 +604,8 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p>${progressStorage.owner ? '<button type="button" id="progress-save">저장 다시 시도</button>' : ''}${progressStorage.canImport() ? '<p>이 기기에 이전 진행도가 있습니다. 본인의 기록인 경우에만 가져오세요.</p><button type="button" id="progress-import">이 기기 기록 가져오기</button><button type="button" id="progress-skip-import">새로 시작</button>' : ''}</div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">저장 다시 시도</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
-  panel.querySelector("#progress-import")?.addEventListener("click", () => { void progressStorage.importLocal(); });
-  panel.querySelector("#progress-skip-import")?.addEventListener("click", () => { progressStorage.dismissImport(); renderMainMenu(runtime); });
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
     void openRankingModal(runtime.overlay, runtime.userProfile);
   });

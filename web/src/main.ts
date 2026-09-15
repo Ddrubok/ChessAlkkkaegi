@@ -401,6 +401,8 @@ async function bootstrap(): Promise<void> {
     } else {
       const status = menuRuntime.overlay.querySelector<HTMLElement>("[data-progress-status]");
       if (status) status.textContent = progressStorage.status;
+      const controls = menuRuntime.overlay.querySelector<HTMLElement>("[data-progress-controls]");
+      if (controls) controls.hidden = !progressStorage.saveFailed;
     }
   });
   let puzzleHintLevel: 0 | 1 | 2 = 0;

@@ -38,11 +38,11 @@ try {
   local.setItem('has_completed_tutorial', 'skipped');
   await store.activate(client, auth);
   assert.equal(store.getItem(stage), null, 'legacy guest data must not enter an account automatically');
-  assert.equal(store.canImport(), true);
-  await store.importLocal();
-  assert.equal(rows.get(auth).data[stage], '3');
-  assert.equal(rows.get(auth).data.has_completed_tutorial, 'skipped', 'skipped is not completion');
-  assert.equal(local.getItem(stage), '3', 'legacy original retained');
+  rows.set(auth, {data:{[stage]:'3',has_completed_tutorial:'skipped'},revision:1});
+  await store.activate(client, auth);
+  assert.equal(store.getItem(stage), '3', 'server record loads without a button');
+  assert.equal(local.getItem(stage), '3', 'guest original is preserved');
+  assert.equal(writes.length, 0, 'loading never copies legacy device data into the account');
 
   store.setItem(points, '120'); store.setItem(upgrades, '{}');
   await store.flush();
@@ -50,7 +50,6 @@ try {
   assert.equal(writes.at(-1).p_data[upgrades], '{}', 'point spending and upgrade snapshot are sent together');
   auth = 'account-b'; await store.activate(client, auth);
   assert.equal(store.getItem(stage), null, 'account B cannot inherit account A');
-  assert.equal(store.canImport(), false, 'device legacy snapshot claimed only once');
   await store.activate(null, null);
   assert.equal(store.getItem(stage), '3', 'guest original remains separate');
 
@@ -105,8 +104,19 @@ try {
 
   const damaged = new AccountProgressStorage(() => ({ getItem: key => key === points ? '100' : null, setItem() {} }));
   auth = 'account-c'; await damaged.activate(client, auth);
-  await damaged.importLocal();
+  assert.equal(damaged.getItem(points), null);
   assert.equal(rows.has(auth), false, 'incomplete research data cannot replace a server record');
+  auth = 'account-a'; await store.activate(client, auth);
+  store.setItem(stage, '8');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert.equal(rows.get(auth).data[stage], '8', 'gameplay changes auto-save without calling flush');
+  failWrite = true;
+  store.setItem(stage, '9'); await store.flush();
+  assert.equal(store.saveFailed, true);
+  failWrite = false;
+  await new Promise(resolve => setTimeout(resolve, 10200));
+  assert.equal(rows.get(auth).data[stage], '9', 'temporary failures retry automatically');
+  assert.equal(store.saveFailed, false);
   store.suspend(); reloaded.suspend(); damaged.suspend();
-  console.log('PASS account progress: manual import, atomic research, account/guest isolation, offline retry, conflict backup, failed reads, late responses, lost acknowledgement');
+  console.log('PASS account progress: automatic load/save, atomic research, account/guest isolation, offline retry, conflict backup, failed reads, late responses, lost acknowledgement');
 } finally { await vite.close(); }
