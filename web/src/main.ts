@@ -1,4 +1,5 @@
 import "./style.css";
+import "./lobby.css";
 import "./progress.css";
 import { progressStorage } from "./progress-storage";
 import { getTier } from "./tier";
