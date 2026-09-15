@@ -173,6 +173,57 @@ function renderTutorialBar(): string {
   return `<section class="lobby-tutorial" data-expanded="${lobbyTutorialExpanded}"><button type="button" id="menu-tutorial-btn" class="lobby-tutorial-bar" aria-expanded="${lobbyTutorialExpanded}" aria-controls="menu-tutorial-panel"><span class="lobby-tutorial-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v17a2 2 0 0 1 2-2h2.5a2.5 2.5 0 0 1 2.5 2.5Z"/></svg></span><span class="lobby-tutorial-label">${escapeHtml(I18nManager.t("lobby.footer_tutorial"))}</span><span class="lobby-chip-chevron">${renderHeaderActions("chevron")}</span></button><div class="lobby-tutorial-body"><div id="menu-tutorial-panel" class="lobby-tutorial-panel" aria-hidden="${!lobbyTutorialExpanded}"${inert}><button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="basic">${escapeHtml(I18nManager.t("lobby.tutorial_basic"))}</button><button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="advanced">${escapeHtml(I18nManager.t("lobby.tutorial_advanced"))}</button></div></div></section>`;
 }
 
+function openLogoutConfirm(runtime: MainMenuRuntime): void {
+  if (runtime.overlay.querySelector(".lobby-logout-confirm")) return;
+
+  const previousFocus = runtime.overlay.querySelector<HTMLButtonElement>("#btn-logout");
+  const dialog = document.createElement("section");
+  dialog.className = "match-result-overlay menu-confirm-overlay lobby-logout-confirm";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", "lobby-logout-confirm-title");
+  dialog.innerHTML = `<div class="match-result-panel" style="max-width:380px; text-align:center; padding:24px;"><h1 id="lobby-logout-confirm-title">${escapeHtml(I18nManager.t("lobby.logout_confirm_title"))}</h1><div class="match-result-actions"><button type="button" data-logout-cancel>${escapeHtml(I18nManager.t("lobby.logout_confirm_no"))}</button><button type="button" data-logout-confirm>${escapeHtml(I18nManager.t("lobby.logout_confirm_yes"))}</button></div></div>`;
+
+  const cancelButton = dialog.querySelector<HTMLButtonElement>("[data-logout-cancel]");
+  const confirmButton = dialog.querySelector<HTMLButtonElement>("[data-logout-confirm]");
+  if (!cancelButton || !confirmButton) return;
+
+  const close = () => {
+    dialog.remove();
+    previousFocus?.focus();
+  };
+  cancelButton.addEventListener("click", close);
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) close();
+  });
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      (document.activeElement === cancelButton ? confirmButton : cancelButton).focus();
+    }
+    event.stopPropagation();
+  });
+  confirmButton.addEventListener("click", async () => {
+    cancelButton.disabled = true;
+    confirmButton.disabled = true;
+    await progressStorage.flush();
+    const sb = getSupabaseClient();
+    if (sb) await signOutUser(sb);
+    localStorage.removeItem("ca_logged_in_user");
+    runtime.userProfile = null;
+    lobbyProfileExpanded = false;
+    lobbyTutorialExpanded = false;
+    dialog.remove();
+    renderMainMenu(runtime);
+  });
+
+  runtime.overlay.append(dialog);
+  cancelButton.focus();
+}
+
 async function startLobbyMode(
   runtime: MainMenuRuntime,
   mode: LobbyMode,
@@ -719,15 +770,8 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     lobbyTutorialExpanded = !lobbyTutorialExpanded;
     renderMainMenu(runtime);
   });
-  panel.querySelector("#btn-logout")?.addEventListener("click", async () => {
-    await progressStorage.flush();
-    const sb = getSupabaseClient();
-    if (sb) await signOutUser(sb);
-    localStorage.removeItem("ca_logged_in_user");
-    runtime.userProfile = null;
-    lobbyProfileExpanded = false;
-    lobbyTutorialExpanded = false;
-    renderMainMenu(runtime);
+  panel.querySelector("#btn-logout")?.addEventListener("click", () => {
+    openLogoutConfirm(runtime);
   });
   panel.querySelector("#menu-recommendation-btn")?.addEventListener("click", () => {
     if (recommendation.mode === "stage") {

@@ -810,6 +810,10 @@ body {
   text-align: center;
 }
 
+.main-menu-status:empty {
+  display: none;
+}
+
 /* ========================================================================
    로비 REVISION2 D: 카드형 홈과 bottom sheet
    ======================================================================== */
@@ -1485,6 +1489,28 @@ body {
 
 .menu-confirm-overlay {
   z-index: 40;
+}
+
+.lobby-logout-confirm .match-result-panel h1 {
+  margin: 0 0 1.25rem;
+  color: #f8fafc;
+  font-size: 1.25rem;
+}
+
+.lobby-logout-confirm .match-result-actions button {
+  min-height: 44px;
+}
+
+.lobby-logout-confirm [data-logout-cancel] {
+  border-color: #475569;
+  color: #f8fafc;
+  background: #334155;
+}
+
+.lobby-logout-confirm [data-logout-confirm] {
+  border-color: #ef4444;
+  color: #fff;
+  background: #ef4444;
 }
 
 .loading-panel p,
