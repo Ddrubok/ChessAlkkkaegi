@@ -3,7 +3,7 @@ import { SocialService } from "./social-service";
 import type { UserProfile } from "./supabase-auth";
 import { escapeHtml } from "./html";
 import { KING_MMR } from "./tier";
-import { renderTierBadge } from "./tier-view";
+import { renderTierBadge, renderTierGuide } from "./tier-view";
 import { bindWorkbenchModal } from "./piece-stat-workbench";
 
 /**
@@ -220,7 +220,10 @@ export async function openRankingModal(
 
     // Keep one relevant next step: King eligibility OR confirmed standing.
     if (!userProfile) {
-      myBar.textContent = I18nManager.t("tier.sign_in");
+      myBar.innerHTML = `
+        <div class="ranking-own-detail">${escapeHtml(I18nManager.t("tier.sign_in"))}</div>
+        ${renderTierGuide()}
+      `;
       return;
     }
     const rating = myRankInfo?.mmr ?? (targetMode === "strategy"
@@ -233,6 +236,7 @@ export async function openRankingModal(
     myBar.innerHTML = `
       <div class="ranking-own-tier"><span>${escapeHtml(I18nManager.t("tier.your_tier"))}</span>${renderTierBadge(rating)}</div>
       <div class="ranking-own-detail">${escapeHtml(detail)}</div>
+      ${renderTierGuide()}
     `;
   };
 
