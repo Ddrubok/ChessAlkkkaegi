@@ -1,3 +1,4 @@
+import { progressStorage } from "./progress-storage";
 /**
  * 5단계 마이크로 인터랙티브 튜토리얼 시스템 모듈 (TutorialManager)
  * 
@@ -434,7 +435,7 @@ export class TutorialManager {
       this.tutorialType === "advanced"
         ? "has_completed_adv_tutorial"
         : "has_completed_tutorial";
-    localStorage.setItem(storageKey, "true");
+    progressStorage.setItem(storageKey, "true");
 
     if (this.metaRuntime) {
       this.metaRuntime.state.points += 100;
@@ -577,7 +578,7 @@ export class TutorialManager {
     onStartTutorial: () => void,
     onSkip: () => void,
   ): void {
-    const isCompleted = localStorage.getItem("has_completed_tutorial");
+    const isCompleted = progressStorage.getItem("has_completed_tutorial");
     if (isCompleted) {
       return;
     }
@@ -608,13 +609,13 @@ export class TutorialManager {
     document.body.appendChild(modal);
 
     modal.querySelector("#btn-start-tutorial-prompt")?.addEventListener("click", () => {
-      localStorage.setItem("has_completed_tutorial", "started");
+      progressStorage.setItem("has_completed_tutorial", "started");
       modal.remove();
       onStartTutorial();
     });
 
     modal.querySelector("#btn-skip-tutorial-prompt")?.addEventListener("click", () => {
-      localStorage.setItem("has_completed_tutorial", "skipped");
+      progressStorage.setItem("has_completed_tutorial", "skipped");
       modal.remove();
       onSkip();
     });

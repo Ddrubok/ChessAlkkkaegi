@@ -1,3 +1,4 @@
+import { progressStorage } from "./progress-storage";
 import {
   PERMANENT_ADVANCED_LEVEL_EFFECTS,
   PERMANENT_ADVANCED_REGULAR_COSTS,
@@ -59,6 +60,7 @@ export interface MetaStorage {
   getItem: (key: string) => string | null;
   // 변경 직후 지정한 영구 메타 키에 JSON 문자열을 저장한다.
   setItem: (key: string, value: string) => void;
+  setItems?: (values: Record<string, string>) => void;
 }
 
 export interface MetaRuntime {
@@ -355,7 +357,7 @@ export function resolveBrowserMetaStorage(): MetaStorage | null {
     return null;
   }
   try {
-    return window.localStorage;
+    return progressStorage;
   } catch (error: unknown) {
     warnStorageFailure(error);
     return null;
@@ -409,14 +411,12 @@ export function saveMetaState(runtime: MetaRuntime): void {
     return;
   }
   try {
-    runtime.storage.setItem(
-      META_POINTS_STORAGE_KEY,
-      JSON.stringify(runtime.state.points),
-    );
-    runtime.storage.setItem(
-      META_UPGRADES_STORAGE_KEY,
-      JSON.stringify(runtime.state.upgrades),
-    );
+    const values = {
+      [META_POINTS_STORAGE_KEY]: JSON.stringify(runtime.state.points),
+      [META_UPGRADES_STORAGE_KEY]: JSON.stringify(runtime.state.upgrades),
+    };
+    if (runtime.storage.setItems) runtime.storage.setItems(values);
+    else for (const [key, value] of Object.entries(values)) runtime.storage.setItem(key, value);
   } catch (error: unknown) {
     warnStorageFailure(error);
     runtime.storage = null;
@@ -791,11 +791,6 @@ export const META_MAX_STAGE_STORAGE_KEY = "chessAlkkagi.meta.maxStage";
  */
 export function getMaxClearedStage(storage: MetaStorage | null): number {
   if (storage === null) {
-    if (typeof localStorage !== "undefined") {
-      const raw = localStorage.getItem(META_MAX_STAGE_STORAGE_KEY);
-      const num = raw ? parseInt(raw, 10) : 0;
-      return Number.isFinite(num) && num >= 0 ? Math.min(STAGE_RUN_LENGTH, num) : 0;
-    }
     return 0;
   }
   const raw = storage.getItem(META_MAX_STAGE_STORAGE_KEY);
@@ -816,9 +811,6 @@ export function saveMaxClearedStage(
     const nextVal = Math.min(STAGE_RUN_LENGTH, clearedStage);
     if (storage !== null) {
       storage.setItem(META_MAX_STAGE_STORAGE_KEY, String(nextVal));
-    }
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(META_MAX_STAGE_STORAGE_KEY, String(nextVal));
     }
   }
 }

@@ -69,7 +69,6 @@ async function setup({ native = false, mode = 'off', consent = true, blocked = f
     web: cache.get('./web-ads').namespace,
     muted: () => muted, initialized: () => initialized,
     nativeReward: (fn) => { rewardBehavior = fn; },
-    energy: async () => { const mod = await load('./energy-system'); await mod.evaluate(); return mod.namespace.EnergySystem; },
   };
 }
 
@@ -105,11 +104,9 @@ assert.equal(await waiting, false);
 pending.adViewed(); assert.equal(rewards, 0, 'late callback ignored');
 assert.equal(h5.app.inert, false); assert.equal(h5.muted(), false);
 h5.window.adBreak = (o) => { o.beforeReward(() => { o.beforeAd(); o.adViewed(); o.adViewed(); o.afterAd(); o.adBreakDone(); }); };
-const energy = await h5.energy();
-const coins = energy.getState().coins;
-assert.equal(await energy.watchAdForCoins(), true);
-assert.equal(energy.getState().coins, coins + 2, 'exactly two coins for one verified completion');
-assert.equal(energy.getState().adCountToday, 1);
+assert.equal(await h5.manager.showRewardVideo(() => rewards++), true);
+assert.equal(rewards, 1, "one callback for one verified completion");
+rewards = 0;
 await h5.manager.hideBanner();
 assert.equal(await h5.manager.showRewardVideo(() => assert.fail()), false, 'no ads during play');
 
@@ -130,4 +127,4 @@ native.nativeReward(() => {
 assert.equal(await native.manager.showRewardVideo(() => rewards++), true);
 assert.equal(rewards, 1); assert.equal(native.listeners.size, 0);
 assert.equal(native.app.inert, false); assert.equal(native.muted(), false);
-console.log('PASS: platform/approval gates, display slot, blocked SDK, no fill, cancel, timeout, duplicate reward, +2 coins, native dismissal and cleanup');
+console.log('PASS: platform/approval gates, display slot, blocked SDK, no fill, cancel, timeout, duplicate reward, native dismissal and cleanup');

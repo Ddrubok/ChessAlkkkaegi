@@ -24,7 +24,6 @@ import { createStrategyStatAdapter } from "./strategy-stat-adapter";
 import { PieceStatWorkbench, bindWorkbenchModal } from "./piece-stat-workbench";
 import type { PiecePreviewServices } from "./piece-preview-renderer";
 import type { PieceType } from "./config";
-import { EnergySystem, SVG_COIN_ICON } from "./energy-system";
 import { escapeHtml } from "./html";
 import { formatTier, renderTierBadge } from "./tier-view";
 
@@ -53,9 +52,7 @@ export class SupabaseMatchUi {
   private selectedPiece: PieceType = "Pawn";
   private activePvpMode: "classic" | "strategy" = "classic";
   private unsubscribeLanguage: () => void;
-  private unsubscribeReferral: (() => void) | null = null;
   private unbindModal: (() => void) | null = null;
-  private coinInterval: any = null;
   private disposed = false;
   private renderVersion = 0;
 
@@ -114,29 +111,6 @@ export class SupabaseMatchUi {
       <h2 style="margin:0; font-size:18px; font-weight:700; color:#f8fafc;">${I18nManager.t("online.title")}</h2>
     `;
 
-    // 상단 코인 HUD 위젯
-    const coinHud = document.createElement("div");
-    coinHud.className = "coin-hud-badge";
-    coinHud.title = "코인 충전소";
-    coinHud.onclick = () => {
-      this.openCoinModal(card, "info");
-    };
-
-    const updateCoinHud = () => {
-      const state = EnergySystem.getState();
-      const isMax = state.coins >= state.maxCoins;
-      const mins = String(Math.floor(state.timeToNextMs / 60000)).padStart(2, "0");
-      const secs = String(Math.floor((state.timeToNextMs % 60000) / 1000)).padStart(2, "0");
-      const timeStr = isMax
-        ? "<span class='coin-timer' style='color:#a7f3d0;'>MAX</span>"
-        : `<span class='coin-timer'>${mins}:${secs}</span>`;
-      coinHud.innerHTML = `${SVG_COIN_ICON} <span class="coin-count">${state.coins} / ${state.maxCoins}</span> ${timeStr}`;
-    };
-    updateCoinHud();
-    if (this.coinInterval) clearInterval(this.coinInterval);
-    this.coinInterval = setInterval(updateCoinHud, 1000);
-
-    titleGroup.appendChild(coinHud);
     header.appendChild(titleGroup);
 
     const closeBtn = document.createElement("button");
@@ -239,12 +213,6 @@ export class SupabaseMatchUi {
       if (this.disposed || version !== this.renderVersion) return;
       this.renderProfileCard(profileSection, this.profile);
 
-      // 초대한 유저(Referrer) 보상 서버 동기화 및 실시간 알림 리스너 연결
-      if (this.profile && this.client) {
-        void EnergySystem.syncReferralRewardsFromServer(this.profile.id, this.client);
-        this.unsubscribeReferral?.();
-        this.unsubscribeReferral = EnergySystem.subscribeReferralRealtime(this.profile.id, this.client);
-      }
     } catch (err: any) {
       if (this.profile) {
         this.renderProfileCard(profileSection, this.profile);
@@ -417,13 +385,6 @@ export class SupabaseMatchUi {
     } catch {}
     if (this.disposed || !parentCard.isConnected || parentCard.querySelector(".matching-modal-overlay")) return;
 
-    // 행동력(코인) 체크 및 1 코인 소모
-    // 1단계: 코인 보유 잔액 사전 확인 (이 시점에는 차감하지 않음)
-    if (!EnergySystem.hasEnoughCoin()) {
-      this.openCoinModal(parentCard, "exhausted");
-      return;
-    }
-
     const modalOverlay = document.createElement("div");
     modalOverlay.className = "matching-modal-overlay";
     modalOverlay.style.cssText = `
@@ -497,9 +458,6 @@ export class SupabaseMatchUi {
         }
       },
       async (transport, mySide, matchId, opponent) => {
-        // ★ 상대 매칭 및 P2P 연결 성공: 인게임 대전 진입 확정 시점에 1코인 차감
-        EnergySystem.consumeCoinOnGameStart();
-
         const oppEl = modalOverlay.querySelector("#matching-opponent");
         const sideStr = mySide === "white" ? I18nManager.t("ingame.turn_white") : I18nManager.t("ingame.turn_black");
         if (oppEl) oppEl.textContent = I18nManager.t("online.match_ready", { side: sideStr });
@@ -517,130 +475,6 @@ export class SupabaseMatchUi {
     );
   }
 
-  /**
-   * 코인 정보 및 충전 모달 (mode: 'info' | 'exhausted')
-   * - 타이머 기반 자동 닫기 없음: 사용자가 직접 [X] 또는 [닫기]를 누를 때까지 유지
-   */
-  private openCoinModal(parentCard: HTMLElement, mode: "info" | "exhausted" = "info"): void {
-    if (parentCard.querySelector(".coin-modal-backdrop")) return;
-
-    const overlay = document.createElement("div");
-    overlay.className = "coin-modal-backdrop";
-
-    const state = EnergySystem.getState();
-    const isExhausted = mode === "exhausted";
-
-    overlay.innerHTML = `
-      <div class="coin-modal-card">
-        <div class="coin-modal-header">
-          <h3>${isExhausted ? "코인이 부족합니다!" : "코인 충전소"}</h3>
-          <button class="coin-modal-close-btn" aria-label="닫기">&times;</button>
-        </div>
-        
-        <p class="coin-modal-desc" style="${isExhausted ? "color:#f87171; font-weight:600;" : "color:#94a3b8;"}">
-          ${
-            isExhausted
-              ? "게임을 플레이하려면 1코인이 필요합니다. 아래 방법으로 코인을 충전해보세요!"
-              : `현재 보유 코인: <strong style="color:#f8fafc;">${state.coins} / ${state.maxCoins}</strong><br><span style="font-size:12px; opacity:0.85;">(최대 ${state.maxCoins}개까지 20분마다 1개씩 자동 충전)</span>`
-          }
-        </p>
-
-        <div class="coin-charge-options">
-          <button id="coin-watch-ad-btn" class="coin-charge-btn ad-btn">
-            <span class="coin-btn-icon">📺</span>
-            <div class="coin-btn-text">
-              <strong>광고 시청하고 받기</strong>
-              <span>시청 완료 시 +2 코인 충전 (${state.dailyAdLimit - state.adCountToday}/${state.dailyAdLimit})</span>
-            </div>
-          </button>
-
-          <button id="coin-invite-friend-btn" class="coin-charge-btn invite-btn">
-            <span class="coin-btn-icon">👥</span>
-            <div class="coin-btn-text">
-              <strong>친구 초대 링크 복사</strong>
-              <span>친구가 접속 시 서로 +5 코인 지급</span>
-            </div>
-          </button>
-        </div>
-      </div>
-    `;
-
-    const topCloseBtn = overlay.querySelector<HTMLButtonElement>(".coin-modal-close-btn")!;
-    const adBtn = overlay.querySelector<HTMLButtonElement>("#coin-watch-ad-btn")!;
-    const inviteBtn = overlay.querySelector<HTMLButtonElement>("#coin-invite-friend-btn")!;
-
-    const updateAdBtnState = () => {
-      const s = EnergySystem.getState();
-      const strongEl = adBtn.querySelector("strong");
-      const spanEl = adBtn.querySelector("span.coin-btn-text span");
-
-      if (s.adCountToday >= s.dailyAdLimit) {
-        adBtn.disabled = true;
-        adBtn.style.opacity = "0.5";
-        adBtn.style.cursor = "not-allowed";
-        if (strongEl) strongEl.textContent = `오늘 광고 시청 완료 (${s.dailyAdLimit}/${s.dailyAdLimit})`;
-        if (spanEl) spanEl.textContent = "내일 다시 시청할 수 있습니다.";
-      } else if (s.adCooldownSec > 0) {
-        adBtn.disabled = true;
-        adBtn.style.opacity = "0.6";
-        adBtn.style.cursor = "wait";
-        if (strongEl) strongEl.textContent = `⏳ ${s.adCooldownSec}초 후 시청 가능`;
-        if (spanEl) spanEl.textContent = `오늘 남은 횟수: ${s.dailyAdLimit - s.adCountToday}/${s.dailyAdLimit}`;
-      } else if (!s.adAvailable) {
-        adBtn.disabled = true;
-        adBtn.style.opacity = "0.6";
-        adBtn.style.cursor = "not-allowed";
-        if (strongEl) strongEl.textContent = "현재 이용 가능한 광고가 없습니다";
-        if (spanEl) spanEl.textContent = "코인은 시간이 지나면 자동으로 충전됩니다.";
-      } else {
-        adBtn.disabled = false;
-        adBtn.style.opacity = "1";
-        adBtn.style.cursor = "pointer";
-        if (strongEl) strongEl.textContent = "광고 시청하고 받기";
-        if (spanEl) spanEl.textContent = `시청 완료 시 +2 코인 충전 (${s.dailyAdLimit - s.adCountToday}/${s.dailyAdLimit})`;
-      }
-    };
-    updateAdBtnState();
-    const modalAdInterval = setInterval(updateAdBtnState, 1000);
-
-    const closeModal = () => {
-      clearInterval(modalAdInterval);
-      overlay.remove();
-    };
-
-    topCloseBtn.onclick = closeModal;
-    overlay.onclick = (e) => {
-      if (e.target === overlay) closeModal();
-    };
-
-    adBtn.onclick = async () => {
-      const s = EnergySystem.getState();
-      if (!s.adAvailable) {
-        if (s.adCooldownSec > 0) {
-          alert(`광고 재시청 대기 중입니다. ${s.adCooldownSec}초 후에 다시 시도해주세요.`);
-        }
-        return;
-      }
-      adBtn.disabled = true;
-      adBtn.querySelector("strong")!.textContent = "광고 로딩 중...";
-      const success = await EnergySystem.watchAdForCoins();
-      if (success) {
-        alert("광고 시청 완료! +2 코인이 지급되었습니다.");
-        closeModal();
-      } else {
-        updateAdBtnState();
-        if (overlay.isConnected) alert("광고가 완료되지 않아 보상이 지급되지 않았습니다.");
-      }
-    };
-
-    inviteBtn.onclick = async () => {
-      await EnergySystem.copyInviteLink(this.profile?.referralCode || this.profile?.id);
-      closeModal();
-    };
-
-    parentCard.appendChild(overlay);
-  }
-
   private disposeWorkbench(): void {
     if (this.workbench) this.selectedPiece = this.workbench.selection;
     this.workbench?.dispose(); this.workbench = null;
@@ -649,12 +483,6 @@ export class SupabaseMatchUi {
   public destroy(): void {
     if (this.disposed) return;
     this.disposed = true;
-    if (this.coinInterval) {
-      clearInterval(this.coinInterval);
-      this.coinInterval = null;
-    }
-    this.unsubscribeReferral?.();
-    this.unsubscribeReferral = null;
     this.disposeWorkbench(); this.unsubscribeLanguage();
     this.unbindModal?.(); this.unbindModal = null;
   }

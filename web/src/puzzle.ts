@@ -1,3 +1,4 @@
+import { progressStorage } from "./progress-storage.ts";
 import type { PieceType } from "./config";
 import type { PieceSide } from "./layout";
 
@@ -213,6 +214,7 @@ export interface PuzzleProgressStore {
 export interface PuzzleStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  setItems?(values: Record<string, string>): void;
 }
 
 export const PUZZLE_STORAGE_KEY = "ca_puzzle_progress_v1";
@@ -803,8 +805,7 @@ export function evaluatePuzzleAttempt(
 }
 
 function browserStorage(): PuzzleStorage | undefined {
-  if (typeof localStorage === "undefined") return undefined;
-  return localStorage;
+  return progressStorage;
 }
 
 function emptyStore(): PuzzleProgressStore {
@@ -890,7 +891,17 @@ export function loadPuzzleProgress(storage: PuzzleStorage | undefined = browserS
   if (storage === undefined) return emptyStore();
   try {
     const raw = storage.getItem(PUZZLE_STORAGE_KEY);
-    return raw === null ? emptyStore() : validatePuzzleProgress(JSON.parse(raw));
+    if (raw !== null) return validatePuzzleProgress(JSON.parse(raw));
+    const cleared = JSON.parse(storage.getItem("ca_puzzle_cleared_v1") ?? "[]");
+    const medals = JSON.parse(storage.getItem("ca_puzzle_medals_v1") ?? "{}");
+    const store = emptyStore();
+    for (const puzzle of PUZZLE_CATALOG) {
+      const medal = medals?.[puzzle.puzzleId] ?? (Array.isArray(cleared) && cleared.includes(puzzle.puzzleId) ? 1 : 0);
+      if (!isMedal(medal) || medal === 0) continue;
+      const entry = normalizeEntry({ puzzleId: puzzle.puzzleId, revision: puzzle.revision, bestMedal: medal });
+      if (entry) store.records[getPuzzleProgressKey(puzzle.puzzleId, puzzle.revision)] = entry;
+    }
+    return store;
   } catch {
     return emptyStore();
   }
@@ -902,7 +913,16 @@ export function savePuzzleProgress(
 ): boolean {
   if (storage === undefined) return false;
   try {
-    storage.setItem(PUZZLE_STORAGE_KEY, JSON.stringify(validatePuzzleProgress(store)));
+    const normalized = validatePuzzleProgress(store);
+    const medals = Object.fromEntries(PUZZLE_CATALOG.map(puzzle => [puzzle.puzzleId,
+      getPuzzleProgress(normalized, puzzle.puzzleId, puzzle.revision)?.bestMedal ?? 0]));
+    const values = {
+      [PUZZLE_STORAGE_KEY]: JSON.stringify(normalized),
+      ca_puzzle_cleared_v1: JSON.stringify(Object.keys(medals).filter(id => medals[id] > 0)),
+      ca_puzzle_medals_v1: JSON.stringify(medals),
+    };
+    if (storage.setItems) storage.setItems(values);
+    else for (const [key, value] of Object.entries(values)) storage.setItem(key, value);
     return true;
   } catch {
     return false;

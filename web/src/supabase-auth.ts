@@ -1,5 +1,26 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { EnergySystem } from "./energy-system";
+import { progressStorage } from "./progress-storage";
+
+let pendingAuthChange: Promise<unknown> = Promise.resolve();
+export function waitForAuthChange(): Promise<unknown> { return pendingAuthChange.catch(() => undefined); }
+
+export function signUpWithEmail(...args: Parameters<typeof performSignUpWithEmail>) {
+  const operation = performSignUpWithEmail(...args);
+  pendingAuthChange = operation;
+  return operation;
+}
+
+export function signInWithEmail(...args: Parameters<typeof performSignInWithEmail>) {
+  const operation = performSignInWithEmail(...args);
+  pendingAuthChange = operation;
+  return operation;
+}
+
+export function signOutUser(...args: Parameters<typeof performSignOutUser>) {
+  const operation = performSignOutUser(...args);
+  pendingAuthChange = operation;
+  return operation;
+}
 
 export interface UserProfile {
   id: string;
@@ -173,9 +194,6 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
     await assertCurrentUser();
     localStorage.setItem("ca_referral_code", referralCode);
 
-    // 대기 중인 추천인 코드가 있다면 확인 (기존 회원이므로 안내 후 종료)
-    void EnergySystem.claimPendingReferralReward(existing.id, client, false);
-
     return {
       id: existing.id,
       nickname: existing.nickname,
@@ -280,7 +298,6 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
         throw insertErr;
       } else if (created) {
         await assertCurrentUser();
-        void EnergySystem.claimPendingReferralReward(user.id, client, true);
         const classicMmr = Number(created.classic_mmr ?? created.mmr ?? 1200);
         const strategyMmr = Number(created.strategy_mmr ?? created.mmr ?? 1200);
         const classicWins = Number(created.classic_wins ?? 0);
@@ -343,7 +360,7 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
 /**
  * 이메일과 비밀번호로 회원가입한다.
  */
-export async function signUpWithEmail(
+async function performSignUpWithEmail(
   client: SupabaseClient,
   email: string,
   password: string,
@@ -408,9 +425,6 @@ export async function signUpWithEmail(
     return { success: false, error: profileErr.message };
   }
 
-  // 대기 중인 추천인 코드가 있다면 보상 청구
-  void EnergySystem.claimPendingReferralReward(authUser.id, client, true);
-
   // 로컬 스토리지에 신규 계정 정보 동기화 (기존 전적 오염 방지)
   localStorage.setItem(NICKNAME_STORAGE_KEY, cleanNick);
   localStorage.setItem("ca_guest_user_uuid", authUser.id);
@@ -452,7 +466,7 @@ export async function signUpWithEmail(
 /**
  * 이메일과 비밀번호로 로그인한다.
  */
-export async function signInWithEmail(
+async function performSignInWithEmail(
   client: SupabaseClient,
   email: string,
   password: string,
@@ -479,7 +493,8 @@ export async function signInWithEmail(
 /**
  * 로그아웃을 수행하고 게스트 상태로 전환한다.
  */
-export async function signOutUser(client: SupabaseClient): Promise<void> {
+async function performSignOutUser(client: SupabaseClient): Promise<void> {
+  await progressStorage.flush();
   try {
     if (client?.auth?.signOut) {
       await client.auth.signOut();

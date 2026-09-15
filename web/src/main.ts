@@ -1,4 +1,6 @@
 import "./style.css";
+import "./progress.css";
+import { progressStorage } from "./progress-storage";
 import { getTier } from "./tier";
 import { formatTier, formatTierProgress } from "./tier-view";
 import { I18nManager } from "./i18n";
@@ -96,6 +98,7 @@ import {
 import {
   computePermanentForceBonus,
   createMetaRuntime,
+  loadMetaState,
   createStageRunPointState,
   discardStageRunPoints,
   recordStageRunClear,
@@ -148,7 +151,7 @@ import { SupabaseMatchmaker } from "./supabase-matchmaker";
 import { SocialService } from "./social-service";
 import { openChallengeReceivedModal } from "./challenge-modal";
 import { getSupabaseClient } from "./supabase-client";
-import { getOrCreateUserProfile, type UserProfile } from "./supabase-auth";
+import { getOrCreateUserProfile, waitForAuthChange, type UserProfile } from "./supabase-auth";
 import {
   computeEnemyStageStepValues,
   computeEnemyStageSizeMultiplier,
@@ -228,6 +231,33 @@ async function bootstrap(): Promise<void> {
   // app을 비울 때 인라인 부트 노드를 함께 넘겨 같은 요소를 유지한다.
   app.replaceChildren(loadingPanel);
   initializeSound();
+  const progressClient = getSupabaseClient();
+  const progressSession = progressClient ? await progressClient.auth.getSession() : null;
+  if (progressSession?.error) throw new Error("로그인 상태를 확인하지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.");
+  const sessionUser = progressSession?.data.session?.user;
+  const progressOwner = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : null;
+  await progressStorage.activate(progressClient, progressOwner);
+  if (progressOwner && progressClient) {
+    localStorage.setItem("ca_logged_in_user", "true");
+    localStorage.setItem("ca_guest_user_uuid", progressOwner);
+    await getOrCreateUserProfile(progressClient);
+  }
+  let changingAccount = false;
+  progressClient?.auth.onAuthStateChange((_event, session) => {
+    const nextOwner = session?.user && !session.user.is_anonymous ? session.user.id : null;
+    if (changingAccount || nextOwner === progressStorage.owner) return;
+    changingAccount = true;
+    progressStorage.suspend();
+    app.inert = true;
+    if (!nextOwner) localStorage.removeItem("ca_logged_in_user");
+    // Recreate the board and all in-memory progress on identity changes.
+    // Do not make awaited Supabase calls inside its auth callback.
+    window.setTimeout(() => { void waitForAuthChange().then(() => window.location.reload()); }, 0);
+  });
+  window.addEventListener("online", () => { void progressStorage.retry(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) void progressStorage.flush();
+  });
   const metaRuntime = createMetaRuntime();
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
   let startModeAction:
@@ -239,6 +269,7 @@ async function bootstrap(): Promise<void> {
     app,
     metaRuntime,
     async (mode, selectedStage, tutorialType) => {
+      if (!progressStorage.ready) throw new Error("계정 진행도를 먼저 불러와 주세요.");
       if (startModeAction === null) {
         throw new Error("게임 월드가 아직 준비되지 않았습니다.");
       }
@@ -353,6 +384,24 @@ async function bootstrap(): Promise<void> {
   let puzzleAttempt: PuzzleEvaluationInput | null = null;
   let puzzleTracker: PuzzlePhysicsTracker | null = null;
   let puzzleProgress = loadPuzzleProgress();
+  progressStorage.subscribe((reset) => {
+    if (reset) {
+      metaRuntime.storage = progressStorage;
+      metaRuntime.state = loadMetaState(metaRuntime.storage);
+      puzzleProgress = loadPuzzleProgress();
+    }
+    if (!progressStorage.ready || (reset && menuRuntime.visible)) {
+      if (!progressStorage.ready) {
+        menuRuntime.visible = true;
+        menuRuntime.overlay.hidden = false;
+        menuRuntime.closePveLobby?.();
+      }
+      renderMainMenu(menuRuntime);
+    } else {
+      const status = menuRuntime.overlay.querySelector<HTMLElement>("[data-progress-status]");
+      if (status) status.textContent = progressStorage.status;
+    }
+  });
   let puzzleHintLevel: 0 | 1 | 2 = 0;
   let puzzleFinished = false;
   let onPuzzleLaunch: ((request: Parameters<typeof queueTurnLaunch>[1]) => void) | null = null;
@@ -1978,6 +2027,7 @@ async function bootstrap(): Promise<void> {
     });
   };
   const startPuzzle = async (id: string): Promise<void> => {
+    if (!progressStorage.ready) return;
     const puzzle = getPuzzleDefinition(id);
     if (!puzzle || !isPuzzleUnlocked(puzzleProgress, puzzle)) return;
     puzzleInputBlocked = true;
@@ -2014,6 +2064,7 @@ async function bootstrap(): Promise<void> {
     }
   };
   const showPuzzleLibrary = async (): Promise<void> => {
+    if (!progressStorage.ready) return;
     if (gameModeRuntime?.mode === "puzzle") await returnToMainMenu(menuRuntime);
     await AdManager.hideBanner();
     puzzleUI?.showLibrary();

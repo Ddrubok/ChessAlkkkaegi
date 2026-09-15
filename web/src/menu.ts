@@ -22,6 +22,8 @@ import { escapeHtml } from "./html";
 import { formatTier, renderTierBadge, renderTierGuide } from "./tier-view";
 import { isBasicTutorialCompleted, pickLobbyRecommendation } from "./lobby-recommendation";
 import { resolveRuntimeAssetUrl } from "./portable-assets";
+import { progressStorage } from "./progress-storage";
+import { PUZZLE_CATALOG, getPuzzleProgress, loadPuzzleProgress } from "./puzzle";
 
 const PVE_MAX_STAGE = 10;
 type LobbyMode = "stage" | "puzzle" | "online" | "hotseat" | "tutorial";
@@ -32,7 +34,7 @@ function getInitialStage(storage: MetaRuntime["storage"]): number {
 
 function readLobbyStorage(key: string): string | null {
   try {
-    return typeof localStorage === "undefined" ? null : localStorage.getItem(key);
+    return progressStorage.getItem(key);
   } catch {
     return null;
   }
@@ -164,12 +166,9 @@ function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: number): str
     { mode: "puzzle" as const, icon: "bulb" as const, label: "lobby.mode_puzzle", status: "lobby.card_puzzle_status", detail: "" },
     { mode: "hotseat" as const, icon: "gamepad" as const, label: "lobby.mode_2p_short", status: "lobby.card_2p_status", detail: "" },
   ];
-  let puzzleCount = 0;
-  try {
-    const stored = readLobbyStorage("ca_puzzle_cleared_v1");
-    const parsed = stored ? JSON.parse(stored) : [];
-    puzzleCount = Array.isArray(parsed) ? parsed.length : 0;
-  } catch { /* malformed optional fallback */ }
+  const puzzleProgress = loadPuzzleProgress();
+  const puzzleCount = PUZZLE_CATALOG.filter(puzzle =>
+    (getPuzzleProgress(puzzleProgress, puzzle.puzzleId, puzzle.revision)?.bestMedal ?? 0) > 0).length;
   const statusByMode: Record<LobbyMode, string> = {
     stage: I18nManager.t("lobby.card_stage_status", { cleared: maxClearedStage, max: PVE_MAX_STAGE }),
     puzzle: I18nManager.t("lobby.card_puzzle_status", { count: puzzleCount }),
@@ -189,7 +188,7 @@ function openProfileSheet(runtime: MainMenuRuntime, user: UserProfile): void {
   openLobbySheet(runtime.overlay, {
     title: I18nManager.t("lobby.profile_sheet_title"),
     bodyHtml: `<div class="lobby-profile-sheet"><header class="lobby-profile-header"><img class="lobby-profile-avatar" src="${escapeHtml(avatar)}" alt="" width="46" height="46"><div class="lobby-profile-info"><strong class="lobby-profile-name">${escapeHtml(user.nickname)}</strong><span class="lobby-profile-points">${escapeHtml(I18nManager.t("common.points"))} <span class="lobby-profile-value">${runtime.metaRuntime.state.points} P</span></span></div><button type="button" id="btn-logout" class="lobby-profile-logout lobby-sheet-action">${escapeHtml(I18nManager.t("common.logout"))}</button></header><div class="menu-tier-columns"><div class="menu-tier-column"><div class="tier-label tier-label-classic">${I18nManager.t("online.classic_tab")}</div><div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 }))}</div></div><div class="menu-tier-column"><div class="tier-label tier-label-strategy">${I18nManager.t("online.strategy_tab")}</div><div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 }))}</div></div></div>${renderTierGuide()}</div>`,
-    onMount: (sheet, close) => sheet.querySelector("#btn-logout")?.addEventListener("click", async () => { const sb = getSupabaseClient(); if (sb) await signOutUser(sb); close(); localStorage.removeItem("ca_logged_in_user"); runtime.userProfile = null; renderMainMenu(runtime); }),
+    onMount: (sheet, close) => sheet.querySelector("#btn-logout")?.addEventListener("click", async () => { await progressStorage.flush(); const sb = getSupabaseClient(); if (sb) await signOutUser(sb); close(); localStorage.removeItem("ca_logged_in_user"); runtime.userProfile = null; renderMainMenu(runtime); }),
   });
 }
 
@@ -207,7 +206,7 @@ async function startLobbyMode(
   selectedStage = getInitialStage(runtime.metaRuntime.storage),
   tutorialType: "basic" | "advanced" = "basic",
 ): Promise<void> {
-  if (runtime.busy || !runtime.ready) return;
+  if (runtime.busy || !runtime.ready || !progressStorage.ready) return;
   if (mode === "puzzle") {
     runtime.onOpenPuzzles?.();
     return;
@@ -261,6 +260,7 @@ export function openPveLobbyModal(
   onStartStage: (stage: number) => Promise<void>,
   initialStage?: number,
 ): void {
+  if (!progressStorage.ready) return;
   const modal = document.createElement("div");
   runtime.closePveLobby?.();
   modal.className = "pve-lobby-modal piece-stat-modal";
@@ -498,6 +498,19 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
 
   const user = runtime.userProfile as UserProfile;
 
+  if (!progressStorage.ready) {
+    panel.innerHTML = `<h1 id="main-menu-title">계정 진행도</h1><p role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-retry">다시 불러오기</button>${progressStorage.conflict ? '<button type="button" id="progress-use-server">기기 기록 백업 후 서버 기록 사용</button>' : ''}<button type="button" id="progress-signout">로그아웃</button>`;
+    panel.querySelector("#progress-retry")?.addEventListener("click", () => { void progressStorage.retry(); });
+    panel.querySelector("#progress-use-server")?.addEventListener("click", async () => { await progressStorage.useServer(); if (progressStorage.ready) window.location.reload(); });
+    panel.querySelector("#progress-signout")?.addEventListener("click", async () => {
+      const client = getSupabaseClient();
+      if (client) await signOutUser(client);
+      localStorage.removeItem("ca_logged_in_user");
+      window.location.reload();
+    });
+    return;
+  }
+
   if (user === null) {
     // -------------------------------------------------------------
     // 1. 미로그인 상태: 로그인 / 회원가입 / 게스트 로그인 뷰
@@ -705,7 +718,10 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions()}</header>${renderProfileChip(user)}${renderRecommendationCard(recommendation, heroAsset)}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions()}</header>${renderProfileChip(user)}<div data-progress-controls><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p>${progressStorage.owner ? '<button type="button" id="progress-save">저장 다시 시도</button>' : ''}${progressStorage.canImport() ? '<p>이 기기에 이전 진행도가 있습니다. 본인의 기록인 경우에만 가져오세요.</p><button type="button" id="progress-import">이 기기 기록 가져오기</button><button type="button" id="progress-skip-import">새로 시작</button>' : ''}</div>${renderRecommendationCard(recommendation, heroAsset)}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
+  panel.querySelector("#progress-import")?.addEventListener("click", () => { void progressStorage.importLocal(); });
+  panel.querySelector("#progress-skip-import")?.addEventListener("click", () => { progressStorage.dismissImport(); renderMainMenu(runtime); });
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
     void openRankingModal(runtime.overlay, runtime.userProfile);
   });

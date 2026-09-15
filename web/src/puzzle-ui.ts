@@ -1,3 +1,4 @@
+import { progressStorage } from "./progress-storage";
 import type { PieceType } from "./config";
 import { I18nManager, type LanguageCode } from "./i18n";
 import { failureReason, medalText, puzzleText } from "./puzzle-text";
@@ -242,8 +243,8 @@ export class PuzzleUI {
 
   private progress(): PuzzleUiProgress {
     return this.options.progress?.() ?? {
-      clearedIds: JSON.parse(localStorage.getItem("ca_puzzle_cleared_v1") ?? "[]") as string[],
-      medals: JSON.parse(localStorage.getItem("ca_puzzle_medals_v1") ?? "{}") as Record<string, number>,
+      clearedIds: JSON.parse(progressStorage.getItem("ca_puzzle_cleared_v1") ?? "[]") as string[],
+      medals: JSON.parse(progressStorage.getItem("ca_puzzle_medals_v1") ?? "{}") as Record<string, number>,
     };
   }
 
@@ -263,8 +264,7 @@ export class PuzzleUI {
     const cleared = new Set(progress.clearedIds);
     cleared.add(puzzle.id);
     const medals = { ...progress.medals, [puzzle.id]: Math.max(progress.medals[puzzle.id] ?? 0, result.medal) };
-    localStorage.setItem("ca_puzzle_cleared_v1", JSON.stringify([...cleared]));
-    localStorage.setItem("ca_puzzle_medals_v1", JSON.stringify(medals));
+    progressStorage.setItems({ ca_puzzle_cleared_v1: JSON.stringify([...cleared]), ca_puzzle_medals_v1: JSON.stringify(medals) });
   }
 
   private localized(value: string | undefined, key: string | undefined, fallback: string): string {

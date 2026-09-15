@@ -1,0 +1,7 @@
+[data-progress-controls] { margin: 8px 0 12px; font-size: 12px; color: #c4b8a5; }
+[data-progress-controls] p { margin: 6px 0; line-height: 1.5; }
+[data-progress-controls] button, #progress-retry, #progress-use-server, #progress-signout {
+  background: #302920; color: #f2e5cf; border: 1px solid #665440;
+  border-radius: 6px; padding: 8px 10px; margin: 3px 4px 3px 0;
+  min-height: 40px; cursor: pointer; font: inherit;
+}

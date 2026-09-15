@@ -54,7 +54,7 @@ async function webFullscreen(onRewarded?: (amount: number) => void): Promise<boo
     try {
       window.adBreak!({
         type: onRewarded ? "reward" : "next",
-        name: onRewarded ? "two_play_coins" : "return_to_menu",
+        name: onRewarded ? "optional_reward" : "return_to_menu",
         beforeAd: () => {
           if (finished) return;
           clearTimeout(timer);
@@ -64,7 +64,7 @@ async function webFullscreen(onRewarded?: (amount: number) => void): Promise<boo
         afterAd: resumeAfterAd,
         ...(onRewarded ? {
           beforeReward: (showAd: () => void) => {
-            // The player requested the advertised +2 coins in the coin menu.
+            // Reward presentation is only allowed after an explicit player request.
             if (!finished) showAd();
           },
           adViewed: () => {

@@ -218,5 +218,9 @@ const memory = new Map();
 const storage = { getItem: (key) => memory.get(key) ?? null, setItem: (key, value) => memory.set(key, value) };
 assert.equal(savePuzzleProgress(merged, storage), true);
 assert.equal(loadPuzzleProgress(storage).records["P01@1"].bestMedal, 3);
+assert.ok(JSON.parse(memory.get("ca_puzzle_cleared_v1")).includes("P01"));
+assert.equal(JSON.parse(memory.get("ca_puzzle_medals_v1")).P01, 3);
+memory.delete("ca_puzzle_progress_v1");
+assert.equal(loadPuzzleProgress(storage).records["P01@1"].bestMedal, 3, "legacy medal keys migrate into playable puzzle progress");
 
 console.log("puzzle-headless-check: PASS");

@@ -109,7 +109,7 @@
   <ul>
     <li><strong>이메일 회원가입/로그인 시</strong>: 이메일 주소, 비밀번호(단방향 암호화 저장), 플레이어 닉네임</li>
     <li><strong>게스트 로그인 시</strong>: 임의의 게스트 식별자(UUID), 플레이어 닉네임</li>
-    <li><strong>게임 플레이 데이터</strong>: 대전 기록(승/무/패), 레이팅(MMR), 게임 내 행동력(코인) 잔액, 추천인 코드</li>
+    <li><strong>게임 플레이 데이터</strong>: 대전 기록(승/무/패), 레이팅(MMR), 계정별 스테이지·연구 포인트·기물 연구·튜토리얼·퍼즐 진행도</li>
     <li><strong>Android 광고 활성화 시 (Google AdMob)</strong>: Google 모바일 광고 SDK가 기기·광고 식별자, 광고 상호작용 정보 등을 처리할 수 있습니다.</li>
     <li><strong>웹 광고 활성화 시 (Google AdSense / H5 Games Ads)</strong>: Google 및 제3자 광고 제공업체가 쿠키와 기기·브라우저 정보를 사용해 광고를 제공하고 성과를 측정할 수 있습니다. 웹 광고가 비활성화된 상태에서는 서비스가 웹 광고 태그를 로드하지 않습니다.</li>
   </ul>
@@ -117,8 +117,7 @@
   <h2>2. 개인정보의 이용 목적</h2>
   <ul>
     <li>게임 플레이 진행 및 실시간 P2P 매칭 서비스 제공</li>
-    <li>플레이어 랭킹(Leaderboard) 산정 및 게임 내 재화(코인/행동력) 관리</li>
-    <li>친구 추천 시스템을 통한 게임 보너스 정산</li>
+    <li>플레이어 랭킹(Leaderboard) 산정 및 계정별 진행도 저장·복원</li>
     <li>활성화된 플랫폼의 광고 제공, 보상 처리, 광고 성과 측정 및 무효 트래픽 방지</li>
     <li>서비스 오류 디버깅 및 품질 개선</li>
   </ul>
@@ -126,7 +125,7 @@
   <h2>3. 개인정보의 보유 및 파기 기간</h2>
   <ul>
     <li>서버의 계정·대전 정보 삭제는 아래 문의처로 요청할 수 있습니다. 요청자 확인 후 처리 범위와 결과를 안내합니다.</li>
-    <li>코인 잔액, 사운드 설정 등 로컬 정보는 브라우저 사이트 데이터 또는 앱 데이터를 삭제하면 제거됩니다. 서버에 저장된 게스트·계정 정보까지 자동 삭제되는 것은 아닙니다.</li>
+    <li>게스트 진행도, 계정별 저장 대기 기록·충돌 백업, 사운드 설정은 기기에 보관됩니다. 브라우저 사이트 데이터 또는 앱 데이터를 삭제하면 제거되지만 서버의 계정·진행도는 자동 삭제되지 않습니다. 서버 저장 완료 전 기기 데이터를 삭제하면 대기 중인 기록은 복구할 수 없습니다.</li>
   </ul>
 
   <h2>4. 개인정보의 제3자 제공 및 위탁</h2>
@@ -162,7 +161,7 @@
     <h2>1. Information We Collect</h2>
     <ul>
       <li><strong>Account Information</strong>: Email address, encrypted password, player nickname (via Supabase Auth).</li>
-      <li><strong>Game Data</strong>: Match history, MMR ratings, in-game energy (coins), and referral logs.</li>
+      <li><strong>Game Data</strong>: Match history, MMR ratings, and per-account stage, research points, upgrades, tutorial and puzzle progress.</li>
       <li><strong>Optional advertising</strong>: AdMob in Android and AdSense/H5 Games Ads on the web may process device identifiers, browser information, cookies and ad interaction data when advertising is enabled.</li>
     </ul>
 
@@ -170,12 +169,12 @@
     <ul>
       <li>To provide multiplayer matchmaking, leaderboard rankings, and game mechanics.</li>
       <li>To provide enabled ads, process rewards, measure ad performance and prevent invalid traffic.</li>
-      <li>To manage game economy and verify friend referral rewards.</li>
+      <li>To save and restore progress for each account.</li>
     </ul>
 
     <h2>3. Data Retention & Deletion</h2>
     <p>
-      Request account data access, correction or deletion at <a href="mailto:dubokup@gmail.com" style="color:#38bdf8;">dubokup@gmail.com</a>. We will verify the request and explain its handling. Clearing browser or app data removes local settings and coins, but does not automatically delete server accounts or match records.
+      Request account data access, correction or deletion at <a href="mailto:dubokup@gmail.com" style="color:#38bdf8;">dubokup@gmail.com</a>. We will verify the request and explain its handling. Guest progress, pending account saves, conflict backups and settings are stored on the device. Clearing browser or app data removes them, but does not automatically delete server accounts or progress. Unsynced changes may be lost if device data is cleared.
     </p>
 
     <h2>4. Third-Party Services</h2>

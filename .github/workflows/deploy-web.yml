@@ -50,6 +50,8 @@ jobs:
           VITE_AD_TEST_MODE: 'false'
 
       - run: npm run check:regressions
+      - run: npm run check:lobby
+      - run: npm run check:progress
       - run: npm run check:ads
 
       - uses: actions/configure-pages@v5
