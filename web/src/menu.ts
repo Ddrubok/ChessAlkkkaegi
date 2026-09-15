@@ -27,6 +27,7 @@ import { PUZZLE_CATALOG, getPuzzleProgress, loadPuzzleProgress } from "./puzzle"
 
 const PVE_MAX_STAGE = 10;
 let lobbyProfileExpanded = false;
+let lobbyTutorialExpanded = false;
 type LobbyMode = "stage" | "puzzle" | "online" | "hotseat" | "tutorial";
 
 function getInitialStage(storage: MetaRuntime["storage"]): number {
@@ -77,41 +78,6 @@ function renderHeaderActions(nameOrOptions?: HeaderActionIcon | { showLogout?: b
     logout: '<path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/>',
   };
   return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="${iconSize}" height="${iconSize}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name]}</svg>`;
-}
-
-function openLobbySheet(
-  overlay: HTMLElement,
-  options: {
-    title: string;
-    bodyHtml: string;
-    onMount?: (sheet: HTMLElement, close: () => void) => void;
-  },
-): void {
-  const sheet = document.createElement("section");
-  sheet.className = "lobby-sheet-overlay";
-  sheet.setAttribute("role", "dialog");
-  sheet.setAttribute("aria-modal", "true");
-  sheet.tabIndex = -1;
-  sheet.innerHTML = `<div class="lobby-sheet"><div class="lobby-sheet-handle" aria-hidden="true"></div><header class="lobby-sheet-header"><h2 id="lobby-sheet-title">${escapeHtml(options.title)}</h2><button type="button" class="lobby-sheet-close" aria-label="${escapeHtml(I18nManager.t("common.close"))}">${I18nManager.t("common.close")}</button></header><div class="lobby-sheet-body">${options.bodyHtml}</div></div>`;
-  sheet.setAttribute("aria-labelledby", "lobby-sheet-title");
-  const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  const close = () => {
-    sheet.remove();
-    previousFocus?.focus();
-  };
-  sheet.addEventListener("click", (event) => {
-    if (event.target === sheet) close();
-  });
-  sheet.querySelector<HTMLButtonElement>(".lobby-sheet-close")?.addEventListener("click", close);
-  sheet.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-    }
-  });
-  overlay.append(sheet);
-  options.onMount?.(sheet, close);
-  sheet.querySelector<HTMLButtonElement>(".lobby-sheet-close")?.focus();
 }
 
 function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; tutorialType: "basic" | "advanced"; stage: number; assetId: "lobbyHeroStage" | "lobbyHeroTutorial" | "lobbyAvatar"; eyebrow: string; title: string; body: string; cta: string } {
@@ -189,7 +155,7 @@ function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: number): str
 }
 
 function renderFooterLinks(): string {
-  return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><button type="button" data-lobby-footer="tutorial">${escapeHtml(I18nManager.t("lobby.footer_tutorial"))}</button><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>`;
+  return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>`;
 }
 
 function renderProfilePanel(user: UserProfile, points: number): string {
@@ -202,12 +168,9 @@ function renderProfileCard(user: UserProfile, points: number): string {
   return `<div class="lobby-profile${expanded}" data-expanded="${lobbyProfileExpanded}">${renderProfileChip(user)}${renderProfilePanel(user, points)}</div>`;
 }
 
-function openTutorialSheet(runtime: MainMenuRuntime): void {
-  openLobbySheet(runtime.overlay, {
-    title: I18nManager.t("lobby.tutorial_sheet_title"),
-    bodyHtml: `<div class="lobby-tutorial-sheet"><p class="lobby-tutorial-copy">${escapeHtml(I18nManager.t("lobby.hero_sub_tutorial"))}</p><div class="lobby-tutorial-actions"><button type="button" data-sheet-mode="tutorial" data-tutorial-type="basic" class="lobby-sheet-action">${escapeHtml(I18nManager.t("lobby.tutorial_basic"))}</button><button type="button" data-sheet-mode="tutorial" data-tutorial-type="advanced" class="lobby-sheet-action">${escapeHtml(I18nManager.t("lobby.tutorial_advanced"))}</button></div></div>`,
-    onMount: (sheet, close) => sheet.querySelectorAll<HTMLButtonElement>("[data-sheet-mode]").forEach((button) => button.addEventListener("click", () => { const type = (button.dataset.tutorialType as "basic" | "advanced") ?? "basic"; close(); void startLobbyMode(runtime, "tutorial", 1, type); })),
-  });
+function renderTutorialBar(): string {
+  const inert = lobbyTutorialExpanded ? "" : " inert";
+  return `<section class="lobby-tutorial" data-expanded="${lobbyTutorialExpanded}"><button type="button" id="menu-tutorial-btn" class="lobby-tutorial-bar" aria-expanded="${lobbyTutorialExpanded}" aria-controls="menu-tutorial-panel"><span class="lobby-tutorial-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11a2 2 0 0 1 2 2v15a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v17a2 2 0 0 1 2-2h2.5a2.5 2.5 0 0 1 2.5 2.5Z"/></svg></span><span class="lobby-tutorial-label">${escapeHtml(I18nManager.t("lobby.footer_tutorial"))}</span><span class="lobby-chip-chevron">${renderHeaderActions("chevron")}</span></button><div class="lobby-tutorial-body"><div id="menu-tutorial-panel" class="lobby-tutorial-panel" aria-hidden="${!lobbyTutorialExpanded}"${inert}><button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="basic">${escapeHtml(I18nManager.t("lobby.tutorial_basic"))}</button><button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="advanced">${escapeHtml(I18nManager.t("lobby.tutorial_advanced"))}</button></div></div></section>`;
 }
 
 async function startLobbyMode(
@@ -728,7 +691,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p>${progressStorage.owner ? '<button type="button" id="progress-save">저장 다시 시도</button>' : ''}${progressStorage.canImport() ? '<p>이 기기에 이전 진행도가 있습니다. 본인의 기록인 경우에만 가져오세요.</p><button type="button" id="progress-import">이 기기 기록 가져오기</button><button type="button" id="progress-skip-import">새로 시작</button>' : ''}</div>${renderRecommendationCard(recommendation, heroAsset)}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p>${progressStorage.owner ? '<button type="button" id="progress-save">저장 다시 시도</button>' : ''}${progressStorage.canImport() ? '<p>이 기기에 이전 진행도가 있습니다. 본인의 기록인 경우에만 가져오세요.</p><button type="button" id="progress-import">이 기기 기록 가져오기</button><button type="button" id="progress-skip-import">새로 시작</button>' : ''}</div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   panel.querySelector("#progress-import")?.addEventListener("click", () => { void progressStorage.importLocal(); });
   panel.querySelector("#progress-skip-import")?.addEventListener("click", () => { progressStorage.dismissImport(); renderMainMenu(runtime); });
@@ -752,6 +715,10 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     lobbyProfileExpanded = !lobbyProfileExpanded;
     renderMainMenu(runtime);
   });
+  panel.querySelector("#menu-tutorial-btn")?.addEventListener("click", () => {
+    lobbyTutorialExpanded = !lobbyTutorialExpanded;
+    renderMainMenu(runtime);
+  });
   panel.querySelector("#btn-logout")?.addEventListener("click", async () => {
     await progressStorage.flush();
     const sb = getSupabaseClient();
@@ -759,10 +726,8 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     localStorage.removeItem("ca_logged_in_user");
     runtime.userProfile = null;
     lobbyProfileExpanded = false;
+    lobbyTutorialExpanded = false;
     renderMainMenu(runtime);
-  });
-  panel.querySelector('[data-lobby-footer="tutorial"]')?.addEventListener("click", () => {
-    openTutorialSheet(runtime);
   });
   panel.querySelector("#menu-recommendation-btn")?.addEventListener("click", () => {
     if (recommendation.mode === "stage") {
