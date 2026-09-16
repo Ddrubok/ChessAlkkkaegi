@@ -13,7 +13,7 @@
     "check:progress": "node src/tools/account-progress-check.mjs",
     "check:tiers": "node src/tools/tier-check.mjs && node src/tools/tier-ranking-check.mjs",
     "check:ads": "node --experimental-vm-modules src/tools/ads-check.mjs",
-    "check:regressions": "npm run check:tiers && node src/tools/auth-regression-check.mjs && node src/tools/nickname-safety-check.mjs && node src/tools/gameplay-regression-check.mjs && node src/tools/settlement-client-check.mjs && node src/tools/matchmaking-presence-check.mjs && node --import ./src/tools/headless-browser-env.mjs src/tools/online-check.mjs && npm run check:i18n",
+    "check:regressions": "npm run check:tiers && node src/tools/auth-regression-check.mjs && node src/tools/nickname-safety-check.mjs && node src/tools/gameplay-regression-check.mjs && node src/tools/settlement-client-check.mjs && node src/tools/matchmaking-presence-check.mjs && node --import ./src/tools/headless-browser-env.mjs src/tools/online-check.mjs && npm run check:i18n && node src/tools/selection-check.mjs",
     "check:i18n": "node src/tools/i18n-check.mjs && node src/tools/verify-site-i18n.mjs"
   },
   "dependencies": {

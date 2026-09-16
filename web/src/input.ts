@@ -406,7 +406,7 @@ function formatInteractionError(error: unknown): string {
 }
 
 /**
- * 숨김 여부와 무관하게 모든 렌더 말을 대상으로 최근접 교차 하나만 선택한다.
+ * 화면에 보이는 렌더 말 중 최근접 교차 하나만 선택한다.
  */
 function raycastNearestPiece(
   runtime: InputRuntime,
@@ -422,7 +422,7 @@ function raycastNearestPiece(
     runtime.sceneRuntime.camera,
   );
   const intersections = runtime.raycaster.intersectObjects(
-    [...runtime.sceneRuntime.pieceMeshes.values()],
+    [...runtime.sceneRuntime.pieceMeshes.values()].filter((mesh) => mesh.visible),
     false,
   );
   return intersections[0]?.object.name ?? null;
@@ -560,7 +560,7 @@ function findTouchFallbackPiece(
       continue;
     }
     const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
-    if (mesh === undefined) {
+    if (mesh === undefined || !mesh.visible) {
       continue;
     }
     mesh.getWorldPosition(worldPosition);
@@ -1469,7 +1469,7 @@ function findSwapTargetPiece(
       continue;
     }
     const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
-    if (mesh === undefined) {
+    if (mesh === undefined || !mesh.visible) {
       continue;
     }
     mesh.getWorldPosition(worldPos);
