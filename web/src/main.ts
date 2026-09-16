@@ -1,3 +1,4 @@
+import { createPlayerBanners } from "./player-banner";
 import { uiText } from "./ui-text";
 import "./style.css";
 import "./lobby.css";
@@ -554,6 +555,26 @@ async function bootstrap(): Promise<void> {
     }
   };
 
+  const playerBanners = createPlayerBanners(app, {
+    getState: () => ({
+      visible: !isMenuBlocking(menuRuntime) && gameModeRuntime !== null && !gameModeRuntime.switching && turnRuntime.phase !== "match-over",
+      mode: gameModeRuntime?.mode ?? "hotseat", stage: gameModeRuntime?.stageNumber ?? 1,
+      currentSide: turnRuntime.currentSide, mySide: onlineRuntime?.mySide ?? null,
+      profile: menuRuntime.userProfile, opponent: activeMatchOpponent,
+      rankedMode: activeOnlineMatchMode,
+      opponentBannerTheme: onlineRuntime?.opponentBannerTheme,
+      loggedIn: progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id,
+    }),
+    requestFriend: async (profileId, opponent) => {
+      const client = getSupabaseClient();
+      if (!client) return { success: false, error: "login_required" };
+      const { data, error } = await client.auth.getSession();
+      if (error || data.session?.user.id !== profileId || data.session.user.is_anonymous) {
+        return { success: false, error: "login_required" };
+      }
+      return SocialService.sendFriendRequest(profileId, opponent.nickname, opponent.id);
+    },
+  });
   const turnHud = createTurnHud(app, turnRuntime, {
     getGameMode: () => gameModeRuntime?.mode ?? "hotseat",
     getMySide: () => onlineRuntime?.mySide ?? null,
@@ -1676,6 +1697,7 @@ async function bootstrap(): Promise<void> {
       tuningRuntime,
       (now, frameDelta) => {
         turnHud.update(now, frameDelta);
+        playerBanners.update();
         if (activePuzzle && gameModeRuntime?.mode === "puzzle") {
           puzzleUI?.updateMarkers(activePuzzle.pieces.flatMap((piece) => {
             const binding = physicsRuntime.pieces.get(piece.id);

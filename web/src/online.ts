@@ -1,3 +1,4 @@
+import { getBannerTheme, isValidTheme, type BannerTheme } from "./banner-theme";
 import { uiText } from "./ui-text";
 import { Vector3 } from "three";
 import {
@@ -42,6 +43,7 @@ import {
 } from "./turn";
 
 export interface OnlineReadyMessage {
+  bannerTheme?: BannerTheme;
   // 양쪽 표준 보드 재생성이 끝났음을 알리는 준비 메시지 종류다.
   kind: "ready";
   // 다른 대국의 준비 메시지를 섞지 않게 하는 매치 식별자다.
@@ -95,6 +97,7 @@ export interface OnlineStateSnapshotMessage {
 }
 
 export interface OnlineResumeMessage {
+  bannerTheme?: BannerTheme;
   // 새 WebRTC 링크에서 보유 턴과 상태를 대조하는 재개 인사다.
   kind: "resume";
   // 초대·응답 코드에서 합의한 이어받을 매치 식별자다.
@@ -237,6 +240,7 @@ export interface OnlineLobbyOptions {
 }
 
 export interface OnlineRuntimeOptions {
+  getLocalBannerTheme?: () => BannerTheme;
   // 두 피어가 ready와 resume에서 반드시 일치시킬 매치 식별자다.
   matchId?: string;
   // 로컬 플레이어의 전략 덱 스탯이다.
@@ -296,6 +300,7 @@ export interface OnlineRuntime {
   localReady: boolean;
   // 상대의 ready 메시지를 받았는지 나타낸다.
   remoteReady: boolean;
+  opponentBannerTheme: BannerTheme;
   // 양쪽 준비와 연결이 끝나 로컬 선택을 허용하는 상태다.
   active: boolean;
   // 다음에 수락할 순차 턴 번호다.
@@ -424,6 +429,7 @@ export function parseOnlineMessage(
       return {
         kind: "ready",
         matchId: parseMatchId(source.matchId, "온라인 ready"),
+        bannerTheme: isValidTheme(source.bannerTheme) ? source.bannerTheme : "classic",
         side: source.side,
         stateHash: source.stateHash,
         strategyDeck: source.strategyDeck as import("./strategy-deck").StrategyDeck | null | undefined,
@@ -585,6 +591,7 @@ export function parseOnlineMessage(
       return {
         kind: "resume",
         matchId: parseMatchId(source.matchId, "온라인 resume"),
+        bannerTheme: isValidTheme(source.bannerTheme) ? source.bannerTheme : "classic",
         turnIndex: source.turnIndex,
         stateHash: source.stateHash,
       };
@@ -966,6 +973,7 @@ export function createOnlineRuntime(
     blackStrategyDeck: mySide === "black" ? options.localStrategyDeck ?? null : null,
     localReady: false,
     remoteReady: false,
+    opponentBannerTheme: "classic",
     active: false,
     nextTurnIndex: 0,
     activeTurn: null,
@@ -1585,6 +1593,7 @@ export function createOnlineRuntime(
   const sendReady = (now: number): void => {
     const message: OnlineReadyMessage = {
       kind: "ready",
+      bannerTheme: (options.getLocalBannerTheme ?? getBannerTheme)(),
       matchId,
       side: mySide,
       stateHash:
@@ -1605,6 +1614,7 @@ export function createOnlineRuntime(
     );
     const resume: OnlineResumeMessage = {
       kind: "resume",
+      bannerTheme: (options.getLocalBannerTheme ?? getBannerTheme)(),
       matchId,
       turnIndex: runtime.nextTurnIndex,
       stateHash: state.sha256,
@@ -1776,6 +1786,7 @@ export function createOnlineRuntime(
           if (message.side === mySide) {
             throw new Error("상대 ready 진영이 내 진영과 같습니다.");
           }
+          runtime.opponentBannerTheme = message.bannerTheme ?? "classic";
           runtime.remoteReady = true;
           remoteReadyHash = message.stateHash;
           const remoteDeck = message.strategyDeck ?? null;
@@ -1997,6 +2008,7 @@ export function createOnlineRuntime(
               `온라인 resume 매치가 다릅니다: local=${matchId}, remote=${message.matchId}`,
             );
           }
+          runtime.opponentBannerTheme = message.bannerTheme ?? "classic";
           const localStatePromise = capturePhysicsStateHash(
             turnRuntime.physicsRuntime,
           );

@@ -507,6 +507,7 @@ try {
   const guest = await createMatchRuntime(modules, meta);
   const transports = createFakeTransportPair();
   const resignedEvents = [];
+  let hostBanner = "classic", guestBanner = "slate";
   const hostOnline = online.createOnlineRuntime(
     transports.host,
     host.turnRuntime,
@@ -515,6 +516,7 @@ try {
     {
       onResigned: (side) => resignedEvents.push(`host:${side}`),
     },
+    { getLocalBannerTheme: () => hostBanner },
   );
   const guestOnline = online.createOnlineRuntime(
     transports.guest,
@@ -524,7 +526,13 @@ try {
     {
       onResigned: (side) => resignedEvents.push(`guest:${side}`),
     },
+    { getLocalBannerTheme: () => guestBanner },
   );
+  for (const kind of ["ready", "resume"]) {
+    const base = { kind, matchId: "banner-check", side: "white", turnIndex: 0, stateHash: "a".repeat(64) };
+    for (const theme of ["classic", "slate", "forest"]) assertCondition(online.parseOnlineMessage({...base, bannerTheme: theme}).bannerTheme === theme, "배너 파싱 실패");
+    for (const theme of [undefined, null, "unknown", {}, "<script>"]) assertCondition(online.parseOnlineMessage({...base, bannerTheme: theme}).bannerTheme === "classic", "누락/잘못된 배너 기본값 실패");
+  }
   let recoveryDiagnostics = null;
   transports.guest.beforeDeliver = (payload) => {
     if (payload.kind !== "stateRequest") {
@@ -571,6 +579,7 @@ try {
     hostOnline.waitUntilReady(),
     guestOnline.waitUntilReady(),
   ]);
+  assertCondition(hostOnline.opponentBannerTheme === "slate" && guestOnline.opponentBannerTheme === "classic", "양쪽의 서로 다른 배너가 교환되지 않았습니다.");
 
   const blockedRequest = createScriptedRequest(guest, 0);
   const blocked = guestOnline.queueLocalLaunch(blockedRequest);
@@ -817,11 +826,14 @@ try {
       ).accepted,
     "끊김 뒤 양쪽 입력이 차단되지 않았습니다.",
   );
+  hostBanner = "forest"; guestBanner = "classic";
   const resumedTransports = createFakeTransportPair();
   await Promise.all([
     hostOnline.replaceTransport(resumedTransports.host),
     guestOnline.replaceTransport(resumedTransports.guest),
   ]);
+  assertCondition(hostOnline.opponentBannerTheme === "classic" && guestOnline.opponentBannerTheme === "forest", "재접속 때 배너가 갱신되지 않았습니다.");
+  console.log("PASS banner sync: two peers, distinct themes, reconnect, old/invalid payload fallback");
   const resumedHost =
     await stateHash.capturePhysicsStateHash(host.physicsRuntime);
   const resumedGuest =

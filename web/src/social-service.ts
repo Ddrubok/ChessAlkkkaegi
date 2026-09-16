@@ -362,17 +362,17 @@ export class SocialService {
   public static async sendFriendRequest(
     myUserId: string,
     targetNickname: string,
+    targetUserId?: string,
   ): Promise<{ success: boolean; error?: string }> {
     const sb = getSupabaseClient();
     if (!sb) return { success: false, error: "Supabase 연결 없음" };
 
     try {
       // 1. 닉네임으로 타겟 유저 찾기
-      const { data: targetUser, error: searchErr } = await sb
-        .from("profiles")
-        .select("id, nickname")
-        .ilike("nickname", targetNickname.trim())
-        .single();
+      const query = sb.from("profiles").select("id, nickname");
+      const { data: targetUser, error: searchErr } = await (targetUserId
+        ? query.eq("id", targetUserId)
+        : query.ilike("nickname", targetNickname.trim())).single();
 
       if (searchErr || !targetUser) {
         return { success: false, error: "user_not_found" };
