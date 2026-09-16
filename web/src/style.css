@@ -539,7 +539,7 @@ body {
 }
 
 .match-result-panel {
-  width: min(22rem, 100%);
+  width: min(24rem, calc(100% - 1.5rem));
   padding: 1.5rem;
   border: 1px solid rgb(255 255 255 / 18%);
   border-radius: 0.8rem;
@@ -561,7 +561,9 @@ body {
 .match-result-panel h1 {
   margin: 0 0 1.1rem;
   color: #ffe7a3;
-  font-size: clamp(1.8rem, 7vw, 2.7rem);
+  font-size: clamp(1.7rem, 5.5vw, 2.25rem);
+  line-height: 1.2;
+  word-break: keep-all;
 }
 
 .match-result-details {

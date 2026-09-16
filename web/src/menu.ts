@@ -34,6 +34,8 @@ import {
   lobbyState,
 } from "./lobby";
 import type { LobbyMode } from "./lobby";
+import { MASTERY_DEFINITIONS, type MasteryId } from "./mastery";
+import { openMasteryBook } from "./mastery-ui";
 
 function openLogoutConfirm(runtime: MainMenuRuntime): void {
   if (runtime.overlay.querySelector(".lobby-logout-confirm")) return;
@@ -604,7 +606,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">저장 다시 시도</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">저장 다시 시도</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
     void openRankingModal(runtime.overlay, runtime.userProfile);
@@ -625,6 +627,14 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   panel.querySelector("#menu-profile-btn")?.addEventListener("click", () => {
     lobbyState.profileExpanded = !lobbyState.profileExpanded;
     renderMainMenu(runtime);
+  });
+  panel.querySelector("[data-open-mastery]")?.addEventListener("click", () => {
+    openMasteryBook(runtime.overlay, progressStorage, (id: MasteryId) => {
+      const route = MASTERY_DEFINITIONS.find(definition => definition.id === id)?.route;
+      if (route === "puzzle") void startLobbyMode(runtime, "puzzle");
+      else if (route === "tutorial") void startLobbyMode(runtime, "tutorial", 1, "basic");
+      else openPveLobbyModal(runtime, stage => startLobbyMode(runtime, "stage", stage));
+    }, () => renderMainMenu(runtime));
   });
   panel.querySelector("#menu-tutorial-btn")?.addEventListener("click", () => {
     lobbyState.tutorialExpanded = !lobbyState.tutorialExpanded;

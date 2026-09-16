@@ -14,6 +14,7 @@ export interface TurnHudOptions {
   getMySide: () => PieceSide | null;
   isMenuVisible?: () => boolean;
   onTimeoutLaunch?: () => void;
+  getTrackedObjective?: () => string | null;
 }
 
 const TURN_TIME_LIMIT_SECONDS = 20.0;
@@ -117,6 +118,11 @@ export function createTurnHud(
   accelBadge.innerHTML = `<span id="accel-text">물리 가속 (1.0x)</span>`;
   container.appendChild(accelBadge);
 
+  const objectiveBadge = document.createElement("div");
+  objectiveBadge.className = "mastery-hud-objective";
+  objectiveBadge.hidden = true;
+  container.appendChild(objectiveBadge);
+
   parent.appendChild(container);
 
   let remainingSeconds = TURN_TIME_LIMIT_SECONDS;
@@ -127,11 +133,22 @@ export function createTurnHud(
     // 경기 종료 또는 메인 메뉴가 열려있는 경우 숨김
     if (turnRuntime.phase === "match-over" || (options.isMenuVisible && options.isMenuVisible())) {
       container.style.display = "none";
+      objectiveBadge.hidden = true;
+      if (objectiveBadge.parentElement?.matches(".puzzle-ui-mastery-slot")) objectiveBadge.parentElement.hidden = true;
       return;
     }
     container.style.display = "flex";
-
     const gameMode = options.getGameMode();
+    const isPuzzle = gameMode === "puzzle";
+    const objectiveHost = isPuzzle ? document.querySelector<HTMLElement>(".puzzle-ui-overlay[data-screen=\"playing\"] [data-mastery-slot]") : null;
+    const desiredObjectiveHost = objectiveHost ?? container;
+    if (objectiveBadge.parentElement !== desiredObjectiveHost) desiredObjectiveHost.appendChild(objectiveBadge);
+    const objective = options.getTrackedObjective?.() ?? null;
+    objectiveBadge.hidden = objective === null;
+    if (objectiveHost) objectiveHost.hidden = objective === null;
+    objectiveBadge.textContent = objective ?? "";
+
+    mainBadge.style.display = isPuzzle ? "none" : "inline-flex";
     const mySide = options.getMySide();
     const currentSide = turnRuntime.currentSide;
 
@@ -210,7 +227,7 @@ export function createTurnHud(
     }
 
     // 발사 후 5초 초과 정착 가속 인디케이터 배지
-    if (turnRuntime.phase === "settling" && turnRuntime.settleSeconds > 5.0) {
+    if (!isPuzzle && turnRuntime.phase === "settling" && turnRuntime.settleSeconds > 5.0) {
       const accel = Math.min(4.5, 1.0 + (turnRuntime.settleSeconds - 5.0) * 0.7);
       accelBadge.style.display = "flex";
       const accelTextEl = accelBadge.querySelector("#accel-text");
@@ -223,6 +240,7 @@ export function createTurnHud(
   };
 
   const destroy = (): void => {
+    objectiveBadge.remove();
     container.remove();
   };
 

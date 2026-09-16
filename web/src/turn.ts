@@ -46,6 +46,11 @@ export type TurnPhase =
   | "promotion"
   | "match-over";
 export type TurnCameraMode = "classic" | "billiards";
+export interface TurnSettlementEvidence {
+  launchingSide: PieceSide;
+  forced: boolean;
+  removedPieces: readonly { id: string; side: PieceSide; type: PieceType }[];
+}
 
 export interface TurnLaunchRequest extends LaunchRequest {
   // 플레이어는 1을 생략하고 흑 AI 스테이지 힘 버프만 목표 속도를 배수로 높인다.
@@ -101,6 +106,9 @@ export interface TurnRuntime {
     | null;
   // 낙하 제거와 정착이 끝난 한 턴의 상태 해시 시점을 기록 계층에 알리는 연결점이다.
   onTurnSettled: (() => void) | null;
+  // 숙련 기록은 퍼즐을 포함한 실제 한 발의 제거 증거를 재생 기록과 분리해 받는다.
+  onMasterySettlement: ((evidence: TurnSettlementEvidence) => void) | null;
+  settlementRemovedPieces: { id: string; side: PieceSide; type: PieceType }[];
   // 퍼즐은 기록용 후크와 별도로 실제 정착 결과를 소비한다.
   onPuzzleSettled?: () => void;
   onPuzzlePhysicsStep?: (step: number) => void;
@@ -426,6 +434,8 @@ export function createTurnRuntime(
     onMatchOver: null,
     onLaunchAccepted: null,
     onTurnSettled: null,
+    onMasterySettlement: null,
+    settlementRemovedPieces: [],
     turnCameraMode: "billiards",
     gameMode: "hotseat",
     cameraPerspectiveSide: null,
@@ -678,6 +688,7 @@ export function queueTurnLaunch(
   runtime.restHoldSeconds = 0;
   runtime.settleSeconds = 0;
   runtime.forcedSettleCountedForCurrentSettle = false;
+  runtime.settlementRemovedPieces = [];
   if (runtime.onLaunchAccepted !== null) {
     invokePassiveHook("대국 기록 발사 후크", () => {
       runtime.onLaunchAccepted?.(request, runtime.currentSide);
@@ -852,6 +863,7 @@ function removeFallenPieces(runtime: TurnRuntime): void {
     runtime.promotionQueue = runtime.promotionQueue.filter(
       (id) => id !== pieceId,
     );
+    runtime.settlementRemovedPieces.push({ id: pieceId, side: binding.instance.side, type: binding.instance.type });
     runtime.onPieceRemoved?.(pieceId);
   }
   runtime.pendingRemovalIds.clear();
@@ -930,6 +942,13 @@ function completeSettlement(runtime: TurnRuntime): void {
     return;
   }
   runtime.pendingTurnChange = false;
+  if (runtime.onMasterySettlement !== null) {
+    invokePassiveHook("숙련 기록 정착 후크", () => runtime.onMasterySettlement?.({
+      launchingSide: justFinishedSide,
+      forced: runtime.forcedSettleCountedForCurrentSettle,
+      removedPieces: [...runtime.settlementRemovedPieces],
+    }));
+  }
   if (runtime.gameMode === "puzzle") {
     runtime.turnNumber += 1;
     runtime.currentSide = "white";
@@ -1175,6 +1194,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.restHoldSeconds = 0;
   runtime.settleSeconds = 0;
   runtime.pendingRemovalIds.clear();
+  runtime.settlementRemovedPieces = [];
   runtime.lastLaunchPower = 0;
   runtime.lastLaunchInitialSpeed = 0;
   runtime.physicsStepNumber = 0;

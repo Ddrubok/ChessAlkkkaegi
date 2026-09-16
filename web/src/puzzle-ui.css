@@ -68,6 +68,9 @@
 .puzzle-ui-hud-bottom { order: 0; align-self: flex-end; justify-content: flex-end; flex-wrap: wrap; gap: 6px; max-width: calc(100% - 180px); min-height: 34px; }
 .puzzle-ui-hud-bottom button { pointer-events: auto; min-height: 34px; padding: .45rem .75rem; border: 1px solid rgb(255 255 255 / 16%); border-radius: .65rem; background: rgb(15 23 42 / 88%); color: #f8f2e7; font-size: .85rem; box-sizing: border-box; }
 .puzzle-ui-playing > .puzzle-ui-action-error { order: 3; }
+.puzzle-ui-mastery-slot { order: 4; display: flex; align-self: center; justify-content: center; max-width: 100%; pointer-events: none; }
+.puzzle-ui-mastery-slot[hidden] { display: none; }
+.puzzle-ui-mastery-slot .mastery-hud-objective { position: static; top: auto; max-width: min(360px, 100%); }
 .puzzle-ui-marker-layer { position: absolute; inset: 0; pointer-events: none; }
 .puzzle-ui-marker { position: absolute; display: block; transform: translate(-50%, -100%); color: #f5ce83; font: 800 18px/1 system-ui, sans-serif; text-shadow: 0 1px 4px #000, 0 0 8px #000; }
 .puzzle-ui-marker-protect { color: #67e8f9; }

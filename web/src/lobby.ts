@@ -8,6 +8,8 @@ import { isBasicTutorialCompleted, pickLobbyRecommendation } from "./lobby-recom
 import { resolveRuntimeAssetUrl } from "./portable-assets";
 import { progressStorage } from "./progress-storage";
 import { PUZZLE_CATALOG, getPuzzleProgress, loadPuzzleProgress } from "./puzzle";
+import { equippedItem, loadMasterySnapshot } from "./mastery";
+import { masteryCopy, renderMasteryProfileSummary } from "./mastery-ui";
 
 export const PVE_MAX_STAGE = 10;
 export const lobbyState = { profileExpanded: false, tutorialExpanded: false };
@@ -110,7 +112,10 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
 
 export function renderProfileChip(user: UserProfile): string {
   const avatar = safeRuntimeAssetUrl("lobbyAvatar");
-  return `<button type="button" id="menu-profile-btn" class="lobby-chip" data-profile-toggle aria-expanded="${lobbyState.profileExpanded}" aria-controls="menu-profile-panel" aria-label="${escapeHtml(I18nManager.t("lobby.profile_chip_open"))}"><img src="${escapeHtml(avatar)}" alt="" width="30" height="30"><span class="lobby-chip-name">${escapeHtml(user.nickname)}</span><span class="lobby-chip-tier">${renderTierBadge(user.classicMmr ?? user.mmr, false)}</span><span class="lobby-chip-chevron">${renderHeaderActions("chevron")}</span></button>`;
+  const snapshot = loadMasterySnapshot(progressStorage);
+  const frame = equippedItem(snapshot, "frame");
+  const title = equippedItem(snapshot, "title") === "title:explorer" ? masteryCopy().explorer : "";
+  return `<button type="button" id="menu-profile-btn" class="lobby-chip${frame ? " mastery-frame-equipped" : ""}" data-profile-toggle aria-expanded="${lobbyState.profileExpanded}" aria-controls="menu-profile-panel" aria-label="${escapeHtml(I18nManager.t("lobby.profile_chip_open"))}"><img src="${escapeHtml(avatar)}" alt="" width="30" height="30"><span class="lobby-chip-name">${escapeHtml(user.nickname)}${title ? `<small class="mastery-equipped-title">${escapeHtml(title)}</small>` : ""}</span><span class="lobby-chip-tier">${renderTierBadge(user.classicMmr ?? user.mmr, false)}</span><span class="lobby-chip-chevron">${renderHeaderActions("chevron")}</span></button>`;
 }
 
 export function renderRecommendationCard(recommendation: ReturnType<typeof getRecommendation>, heroAsset: string): string {
@@ -143,7 +148,7 @@ export function renderFooterLinks(): string {
 
 export function renderProfilePanel(user: UserProfile, points: number): string {
   const inert = lobbyState.profileExpanded ? "" : " inert";
-  return `<div class="lobby-profile-body"><div id="menu-profile-panel" class="lobby-profile-panel" aria-hidden="${!lobbyState.profileExpanded}"${inert}><p class="lobby-profile-points">${escapeHtml(I18nManager.t("common.points"))} <strong>${points} P</strong></p><div class="menu-tier-columns"><div class="menu-tier-column"><div class="tier-label tier-label-classic">${I18nManager.t("online.classic_tab")}</div><div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 }))}</div></div><div class="menu-tier-column"><div class="tier-label tier-label-strategy">${I18nManager.t("online.strategy_tab")}</div><div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 }))}</div></div></div></div></div>`;
+  return `<div class="lobby-profile-body"><div id="menu-profile-panel" class="lobby-profile-panel" aria-hidden="${!lobbyState.profileExpanded}"${inert}><p class="lobby-profile-points">${escapeHtml(I18nManager.t("common.points"))} <strong>${points} P</strong></p><div class="menu-tier-columns"><div class="menu-tier-column"><div class="tier-label tier-label-classic">${I18nManager.t("online.classic_tab")}</div><div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 }))}</div></div><div class="menu-tier-column"><div class="tier-label tier-label-strategy">${I18nManager.t("online.strategy_tab")}</div><div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 }))}</div></div></div>${renderMasteryProfileSummary(progressStorage)}</div></div>`;
 }
 
 export function renderProfileCard(user: UserProfile, points: number): string {

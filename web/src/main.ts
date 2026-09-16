@@ -1,6 +1,7 @@
 import "./style.css";
 import "./lobby.css";
 import "./progress.css";
+import "./mastery-ui.css";
 import { progressStorage } from "./progress-storage";
 import { getTier } from "./tier";
 import { formatTier, formatTierProgress } from "./tier-view";
@@ -130,6 +131,7 @@ import {
 import { openPromotionModal } from "./promotion-modal";
 import {
   createTuningRuntime,
+  createDefaultRuntimeTuningSettings,
   applyPuzzleTuningDefaults,
   restoreLocalTuningSettings,
   setPuzzleTuningLocked,
@@ -176,6 +178,16 @@ import {
   setTurnGameMode,
   wakeAllTurnPieces,
 } from "./turn";
+import {
+  STAGE_TEMPLATE_IDS,
+  backfillPuzzleMastery,
+  recordMasteryDoubleOut,
+  recordMasteryLaunch,
+  recordMasteryPuzzle,
+  recordMasteryPveVictory,
+  type MasteryProgressItem,
+} from "./mastery";
+import { appendMasteryResult, openMasteryBook, trackedMasteryText } from "./mastery-ui";
 
 const appElement = document.querySelector<HTMLElement>("#app");
 
@@ -385,11 +397,45 @@ async function bootstrap(): Promise<void> {
   let puzzleAttempt: PuzzleEvaluationInput | null = null;
   let puzzleTracker: PuzzlePhysicsTracker | null = null;
   let puzzleProgress = loadPuzzleProgress();
+  backfillPuzzleMastery(progressStorage, puzzleProgress);
+  let masteryRun: {
+    eventId: string;
+    mode: GameMode;
+    stageNumber: number;
+    eligible: boolean;
+    enemyFalls: Set<string>;
+    ownFalls: Set<string>;
+    playerEnemyFalls: Set<string>;
+    activePlayerLaunchId: string | null;
+    automaticLaunchActive: boolean;
+  } | null = null;
+  let masteryNextBoardDebug = false;
+  let recentMasteryItems: MasteryProgressItem[] = [];
+  const addMasteryItems = (items: readonly MasteryProgressItem[]): void => {
+    for (const item of items) {
+      const prior = recentMasteryItems.find(existing => existing.medalId === item.medalId);
+      if (prior) { prior.after = item.after; prior.achieved = item.achieved; }
+      else recentMasteryItems.push({ ...item });
+    }
+  };
+  const tuningIsDefault = (): boolean => {
+    const defaults = createDefaultRuntimeTuningSettings();
+    return Object.keys(defaults).every(key => tuningRuntime.settings[key as keyof typeof defaults] === defaults[key as keyof typeof defaults])
+      && Object.keys(cardTuningRuntime.defaultSettings).every(key => cardTuningRuntime.settings[key as keyof typeof cardTuningRuntime.settings] === cardTuningRuntime.defaultSettings[key as keyof typeof cardTuningRuntime.defaultSettings]);
+  };
+  const markMasteryDebugMutation = (): void => { if (masteryRun) masteryRun.eligible = false; };
+  tuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
+  tuningRuntime.panel.addEventListener("click", markMasteryDebugMutation);
+  cardTuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
+  cardTuningRuntime.panel.addEventListener("click", markMasteryDebugMutation);
   progressStorage.subscribe((reset) => {
     if (reset) {
       metaRuntime.storage = progressStorage;
       metaRuntime.state = loadMetaState(metaRuntime.storage);
       puzzleProgress = loadPuzzleProgress();
+      backfillPuzzleMastery(progressStorage, puzzleProgress);
+      masteryRun = null;
+      recentMasteryItems = [];
     }
     if (!progressStorage.ready || (reset && menuRuntime.visible)) {
       if (!progressStorage.ready) {
@@ -402,7 +448,7 @@ async function bootstrap(): Promise<void> {
       const status = menuRuntime.overlay.querySelector<HTMLElement>("[data-progress-status]");
       if (status) status.textContent = progressStorage.status;
       const controls = menuRuntime.overlay.querySelector<HTMLElement>("[data-progress-controls]");
-      if (controls) controls.hidden = !progressStorage.saveFailed;
+      if (controls) controls.hidden = !progressStorage.saveFailed && !progressStorage.masteryPending;
     }
   });
   let puzzleHintLevel: 0 | 1 | 2 = 0;
@@ -493,6 +539,7 @@ async function bootstrap(): Promise<void> {
       speedMultiplier: 1,
     };
 
+    if (masteryRun) { masteryRun.activePlayerLaunchId = null; masteryRun.automaticLaunchActive = true; }
     if (gameModeRuntime?.mode === "online" && onlineRuntime) {
       onlineRuntime.queueLocalLaunch(timeoutLaunchRequest);
     } else {
@@ -503,8 +550,9 @@ async function bootstrap(): Promise<void> {
   const turnHud = createTurnHud(app, turnRuntime, {
     getGameMode: () => gameModeRuntime?.mode ?? "hotseat",
     getMySide: () => onlineRuntime?.mySide ?? null,
-    isMenuVisible: () => !menuRuntime.overlay.hidden || gameModeRuntime?.mode === "puzzle",
+    isMenuVisible: () => !menuRuntime.overlay.hidden,
     onTimeoutLaunch: handleTurnTimeout,
+    getTrackedObjective: () => trackedMasteryText(progressStorage),
   });
   let appliedEnemyBuffStepScale =
     tuningRuntime.settings.enemyStageBuffScale;
@@ -704,6 +752,16 @@ async function bootstrap(): Promise<void> {
           onlineRuntime !== null
           ? onlineRuntime.queueLocalLaunch(launchRequest)
           : queueTurnLaunch(turnRuntime, launchRequest);
+        if (accepted.accepted && binding?.instance.side === "white" && masteryRun &&
+          ["stage", "tutorial", "puzzle"].includes(gameMode) && masteryRun.mode === gameMode) {
+          if (!tuningIsDefault()) masteryRun.eligible = false;
+          masteryRun.automaticLaunchActive = false;
+          const launchEventId = `${masteryRun.eventId}:L${turnRuntime.turnNumber}:${request.pieceId}`.slice(0, 96);
+          masteryRun.activePlayerLaunchId = launchEventId;
+          if (masteryRun.eligible) addMasteryItems(recordMasteryLaunch(progressStorage, {
+            eventId: launchEventId, pieceType: binding.instance.type,
+          }).items);
+        }
         if (accepted.accepted && gameMode === "puzzle") onPuzzleLaunch?.(launchRequest);
         return accepted;
       },
@@ -712,6 +770,7 @@ async function bootstrap(): Promise<void> {
     },
   );
   tuningRuntime.wakeAllHandler = () => {
+    markMasteryDebugMutation();
     cancelInputInteraction(inputRuntime, true);
     wakeAllTurnPieces(turnRuntime);
   };
@@ -969,6 +1028,18 @@ async function bootstrap(): Promise<void> {
     resetPieceHitSoundTracking();
     synchronizePieceMeshes(sceneRuntime, physicsRuntime);
     resetTurnRuntime(turnRuntime);
+    const runId = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? `match-${crypto.randomUUID()}` : `match-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    masteryRun = {
+      eventId: runId,
+      mode: stageOptions.gameMode,
+      stageNumber: stageOptions.stageNumber,
+      eligible: !masteryNextBoardDebug && tuningIsDefault(),
+      enemyFalls: new Set(), ownFalls: new Set(), playerEnemyFalls: new Set(),
+      activePlayerLaunchId: null, automaticLaunchActive: false,
+    };
+    masteryNextBoardDebug = false;
+    recentMasteryItems = [];
     resetInputAfterMatch(inputRuntime, physicsRuntime.pieces.keys());
     const replayHeaderSource: ReplayHeaderSource = {
       gameMode: stageOptions.gameMode,
@@ -1164,6 +1235,8 @@ async function bootstrap(): Promise<void> {
     );
   };
   cardTuningRuntime.relayoutHandler = async (): Promise<void> => {
+    masteryNextBoardDebug = true;
+    markMasteryDebugMutation();
     if (gameModeRuntime === null) {
       throw new Error("현재 대전 모드가 준비되지 않았습니다.");
     }
@@ -1191,6 +1264,8 @@ async function bootstrap(): Promise<void> {
   cardTuningRuntime.stageJumpHandler = async (
     targetStageNumber: number,
   ): Promise<void> => {
+    masteryNextBoardDebug = true;
+    markMasteryDebugMutation();
     if (gameModeRuntime === null) {
       throw new Error("현재 대전 모드가 준비되지 않았습니다.");
     }
@@ -1376,6 +1451,28 @@ async function bootstrap(): Promise<void> {
     }
   });
 
+  turnRuntime.onMasterySettlement = (evidence) => {
+    const run = masteryRun;
+    if (!run || run.mode !== (gameModeRuntime?.mode ?? "hotseat")) return;
+    if (!tuningIsDefault()) run.eligible = false;
+    for (const piece of evidence.removedPieces) {
+      if (piece.side === "white") run.ownFalls.add(piece.id);
+      else if (!run.automaticLaunchActive) {
+        run.enemyFalls.add(piece.id);
+        if (evidence.launchingSide === "white") run.playerEnemyFalls.add(piece.id);
+      }
+    }
+    if (run.eligible && !run.automaticLaunchActive && evidence.launchingSide === "white" &&
+      run.activePlayerLaunchId && (run.mode === "stage" || run.mode === "puzzle")) {
+      const fallenEnemies = evidence.removedPieces.filter(piece => piece.side === "black").map(piece => piece.id);
+      if (fallenEnemies.length >= 2) addMasteryItems(recordMasteryDoubleOut(progressStorage, {
+        eventId: run.activePlayerLaunchId, enemyPieceIds: fallenEnemies, fallCount: fallenEnemies.length,
+      }).items);
+    }
+    run.activePlayerLaunchId = null;
+    run.automaticLaunchActive = false;
+  };
+
   turnRuntime.onTurnSettled = () => {
     if (gameModeRuntime?.mode === "tutorial") {
       const remainingBlack = [...physicsRuntime.pieces.values()].filter(
@@ -1421,6 +1518,17 @@ async function bootstrap(): Promise<void> {
       return;
     }
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
+    if (gameMode === "stage" && winner === "white" && masteryRun) {
+      if (!tuningIsDefault()) masteryRun.eligible = false;
+      if (masteryRun.eligible && masteryRun.enemyFalls.size > 0) addMasteryItems(recordMasteryPveVictory(progressStorage, {
+        eventId: masteryRun.eventId,
+        templateId: STAGE_TEMPLATE_IDS[completedStage] ?? `stage-${completedStage}:v1`,
+        enemyPieceIds: [...masteryRun.enemyFalls],
+        playerEnemyPieceIds: [...masteryRun.playerEnemyFalls],
+        ownFallCount: masteryRun.ownFalls.size,
+      }).items);
+    }
+    const openAllMastery = () => openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });
     if (gameMode === "stage") {
       if (winner === "white") {
         recordStageRunClear(stageRunPoints, completedStage);
@@ -1443,6 +1551,7 @@ async function bootstrap(): Promise<void> {
           completedRun,
           () => returnToMainMenu(menuRuntime),
         );
+        appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
         return;
       }
     }
@@ -1532,6 +1641,7 @@ async function bootstrap(): Promise<void> {
         ? onlineRuntime?.mySide ?? null
         : null,
     );
+    if (gameMode === "stage") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
     if (gameMode === "online") {
       onlineResignButton.hidden = true;
       void recordOnlineMatchSettlement(winner);
@@ -1964,6 +2074,9 @@ async function bootstrap(): Promise<void> {
       false,
       () => returnToMainMenu(menuRuntime),
     );
+    appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, () => {
+      openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });
+    });
   };
   if (
     new URLSearchParams(window.location.search).get("replay") === "1"
@@ -2136,10 +2249,21 @@ async function bootstrap(): Promise<void> {
         customHitUsed: puzzleAttempt.customHitUsed,
       }).store;
       savePuzzleProgress(puzzleProgress);
+      if (evaluation.status === "success" && masteryRun) {
+        if (!tuningIsDefault()) masteryRun.eligible = false;
+        if (masteryRun.eligible) addMasteryItems(recordMasteryPuzzle(progressStorage, {
+          eventId: `${masteryRun.eventId}:puzzle`.slice(0, 96), puzzleId: activePuzzle.puzzleId,
+          revision: activePuzzle.revision, gold: evaluation.medal === 3,
+        }).items);
+      }
       puzzleUI?.showResult(activePuzzle.puzzleId, {
         success: evaluation.status === "success", objectiveMet: evaluation.requiredComplete,
         goldMet: evaluation.medal === 3, medal: evaluation.medal,
         failureCode: evaluation.failureReasons[0]?.code,
+      });
+      const puzzleResultCard = app.querySelector<HTMLElement>(".puzzle-ui-result-card");
+      if (puzzleResultCard) appendMasteryResult(puzzleResultCard, recentMasteryItems, () => {
+        openMasteryBook(app, progressStorage, () => { void showPuzzleLibrary(); });
       });
     } else {
       const nextPlayer = activePuzzle.pieces.find((piece) => piece.side === "white" && physicsRuntime.pieces.has(piece.id));
