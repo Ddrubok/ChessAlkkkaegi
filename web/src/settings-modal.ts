@@ -173,64 +173,39 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
       // 2. 배너 외형 설정 탭 (3가지 테마 선택)
       // -------------------------------------------------------------
       const currentTheme = getBannerTheme();
-      const themeSwatches: Record<BannerTheme, { gradient: string; border: string; accent: string }> = {
-        classic: {
-          gradient: "#211e19",
-          border: "#d8b674",
-          accent: "#fef3c7",
-        },
-        slate: {
-          gradient: "#1b2732",
-          border: "#91b8d4",
-          accent: "#e0f2fe",
-        },
-        forest: {
-          gradient: "#1f2a23",
-          border: "#9bbe92",
-          accent: "#dcfce7",
-        },
-      };
+      const rawBase = import.meta.env.BASE_URL || "/";
+      const baseUrl = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
 
       content.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:12px;">
           <div style="display:flex; flex-direction:column; gap:10px;">
             ${BANNER_THEMES.map((theme) => {
               const isSelected = currentTheme === theme;
-              const swatch = themeSwatches[theme];
               const label = bannerThemeLabel(theme);
+              const imgSrc = `${baseUrl}assets/banners/${theme}.webp`;
               return `
                 <button class="banner-theme-select-btn" data-theme="${theme}" aria-pressed="${isSelected ? "true" : "false"}" style="
                   background: ${isSelected ? "#1e293b" : "#0f172a"};
                   border: 2px solid ${isSelected ? "#3b82f6" : "#334155"};
                   color: #f8fafc;
                   border-radius: 12px;
-                  padding: 12px 14px;
+                  overflow: hidden;
+                  padding: 0;
                   cursor: pointer;
                   display: flex;
-                  align-items: center;
-                  justify-content: space-between;
-                  gap: 12px;
-
+                  flex-direction: column;
                   transition: border-color 0.15s, transform 0.1s;
                   text-align: left;
                   box-sizing: border-box;
+                  width: 100%;
                 ">
-                  <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
-                    <!-- 테마 스와치 프리뷰 바 -->
-                    <div style="
-                      width: 44px;
-                      height: 32px;
-                      border-radius: 6px;
-                      background: ${swatch.gradient};
-                      border: 1px solid ${swatch.border};
-                      flex-shrink: 0;
-                      box-shadow: inset 0 1px 2px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.4);
-                    "></div>
-                    <div style="display:flex; flex-direction:column; min-width:0;">
-                      <span style="font-size:14px; font-weight:700; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</span>
-                    </div>
+                  <div style="width:100%; aspect-ratio:3/1; overflow:hidden; background:#0b0f19;">
+                    <img src="${imgSrc}" alt="${label}" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;" />
                   </div>
-                  ${isSelected ? '<span class="selected-indicator" style="font-size:11px; font-weight:800; background:#2563eb; color:white; padding:3px 7px; border-radius:6px; flex-shrink:0;">✓</span>' : ""}
+                  <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; width:100%; box-sizing:border-box; gap:10px;">
+                    <span style="font-size:14px; font-weight:700; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${label}</span>
+                    ${isSelected ? '<span class="selected-indicator" style="font-size:11px; font-weight:800; background:#2563eb; color:white; padding:3px 7px; border-radius:6px; flex-shrink:0;">✓</span>' : ""}
+                  </div>
                 </button>
               `;
             }).join("")}
