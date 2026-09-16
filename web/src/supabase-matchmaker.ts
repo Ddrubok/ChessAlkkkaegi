@@ -22,6 +22,7 @@ export interface MatchmakingStatus {
   message: string;
   waitTimeSeconds: number;
   allowedMmrDiff: number;
+  waitingPlayers: number | null;
   opponent?: {
     id: string;
     nickname: string;
@@ -232,6 +233,8 @@ export class SupabaseMatchmaker {
   private user: UserProfile;
   private channel: RealtimeChannel | null = null;
   private evalTimer: number | null = null;
+  private waitingPlayers: number | null = null;
+  private queueSynced = false;
   private startTime = 0;
   private activeMatchId: string | null = null;
   private isHost = false;
@@ -297,13 +300,19 @@ export class SupabaseMatchmaker {
       },
     });
 
+    const queueChannel = this.channel;
     this.channel
-      .on("presence", { event: "sync" }, () => this.evaluateQueue())
-      .on("presence", { event: "join" }, () => this.evaluateQueue())
+      .on("presence", { event: "sync" }, () => {
+        if (this.channel !== queueChannel || this.isCancelled) return;
+        this.queueSynced = true;
+        this.evaluateQueue();
+      })
       .on("broadcast", { event: "webrtc-signal" }, ({ payload }) => {
+        if (this.channel !== queueChannel) return;
         void this.handleIncomingSignal(payload as SignalMessage);
       })
       .subscribe(async (status) => {
+        if (this.channel !== queueChannel || this.isCancelled || this.isConnectionEstablished) return;
         if (status === "SUBSCRIBED") {
           this.updateStatus("searching", "적합한 MMR의 상대를 탐색 중...");
           await this.channel?.track({
@@ -313,12 +322,15 @@ export class SupabaseMatchmaker {
             joinedAt: this.startTime,
           } satisfies PresencePayload);
 
-          // 2초마다 큐 재평가 및 타이머 가동
+          if (this.channel !== queueChannel || this.isCancelled) return;
+          if (this.evalTimer !== null) clearInterval(this.evalTimer);
+
+          // 1초마다 수신된 Presence 상태로 큐와 대기 시간을 갱신한다.
           this.evalTimer = window.setInterval(() => {
             if (this.isCancelled || this.activeMatchId || this.isConnectionEstablished) return;
             this.evaluateQueue();
-          }, 2000);
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          }, 1000);
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
           this.handleError(new Error(`매칭 채널 연결 오류: ${status}`));
         }
       });
@@ -331,6 +343,19 @@ export class SupabaseMatchmaker {
     if (!this.channel || this.activeMatchId || this.opponentProfile || this.isCancelled || this.isConnectionEstablished) return;
 
     const presenceState = this.channel.presenceState<PresencePayload>();
+    // Presence keys can contain several tabs for the same account.
+    const waitingIds = new Set<string>();
+    const busyIds = new Set<string>();
+    for (const presences of Object.values(presenceState)) {
+      for (const presence of presences) {
+        if (typeof presence.id !== "string" || !presence.id) continue;
+        const id = presence.id.toLowerCase();
+        if (id === this.user.id.toLowerCase()) continue;
+        (presence.targetMatchId ? busyIds : waitingIds).add(id);
+      }
+    }
+    this.waitingPlayers = this.queueSynced
+      ? [...waitingIds].filter(id => !busyIds.has(id)).length : null;
     const now = Date.now();
 
     // 쿨다운 만료 정리
@@ -388,6 +413,7 @@ export class SupabaseMatchmaker {
     this.activeMatchId = matchId;
     this.isHost = this.user.id.toLowerCase() === hostId.toLowerCase();
     this.opponentProfile = opponentInfo;
+    void this.trackQueueMatch(matchId);
 
     this.updateStatus("match-found", `대전 상대 발견: ${opponentInfo.nickname} (${opponentInfo.mmr})`, 0, 0, opponentInfo);
     this.startSignalingTimeout(matchId, opponentInfo.id);
@@ -431,6 +457,16 @@ export class SupabaseMatchmaker {
     this.opponentProfile = null;
     this.isHost = false;
     this.pendingIceCandidates = [];
+    void this.trackQueueMatch();
+  }
+
+  private async trackQueueMatch(targetMatchId?: string): Promise<void> {
+    if (!this.channel || !this.queueSynced || this.isCancelled) return;
+    await this.channel.track({
+      id: this.user.id, nickname: this.user.nickname,
+      mmr: this.queueMode === "strategy" ? (this.user.strategyMmr ?? this.user.mmr) : (this.user.classicMmr ?? this.user.mmr),
+      joinedAt: this.startTime, targetMatchId,
+    } satisfies PresencePayload).catch(error => console.warn("대기열 상태 갱신 실패:", error));
   }
 
   /**
@@ -446,6 +482,7 @@ export class SupabaseMatchmaker {
       if (signal.type === "offer") {
         if (!this.activeMatchId || this.activeMatchId.startsWith("pending-")) {
           this.activeMatchId = signal.matchId;
+          void this.trackQueueMatch(signal.matchId);
           this.isHost = false;
           const presenceState = this.channel?.presenceState<PresencePayload>() || {};
           const hostPresence = presenceState[signal.fromId]?.[0];
@@ -701,6 +738,7 @@ export class SupabaseMatchmaker {
         message,
         waitTimeSeconds: waitTime,
         allowedMmrDiff: allowedMmr,
+        waitingPlayers: phase === "searching" || phase === "joining-queue" ? this.waitingPlayers : null,
         opponent,
       });
     }
@@ -782,6 +820,8 @@ export class SupabaseMatchmaker {
   }
 
   private async cleanup(): Promise<void> {
+    this.waitingPlayers = null;
+    this.queueSynced = false;
     this.clearSignalingTimeout();
     this.setupGuestPromise = null;
     if (this.evalTimer !== null) {
@@ -789,13 +829,14 @@ export class SupabaseMatchmaker {
       this.evalTimer = null;
     }
     if (this.channel) {
-      try {
-        await this.channel.untrack();
-      } catch {}
-      try {
-        await this.client.removeChannel(this.channel);
-      } catch {}
+      const channel = this.channel;
       this.channel = null;
+      try {
+        await channel.untrack();
+      } catch {}
+      try {
+        await this.client.removeChannel(channel);
+      } catch {}
     }
     if (this.dataChannel) {
       try {

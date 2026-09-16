@@ -404,9 +404,11 @@ export class SupabaseMatchUi {
     const modeName = matchMode === "strategy" ? I18nManager.t("online.strategy_tab") : I18nManager.t("online.classic_tab");
     modalOverlay.innerHTML = `
       <div style="font-size:48px; animation: pulse 1.5s infinite;"></div>
-      <h3 style="margin:0; font-size:18px; color:#f8fafc; font-weight:700;">${I18nManager.t("online.searching_opponent", { mode: modeName })}</h3>
+      <h3 style="margin:0; font-size:18px; color:#f8fafc; font-weight:700; text-align:center;">${I18nManager.t("online.searching_opponent", { mode: modeName })}</h3>
       <div id="matching-timer" style="font-size:15px; color:#38bdf8; font-weight:600;">${I18nManager.t("online.wait_time", { time: "00:00" })}</div>
       <div id="matching-range" style="font-size:13px; color:#94a3b8;">${I18nManager.t("online.search_range", { diff: 50 })}</div>
+      <div id="matching-waiters" aria-live="polite" style="font-size:13px; color:#cbd5e1; text-align:center; max-width:280px; word-break:keep-all; overflow-wrap:anywhere;">${I18nManager.t("online.waiting_players_unknown")}</div>
+      <div id="matching-hint" style="font-size:11px; color:#64748b; text-align:center; max-width:280px; word-break:keep-all; overflow-wrap:anywhere; line-height:1.4;">${I18nManager.t("online.waiting_players_hint")}</div>
       <div id="matching-opponent" style="font-size:14px; color:#a7f3d0; font-weight:600; min-height:20px;"></div>
     `;
 
@@ -444,9 +446,31 @@ export class SupabaseMatchUi {
     this.matchmaker = new SupabaseMatchmaker(this.client, this.profile, matchMode);
     void this.matchmaker.startMatching(
       (status: MatchmakingStatus) => {
-        const timerEl = modalOverlay.querySelector("#matching-timer");
-        const rangeEl = modalOverlay.querySelector("#matching-range");
-        const oppEl = modalOverlay.querySelector("#matching-opponent");
+        const timerEl = modalOverlay.querySelector<HTMLElement>("#matching-timer");
+        const rangeEl = modalOverlay.querySelector<HTMLElement>("#matching-range");
+        const waitersEl = modalOverlay.querySelector<HTMLElement>("#matching-waiters");
+        const hintEl = modalOverlay.querySelector<HTMLElement>("#matching-hint");
+        const oppEl = modalOverlay.querySelector<HTMLElement>("#matching-opponent");
+
+        const isSearchingPhase = status.phase === "joining-queue" || status.phase === "searching";
+
+        if (waitersEl && hintEl) {
+          if (isSearchingPhase) {
+            waitersEl.style.display = "";
+            hintEl.style.display = "";
+            const count = status.waitingPlayers;
+            const label = typeof count === "number"
+              ? I18nManager.t("online.waiting_players", { count })
+              : I18nManager.t("online.waiting_players_unknown");
+            if (waitersEl.textContent !== label) waitersEl.textContent = label;
+            hintEl.textContent = I18nManager.t("online.waiting_players_hint");
+          } else {
+            waitersEl.style.display = "none";
+            waitersEl.textContent = "";
+            hintEl.style.display = "none";
+            hintEl.textContent = "";
+          }
+        }
 
         const mins = String(Math.floor(status.waitTimeSeconds / 60)).padStart(2, "0");
         const secs = String(status.waitTimeSeconds % 60).padStart(2, "0");
