@@ -122,6 +122,7 @@ export interface TurnRuntime {
   ccdPieceId: string | null;
   // 타점 패널에서 기본 중심이 아닌 커스텀 타점으로 발사되었는지 여부
   lastLaunchHasCustomStrike: boolean;
+  lastLaunchHitOpponent: boolean;
   // 비숍 스핀 리코셰가 같은 기물에 중복 적용되지 않도록 이번 턴에서 충돌 처리된 기물 id 집합이다.
   bishopRicochetedPieceIds: Set<string>;
   // 발사 강도와 라이브 물리값을 재생성 없이 참조하는 런타임 설정이다.
@@ -441,6 +442,7 @@ export function createTurnRuntime(
     cameraPerspectiveSide: null,
     ccdPieceId: null,
     lastLaunchHasCustomStrike: false,
+    lastLaunchHitOpponent: false,
     bishopRicochetedPieceIds: new Set(),
     tuningSettings,
     pendingPromotionPawns: new Map(),
@@ -683,6 +685,7 @@ export function queueTurnLaunch(
     };
   }
   runtime.pendingLaunch = request;
+  runtime.lastLaunchHitOpponent = false;
   runtime.phase = "settling";
   runtime.pendingTurnChange = true;
   runtime.restHoldSeconds = 0;
@@ -1137,6 +1140,14 @@ export function updateTurnAfterStep(
   );
   applyBishopSpinRicochet(runtime);
   if (runtime.gameMode === "puzzle") runtime.onPuzzlePhysicsStep?.(runtime.physicsStepNumber);
+  if (runtime.gameMode === "tutorial" && runtime.phase === "settling" &&
+      runtime.pendingTurnChange && !runtime.lastLaunchHitOpponent) {
+    const pieces = [...runtime.physicsRuntime.pieces.values()];
+    runtime.lastLaunchHitOpponent = pieces.some(first =>
+      first.instance.side === "white" && pieces.some(second =>
+        second.instance.side === "black" &&
+        hasSolverContact(runtime.physicsRuntime, first.collider, second.collider)));
+  }
   removeFallenPieces(runtime);
   if (runtime.phase !== "settling") {
     return;
@@ -1196,6 +1207,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.pendingRemovalIds.clear();
   runtime.settlementRemovedPieces = [];
   runtime.lastLaunchPower = 0;
+  runtime.lastLaunchHitOpponent = false;
   runtime.lastLaunchInitialSpeed = 0;
   runtime.physicsStepNumber = 0;
   runtime.forcedSettleCount = 0;

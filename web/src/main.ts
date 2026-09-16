@@ -1478,18 +1478,13 @@ async function bootstrap(): Promise<void> {
       const remainingBlack = [...physicsRuntime.pieces.values()].filter(
         (p) => p.instance.side === "black",
       );
-      const remainingWhite = [...physicsRuntime.pieces.values()].filter(
-        (p) => p.instance.side === "white",
-      );
-      const initialBlackCount = tutorialManager.getStepPieces(tutorialManager.currentStep).filter((p) => p.side === "black").length;
-      const hadHit = remainingBlack.length < initialBlackCount || remainingWhite.length > 0;
       const hasCustomStrikePoint =
         turnRuntime.lastLaunchHasCustomStrike ||
         inputRuntime.aimParametersRuntime.strikePointOverride !== null;
       const checkResult = tutorialManager.checkStepClear(
         remainingBlack.length,
         remainingBlack.map((p) => ({ type: p.instance.type })),
-        hadHit,
+        turnRuntime.lastLaunchHitOpponent,
         hasCustomStrikePoint,
       );
 

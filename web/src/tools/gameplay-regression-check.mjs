@@ -201,6 +201,45 @@ try {
       turn.setTurnGameMode(turnRuntime, "online");
       assert.equal(turnRuntime.gameMode, "online");
 
+      // Tutorial feedback must require a solver contact, not surviving pieces.
+      const { TutorialManager } = await vite.ssrLoadModule("/src/tutorial.ts");
+      const tutorial = new TutorialManager();
+      tutorial.isActive = true;
+      turn.setTurnGameMode(turnRuntime, "tutorial");
+      turnRuntime.phase = "settling";
+      turnRuntime.pendingTurnChange = true;
+      const originalContactPair = world.world.contactPair;
+      let solverContacts = 0;
+      world.world.contactPair = (_first, _second, visit) =>
+        visit({ numSolverContacts: () => solverContacts });
+      try {
+        turn.updateTurnAfterStep(turnRuntime, 1 / 120);
+        assert.equal(turnRuntime.lastLaunchHitOpponent, false, "Near contact / surviving pieces is not a hit");
+        assert.equal(tutorial.checkStepClear(1, [{ type: "Pawn" }], turnRuntime.lastLaunchHitOpponent).cleared, false);
+        solverContacts = 1;
+        turn.updateTurnAfterStep(turnRuntime, 1 / 120);
+        assert.equal(turnRuntime.lastLaunchHitOpponent, true);
+        assert.equal(tutorial.checkStepClear(1, [{ type: "Pawn" }], turnRuntime.lastLaunchHitOpponent).cleared, true, "Hit counts without a knockout");
+        solverContacts = 0;
+        turn.updateTurnAfterStep(turnRuntime, 1 / 120);
+        assert.equal(turnRuntime.lastLaunchHitOpponent, true, "Remember contact after pieces separate");
+        turnRuntime.phase = "ready";
+        const pawn = world.pieces.get("white-pawn-e2");
+        assert.equal(turn.queueTurnLaunch(turnRuntime, {
+          pieceId: pawn.instance.id, normalizedPower: 0.1,
+          direction: { x: 0, y: 0, z: -1 }, applicationPoint: pawn.body.worldCom(),
+        }).accepted, true);
+        assert.equal(turnRuntime.lastLaunchHitOpponent, false, "A new attempt clears the previous hit");
+        turnRuntime.lastLaunchHitOpponent = true;
+        turn.resetTurnRuntime(turnRuntime);
+        assert.equal(turnRuntime.lastLaunchHitOpponent, false, "Re-entry clears the previous hit");
+      } finally {
+        world.world.contactPair = originalContactPair;
+        turn.resetTurnRuntime(turnRuntime);
+        turn.setTurnGameMode(turnRuntime, "online");
+      }
+      console.log("✓ PASS: Tutorial miss, hit without knockout, separation, retry and reset");
+
       // 3a. King swap blocked in online mode
       const swapResult = turn.executeKingSwap(
         turnRuntime,
