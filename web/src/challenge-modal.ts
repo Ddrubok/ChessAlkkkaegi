@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import { I18nManager } from "./i18n";
 import { SocialService, type ChallengeRequestPayload } from "./social-service";
 import { escapeHtml } from "./html";
@@ -57,14 +58,14 @@ export function openChallengeReceivedModal(
     </h2>
     <p style="color:#94a3b8; font-size:14px; margin:0 0 16px; line-height:1.5;">
       <span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center;">
-        <strong style="color:#38bdf8; font-size:15px;">${escapeHtml(payload.challengerNickname)}</strong>
+        <strong style="color:#38bdf8; font-size:15px;">${escapeHtml(I18nManager.t("friends.challenge_received_desc", {name: payload.challengerNickname}))}</strong>
         ${renderTierBadge(payload.challengerMmr, false)}
-      </span>님이<br>
-      <span style="color:#fbbf24; font-weight:700;">[${escapeHtml(modeName)}]</span> 대전을 신청했습니다!
+      </span><br>
+      <span style="color:#fbbf24; font-weight:700;">[${escapeHtml(modeName)}]</span>
     </p>
 
     <div id="challenge-timer" style="font-size:13px; font-weight:700; color:#f59e0b; margin-bottom:20px;">
-      남은 시간: 15초
+      ${uiText("remaining", {time:15})}
     </div>
 
     <div style="display:flex; gap:10px;">
@@ -91,7 +92,7 @@ export function openChallengeReceivedModal(
       void SocialService.respondChallenge(payload.challengerId, payload.roomId, false);
       callbacks.onReject(payload);
     } else {
-      timerDisplay.textContent = `남은 시간: ${timeLeft}초`;
+      timerDisplay.textContent = uiText("remaining", {time:timeLeft});
     }
   }, 1000);
 

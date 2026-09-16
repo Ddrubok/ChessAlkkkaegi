@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import { Vector3 } from "three";
 import {
   updateDirectedShotTelegraph,
@@ -24,6 +25,7 @@ import type { ReplayTurnRecord } from "./replay";
 import { capturePhysicsStateHash } from "./state-hash";
 import { validateStrategyDeck } from "./strategy-deck";
 import { I18nManager } from "./i18n";
+import { getRuntimeText } from "./runtime-text";
 import {
   alignTurnCameraToPerspective,
   applyPendingLaunchBeforeStep,
@@ -1330,7 +1332,7 @@ export function createOnlineRuntime(
       setRematchStatus({
         phase: "outgoing",
         offerId,
-        message: "상대 응답을 기다리는 중",
+        message: getRuntimeText("online.rematch_waiting_response"),
       });
     },
 
@@ -1462,7 +1464,7 @@ export function createOnlineRuntime(
     setRematchStatus({
       phase: "starting",
       offerId,
-      message: "새 대국을 준비하는 중입니다",
+      message: getRuntimeText("online.rematch_preparing"),
     });
     matchId = nextMatchId;
     runtime.matchId = nextMatchId;
@@ -1513,7 +1515,7 @@ export function createOnlineRuntime(
         setRematchStatus({
           phase: "failed",
           offerId,
-          message: `재대결 시작 실패: ${failure.message}`,
+          message: getRuntimeText("online.rematch_failed_start", { reason: uiText("connectionHelp") }),
         });
         console.error(failure.stack ?? failure.message);
       });
@@ -1570,7 +1572,7 @@ export function createOnlineRuntime(
         setRematchStatus({
           phase: "failed",
           offerId: failedOfferId,
-          message: "재대결 시작 실패: 턴 0 상태가 서로 다릅니다.",
+          message: getRuntimeText("online.rematch_failed_hash_mismatch"),
         });
       }
       console.error(failure.stack ?? failure.message);
@@ -2151,7 +2153,7 @@ export function createOnlineRuntime(
             setRematchStatus({
               phase: "incoming",
               offerId: message.offerId,
-              message: "상대가 재대결을 요청했습니다",
+              message: getRuntimeText("online.rematch_requested"),
             });
             return;
           }
@@ -2177,7 +2179,7 @@ export function createOnlineRuntime(
             setRematchStatus({
               phase: "declined",
               offerId: message.offerId,
-              message: "상대가 재대결을 거절했습니다",
+              message: getRuntimeText("online.rematch_declined"),
             });
             return;
           }
@@ -2372,8 +2374,7 @@ export function openOnlineLobby(
         ? (error.stack ?? error.message)
         : String(error);
     console.error(fullError);
-    status.textContent =
-      error instanceof Error ? error.message : String(error);
+    status.textContent = uiText("connectionHelp");
   };
   const runAction = (action: () => Promise<void>): void => {
     void action().catch(reportError);
@@ -2386,7 +2387,7 @@ export function openOnlineLobby(
       throw new Error(`${label}가 아직 생성되지 않았습니다.`);
     }
     await navigator.clipboard.writeText(code);
-    status.textContent = `${label} ${code.length}자를 복사했습니다.`;
+    status.textContent = getRuntimeText("manual_online.code_copied", { label, length: code.length });
   };
 
   return new Promise<OnlinePeerSession>((resolve, reject) => {
@@ -2409,8 +2410,8 @@ export function openOnlineLobby(
         finished = true;
         removeStateHandler();
         status.textContent = negotiatedRejoining
-          ? "대국을 이어받는 중입니다."
-          : "연결됐습니다. 표준 대국을 준비합니다.";
+          ? getRuntimeText("manual_online.resuming_match")
+          : getRuntimeText("manual_online.connected_preparing");
         resolve({
           link,
           mySide: selectedSide,
@@ -2433,7 +2434,7 @@ export function openOnlineLobby(
         hostPanel.hidden = false;
         guestPanel.hidden = true;
         runAction(async () => {
-          status.textContent = "ICE 후보를 모아 초대 코드를 만드는 중입니다.";
+          status.textContent = getRuntimeText("manual_online.generating_invite_code");
           const peerCode = await link.createHost();
           inviteOutput.value = encodeOnlineLobbyCode(
             peerCode,
@@ -2441,7 +2442,7 @@ export function openOnlineLobby(
             negotiatedRejoining,
           );
           status.textContent =
-            `초대 코드 ${inviteOutput.value.length}자를 상대에게 보내세요.`;
+            getRuntimeText("manual_online.send_invite_prompt", { length: inviteOutput.value.length });
         });
       },
     );
@@ -2451,14 +2452,14 @@ export function openOnlineLobby(
         selectedSide = "black";
         guestPanel.hidden = false;
         hostPanel.hidden = true;
-        status.textContent = "받은 초대 코드를 붙여넣으세요.";
+        status.textContent = getRuntimeText("manual_online.paste_invite_prompt");
       },
     );
     query<HTMLButtonElement>("[data-online-copy-invite]").addEventListener(
       "click",
       () => {
         runAction(() =>
-          copyCode(inviteOutput.value, "초대 코드"),
+          copyCode(inviteOutput.value, getRuntimeText("manual_online.label_invite_code")),
         );
       },
     );
@@ -2467,7 +2468,7 @@ export function openOnlineLobby(
       () => {
         selectedSide = "black";
         runAction(async () => {
-          status.textContent = "ICE 후보를 모아 응답 코드를 만드는 중입니다.";
+          status.textContent = getRuntimeText("manual_online.generating_answer_code");
           const invite = decodeOnlineLobbyCode(
             inviteInput.value,
           );
@@ -2483,8 +2484,8 @@ export function openOnlineLobby(
           );
           status.textContent =
             invite.rejoining
-              ? `재접속 응답 코드 ${answerOutput.value.length}자를 방장에게 보내세요.`
-              : `응답 코드 ${answerOutput.value.length}자를 방장에게 보내세요.`;
+              ? getRuntimeText("manual_online.send_reconnect_answer_prompt", { length: answerOutput.value.length })
+              : getRuntimeText("manual_online.send_answer_prompt", { length: answerOutput.value.length });
         });
       },
     );
@@ -2492,7 +2493,7 @@ export function openOnlineLobby(
       "click",
       () => {
         runAction(() =>
-          copyCode(answerOutput.value, "응답 코드"),
+          copyCode(answerOutput.value, getRuntimeText("manual_online.label_answer_code")),
         );
       },
     );
@@ -2500,7 +2501,7 @@ export function openOnlineLobby(
       "click",
       () => {
         runAction(async () => {
-          status.textContent = "응답 코드를 적용해 연결하는 중입니다.";
+          status.textContent = getRuntimeText("manual_online.applying_answer_code");
           const answer = decodeOnlineLobbyCode(
             answerInput.value,
           );

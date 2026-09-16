@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import type { PieceSide } from "./layout";
 import type { GameMode } from "./game-mode";
 import type { CardId, UpgradeCard } from "./cards";
@@ -81,13 +82,13 @@ export function createMatchRuntime(
   overlay.setAttribute("aria-labelledby", "match-result-title");
   overlay.innerHTML = `
     <div class="match-result-panel">
-      <p data-match-result-kicker>대국 종료</p>
+      <p data-match-result-kicker>${I18nManager.t("ingame.game_over")}</p>
       <h1 id="match-result-title"></h1>
       <div class="match-result-details" data-match-result-details hidden></div>
       <div class="match-card-choices" hidden></div>
       <div class="match-result-actions">
-        <button type="button" data-match-restart>다시 시작</button>
-        <button type="button" data-match-menu hidden>메뉴로</button>
+        <button type="button" data-match-restart>${I18nManager.t("ingame.restart_btn")}</button>
+        <button type="button" data-match-menu hidden>${I18nManager.t("ingame.menu_btn")}</button>
       </div>
     </div>
   `;
@@ -137,13 +138,13 @@ export function createMatchRuntime(
     }
     runtime.restarting = true;
     restartButton.disabled = true;
-    restartButton.textContent = "준비 중…";
+    restartButton.textContent = uiText("preparing");
     void runtime.onRestart().then(
       () => {
         runtime.winner = null;
         runtime.restarting = false;
         restartButton.disabled = false;
-        restartButton.textContent = "다시 시작";
+        restartButton.textContent = I18nManager.t("ingame.restart_btn");
         overlay.hidden = true;
       },
       (error: unknown) => {
@@ -154,8 +155,8 @@ export function createMatchRuntime(
         console.error(fullError);
         runtime.restarting = false;
         restartButton.disabled = false;
-        restartButton.textContent = "다시 시도";
-        winnerHeading.textContent = "다시 시작 실패";
+        restartButton.textContent = I18nManager.t("tier.retry");
+        winnerHeading.textContent = uiText("restartFailed");
       },
     );
   });
@@ -169,14 +170,14 @@ export function createMatchRuntime(
     runtime.restarting = true;
     restartButton.disabled = true;
     menuButton.disabled = true;
-    menuButton.textContent = "이동 중…";
+    menuButton.textContent = uiText("moving");
     void runtime.onReturnToMenu().then(
       () => {
         runtime.winner = null;
         runtime.restarting = false;
         restartButton.disabled = false;
         menuButton.disabled = false;
-        menuButton.textContent = "메뉴로";
+        menuButton.textContent = I18nManager.t("ingame.menu_btn");
         overlay.hidden = true;
       },
       (error: unknown) => {
@@ -188,8 +189,8 @@ export function createMatchRuntime(
         runtime.restarting = false;
         restartButton.disabled = false;
         menuButton.disabled = false;
-        menuButton.textContent = "다시 시도";
-        winnerHeading.textContent = "메뉴 이동 실패";
+        menuButton.textContent = I18nManager.t("tier.retry");
+        winnerHeading.textContent = uiText("menuFailed");
       },
     );
   });
@@ -332,7 +333,7 @@ export function showMatchResult(
             )) {
               cardButton.disabled = false;
             }
-            runtime.winnerHeading.textContent = "강화 적용 실패";
+            runtime.winnerHeading.textContent = uiText("upgradeFailed");
           },
         );
       });
@@ -465,7 +466,7 @@ export function hideMatchResult(runtime: MatchRuntime): void {
   runtime.onCardSelected = null;
   runtime.onReturnToMenu = null;
   runtime.resultKicker.hidden = false;
-  runtime.resultKicker.textContent = "대국 종료";
+  runtime.resultKicker.textContent = I18nManager.t("ingame.game_over");
   runtime.resultDetails.replaceChildren();
   runtime.resultDetails.hidden = true;
   runtime.cardChoices.replaceChildren();

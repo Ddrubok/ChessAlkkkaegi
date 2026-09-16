@@ -3,6 +3,7 @@ import {
   NET_ICE_GATHER_TIMEOUT_MS,
   NET_TRAFFIC_TIMEOUT_MS,
 } from "./config";
+import { getRuntimeText } from "./runtime-text";
 
 export type PeerLinkState =
   | "idle"
@@ -754,10 +755,10 @@ export function createNetDevelopmentRuntime(
   const link = createPeerLink();
   const element = document.createElement("section");
   element.className = "net-panel";
-  element.setAttribute("aria-label", "P2P 연결 시험");
+  element.setAttribute("aria-label", getRuntimeText("net.title"));
 
   const title = document.createElement("h2");
-  title.textContent = "P2P 연결 시험";
+  title.textContent = getRuntimeText("net.title");
   const stateText = document.createElement("p");
   stateText.className = "net-state";
 
@@ -790,36 +791,36 @@ export function createNetDevelopmentRuntime(
     return button;
   };
 
-  const hostButton = createButton("방 만들기");
-  const inviteOutput = createCodeRow("초대 코드", true);
-  const copyInviteButton = createButton("초대 코드 복사");
+  const hostButton = createButton(getRuntimeText("net.btn_create_room"));
+  const inviteOutput = createCodeRow(getRuntimeText("manual_online.label_invite_code"), true);
+  const copyInviteButton = createButton(getRuntimeText("net.btn_copy_invite"));
   inviteOutput.container.append(copyInviteButton);
 
-  const inviteInput = createCodeRow("초대 코드 붙여넣기", false);
-  const joinButton = createButton("참가");
+  const inviteInput = createCodeRow(getRuntimeText("net.label_paste_invite"), false);
+  const joinButton = createButton(getRuntimeText("net.btn_join"));
   inviteInput.container.append(joinButton);
 
-  const answerOutput = createCodeRow("응답 코드", true);
-  const copyAnswerButton = createButton("응답 코드 복사");
+  const answerOutput = createCodeRow(getRuntimeText("manual_online.label_answer_code"), true);
+  const copyAnswerButton = createButton(getRuntimeText("net.btn_copy_answer"));
   answerOutput.container.append(copyAnswerButton);
 
-  const answerInput = createCodeRow("응답 코드 붙여넣기", false);
-  const acceptButton = createButton("연결");
+  const answerInput = createCodeRow(getRuntimeText("net.label_paste_answer"), false);
+  const acceptButton = createButton(getRuntimeText("net.btn_connect"));
   answerInput.container.append(acceptButton);
 
   const messageRow = document.createElement("div");
   messageRow.className = "net-message-row";
   const messageInput = document.createElement("input");
   messageInput.type = "text";
-  messageInput.placeholder = "보낼 메시지";
-  const sendButton = createButton("메시지 보내기");
+  messageInput.placeholder = getRuntimeText("net.msg_placeholder");
+  const sendButton = createButton(getRuntimeText("net.btn_send_msg"));
   messageRow.append(messageInput, sendButton);
 
   const logTitle = document.createElement("p");
-  logTitle.textContent = "받은 메시지";
+  logTitle.textContent = getRuntimeText("net.received_messages");
   const log = document.createElement("pre");
   log.className = "net-log";
-  log.textContent = "아직 받은 메시지가 없습니다.";
+  log.textContent = getRuntimeText("net.no_received_messages");
 
   element.append(
     title,
@@ -836,17 +837,17 @@ export function createNetDevelopmentRuntime(
   parent.append(element);
 
   const stateLabels: Record<PeerLinkState, string> = {
-    idle: "대기",
-    "waiting-answer": "응답 코드 대기",
-    connecting: "연결 중",
-    connected: "연결됨",
-    disconnected: "연결 끊김",
-    failed: "연결 실패",
+    idle: getRuntimeText("net.state_idle"),
+    "waiting-answer": getRuntimeText("net.state_waiting_answer"),
+    connecting: getRuntimeText("net.state_connecting"),
+    connected: getRuntimeText("net.state_connected"),
+    disconnected: getRuntimeText("net.state_disconnected"),
+    failed: getRuntimeText("net.state_failed"),
   };
   const appendLog = (message: string): void => {
     const entry = `[${new Date().toLocaleTimeString()}] ${message}`;
     log.textContent =
-      log.textContent === "아직 받은 메시지가 없습니다."
+      log.textContent === getRuntimeText("net.no_received_messages")
         ? entry
         : `${log.textContent}\n${entry}`;
     log.scrollTop = log.scrollHeight;
@@ -865,11 +866,11 @@ export function createNetDevelopmentRuntime(
       throw new Error(`${name}가 아직 생성되지 않았습니다.`);
     }
     await navigator.clipboard.writeText(value);
-    appendLog(`${name} ${value.length}자를 복사했습니다.`);
+    appendLog(getRuntimeText("manual_online.code_copied", { label: name, length: value.length }));
   };
 
   const removeStateHandler = link.onStateChange((nextState) => {
-    stateText.textContent = `연결 상태: ${stateLabels[nextState]}`;
+    stateText.textContent = getRuntimeText("net.connection_status_prefix", { status: stateLabels[nextState] });
     element.dataset.state = nextState;
   });
   const removeMessageHandler = link.onMessage((payload) => {
@@ -880,8 +881,8 @@ export function createNetDevelopmentRuntime(
     runAction(async () => {
       inviteOutput.textarea.value = await link.createHost();
       inviteOutput.label.firstChild!.textContent =
-        `초대 코드 (${inviteOutput.textarea.value.length}자)`;
-      appendLog(`초대 코드 ${inviteOutput.textarea.value.length}자를 생성했습니다.`);
+        `${getRuntimeText("manual_online.label_invite_code")} (${inviteOutput.textarea.value.length}자)`;
+      appendLog(getRuntimeText("net.log_invite_created", { length: inviteOutput.textarea.value.length }));
     });
   });
   joinButton.addEventListener("click", () => {
@@ -890,30 +891,30 @@ export function createNetDevelopmentRuntime(
         inviteInput.textarea.value,
       );
       answerOutput.label.firstChild!.textContent =
-        `응답 코드 (${answerOutput.textarea.value.length}자)`;
-      appendLog(`응답 코드 ${answerOutput.textarea.value.length}자를 생성했습니다.`);
+        `${getRuntimeText("manual_online.label_answer_code")} (${answerOutput.textarea.value.length}자)`;
+      appendLog(getRuntimeText("net.log_answer_created", { length: answerOutput.textarea.value.length }));
     });
   });
   acceptButton.addEventListener("click", () => {
     runAction(async () => {
       await link.acceptAnswer(answerInput.textarea.value);
-      appendLog("응답 코드를 적용했습니다.");
+      appendLog(getRuntimeText("net.log_answer_applied"));
     });
   });
   copyInviteButton.addEventListener("click", () => {
     runAction(() =>
-      copyCode(inviteOutput.textarea.value, "초대 코드"),
+      copyCode(inviteOutput.textarea.value, getRuntimeText("manual_online.label_invite_code")),
     );
   });
   copyAnswerButton.addEventListener("click", () => {
     runAction(() =>
-      copyCode(answerOutput.textarea.value, "응답 코드"),
+      copyCode(answerOutput.textarea.value, getRuntimeText("manual_online.label_answer_code")),
     );
   });
   sendButton.addEventListener("click", () => {
     try {
       link.send({ echo: messageInput.value });
-      appendLog(`보냄: ${JSON.stringify({ echo: messageInput.value })}`);
+      appendLog(getRuntimeText("net.log_sent_prefix", { payload: JSON.stringify({ echo: messageInput.value }) }));
       messageInput.value = "";
     } catch (error: unknown) {
       reportError(error);

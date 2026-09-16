@@ -31,6 +31,23 @@
       border: 1px solid var(--border-color);
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
+    .top-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .lang-select {
+      background: #0b0f19;
+      color: #38bdf8;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      outline: none;
+    }
     h1 {
       font-size: 24px;
       margin-top: 0;
@@ -87,65 +104,382 @@
       font-size: 13px;
       color: #64748b;
     }
+    footer a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>🗑️ 체스알까기 계정 및 데이터 삭제 요청</h1>
-  <p style="color: #cbd5e1;">
-    본 페이지는 Google Play 개발자 정책(계정 삭제 요구사항)에 따라, 체스알까기(ChessAlkkagi) 이용자가 앱을 삭제하거나 이용하지 않는 경우에도 웹을 통해 본인의 계정과 개인정보의 영구 삭제를 간편하게 요청할 수 있도록 지원합니다.
-  </p>
+  <div class="top-bar">
+    <select id="lang-select" class="lang-select" aria-label="Language Select">
+      <option value="ko">한국어</option>
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+      <option value="zh-CN">简体中文</option>
+      <option value="de">Deutsch</option>
+      <option value="fr">Français</option>
+      <option value="es">Español</option>
+      <option value="ru">Русский</option>
+      <option value="pt-BR">Português (Brasil)</option>
+    </select>
+  </div>
 
-  <div class="notice-box">
-    <strong style="color: #fca5a5;">⚠️ 계정 삭제 시 삭제되는 데이터 범위:</strong>
-    <ul style="margin: 8px 0 0 0; padding-left: 20px;">
-      <li><strong>회원 계정 정보</strong>: 등록된 이메일 주소, 암호화된 비밀번호 식별자</li>
-      <li><strong>게임 플레이 데이터</strong>: 대전 전적(승/무/패), 랭킹 레이팅(MMR 점수)</li>
-      <li><strong>계정 진행도</strong>: 클리어 스테이지, 연구 포인트, 기물 연구, 튜토리얼 완료 여부, 퍼즐 클리어·메달 기록</li>
-    </ul>
-    <p style="margin: 8px 0 0 0; font-size: 13px; color: #fca5a5;">
-      * 계정 삭제가 완료되면 모든 게임 데이터는 영구 파기되며 절대 복구할 수 없습니다.
+  <div id="deletion-content">
+    <h1>🗑️ 체스알까기 계정 및 데이터 삭제 요청</h1>
+    <p style="color: #cbd5e1;">
+      본 페이지는 Google Play 개발자 정책(계정 삭제 요구사항)에 따라, 체스알까기(ChessAlkkagi) 이용자가 앱을 삭제하거나 이용하지 않는 경우에도 웹을 통해 본인의 계정과 개인정보의 영구 삭제를 간편하게 요청할 수 있도록 지원합니다.
+    </p>
+
+    <div class="notice-box">
+      <strong style="color: #fca5a5;">⚠️ 계정 삭제 시 삭제되는 데이터 범위:</strong>
+      <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+        <li><strong>회원 계정 정보</strong>: 등록된 이메일 주소, 암호화된 비밀번호 식별자</li>
+        <li><strong>게임 플레이 데이터</strong>: 대전 전적(승/무/패), 랭킹 레이팅(MMR 점수)</li>
+        <li><strong>계정 진행도</strong>: 클리어 스테이지, 연구 포인트, 기물 연구, 튜토리얼 완료 여부, 퍼즐 클리어·메달 기록</li>
+      </ul>
+      <p style="margin: 8px 0 0 0; font-size: 13px; color: #fca5a5;">
+        * 계정 삭제가 완료되면 모든 게임 데이터는 영구 파기되며 절대 복구할 수 없습니다.
+      </p>
+    </div>
+
+    <h2>1. 앱 외부(웹)에서 계정 삭제 요청 방법</h2>
+    <div class="steps-box">
+      <p style="margin-top: 0;">아래 안내에 따라 운영자 이메일로 삭제를 요청해 주세요. 요청자 확인 후 삭제 대상과 처리 결과를 안내합니다. 비밀번호는 보내지 마세요.</p>
+      <ol style="padding-left: 20px; margin-bottom: 0;">
+        <li><strong>수신처</strong>: <a href="mailto:dubokup@gmail.com" style="color: #38bdf8;">dubokup@gmail.com</a></li>
+        <li><strong>메일 제목</strong>: <code>[체스알까기] 계정 삭제 및 데이터 파기 요청</code></li>
+        <li><strong>기재 내용</strong>: 게임 가입 시 사용한 <strong>이메일 주소</strong> 또는 <strong>게임 닉네임</strong></li>
+      </ol>
+      <a class="btn-email" href="mailto:dubokup@gmail.com?subject=[체스알까기]%20계정%20삭제%20및%20데이터%20파기%20요청&body=체스알까기%20가입%20이메일%20또는%20닉네임:">✉️ 계정 삭제 요청 메일 보내기</a>
+    </div>
+
+    <h2>2. 데이터 보관 정책</h2>
+    <p>
+      브라우저 사이트 데이터나 앱 데이터를 삭제하면 기기의 게스트 진행도·계정 임시 기록·백업·설정이 제거됩니다. 서버의 계정·대전 기록·진행도는 자동으로 삭제되지 않으므로 별도로 삭제를 요청해 주세요. 서버 데이터의 처리 범위는 운영자에게 확인할 수 있습니다.
     </p>
   </div>
 
-  <h2>1. 앱 외부(웹)에서 계정 삭제 요청 방법</h2>
-  <div class="steps-box">
-    <p style="margin-top: 0;">아래 안내에 따라 운영자 이메일로 삭제를 요청해 주세요. 요청자 확인 후 삭제 대상과 처리 결과를 안내합니다. 비밀번호는 보내지 마세요.</p>
-    <ol style="padding-left: 20px; margin-bottom: 0;">
-      <li><strong>수신처</strong>: <a href="mailto:dubokup@gmail.com" style="color: #38bdf8;">dubokup@gmail.com</a></li>
-      <li><strong>메일 제목</strong>: <code>[체스알까기] 계정 삭제 및 데이터 파기 요청</code></li>
-      <li><strong>기재 내용</strong>: 게임 가입 시 사용한 <strong>이메일 주소</strong> 또는 <strong>게임 닉네임</strong></li>
-    </ol>
-    <a class="btn-email" href="mailto:dubokup@gmail.com?subject=[체스알까기]%20계정%20삭제%20및%20데이터%20파기%20요청&body=체스알까기%20가입%20이메일%20또는%20닉네임:">✉️ 계정 삭제 요청 메일 보내기</a>
-  </div>
-
-  <h2>2. 데이터 보관 정책</h2>
-  <p>
-    브라우저 사이트 데이터나 앱 데이터를 삭제하면 기기의 게스트 진행도·계정 임시 기록·백업·설정이 제거됩니다. 서버의 계정·대전 기록·진행도는 자동으로 삭제되지 않으므로 별도로 삭제를 요청해 주세요. 서버 데이터의 처리 범위는 운영자에게 확인할 수 있습니다.
-  </p>
-
-  <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 40px 0;">
-
-  <!-- 영문 안내 (English Support for Google Reviewers) -->
-  <h1 style="color: #f87171; font-size: 22px;">♟️ ChessAlkkagi - Account & Data Deletion</h1>
-  <p style="color: #cbd5e1;">
-    In accordance with Google Play's Account Deletion Policy, users can request the permanent deletion of their account and all associated personal data via this web page.
-  </p>
-
-  <h2>How to Request Account Deletion</h2>
-  <ul>
-    <li><strong>Support Email</strong>: <a href="mailto:dubokup@gmail.com" style="color: #38bdf8;">dubokup@gmail.com</a></li>
-    <li><strong>Subject</strong>: <code>[ChessAlkkagi] Account & Data Deletion Request</code></li>
-    <li><strong>Required Information</strong>: Your registered email address or player nickname.</li>
-    <li><strong>Request handling</strong>: After verifying your request, the operator will explain the scope and result of deletion. Clearing browser or app data does not automatically delete server records. Do not send your password.</li>
-  </ul>
-
-  <footer>
-    <a href="privacy.html" style="color: #38bdf8; text-decoration: none;">개인정보처리방침 (Privacy Policy) 보기</a> · <a href="./index.html" style="color:#38bdf8">게임으로 돌아가기</a><br><br>
-    © 2026 ChessAlkkagi. All rights reserved.
+  <footer id="deletion-footer">
+    <a href="privacy.html">개인정보처리방침 (Privacy Policy) 보기</a> · <a href="./index.html">게임으로 돌아가기</a><br><br>
+    © 2026 ChessAlkkagi. 모든 권리 보유.
   </footer>
 </div>
+
+<script>
+(function() {
+  const DELETION_TEXTS = {
+    ko: {
+      titleTag: "체스알까기 (ChessAlkkagi) - 계정 및 데이터 삭제 요청 (Account Deletion)",
+      h1: "🗑️ 체스알까기 계정 및 데이터 삭제 요청",
+      lead: "본 페이지는 Google Play 개발자 정책(계정 삭제 요구사항)에 따라, 체스알까기(ChessAlkkagi) 이용자가 앱을 삭제하거나 이용하지 않는 경우에도 웹을 통해 본인의 계정과 개인정보의 영구 삭제를 간편하게 요청할 수 있도록 지원합니다.",
+      noticeTitle: "⚠️ 계정 삭제 시 삭제되는 데이터 범위:",
+      noticeItems: [
+        "<strong>회원 계정 정보</strong>: 등록된 이메일 주소, 암호화된 비밀번호 식별자",
+        "<strong>게임 플레이 데이터</strong>: 대전 전적(승/무/패), 랭킹 레이팅(MMR 점수)",
+        "<strong>계정 진행도</strong>: 클리어 스테이지, 연구 포인트, 기물 연구, 튜토리얼 완료 여부, 퍼즐 클리어·메달 기록"
+      ],
+      noticeWarn: "* 계정 삭제가 완료되면 모든 게임 데이터는 영구 파기되며 절대 복구할 수 없습니다.",
+      s1Title: "1. 앱 외부(웹)에서 계정 삭제 요청 방법",
+      s1Desc: "아래 안내에 따라 운영자 이메일로 삭제를 요청해 주세요. 요청자 확인 후 삭제 대상과 처리 결과를 안내합니다. 비밀번호는 보내지 마세요.",
+      step1: "<strong>수신처</strong>: <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>메일 제목</strong>: <code>[체스알까기] 계정 삭제 및 데이터 파기 요청</code>",
+      step3: "<strong>기재 내용</strong>: 게임 가입 시 사용한 <strong>이메일 주소</strong> 또는 <strong>게임 닉네임</strong>",
+      btnText: "✉️ 계정 삭제 요청 메일 보내기",
+      mailSubject: "[체스알까기] 계정 삭제 및 데이터 파기 요청",
+      mailBody: "체스알까기 가입 이메일 또는 닉네임: ",
+      s2Title: "2. 데이터 보관 정책",
+      s2P: "브라우저 사이트 데이터나 앱 데이터를 삭제하면 기기의 게스트 진행도·계정 임시 기록·백업·설정이 제거됩니다. 서버의 계정·대전 기록·진행도는 자동으로 삭제되지 않으므로 별도로 삭제를 요청해 주세요. 서버 데이터의 처리 범위는 운영자에게 확인할 수 있습니다.",
+      footerPrivacy: "개인정보처리방침 (Privacy Policy) 보기",
+      footerReturn: "게임으로 돌아가기"
+    },
+    en: {
+      titleTag: "ChessAlkkagi - Account & Data Deletion Request",
+      h1: "🗑️ ChessAlkkagi - Account & Data Deletion",
+      lead: "In accordance with Google Play's Account Deletion Policy, users can request the permanent deletion of their account and all associated personal data via this web page, even if the app has been uninstalled.",
+      noticeTitle: "⚠️ Data Deleted Upon Account Deletion:",
+      noticeItems: [
+        "<strong>Account Information</strong>: Registered email address, encrypted authentication hashes.",
+        "<strong>Gameplay Data</strong>: Match records (W/D/L), leaderboard rating (MMR).",
+        "<strong>Account Progress</strong>: Cleared stages, research points, piece upgrades, tutorial completion, and puzzle records."
+      ],
+      noticeWarn: "* Once account deletion is completed, all game data is permanently purged and cannot be recovered.",
+      s1Title: "1. How to Request Account Deletion via Web",
+      s1Desc: "Please send an email to the support address below. After verifying identity, we will confirm the scope and outcome of the deletion. Never send your password.",
+      step1: "<strong>Support Email</strong>: <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>Subject</strong>: <code>[ChessAlkkagi] Account & Data Deletion Request</code>",
+      step3: "<strong>Information to Include</strong>: Your registered <strong>email address</strong> or <strong>in-game nickname</strong>.",
+      btnText: "✉️ Send Account Deletion Request Email",
+      mailSubject: "[ChessAlkkagi] Account & Data Deletion Request",
+      mailBody: "Registered email address or nickname: ",
+      s2Title: "2. Data Retention Policy",
+      s2P: "Clearing browser cache or app storage removes guest progress, conflict backups, and local settings. Server-synced account data and ratings are not deleted automatically and must be requested separately.",
+      footerPrivacy: "View Privacy Policy",
+      footerReturn: "Back to Game"
+    },
+    ja: {
+      titleTag: "チェスおはじき (ChessAlkkagi) - アカウントおよびデータ削除申請",
+      h1: "🗑️ チェスおはじき アカウントおよびデータ削除申請",
+      lead: "本ページはGoogle Playのポリシーに基づき、アプリをアンインストールした場合でもWebを通じてアカウントおよび関連個人データの完全削除を申請できる窓口です。",
+      noticeTitle: "⚠️ 削除されるデータ範囲:",
+      noticeItems: [
+        "<strong>会員アカウント情報</strong>: 登録メールアドレス、暗号化パスワード",
+        "<strong>ゲームプレイデータ</strong>: 対戦履歴(勝/分/負)、ランキングレート(MMR)",
+        "<strong>アカウント進行度</strong>: クリアステージ、研究ポイント、駒研究、チュートリアル・パズル達成記録"
+      ],
+      noticeWarn: "※ アカウント削除完了後はすべてのゲームデータが完全破棄され、復元することはできません。",
+      s1Title: "1. Webからのアカウント削除申請方法",
+      s1Desc: "以下の案内に従って運営者メール宛に申請してください。ご本人確認後、削除処理を実施します。パスワードは記載しないでください。",
+      step1: "<strong>宛先</strong>: <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>件名</strong>: <code>[ChessAlkkagi] アカウント削除申請</code>",
+      step3: "<strong>記載内容</strong>: 登録時の<strong>メールアドレス</strong>または<strong>プレイヤー名</strong>",
+      btnText: "✉️ アカウント削除申請メールを作成",
+      mailSubject: "[ChessAlkkagi] アカウント削除申請",
+      mailBody: "登録メールアドレスまたはプレイヤー名: ",
+      s2Title: "2. データ保管方針",
+      s2P: "ブラウザやアプリのデータ消去を行うと端末内のゲスト進行度や設定は消去されますが、サーバー上のアカウントや戦績は自動削除されません。削除をご希望の場合は別途申請をお願いします。",
+      footerPrivacy: "プライバシーポリシーを見る",
+      footerReturn: "ゲームに戻る"
+    },
+    "zh-CN": {
+      titleTag: "国际象棋弹珠 (ChessAlkkagi) - 账号及数据注销申请",
+      h1: "🗑️ 国际象棋弹珠 账号及数据注销申请",
+      lead: "依据 Google Play 开发者政策，无论您是否已卸载应用，均可通过本网页便捷申请永久注销游戏账号并清除全部关联个人数据。",
+      noticeTitle: "⚠️ 账号注销将永久清除以下数据：",
+      noticeItems: [
+        "<strong>注册账号信息：</strong> 绑定的电子邮箱、单向加密身份凭证",
+        "<strong>对战数据：</strong> 历史对局胜率（胜/平/负）、天梯MMR积分",
+        "<strong>账号进度：</strong> 已通关卡、科研点数、棋子强化等级、教程与解谜勋章记录"
+      ],
+      noticeWarn: "* 账号注销一旦完成，所有数据将被永久粉碎且无法恢复。",
+      s1Title: "1. 网页端账号注销申请流程",
+      s1Desc: "请按以下格式向运营者邮箱发送申请。核验身份后我们将告知处理进展。请勿发送密码。",
+      step1: "<strong>接收邮箱：</strong> <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>邮件主题：</strong> <code>[国际象棋弹珠] 账号注销与数据清除申请</code>",
+      step3: "<strong>正文内容：</strong> 注册时使用的<strong>电子邮箱</strong>或<strong>游戏昵称</strong>",
+      btnText: "✉️ 发送账号注销申请邮件",
+      mailSubject: "[国际象棋弹珠] 账号注销与数据清除申请",
+      mailBody: "注册邮箱或游戏昵称：",
+      s2Title: "2. 数据存储规则",
+      s2P: "清除浏览器缓存或卸载应用仅会清空本地设备上的游客进度与临时配置。云端服务器数据不会自动删除，需通过本流程发起正式注销申请。",
+      footerPrivacy: "查看隐私政策",
+      footerReturn: "返回游戏"
+    },
+    de: {
+      titleTag: "ChessAlkkagi - Antrag auf Kontolöschung",
+      h1: "🗑️ ChessAlkkagi - Kontolöschung & Datenlöschung",
+      lead: "Gemäß den Google Play-Richtlinien können Nutzer über diese Webseite die dauerhafte Löschung ihres Kontos und aller zugehörigen Daten beantragen.",
+      noticeTitle: "⚠️ Bei der Löschung entfernte Daten:",
+      noticeItems: [
+        "<strong>Kontodaten</strong>: Registrierte E-Mail-Adresse, verschlüsselte Passwörter.",
+        "<strong>Spieldaten</strong>: Match-Statistiken, MMR-Ranglistenwertung.",
+        "<strong>Spielfortschritt</strong>: Freigeschaltete Level, Forschungspunkte, Upgrades und Rätselrekorde."
+      ],
+      noticeWarn: "* Nach Abschluss der Löschung werden alle Spieldaten unwiderruflich vernichtet.",
+      s1Title: "1. Ablauf der Löschungsanfrage",
+      s1Desc: "Sende eine E-Mail an unseren Support. Nach Prüfung deiner Identität bestätigen wir die Durchführung. Sende niemals Passwörter.",
+      step1: "<strong>Empfänger</strong>: <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>Betreff</strong>: <code>[ChessAlkkagi] Antrag auf Kontolöschung</code>",
+      step3: "<strong>Angaben</strong>: Registrierte <strong>E-Mail-Adresse</strong> oder <strong>Spielername</strong>",
+      btnText: "✉️ E-Mail zur Kontolöschung verfassen",
+      mailSubject: "[ChessAlkkagi] Antrag auf Kontolöschung",
+      mailBody: "Registrierte E-Mail oder Nickname: ",
+      s2Title: "2. Hinweise zur Datenspeicherung",
+      s2P: "Das Löschen lokaler Browserdaten entfernt Gastdaten vom Gerät, löscht jedoch nicht das Serverkonto. Bitte nutze dafür das obige Formular.",
+      footerPrivacy: "Datenschutzerklärung ansehen",
+      footerReturn: "Zurück zum Spiel"
+    },
+    fr: {
+      titleTag: "ChessAlkkagi - Demande de suppression de compte",
+      h1: "🗑️ ChessAlkkagi - Suppression de compte et de données",
+      lead: "Conformément aux règles de Google Play, vous pouvez demander la suppression définitive de votre compte et de vos données personnelles via cette page.",
+      noticeTitle: "⚠️ Données supprimées définitivement :",
+      noticeItems: [
+        "<strong>Informations de compte</strong> : Adresse e-mail, identifiants chiffrés.",
+        "<strong>Historique de jeu</strong> : Statistiques de victoires/défaites, cote MMR.",
+        "<strong>Progression</strong> : Niveaux validés, points de recherche, améliorations et succès de casse-têtes."
+      ],
+      noticeWarn: "* Une fois la suppression effectuée, aucune donnée ne pourra être récupérée.",
+      s1Title: "1. Procédure de suppression par e-mail",
+      s1Desc: "Envoyez votre demande à l'adresse support. Après vérification, nous procéderons à la purge. N'envoyez pas votre mot de passe.",
+      step1: "<strong>Destinataire</strong> : <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>Objet</strong> : <code>[ChessAlkkagi] Demande de suppression de compte</code>",
+      step3: "<strong>Informations</strong> : <strong>Adresse e-mail</strong> ou <strong>pseudonyme</strong> en jeu.",
+      btnText: "✉️ Envoyer un e-mail de suppression",
+      mailSubject: "[ChessAlkkagi] Demande de suppression de compte",
+      mailBody: "E-mail d'inscription ou pseudonyme : ",
+      s2Title: "2. Politique de conservation",
+      s2P: "La suppression du cache de votre navigateur efface vos données locales d'invité, mais ne supprime pas votre compte sur le serveur.",
+      footerPrivacy: "Voir la politique de confidentialité",
+      footerReturn: "Retour au jeu"
+    },
+    es: {
+      titleTag: "ChessAlkkagi - Solicitud de Eliminación de Cuenta",
+      h1: "🗑️ ChessAlkkagi - Eliminación de Cuenta y Datos",
+      lead: "De acuerdo con las directivas de Google Play, puedes solicitar la eliminación permanente de tu cuenta y datos personales mediante esta página.",
+      noticeTitle: "⚠️ Datos eliminados en el proceso:",
+      noticeItems: [
+        "<strong>Datos de usuario</strong>: Correo electrónico registrado, contraseñas cifradas.",
+        "<strong>Estadísticas de juego</strong>: Historial de partidas, puntuación MMR.",
+        "<strong>Progreso</strong>: Fases superadas, puntos de investigación, mejoras y rompecabezas completados."
+      ],
+      noticeWarn: "* Tras completar la eliminación, todos los datos se destruirán de forma permanente.",
+      s1Title: "1. Cómo solicitar la eliminación por correo",
+      s1Desc: "Escríbenos a nuestro correo de asistencia. Confirmaremos la identidad y procederemos a la baja. No envíes tu contraseña.",
+      step1: "<strong>Destinatario</strong> : <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>Asunto</strong>: <code>[ChessAlkkagi] Solicitud de eliminación de cuenta</code>",
+      step3: "<strong>Datos requeridos</strong>: <strong>Correo de registro</strong> o <strong>apodo en el juego</strong>.",
+      btnText: "✉️ Enviar correo de solicitud de eliminación",
+      mailSubject: "[ChessAlkkagi] Solicitud de eliminacion de cuenta",
+      mailBody: "Correo o apodo registrado: ",
+      s2Title: "2. Política de almacenamiento de datos",
+      s2P: "Borrar los datos de tu navegador elimina el progreso de invitado en el dispositivo, pero no elimina la cuenta alojada en el servidor.",
+      footerPrivacy: "Ver Política de Privacidad",
+      footerReturn: "Volver al juego"
+    },
+    ru: {
+      titleTag: "ChessAlkkagi - Запрос на удаление аккаунта",
+      h1: "🗑️ ChessAlkkagi - Удаление аккаунта и данных",
+      lead: "В соответствии с требованиями Google Play, вы можете запросить полное удаление своей учетной записи и всех связанных данных через эту страницу.",
+      noticeTitle: "⚠️ Данные, подлежащие удалению:",
+      noticeItems: [
+        "<strong>Данные профиля</strong>: адрес электронной почты, зашифрованный пароль.",
+        "<strong>Игровая статистика</strong>: история побед и поражений, рейтинг MMR.",
+        "<strong>Прогресс</strong>: пройденные этапы, очки исследований, прокачка и рекорды головоломок."
+      ],
+      noticeWarn: "* После завершения удаления все игровые данные уничтожаются навсегда.",
+      s1Title: "1. Порядок отправки запроса на удаление",
+      s1Desc: "Отправьте письмо в службу поддержки. После подтверждения владения аккаунтом мы выполним удаление. Не присылайте пароли.",
+      step1: "<strong>Адрес поддержки</strong>: <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>Тема письма</strong>: <code>[ChessAlkkagi] Запрос на удаление аккаунта</code>",
+      step3: "<strong>Необходимые данные</strong>: <strong>E-mail регистрации</strong> или <strong>никнейм</strong>.",
+      btnText: "✉️ Отправить письмо с запросом",
+      mailSubject: "[ChessAlkkagi] Запрос на удаление аккаунта",
+      mailBody: "E-mail регистрации или никнейм: ",
+      s2Title: "2. Политика хранения данных",
+      s2P: "Очистка данных браузера стирает гостевой прогресс на устройстве, но не удаляет аккаунт на сервере. Для удаления требуется отдельный запрос.",
+      footerPrivacy: "Политика конфиденциальности",
+      footerReturn: "Вернуться к игре"
+    },
+    "pt-BR": {
+      titleTag: "ChessAlkkagi - Solicitação de Exclusão de Conta",
+      h1: "🗑️ ChessAlkkagi - Exclusão de Conta e Dados",
+      lead: "Em conformidade com as diretrizes do Google Play, os usuários podem solicitar a exclusão permanente de sua conta e de todos os dados pessoais associados por meio desta página.",
+      noticeTitle: "⚠️ Dados eliminados permanentemente:",
+      noticeItems: [
+        "<strong>Dados cadastrais</strong>: Endereço de e-mail, senha criptografada.",
+        "<strong>Estatísticas de jogo</strong>: Histórico de partidas, classificação MMR.",
+        "<strong>Progresso da conta</strong>: Fases concluídas, pontos de pesquisa, melhorias e quebra-cabeças."
+      ],
+      noticeWarn: "* Após a conclusão da exclusão, todos os dados são apagados definitivamente.",
+      s1Title: "1. Como solicitar a exclusão via Web",
+      s1Desc: "Envie um e-mail para o suporte abaixo. Após confirmarmos sua identidade, executaremos a exclusão. Nunca informe senhas.",
+      step1: "<strong>Destinatário</strong>: <a href=\"mailto:dubokup@gmail.com\" style=\"color: #38bdf8;\">dubokup@gmail.com</a>",
+      step2: "<strong>Assunto</strong>: <code>[ChessAlkkagi] Solicitação de exclusão de conta</code>",
+      step3: "<strong>Informações necessárias</strong>: <strong>E-mail de cadastro</strong> ou <strong>apelido no jogo</strong>.",
+      btnText: "✉️ Enviar e-mail de exclusão",
+      mailSubject: "[ChessAlkkagi] Solicitacao de exclusao de conta",
+      mailBody: "E-mail de cadastro ou apelido no jogo: ",
+      s2Title: "2. Política de Armazenamento de Dados",
+      s2P: "Limpar os dados do navegador remove o progresso de convidado no dispositivo, mas não exclui a conta no servidor.",
+      footerPrivacy: "Ver Política de Privacidade",
+      footerReturn: "Voltar ao Jogo"
+    }
+  };
+
+  function detectLang() {
+    try {
+      const saved = localStorage.getItem("app_language");
+      if (saved && DELETION_TEXTS[saved]) return saved;
+    } catch(e) {}
+
+    const browserLangs = Array.isArray(navigator.languages) && navigator.languages.length > 0 ? navigator.languages : [navigator.language || ""];
+    for (const raw of browserLangs) {
+      if (!raw) continue;
+      const lower = raw.toLowerCase();
+      const code = lower.split("-")[0];
+      if (code === "ko") return "ko";
+      if (code === "ja") return "ja";
+      if (code === "zh" || lower.includes("zh")) return "zh-CN";
+      if (code === "de") return "de";
+      if (code === "fr") return "fr";
+      if (code === "es") return "es";
+      if (code === "ru") return "ru";
+      if (code === "pt" || lower.includes("pt")) return "pt-BR";
+      if (code === "en") return "en";
+    }
+    return "en";
+  }
+
+  function render(lang) {
+    const labels = {"ko":["언어 선택","모든 권리 보유."],"en":["Select language","All rights reserved."],"ja":["言語を選択","無断転載を禁じます。"],"zh-CN":["选择语言","保留所有权利。"],"de":["Sprache auswählen","Alle Rechte vorbehalten."],"fr":["Choisir la langue","Tous droits réservés."],"es":["Seleccionar idioma","Todos los derechos reservados."],"ru":["Выбрать язык","Все права защищены."],"pt-BR":["Selecionar idioma","Todos os direitos reservados."]}[lang];
+    document.getElementById("lang-select").setAttribute("aria-label", labels[0]);
+    const data = DELETION_TEXTS[lang] || DELETION_TEXTS.ko;
+    document.documentElement.lang = lang;
+    document.title = data.titleTag;
+
+    const select = document.getElementById("lang-select");
+    if (select) select.value = lang;
+
+    const container = document.getElementById("deletion-content");
+    if (!container) return;
+
+    let itemsHtml = data.noticeItems.map(item => `<li>${item}</li>`).join("");
+
+    container.innerHTML = `
+      <h1>${data.h1}</h1>
+      <p style="color: #cbd5e1;">${data.lead}</p>
+
+      <div class="notice-box">
+        <strong style="color: #fca5a5;">${data.noticeTitle}</strong>
+        <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+          ${itemsHtml}
+        </ul>
+        <p style="margin: 8px 0 0 0; font-size: 13px; color: #fca5a5;">
+          ${data.noticeWarn}
+        </p>
+      </div>
+
+      <h2>${data.s1Title}</h2>
+      <div class="steps-box">
+        <p style="margin-top: 0;">${data.s1Desc}</p>
+        <ol style="padding-left: 20px; margin-bottom: 0;">
+          <li>${data.step1}</li>
+          <li>${data.step2}</li>
+          <li>${data.step3}</li>
+        </ol>
+        <a class="btn-email" href="mailto:dubokup@gmail.com?subject=${encodeURIComponent(data.mailSubject)}&body=${encodeURIComponent(data.mailBody)}">${data.btnText}</a>
+      </div>
+
+      <h2>${data.s2Title}</h2>
+      <p>${data.s2P}</p>
+    `;
+
+    const footer = document.getElementById("deletion-footer");
+    if (footer) {
+      footer.innerHTML = `
+        <a href="privacy.html">${data.footerPrivacy}</a> · <a href="./index.html">${data.footerReturn}</a><br><br>
+        © 2026 ChessAlkkagi. ${labels[1]}
+      `;
+    }
+  }
+
+  const initialLang = detectLang();
+  const select = document.getElementById("lang-select");
+  if (select) {
+    select.value = initialLang;
+    select.addEventListener("change", function(e) {
+      const newLang = e.target.value;
+      try { localStorage.setItem("app_language", newLang); } catch(err) {}
+      render(newLang);
+    });
+  }
+
+  render(initialLang);
+})();
+</script>
 
 </body>
 </html>

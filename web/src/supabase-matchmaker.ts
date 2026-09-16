@@ -4,6 +4,7 @@ import type { OnlineTransport } from "./online";
 import type { PeerDisconnectCause, PeerLinkState } from "./net";
 import type { UserProfile } from "./supabase-auth";
 import { getUnifiedIceServers } from "./metered-turn";
+import { getRuntimeText } from "./runtime-text";
 
 const DATA_CHANNEL_LABEL = "chess-alkkaegi-p2p";
 
@@ -278,7 +279,7 @@ export class SupabaseMatchmaker {
     this.errorCallback = onError;
     this.startTime = Date.now();
 
-    this.updateStatus("joining-queue", "매치메이킹 대기열에 접속 중...");
+    this.updateStatus("joining-queue", getRuntimeText("matchmaking.joining_queue"));
 
     const currentMmr = this.queueMode === "strategy" ? (this.user.strategyMmr ?? this.user.mmr) : (this.user.classicMmr ?? this.user.mmr);
     const channelName = `ca-matchmaking-${this.queueMode}`;
@@ -314,7 +315,7 @@ export class SupabaseMatchmaker {
       .subscribe(async (status) => {
         if (this.channel !== queueChannel || this.isCancelled || this.isConnectionEstablished) return;
         if (status === "SUBSCRIBED") {
-          this.updateStatus("searching", "적합한 MMR의 상대를 탐색 중...");
+          this.updateStatus("searching", getRuntimeText("matchmaking.searching_standard"));
           await this.channel?.track({
             id: this.user.id,
             nickname: this.user.nickname,
@@ -368,7 +369,7 @@ export class SupabaseMatchmaker {
 
     const currentMmr = this.queueMode === "strategy" ? (this.user.strategyMmr ?? this.user.mmr) : (this.user.classicMmr ?? this.user.mmr);
 
-    this.updateStatus("searching", `상대 탐색 중... (MMR ±${allowedMmrDiff})`, waitTimeSeconds, allowedMmrDiff);
+    this.updateStatus("searching", getRuntimeText("matchmaking.searching_range", { diff: allowedMmrDiff }), waitTimeSeconds, allowedMmrDiff);
 
     // 대기열 내의 후보 탐색
     for (const key in presenceState) {
@@ -392,7 +393,7 @@ export class SupabaseMatchmaker {
         } else {
           // Guest는 Host로부터 match-proposal 시그널이 오기를 대기 (activeMatchId 세팅 전까지 덮어쓰기 방지용 임시 정보 기록)
           this.opponentProfile = candidate;
-          this.updateStatus("match-found", `대전 상대 발견: ${candidate.nickname} (${candidate.mmr})`, waitTimeSeconds, allowedMmrDiff, candidate);
+          this.updateStatus("match-found", getRuntimeText("matchmaking.match_found_info", { nickname: candidate.nickname, mmr: candidate.mmr }), waitTimeSeconds, allowedMmrDiff, candidate);
           this.startSignalingTimeout(`pending-${candidate.id}`, candidate.id);
         }
         break;
@@ -415,7 +416,7 @@ export class SupabaseMatchmaker {
     this.opponentProfile = opponentInfo;
     void this.trackQueueMatch(matchId);
 
-    this.updateStatus("match-found", `대전 상대 발견: ${opponentInfo.nickname} (${opponentInfo.mmr})`, 0, 0, opponentInfo);
+    this.updateStatus("match-found", getRuntimeText("matchmaking.match_found_info", { nickname: opponentInfo.nickname, mmr: opponentInfo.mmr }), 0, 0, opponentInfo);
     this.startSignalingTimeout(matchId, opponentInfo.id);
 
     if (this.isHost) {
@@ -431,7 +432,7 @@ export class SupabaseMatchmaker {
       console.warn(`[Matchmaker] 15초 WebRTC/TURN 시그널링 타임아웃 발생 (상대방: ${opponentId}, 매치: ${matchId})`);
       this.failedOpponentsCooldown.set(opponentId, Date.now() + 15000);
       this.resetSignalingState();
-      this.updateStatus("searching", "상대방과의 P2P/TURN 연결이 지연되어 대기열을 다시 탐색합니다...");
+      this.updateStatus("searching", getRuntimeText("matchmaking.turn_delayed_researching"));
     }, 15000);
   }
 
@@ -488,10 +489,10 @@ export class SupabaseMatchmaker {
           const hostPresence = presenceState[signal.fromId]?.[0];
           this.opponentProfile = {
             id: signal.fromId,
-            nickname: hostPresence?.nickname || this.opponentProfile?.nickname || "상대 플레이어",
+            nickname: hostPresence?.nickname || this.opponentProfile?.nickname || getRuntimeText("matchmaking.default_opponent_name"),
             mmr: hostPresence?.mmr || this.opponentProfile?.mmr || 1200,
           };
-          this.updateStatus("match-found", `대전 상대 발견: ${this.opponentProfile.nickname}`, 0, 0, this.opponentProfile);
+          this.updateStatus("match-found", getRuntimeText("matchmaking.match_found_name", { nickname: this.opponentProfile.nickname }), 0, 0, this.opponentProfile);
           this.startSignalingTimeout(signal.matchId, signal.fromId);
         }
 
@@ -499,7 +500,7 @@ export class SupabaseMatchmaker {
           await this.setupGuestWebRTC(signal.fromId, signal.matchId);
 
           if (this.peerConnection) {
-            this.updateStatus("signaling", "P2P 연결 수립 중 (Answer 전송)...");
+            this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_sending_answer"));
             await this.peerConnection.setRemoteDescription(new RTCSessionDescription({
               type: "offer",
               sdp: signal.sdp,
@@ -522,7 +523,7 @@ export class SupabaseMatchmaker {
         }
       } else if (signal.type === "answer") {
         if (this.isHost && this.peerConnection) {
-          this.updateStatus("signaling", "P2P 연결 확정 중...");
+          this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_confirming"));
           await this.peerConnection.setRemoteDescription(new RTCSessionDescription({
             type: "answer",
             sdp: signal.sdp,
@@ -568,7 +569,7 @@ export class SupabaseMatchmaker {
    * Host WebRTC RTCPeerConnection 설정 및 DataChannel 생성
    */
   private async setupHostWebRTC(guestId: string, matchId: string): Promise<void> {
-    this.updateStatus("signaling", "P2P 연결 준비 중 (Offer 생성)...");
+    this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_creating_offer"));
     const iceServers = await getUnifiedIceServers();
     const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 2 });
     this.peerConnection = pc;
@@ -634,7 +635,7 @@ export class SupabaseMatchmaker {
     if (this.setupGuestPromise) return this.setupGuestPromise;
 
     this.setupGuestPromise = (async () => {
-      this.updateStatus("signaling", "P2P 연결 응답 중...");
+      this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_responding"));
       const iceServers = await getUnifiedIceServers();
       const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 2 });
       this.peerConnection = pc;
@@ -708,7 +709,7 @@ export class SupabaseMatchmaker {
       this.channel?.untrack();
     } catch {}
 
-    this.updateStatus("connected", "P2P 연결 성공! 게임을 시작합니다.");
+    this.updateStatus("connected", getRuntimeText("matchmaking.connected_starting_game"));
 
     const transport = new WebRtcOnlineTransport(pc, dc);
     if (this.matchReadyCallback && this.opponentProfile) {
@@ -779,7 +780,7 @@ export class SupabaseMatchmaker {
 
     this.updateStatus(
       "match-found",
-      "친구와 1:1 대전을 연결 중입니다...",
+      getRuntimeText("matchmaking.connecting_friend"),
       0,
       0,
       opponent,
@@ -798,7 +799,7 @@ export class SupabaseMatchmaker {
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
-          this.updateStatus("signaling", "P2P 신호를 교환하는 중입니다...", 0, 0, opponent);
+          this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_exchanging_signals"), 0, 0, opponent);
           if (isHost) {
             await this.setupHostWebRTC(opponent.id, roomId);
           } else {
@@ -816,7 +817,7 @@ export class SupabaseMatchmaker {
   public cancel(): void {
     this.isCancelled = true;
     void this.cleanup();
-    this.updateStatus("cancelled", "매칭이 취소되었습니다.");
+    this.updateStatus("cancelled", getRuntimeText("matchmaking.cancelled"));
   }
 
   private async cleanup(): Promise<void> {

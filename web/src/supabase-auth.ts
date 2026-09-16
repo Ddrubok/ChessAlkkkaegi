@@ -1,5 +1,30 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { progressStorage } from "./progress-storage";
+import { I18nManager } from "./i18n";
+
+export function formatAuthError(error: string | undefined | null): string {
+  if (!error) return I18nManager.t("auth.generic_error");
+  const lower = error.toLowerCase();
+  if (lower.includes("invalid login credentials") || lower.includes("invalid credentials")) {
+    return I18nManager.t("auth.invalid_credentials");
+  }
+  if (lower.includes("user already registered") || lower.includes("already registered")) {
+    return I18nManager.t("auth.user_already_registered");
+  }
+  if (lower.includes("email not confirmed") || lower.includes("not confirmed")) {
+    return I18nManager.t("auth.email_not_confirmed");
+  }
+  if (lower.includes("password should be at least") || lower.includes("password")) {
+    if (lower.includes("least 6")) return I18nManager.t("auth.password_min_length");
+  }
+  if (lower.includes("rate limit") || lower.includes("too many requests")) {
+    return I18nManager.t("auth.rate_limit_exceeded");
+  }
+  if (lower.includes("invalid email") || lower.includes("unable to validate email")) {
+    return I18nManager.t("auth.invalid_email");
+  }
+  return I18nManager.t("auth.generic_error");
+}
 
 let pendingAuthChange: Promise<unknown> = Promise.resolve();
 export function waitForAuthChange(): Promise<unknown> { return pendingAuthChange.catch(() => undefined); }
@@ -370,13 +395,13 @@ async function performSignUpWithEmail(
   const cleanNick = nickname.trim();
 
   if (!cleanEmail || !cleanEmail.includes("@")) {
-    return { success: false, error: "올바른 이메일 주소를 입력해주세요." };
+    return { success: false, error: I18nManager.t("auth.invalid_email") };
   }
   if (password.length < 6) {
-    return { success: false, error: "비밀번호는 최소 6자 이상이어야 합니다." };
+    return { success: false, error: I18nManager.t("auth.password_min_length") };
   }
   if (cleanNick.length < 2 || cleanNick.length > 20) {
-    return { success: false, error: "닉네임은 2자 이상 20자 이하이어야 합니다." };
+    return { success: false, error: I18nManager.t("auth.nickname_length") };
   }
 
   const { data: signUpData, error: signUpErr } = await client.auth.signUp({
@@ -390,12 +415,12 @@ async function performSignUpWithEmail(
   });
 
   if (signUpErr) {
-    return { success: false, error: signUpErr.message };
+    return { success: false, error: formatAuthError(signUpErr.message) };
   }
 
   const authUser = signUpData.user;
   if (!authUser) {
-    return { success: false, error: "회원가입 세션 생성에 실패했습니다." };
+    return { success: false, error: I18nManager.t("auth.signup_session_failed") };
   }
 
   // 이메일 확인 대기 상태 (session 없음): 인증되지 않은 상태를 로그인 완료처럼 표시하지 않음
@@ -403,7 +428,7 @@ async function performSignUpWithEmail(
     return {
       success: false,
       needsEmailConfirmation: true,
-      error: "가입 확인 이메일이 발송되었습니다. 이메일 인증을 완료한 후 로그인해주세요.",
+      error: I18nManager.t("auth.email_confirmation_sent"),
     };
   }
 
@@ -422,7 +447,7 @@ async function performSignUpWithEmail(
     );
 
   if (profileErr) {
-    return { success: false, error: profileErr.message };
+    return { success: false, error: formatAuthError(profileErr.message) };
   }
 
   // 로컬 스토리지에 신규 계정 정보 동기화 (기존 전적 오염 방지)
@@ -473,7 +498,7 @@ async function performSignInWithEmail(
 ): Promise<{ success: boolean; error?: string; user?: UserProfile }> {
   const cleanEmail = email.trim();
   if (!cleanEmail || !password) {
-    return { success: false, error: "이메일과 비밀번호를 모두 입력해주세요." };
+    return { success: false, error: I18nManager.t("auth.email_password_required") };
   }
 
   const { data: signInData, error: signInErr } = await client.auth.signInWithPassword({
@@ -482,7 +507,7 @@ async function performSignInWithEmail(
   });
 
   if (signInErr || !signInData.user) {
-    return { success: false, error: signInErr?.message || "로그인 실패" };
+    return { success: false, error: formatAuthError(signInErr?.message) || I18nManager.t("lobby.login_failed") };
   }
 
   localStorage.setItem("ca_guest_user_uuid", signInData.user.id);
@@ -546,7 +571,7 @@ export async function updateNickname(
 ): Promise<{ success: boolean; error?: string }> {
   const trimmed = newNickname.trim();
   if (trimmed.length < 2 || trimmed.length > 20) {
-    return { success: false, error: "닉네임은 2자 이상 20자 이하이어야 합니다." };
+    return { success: false, error: I18nManager.t("auth.nickname_length") };
   }
 
   const { error } = await client
@@ -556,9 +581,9 @@ export async function updateNickname(
 
   if (error) {
     if (error.code === "23505") {
-      return { success: false, error: "이미 사용 중인 닉네임입니다." };
+      return { success: false, error: I18nManager.t("auth.nickname_already_used") };
     }
-    return { success: false, error: error.message };
+    return { success: false, error: formatAuthError(error.message) };
   }
 
   localStorage.setItem(NICKNAME_STORAGE_KEY, trimmed);

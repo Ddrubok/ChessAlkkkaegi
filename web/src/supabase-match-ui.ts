@@ -219,7 +219,7 @@ export class SupabaseMatchUi {
       } else {
         profileSection.innerHTML = `
           <div style="color:#f87171; font-size:13px; text-align:center;">
-            서버 접속 오류: ${escapeHtml(err.message || "연결 실패")}
+            ${I18nManager.t("online.server_error", { error: escapeHtml(I18nManager.t("online.server_error_fallback")) })}
           </div>
         `;
       }
@@ -331,17 +331,17 @@ export class SupabaseMatchUi {
 
     const editBtn = document.createElement("button");
     editBtn.textContent = "✎";
-    editBtn.title = "닉네임 변경";
+    editBtn.title = I18nManager.t("online.edit_nickname_title");
     editBtn.style.cssText = "background:transparent; border:none; color:#60a5fa; cursor:pointer; font-size:14px;";
     editBtn.onclick = async () => {
-      const newName = prompt("새 닉네임을 입력하세요 (2~20자):", profile.nickname);
+      const newName = prompt(I18nManager.t("online.edit_nickname_prompt"), profile.nickname);
       if (newName && this.client) {
         const res = await updateNickname(this.client, profile.id, newName);
         if (res.success) {
           profile.nickname = newName.trim();
           this.renderProfileCard(container, profile);
         } else {
-          alert(res.error || "닉네임 변경 실패");
+          alert(res.error || I18nManager.t("online.edit_nickname_failed"));
         }
       }
     };
@@ -493,7 +493,8 @@ export class SupabaseMatchUi {
         }
       },
       (error) => {
-        alert(`매칭 실패: ${error.message}`);
+        console.error(error);
+        alert(I18nManager.t("online.match_failed", { error: I18nManager.t("online.server_error_fallback") }));
         closeMatching();
       },
     );
@@ -544,30 +545,30 @@ export class SupabaseMatchUi {
     const renderAuthForm = () => {
       modalOverlay.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:10px;">
-          <h3 style="margin:0; font-size:18px; color:#f8fafc;">${mode === "signup" ? "신규 회원가입" : "계정 로그인"}</h3>
-          <button id="auth-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">닫기</button>
+          <h3 style="margin:0; font-size:18px; color:#f8fafc;">${mode === "signup" ? I18nManager.t("online.auth_modal_signup_title") : I18nManager.t("online.auth_modal_signin_title")}</h3>
+          <button id="auth-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">${I18nManager.t("common.close")}</button>
         </div>
 
         <div style="display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;">
-          <button id="tab-signup" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${mode === "signup" ? "#3b82f6" : "transparent"}; color:${mode === "signup" ? "#fff" : "#94a3b8"};">회원가입</button>
-          <button id="tab-signin" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${mode === "signin" ? "#3b82f6" : "transparent"}; color:${mode === "signin" ? "#fff" : "#94a3b8"};">로그인</button>
+          <button id="tab-signup" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${mode === "signup" ? "#3b82f6" : "transparent"}; color:${mode === "signup" ? "#fff" : "#94a3b8"};">${I18nManager.t("lobby.signup_tab")}</button>
+          <button id="tab-signin" style="flex:1; border:none; border-radius:6px; padding:8px; font-weight:700; font-size:13px; cursor:pointer; background:${mode === "signin" ? "#3b82f6" : "transparent"}; color:${mode === "signin" ? "#fff" : "#94a3b8"};">${I18nManager.t("lobby.login_tab")}</button>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
           <div>
-            <label style="display:block; font-size:12px; color:#cbd5e1; margin-bottom:4px;">이메일</label>
+            <label style="display:block; font-size:12px; color:#cbd5e1; margin-bottom:4px;">${I18nManager.t("lobby.email_label")}</label>
             <input id="auth-email" type="email" placeholder="example@email.com" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #475569; border-radius:6px; padding:9px; color:#f8fafc; font-size:13px;" />
           </div>
 
           <div>
-            <label style="display:block; font-size:12px; color:#cbd5e1; margin-bottom:4px;">비밀번호 (6자 이상)</label>
+            <label style="display:block; font-size:12px; color:#cbd5e1; margin-bottom:4px;">${I18nManager.t("lobby.pw_signup_label")}</label>
             <input id="auth-password" type="password" placeholder="••••••••" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #475569; border-radius:6px; padding:9px; color:#f8fafc; font-size:13px;" />
           </div>
 
           ${mode === "signup" ? `
             <div>
-              <label style="display:block; font-size:12px; color:#cbd5e1; margin-bottom:4px;">닉네임 (2~20자)</label>
-              <input id="auth-nickname" type="text" placeholder="체스마스터" value="${escapeHtml(this.profile?.nickname || "")}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #475569; border-radius:6px; padding:9px; color:#f8fafc; font-size:13px;" />
+              <label style="display:block; font-size:12px; color:#cbd5e1; margin-bottom:4px;">${I18nManager.t("lobby.nickname_label")}</label>
+              <input id="auth-nickname" type="text" placeholder="${escapeHtml(I18nManager.t("lobby.nickname_placeholder"))}" value="${escapeHtml(this.profile?.nickname || "")}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #475569; border-radius:6px; padding:9px; color:#f8fafc; font-size:13px;" />
             </div>
           ` : ""}
         </div>
@@ -575,7 +576,7 @@ export class SupabaseMatchUi {
         <div id="auth-error-msg" style="color:#f87171; font-size:12px; min-height:16px;"></div>
 
         <button id="auth-submit-btn" style="background:#3b82f6; color:white; border:none; border-radius:8px; padding:12px; font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;">
-          ${mode === "signup" ? "회원가입 완료" : "로그인"}
+          ${mode === "signup" ? I18nManager.t("lobby.signup_btn") : I18nManager.t("lobby.login_btn")}
         </button>
       `;
 
@@ -602,30 +603,30 @@ export class SupabaseMatchUi {
 
         if (errorEl) errorEl.textContent = "";
         submitBtn.disabled = true;
-        submitBtn.textContent = "처리 중...";
+        submitBtn.textContent = I18nManager.t("online.auth_processing");
 
         if (mode === "signup") {
           const nickname = (modalOverlay.querySelector("#auth-nickname") as HTMLInputElement)?.value.trim();
           const res = await signUpWithEmail(this.client, email, password, nickname);
           if (res.success) {
             modalOverlay.remove();
-            alert(`회원가입 완료! 환영합니다, ${nickname}님.`);
+            alert(I18nManager.t("online.signup_complete_alert", { name: nickname }));
             await this.renderLobby();
           } else {
-            if (errorEl) errorEl.textContent = res.error || "회원가입 실패";
+            if (errorEl) errorEl.textContent = res.error || I18nManager.t("lobby.signup_failed");
             submitBtn.disabled = false;
-            submitBtn.textContent = "회원가입 완료";
+            submitBtn.textContent = I18nManager.t("lobby.signup_btn");
           }
         } else {
           const res = await signInWithEmail(this.client, email, password);
           if (res.success) {
             modalOverlay.remove();
-            alert(`로그인 성공! ${res.user?.nickname}님으로 접속되었습니다.`);
+            alert(I18nManager.t("online.signin_success_alert", { name: res.user?.nickname || "" }));
             await this.renderLobby();
           } else {
-            if (errorEl) errorEl.textContent = res.error || "로그인 실패";
+            if (errorEl) errorEl.textContent = res.error || I18nManager.t("lobby.login_failed");
             submitBtn.disabled = false;
-            submitBtn.textContent = "로그인";
+            submitBtn.textContent = I18nManager.t("lobby.login_btn");
           }
         }
       });
@@ -641,9 +642,9 @@ export class SupabaseMatchUi {
   private renderConfigForm(container: HTMLElement): void {
     container.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:14px;">
-        <div style="font-size:18px; font-weight:700; color:#f8fafc;">서버 연동 설정</div>
+        <div style="font-size:18px; font-weight:700; color:#f8fafc;">${I18nManager.t("online.config_title")}</div>
         <p style="margin:0; font-size:13px; color:#94a3b8; line-height:1.5;">
-          멀티플레이어 자동 매칭 및 Elo 랭킹 시스템을 활성화하려면 Supabase Project URL 및 Anon Key를 등록해주세요.
+          ${I18nManager.t("online.config_desc")}
         </p>
         <div>
           <label style="display:block; font-size:12px; color:#cbd5e1; margin-bottom:4px;">Project URL</label>
@@ -668,7 +669,7 @@ export class SupabaseMatchUi {
     btnGroup.style.cssText = "display:flex; gap:10px; margin-top:14px;";
 
     const saveBtn = document.createElement("button");
-    saveBtn.textContent = "저장 및 연결";
+    saveBtn.textContent = I18nManager.t("online.config_save_btn");
     saveBtn.style.cssText = `
       flex: 1;
       background: #3b82f6;
@@ -683,19 +684,19 @@ export class SupabaseMatchUi {
       const url = urlInput.value.trim();
       const key = keyInput.value.trim();
       if (!url || !key) {
-        alert("URL과 Anon Key를 모두 입력해주세요.");
+        alert(I18nManager.t("online.config_required_alert"));
         return;
       }
       try {
         saveSupabaseConfig({ url, anonKey: key });
         await this.renderLobby();
       } catch (err: any) {
-        alert(`연결 설정 오류: ${err.message}`);
+        alert(I18nManager.t("online.config_error_alert", { error: I18nManager.t("online.server_error_fallback") }));
       }
     };
 
     const cancelBtn = document.createElement("button");
-    cancelBtn.textContent = "닫기";
+    cancelBtn.textContent = I18nManager.t("common.close");
     cancelBtn.style.cssText = `
       background: #334155;
       color: #94a3b8;

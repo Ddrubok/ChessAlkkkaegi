@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 /**
  * 통합 환경 설정 모달 (SettingsModal)
  * - 탭 1: 사운드 설정 (BGM 볼륨, SFX 볼륨, 전체 음소거)
@@ -73,7 +74,7 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
 
       <!-- 탭 본문 -->
       <div id="settings-tab-content" style="min-height:220px; display:flex; flex-direction:column; justify-content:center;"></div>
-      ${AdManager.hasPrivacyOptions() ? '<button id="ad-privacy-options" type="button">광고 개인정보 설정</button>' : ''}
+      ${AdManager.hasPrivacyOptions() ? `<button id="ad-privacy-options" type="button">${uiText("privacy")}</button>` : ''}
     `;
 
     // 닫기 이벤트
@@ -182,7 +183,7 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
                   <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${lang.nativeLabel}</div>
                   <div style="font-size:11px; font-weight:normal; opacity:0.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:${isSelected ? "#93c5fd" : "#94a3b8"};">${lang.label}</div>
                 </div>
-                ${isSelected ? '<span style="font-size:10px; background:#2563eb; color:white; padding:2px 5px; border-radius:4px; flex-shrink:0;">ON</span>' : ""}
+                ${isSelected ? '<span style="font-size:10px; background:#2563eb; color:white; padding:2px 5px; border-radius:4px; flex-shrink:0;">✓</span>' : ""}
               </button>
             `;
           }).join("")}

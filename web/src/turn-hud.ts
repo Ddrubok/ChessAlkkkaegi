@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import type { PieceSide } from "./layout";
 import type { TurnRuntime } from "./turn";
 import { tutorialManager } from "./tutorial";
@@ -115,7 +116,7 @@ export function createTurnHud(
     align-items: center;
     gap: 4px;
   `;
-  accelBadge.innerHTML = `<span id="accel-text">물리 가속 (1.0x)</span>`;
+  accelBadge.innerHTML = `<span id="accel-text">${uiText("acceleration", {speed:"1.0"})}</span>`;
   container.appendChild(accelBadge);
 
   const objectiveBadge = document.createElement("div");
@@ -232,7 +233,7 @@ export function createTurnHud(
       accelBadge.style.display = "flex";
       const accelTextEl = accelBadge.querySelector("#accel-text");
       if (accelTextEl) {
-        accelTextEl.textContent = `물리 가속 중 (${accel.toFixed(1)}x)`;
+        accelTextEl.textContent = uiText("acceleration", {speed:accel.toFixed(1)});
       }
     } else {
       accelBadge.style.display = "none";

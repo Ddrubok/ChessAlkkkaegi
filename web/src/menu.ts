@@ -113,8 +113,8 @@ async function startLobbyMode(
     renderMainMenu(runtime);
     const nextStatus = runtime.overlay.querySelector<HTMLElement>("[data-menu-status]");
     const message = mode === "stage"
-      ? "스테이지 대전을 시작하지 못했습니다."
-      : "대전을 시작하지 못했습니다.";
+      ? I18nManager.t("lobby.stage_start_failed")
+      : I18nManager.t("lobby.match_start_failed");
     if (nextStatus) nextStatus.textContent = message;
     else if (status) status.textContent = message;
   }
@@ -387,7 +387,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const user = runtime.userProfile as UserProfile;
 
   if (!progressStorage.ready) {
-    panel.innerHTML = `<h1 id="main-menu-title">계정 진행도</h1><p role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-retry">다시 불러오기</button>${progressStorage.conflict ? '<button type="button" id="progress-use-server">기기 기록 백업 후 서버 기록 사용</button>' : ''}<button type="button" id="progress-signout">로그아웃</button>`;
+    panel.innerHTML = `<h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.progress_title"))}</h1><p role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-retry">${escapeHtml(I18nManager.t("lobby.progress_retry"))}</button>${progressStorage.conflict ? `<button type="button" id="progress-use-server">${escapeHtml(I18nManager.t("lobby.progress_use_server"))}</button>` : ''}<button type="button" id="progress-signout">${escapeHtml(I18nManager.t("common.logout"))}</button>`;
     panel.querySelector("#progress-retry")?.addEventListener("click", () => { void progressStorage.retry(); });
     panel.querySelector("#progress-use-server")?.addEventListener("click", async () => { await progressStorage.useServer(); if (progressStorage.ready) window.location.reload(); });
     panel.querySelector("#progress-signout")?.addEventListener("click", async () => {
@@ -412,7 +412,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       </div>
 
       <div id="auth-tab-content"></div>
-      <nav class="site-menu-links" aria-label="게임 안내"><a href="./about.html">소개·문의</a><a href="./guide.html">조작법·규칙</a><a href="./tiers.html">티어</a><a href="./updates.html">업데이트</a><a href="./privacy.html">개인정보</a></nav>
+      <nav class="site-menu-links" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./about.html">${escapeHtml(I18nManager.t("lobby.nav_about"))}</a><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.nav_guide"))}</a><a href="./tiers.html">${escapeHtml(I18nManager.t("lobby.nav_tiers"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>
       <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:12px; font-size:13px; min-height:16px; color:#ef4444;"></p>
     `;
 
@@ -510,15 +510,15 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
         content.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:10px;">
             <div>
-              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">이메일</label>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">${I18nManager.t("lobby.email_label")}</label>
               <input type="email" id="login-email-input" placeholder="user@example.com" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
             </div>
             <div>
-              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">비밀번호</label>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">${I18nManager.t("lobby.pw_label")}</label>
               <input type="password" id="login-pw-input" placeholder="••••••••" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
             </div>
             <button id="btn-login-submit" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-top:4px;">
-              이메일 로그인
+              ${I18nManager.t("lobby.login_btn")}
             </button>
           </div>
         `;
@@ -527,7 +527,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
           const pw = (content.querySelector("#login-pw-input") as HTMLInputElement)?.value;
           const sb = getSupabaseClient();
           if (!sb) {
-            if (status) status.textContent = "Supabase 서버 연결이 구성되지 않았습니다.";
+            if (status) status.textContent = I18nManager.t("lobby.supabase_not_configured");
             return;
           }
           const res = await signInWithEmail(sb, email, pw);
@@ -537,26 +537,26 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
             SocialService.init(res.user);
             renderMainMenu(runtime);
           } else {
-            if (status) status.textContent = res.error || "로그인에 실패했습니다.";
+            if (status) status.textContent = res.error || I18nManager.t("lobby.login_failed");
           }
         });
       } else {
         content.innerHTML = `
           <div style="display:flex; flex-direction:column; gap:10px;">
             <div>
-              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">이메일</label>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">${I18nManager.t("lobby.email_label")}</label>
               <input type="email" id="signup-email-input" placeholder="user@example.com" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
             </div>
             <div>
-              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">비밀번호 (6자 이상)</label>
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">${I18nManager.t("lobby.pw_signup_label")}</label>
               <input type="password" id="signup-pw-input" placeholder="••••••••" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
             </div>
             <div>
-              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">닉네임</label>
-              <input type="text" id="signup-nick-input" placeholder="알까기마스터" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
+              <label style="display:block; font-size:12px; color:#94a3b8; margin-bottom:4px; font-weight:600;">${I18nManager.t("lobby.nickname_label")}</label>
+              <input type="text" id="signup-nick-input" placeholder="${escapeHtml(I18nManager.t("lobby.nickname_placeholder"))}" style="width:100%; box-sizing:border-box; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px; color:#f8fafc; font-size:14px;" />
             </div>
             <button id="btn-signup-submit" style="background:#16a34a; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; margin-top:4px;">
-              회원가입 및 시작
+              ${I18nManager.t("lobby.signup_btn")}
             </button>
           </div>
         `;
@@ -566,7 +566,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
           const nick = (content.querySelector("#signup-nick-input") as HTMLInputElement)?.value;
           const sb = getSupabaseClient();
           if (!sb) {
-            if (status) status.textContent = "Supabase 서버 연결이 구성되지 않았습니다.";
+            if (status) status.textContent = I18nManager.t("lobby.supabase_not_configured");
             return;
           }
           const res = await signUpWithEmail(sb, email, pw, nick);
@@ -576,7 +576,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
             SocialService.init(res.user);
             renderMainMenu(runtime);
           } else {
-            if (status) status.textContent = res.error || "회원가입에 실패했습니다.";
+            if (status) status.textContent = res.error || I18nManager.t("lobby.signup_failed");
           }
         });
       }
@@ -606,7 +606,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">저장 다시 시도</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
     void openRankingModal(runtime.overlay, runtime.userProfile);
@@ -887,7 +887,7 @@ export function createMainMenu(
             "#menu-confirm-title",
           );
         if (heading !== null) {
-          heading.textContent = "메뉴로 돌아가지 못했습니다.";
+          heading.textContent = I18nManager.t("ingame.return_menu_failed");
         }
         confirmButton.disabled = false;
         cancelButton.disabled = false;

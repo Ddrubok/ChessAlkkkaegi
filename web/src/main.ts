@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import "./style.css";
 import "./lobby.css";
 import "./progress.css";
@@ -6,6 +7,7 @@ import { progressStorage } from "./progress-storage";
 import { getTier } from "./tier";
 import { formatTier, formatTierProgress } from "./tier-view";
 import { I18nManager } from "./i18n";
+import { getRuntimeText } from "./runtime-text";
 import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
@@ -240,7 +242,7 @@ async function bootstrap(): Promise<void> {
     loadingPanel.replaceChildren(loadingPhase);
   }
   loadingPhase.textContent =
-    "ChessAlkkagi 에셋을 불러오는 중입니다";
+    getRuntimeText("startup.loading_assets");
   // app을 비울 때 인라인 부트 노드를 함께 넘겨 같은 요소를 유지한다.
   app.replaceChildren(loadingPanel);
   initializeSound();
@@ -316,12 +318,12 @@ async function bootstrap(): Promise<void> {
         ? Math.round(Math.min(1, Math.max(0, ratio)) * 100)
         : 0;
       loadingPhase.textContent =
-        `말 모델을 불러오는 중입니다 ${percent}%`;
+        getRuntimeText("startup.loading_models_percent", { percent });
       return;
     }
     const downloadedMegabytes = loadedBytes / (1024 * 1024);
     loadingPhase.textContent =
-      `말 모델을 불러오는 중입니다 ${downloadedMegabytes.toFixed(1)}MB`;
+      getRuntimeText("startup.loading_models_bytes", { size: downloadedMegabytes.toFixed(1) });
   });
   if (
     new URLSearchParams(window.location.search).get("probe") === "1"
@@ -350,7 +352,7 @@ async function bootstrap(): Promise<void> {
     boardHalfExtent,
   );
 
-  loadingPhase.textContent = "물리 월드를 준비하는 중입니다";
+  loadingPhase.textContent = getRuntimeText("startup.preparing_physics");
   menuRuntime.piecePreviewServices = { renderer: sceneRuntime.renderer, assets };
   const physicsRuntime = await createPhysicsRuntime(
     assets.meta,
@@ -364,7 +366,7 @@ async function bootstrap(): Promise<void> {
     physicsRuntime.boardHalfExtent,
   );
   loadingPhase.textContent =
-    "말의 시작 자세를 안정시키는 중입니다";
+    getRuntimeText("startup.stabilizing_pieces");
   preSettlePhysics(physicsRuntime);
   resetPieceHitSoundTracking();
   synchronizePieceMeshes(sceneRuntime, physicsRuntime);
@@ -481,12 +483,12 @@ async function bootstrap(): Promise<void> {
       if (retry) {
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = "정산 다시 확인";
+        button.textContent = getRuntimeText("online.settle_retry_btn");
         button.onclick = () => { button.disabled = true; void recordOnlineMatchSettlement(matchWinner); };
         matchRuntime.resultDetails.appendChild(button);
       }
     };
-    showStatus("상대방의 대전 결과를 확인하고 있습니다.");
+    showStatus(getRuntimeText("online.settle_checking_opponent"));
     try {
       const { data: currentAuth } = await sb.auth.getSession();
       if (currentAuth.session?.user.id !== me.id) return;
@@ -494,7 +496,7 @@ async function bootstrap(): Promise<void> {
         matchId, mode, winnerId, whitePlayerId: whiteId, blackPlayerId: blackId,
       });
       if (result.status === "pending") {
-        showStatus("상대방 확인 대기 중입니다. 확인 완료 전에는 전적이 변경되지 않습니다.", true);
+        showStatus(getRuntimeText("online.settle_waiting_opponent"), true);
         return;
       }
       // 서버가 정산한 값을 읽는다. 로컬 Elo 계산이나 프로필 전적 쓰기는 하지 않는다.
@@ -510,10 +512,15 @@ async function bootstrap(): Promise<void> {
       const previousRating = rating - delta;
       const levelChange = getTier(rating).level - getTier(previousRating).level;
       const promotion = levelChange === 0 ? "" : I18nManager.t(levelChange > 0 ? "tier.promoted" : "tier.demoted") + ": " + formatTier(previousRating) + " → ";
-      showStatus("상대: " + opponent.nickname + " · " + promotion + formatTier(rating) + " · " + (delta > 0 ? "+" : "") + delta + "점 · " + formatTierProgress(rating));
+      showStatus(getRuntimeText("online.settle_opponent_info", {
+        name: opponent.nickname,
+        tier: promotion + formatTier(rating),
+        delta: (delta > 0 ? "+" : "") + delta,
+        progress: formatTierProgress(rating),
+      }));
     } catch (error) {
       console.warn("대전 정산 실패:", error);
-      showStatus("정산을 완료하지 못했습니다. 다시 확인해주세요.", true);
+      showStatus(getRuntimeText("online.settle_failed"), true);
     }
   };
 
@@ -611,12 +618,12 @@ async function bootstrap(): Promise<void> {
   disconnectOverlay.setAttribute("aria-modal", "true");
   disconnectOverlay.innerHTML = `
     <div class="match-result-panel">
-      <p>온라인 대전</p>
-      <h1>상대와 연결이 끊겼습니다</h1>
-      <p data-online-reconnect-status>재연결하거나 대국을 종료하세요.</p>
+      <p>${getRuntimeText("online.reconnect_overlay_title")}</p>
+      <h1>${getRuntimeText("online.reconnect_overlay_disconnected")}</h1>
+      <p data-online-reconnect-status>${getRuntimeText("online.reconnect_overlay_prompt")}</p>
       <div class="match-result-actions">
-        <button type="button" data-online-reconnect>재연결 코드 만들기</button>
-        <button type="button" data-online-abandon>대국 종료</button>
+        <button type="button" data-online-reconnect>${getRuntimeText("online.reconnect_overlay_create_code")}</button>
+        <button type="button" data-online-abandon>${getRuntimeText("online.reconnect_overlay_abandon")}</button>
       </div>
     </div>
   `;
@@ -641,6 +648,11 @@ async function bootstrap(): Promise<void> {
     throw new Error("온라인 재연결 화면 요소를 만들지 못했습니다.");
   }
   const showDisconnectOverlay = (): void => {
+    disconnectOverlay.querySelector(".match-result-panel > p")!.textContent = getRuntimeText("online.reconnect_overlay_title");
+    disconnectOverlay.querySelector("h1")!.textContent = getRuntimeText("online.reconnect_overlay_disconnected");
+    reconnectStatus.textContent = getRuntimeText("online.reconnect_overlay_prompt");
+    reconnectButton.textContent = getRuntimeText("online.reconnect_overlay_create_code");
+    abandonButton.textContent = getRuntimeText("online.reconnect_overlay_abandon");
     onlineConnectionBlocked = true;
     disconnectOverlay.hidden = false;
     reconnectButton.focus();
@@ -1348,19 +1360,19 @@ async function bootstrap(): Promise<void> {
   rematchStatusText.setAttribute("aria-live", "polite");
   const rematchButton = document.createElement("button");
   rematchButton.type = "button";
-  rematchButton.textContent = "재대결";
+  rematchButton.textContent = getRuntimeText("online.rematch_btn");
   rematchButton.hidden = true;
   const rematchCancelButton = document.createElement("button");
   rematchCancelButton.type = "button";
-  rematchCancelButton.textContent = "요청 취소";
+  rematchCancelButton.textContent = getRuntimeText("online.rematch_cancel_btn");
   rematchCancelButton.hidden = true;
   const rematchAcceptButton = document.createElement("button");
   rematchAcceptButton.type = "button";
-  rematchAcceptButton.textContent = "수락";
+  rematchAcceptButton.textContent = getRuntimeText("online.rematch_accept_btn");
   rematchAcceptButton.hidden = true;
   const rematchDeclineButton = document.createElement("button");
   rematchDeclineButton.type = "button";
-  rematchDeclineButton.textContent = "거절";
+  rematchDeclineButton.textContent = getRuntimeText("online.rematch_decline_btn");
   rematchDeclineButton.hidden = true;
   matchResultPanel.insertBefore(
     rematchStatusText,
@@ -1377,6 +1389,9 @@ async function bootstrap(): Promise<void> {
   const renderRematchControls = (
     status: OnlineRematchStatus | null,
   ): void => {
+    rematchCancelButton.textContent = getRuntimeText("online.rematch_cancel_btn");
+    rematchAcceptButton.textContent = getRuntimeText("online.rematch_accept_btn");
+    rematchDeclineButton.textContent = getRuntimeText("online.rematch_decline_btn");
     const showsOnlineResult =
       gameModeRuntime?.mode === "online" &&
       matchRuntime.winner !== null &&
@@ -1386,7 +1401,7 @@ async function bootstrap(): Promise<void> {
     rematchAcceptButton.hidden = true;
     rematchDeclineButton.hidden = true;
     rematchButton.disabled = false;
-    rematchButton.textContent = "재대결";
+    rematchButton.textContent = getRuntimeText("online.rematch_btn");
     rematchStatusText.hidden = true;
     rematchStatusText.textContent = "";
     if (!showsOnlineResult || status === null) {
@@ -1401,7 +1416,7 @@ async function bootstrap(): Promise<void> {
     if (status.phase === "outgoing") {
       rematchButton.hidden = false;
       rematchButton.disabled = true;
-      rematchButton.textContent = "상대 응답을 기다리는 중";
+      rematchButton.textContent = getRuntimeText("online.rematch_waiting_response");
       rematchCancelButton.hidden = false;
     } else if (status.phase === "incoming") {
       rematchAcceptButton.hidden = false;
@@ -1419,8 +1434,7 @@ async function bootstrap(): Promise<void> {
         : String(error);
     console.error(fullError);
     rematchStatusText.hidden = false;
-    rematchStatusText.textContent =
-      error instanceof Error ? error.message : String(error);
+    rematchStatusText.textContent = uiText("connectionHelp");
   };
   rematchButton.addEventListener("click", () => {
     try {
@@ -1973,7 +1987,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
     reconnectButton.disabled = true;
-    reconnectStatus.textContent = "새 P2P 연결 코드를 교환하는 중입니다.";
+    reconnectStatus.textContent = getRuntimeText("online.reconnect_exchanging_codes");
     const reconnectRuntime = onlineRuntime;
     const side = reconnectRuntime.mySide;
     void import("./online")
@@ -1987,7 +2001,7 @@ async function bootstrap(): Promise<void> {
             session.link.close();
             throw new Error("재연결 진영은 기존 대국과 같아야 합니다.");
           }
-          reconnectStatus.textContent = "방장 상태와 대국 기록을 맞추는 중입니다.";
+          reconnectStatus.textContent = getRuntimeText("online.reconnect_syncing_state");
           await reconnectRuntime.replaceTransport(session.link);
           hideDisconnectOverlay();
         } finally {
@@ -2000,8 +2014,7 @@ async function bootstrap(): Promise<void> {
             ? (error.stack ?? error.message)
             : String(error);
         console.error(fullError);
-        reconnectStatus.textContent =
-          error instanceof Error ? error.message : String(error);
+        reconnectStatus.textContent = uiText("connectionHelp");
       })
       .finally(() => {
         reconnectButton.disabled = false;
@@ -2310,12 +2323,12 @@ void bootstrap().catch((error: unknown) => {
   console.error(fullError);
   app.innerHTML = `
     <section class="error-panel" role="alert">
-      <h1>게임을 시작하지 못했습니다.</h1>
+      <h1>${getRuntimeText("startup.init_failed")}</h1>
       <pre></pre>
     </section>
   `;
   const errorText = app.querySelector<HTMLPreElement>(".error-panel pre");
   if (errorText !== null) {
-    errorText.textContent = fullError;
+    errorText.textContent = uiText("connectionHelp");
   }
 });

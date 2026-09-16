@@ -1,3 +1,5 @@
+import { I18nManager } from "./i18n";
+import { uiText } from "./ui-text";
 /**
  * 폰 승급(프로모션) 선택 모달
  * 상대 진영 끝에서 1턴 생존한 폰을 4종 기물(퀸, 룩, 비숍, 나이트) 중 하나로 선택하는 UI
@@ -16,27 +18,27 @@ export interface PromotionPieceOption {
 export const PROMOTION_PIECE_OPTIONS: readonly PromotionPieceOption[] = [
   {
     type: "Queen",
-    name: "퀸 (Queen)",
+    get name() { return I18nManager.t("lobby.piece_queen"); },
     symbol: "♕",
-    description: "무회전 150% 일직선 오버드라이브와 스핀 2.2배 리코셰 굴절을 모두 구사합니다.",
+    get description() { return uiText("Queen"); },
   },
   {
     type: "Rook",
-    name: "룩 (Rook)",
+    get name() { return I18nManager.t("lobby.piece_rook"); },
     symbol: "♖",
-    description: "무회전 발사 시 최대 150% 일직선 오버드라이브 파워.",
+    get description() { return uiText("Rook"); },
   },
   {
     type: "Bishop",
-    name: "비숍 (Bishop)",
+    get name() { return I18nManager.t("lobby.piece_bishop"); },
     symbol: "♗",
-    description: "스핀 충돌 시 2.2배 각도로 튕겨 나가는 대각선 리코셰.",
+    get description() { return uiText("Bishop"); },
   },
   {
     type: "Knight",
-    name: "나이트 (Knight)",
+    get name() { return I18nManager.t("lobby.piece_knight"); },
     symbol: "♘",
-    description: "65° 고각 포물선으로 앞 기물을 뛰어넘어 도약합니다.",
+    get description() { return uiText("Knight"); },
   },
 ];
 
@@ -61,13 +63,13 @@ export function openPromotionModal(
   const card = document.createElement("div");
   card.className = "promotion-modal-card";
 
-  const sideLabel = side === "white" ? "백" : "흑";
+  const sideLabel = I18nManager.t(side === "white" ? "ingame.turn_white" : "ingame.turn_black");
 
   card.innerHTML = `
     <div class="promotion-modal-header">
-      <h2 class="promotion-title">폰 승급 (Pawn Promotion)</h2>
+      <h2 class="promotion-title">${uiText("promotionTitle")}</h2>
       <p class="promotion-subtitle">
-        ${sideLabel} 진영 폰이 상대 진영 끝에서 생존했습니다. 전직할 기물을 선택하세요.
+        ${sideLabel} · ${uiText("promotionHint")}
       </p>
     </div>
     <div class="promotion-piece-grid">

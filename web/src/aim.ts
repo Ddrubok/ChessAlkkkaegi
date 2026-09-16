@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import {
   Box3,
   BufferGeometry,
@@ -242,7 +243,7 @@ const ELEVATION_GAUGE_MARKUP = `
   <path class="aim-elevation-needle" d="M 0 -3.2 L 40 -3.2 L 40 -8.4 L 56 0 L 40 8.4 L 40 3.2 L 0 3.2 Z" />
   <circle class="aim-elevation-pivot" cx="0" cy="0" r="5" />
 </svg>
-<span class="aim-elevation-value">고도 0°</span>`;
+<span class="aim-elevation-value">${uiText("elevation")} 0°</span>`;
 
 export interface GuideCurvePoint {
   // 실제 적용점을 기준으로 한 짧은 탄도 곡선의 월드 위치다.
@@ -1004,7 +1005,7 @@ function updateElevationGauge(
   );
   const rounded = Math.round(degrees);
   runtime.elevationValue.textContent =
-    `고도 ${rounded > 0 ? "+" : ""}${rounded}°`;
+    `${uiText("elevation")} ${rounded > 0 ? "+" : ""}${rounded}°`;
 }
 
 /**
@@ -1293,9 +1294,9 @@ export function applyPowerReadoutVisuals(
   powerReadout.style.textShadow = "";
   powerReadout.style.transform = "translateX(-50%)";
   if (isBishopSpin) {
-    powerReadout.textContent = `${percent}% [스핀 굴절]`;
+    powerReadout.textContent = `${percent}% [${uiText("spin")}]`;
   } else if (normalizedPower > 1.0) {
-    powerReadout.textContent = `${percent}% [오버드라이브]`;
+    powerReadout.textContent = `${percent}% [${uiText("overdrive")}]`;
   } else {
     powerReadout.textContent = `${percent}%`;
   }

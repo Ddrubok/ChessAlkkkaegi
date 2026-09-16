@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import {
   AmbientLight,
   Box3,
@@ -235,7 +236,7 @@ export function createStrikePointPanel(
   const root = document.createElement("section");
   root.className = "strike-point-panel";
   root.hidden = true;
-  root.setAttribute("aria-label", "확대 타점 선택");
+  root.setAttribute("aria-label", uiText("strike"));
 
   const heading = document.createElement("strong");
   heading.textContent = I18nManager.t("ingame.strike_point_title");
@@ -260,6 +261,7 @@ export function createStrikePointPanel(
   container.append(root);
 
   I18nManager.subscribe(() => {
+    root.setAttribute("aria-label", uiText("strike"));
     heading.textContent = I18nManager.t("ingame.strike_point_title");
     resetButton.textContent = I18nManager.t("ingame.strike_reset_btn");
   });

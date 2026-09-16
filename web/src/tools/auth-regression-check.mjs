@@ -237,7 +237,8 @@ try {
 
     const res = await auth.signUpWithEmail(mockClient, "valid@test.com", "password123", "ValidUser");
     assert.equal(res.success, false, "Must report failure when profile write errors out");
-    assert.equal(res.error, "permission denied for table profiles");
+    assert.equal(res.error, auth.formatAuthError("permission denied for table profiles"));
+    assert.notEqual(res.error, "permission denied for table profiles", "Backend details must be localized for players");
   });
 
   await runAsyncTest("Finding 7: signUpWithEmail writes only non-rating snake_case columns", async () => {

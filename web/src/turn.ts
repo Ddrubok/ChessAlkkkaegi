@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import { MathUtils, Spherical, Vector3 } from "three";
 import RAPIER from "@dimforge/rapier3d-compat";
 import {
@@ -669,19 +670,19 @@ export function queueTurnLaunch(
     const maxPower = binding?.instance.type === "Rook" && centerStrike
       ? ROOK_MAX_OVERDRIVE_POWER : 1;
     if (!Number.isFinite(request.normalizedPower) || request.normalizedPower < 0 || request.normalizedPower > maxPower) {
-      return { accepted: false, reason: `발사 세기는 0~${maxPower * 100}% 범위여야 합니다.` };
+      return { accepted: false, reason: uiText("powerRange", {max: maxPower * 100}) };
     }
   }
   if (!canSelectTurnPiece(runtime, request.pieceId)) {
     return {
       accepted: false,
-      reason: `${request.pieceId} 말은 현재 턴에 발사할 수 없습니다.`,
+      reason: uiText("launchRejected"),
     };
   }
   if (runtime.pendingLaunch !== null) {
     return {
       accepted: false,
-      reason: "이미 처리 대기 중인 발사가 있습니다.",
+      reason: uiText("pendingLaunch"),
     };
   }
   runtime.pendingLaunch = request;

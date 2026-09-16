@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import {
   BoxGeometry,
   CanvasTexture,
@@ -754,7 +755,7 @@ export function createSceneRuntime(
   renderer.shadowMap.type = PCFSoftShadowMap;
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.domElement.className = "game-canvas";
-  renderer.domElement.setAttribute("aria-label", "ChessAlkkagi 3D 체스판");
+  renderer.domElement.setAttribute("aria-label", uiText("board"));
   container.append(renderer.domElement);
 
   const controls = new OrbitControls(camera, renderer.domElement);

@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import {
   MathUtils,
   Mesh,
@@ -258,13 +259,13 @@ export function updateStrikePreview(
     runtime.strikePointOverride !== null;
   const powerText =
     runtime.normalizedPower > 1.0
-      ? `세기 ${percent}% [오버드라이브]`
+      ? `${uiText("power")} ${percent}% [${uiText("overdrive")}]`
       : isBishopSpin
-        ? `세기 ${percent}% [스핀 굴절]`
-        : `세기 ${percent}%`;
+        ? `${uiText("power")} ${percent}% [${uiText("spin")}]`
+        : `${uiText("power")} ${percent}%`;
   runtime.feedback.textContent = [
-    `${powerText} · 피치 ${solution.cameraPitchDegrees.toFixed(1)}°`,
-    `고도 ${solution.elevationDegrees.toFixed(1)}°`,
+    `${powerText} · ${uiText("pitch")} ${solution.cameraPitchDegrees.toFixed(1)}°`,
+    `${uiText("elevation")} ${solution.elevationDegrees.toFixed(1)}°`,
     `Δv (${velocity.x.toFixed(2)}, ${velocity.y.toFixed(2)}, ${velocity.z.toFixed(2)})`,
     `Δω (${omega.x.toFixed(2)}, ${omega.y.toFixed(2)}, ${omega.z.toFixed(2)})`,
   ].join("\n");

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MASTERY_KEYS, mergeMasteryValue, reconcileMasteryValues, validateMasteryValues } from "./mastery.ts";
+import { getRuntimeText, type RuntimeTextKey } from "./runtime-text.ts";
 
 export const PROGRESS_KEYS = [
   "chessAlkkagi.meta.maxStage", "chessAlkkagi.meta.points", "chessAlkkagi.meta.upgrades",
@@ -114,7 +115,25 @@ function mergeMasteryDomains(local: ProgressData, remote: ProgressData): Progres
 export class AccountProgressStorage {
   owner: string | null = null;
   ready = true;
-  status = "게스트 진행도는 이 기기에 저장됩니다.";
+  private _statusKey: RuntimeTextKey = "progress.guest_device_stored";
+  private _statusParams?: Record<string, string | number>;
+  private _customStatus: string | null = null;
+
+  get status(): string {
+    if (this._customStatus !== null) return this._customStatus;
+    return getRuntimeText(this._statusKey, this._statusParams);
+  }
+
+  set status(value: string) {
+    this._customStatus = value;
+  }
+
+  setStatus(key: RuntimeTextKey, params?: Record<string, string | number>): void {
+    this._customStatus = null;
+    this._statusKey = key;
+    this._statusParams = params;
+  }
+
   conflict = false;
   saveFailed = false;
   masterySupported: boolean | null = null;
@@ -168,7 +187,7 @@ export class AccountProgressStorage {
       if (!local) throw new Error("저장소 없음");
       local.setItem(CACHE_PREFIX + this.owner, JSON.stringify(this.snapshot));
     } catch {
-      this.status = "기기 임시 저장에 실패했습니다. 서버 저장 완료 전에는 창을 닫지 마세요.";
+      this.setStatus("progress.local_cache_failed");
     }
   }
 
@@ -199,9 +218,11 @@ export class AccountProgressStorage {
     if (includesLegacy || (includesMastery && this.masterySupported === true)) this.snapshot.dirty = true;
     if (includesMastery && this.masterySupported !== true) this.masteryPending = true;
     this.retryCount = 0;
-    this.status = this.masteryPending && !includesLegacy
-      ? "새 숙련 기록은 서버 업데이트 전까지 이 계정의 기기 캐시에 보관됩니다."
-      : "진행도를 저장하는 중입니다…";
+    if (this.masteryPending && !includesLegacy) {
+      this.setStatus("progress.mastery_pending_cached");
+    } else {
+      this.setStatus("progress.saving");
+    }
     this.persist();
     clearTimeout(this.timer);
     if (this.snapshot.dirty) this.timer = setTimeout(() => { void this.flush(); }, 200);
@@ -216,7 +237,7 @@ export class AccountProgressStorage {
     this.masteryPending = false;
     this.unsafeData = false;
     this.unsafeCacheRaw = null;
-    this.status = "계정이 변경되어 진행도를 다시 불러옵니다…";
+    this.setStatus("progress.account_changed_reloading");
     this.notify();
   }
 
@@ -235,7 +256,11 @@ export class AccountProgressStorage {
     this.retryCount = 0;
     this.snapshot = { data: {}, revision: 0, dirty: false };
     this.ready = owner === null;
-    this.status = owner ? "계정 진행도를 불러오는 중입니다…" : "게스트 진행도는 이 기기에 저장됩니다.";
+    if (owner) {
+      this.setStatus("progress.loading");
+    } else {
+      this.setStatus("progress.guest_device_stored");
+    }
     this.notify(true);
     if (!owner) return;
     let cached: Snapshot | null = null;
@@ -247,7 +272,7 @@ export class AccountProgressStorage {
         this.unsafeData = true;
         this.conflict = true;
         this.saveFailed = true;
-        this.status = "기기 캐시가 손상되어 원본을 보존하고 계정 저장을 멈췄습니다. 복구 후 서버 기록 사용을 선택해 주세요.";
+        this.setStatus("progress.corrupted_cache");
         this.notify(true);
         return;
       }
@@ -292,7 +317,7 @@ export class AccountProgressStorage {
       if (legacyMerge.conflicts.length) {
         if (!cachedRaw || !this.archive(cachedRaw)) {
           this.conflict = true;
-          this.status = "충돌한 기기 기록을 백업하지 못해 서버 기록으로 교체하지 않았습니다.";
+          this.setStatus("progress.backup_failed_no_replace");
           this.notify(true);
           return;
         }
@@ -303,7 +328,7 @@ export class AccountProgressStorage {
           base: { ...remote.data },
         };
         this.conflict = true;
-        this.status = `다른 기기와 충돌한 기록(${legacyMerge.conflicts.join(", ")})을 백업했습니다. 어느 기록을 사용할지 선택해 주세요.`;
+        this.setStatus("progress.conflict_backed_up", { keys: legacyMerge.conflicts.join(", ") });
         this.persist();
         this.notify(true);
         return;
@@ -312,9 +337,11 @@ export class AccountProgressStorage {
       const legacyDirty = !equalData(chosenLegacy, remoteLegacy);
       this.snapshot = { data: { ...chosenLegacy, ...mergedMastery }, revision: remote.revision, dirty: legacyDirty || (this.masterySupported === true && !equalData(mergedMastery, masteryData(remote.data))), base: { ...remote.data } };
       this.ready = true;
-      this.status = this.masteryPending
-        ? "계정 진행도를 불러왔습니다. 새 숙련 기록은 서버 업데이트 전까지 이 기기에 보관됩니다."
-        : "계정 진행도를 불러왔습니다.";
+      if (this.masteryPending) {
+        this.setStatus("progress.loaded_mastery_pending");
+      } else {
+        this.setStatus("progress.loaded");
+      }
       this.persist();
       this.notify(true);
       if (this.snapshot.dirty) await this.flush();
@@ -327,11 +354,13 @@ export class AccountProgressStorage {
         this.unsafeCacheRaw = cachedRaw;
         this.unsafeData = true;
         this.conflict = true;
-        this.status = "서로 다른 과거 숙련 조건 기록을 자동 병합하지 않고 원본을 보존했습니다. 복구할 기록을 선택해 주세요.";
+        this.setStatus("progress.mastery_version_conflict");
       } else if (message.includes("mastery") || message.includes("JSON")) {
         this.unsafeData = true;
-        this.status = "숙련 기록 형식이 안전하지 않아 원본을 보존하고 계정 저장을 멈췄습니다. 복구 후 다시 시도해 주세요.";
-      } else this.status = "계정 진행도를 불러오지 못했습니다. 연결과 서버 설정을 확인한 뒤 다시 시도해 주세요.";
+        this.setStatus("progress.mastery_unsafe");
+      } else {
+        this.setStatus("progress.load_failed");
+      }
       this.notify();
     }
   }
@@ -375,7 +404,7 @@ export class AccountProgressStorage {
                 if (!this.archive(JSON.stringify(this.snapshot))) {
                   this.conflict = true;
                   this.ready = false;
-                  this.status = "충돌한 기기 기록을 백업하지 못해 서버 기록으로 교체하지 않았습니다.";
+                  this.setStatus("progress.backup_failed_no_replace");
                   this.notify(true);
                   return false;
                 }
@@ -388,7 +417,7 @@ export class AccountProgressStorage {
                   dirty: this.masterySupported === true && !equalData(mergedMastery, masteryData(latest.data)),
                   base: { ...latest.data },
                 };
-                this.status = `다른 기기와 충돌한 기록(${legacyMerge.conflicts.join(", ")})을 백업했습니다. 어느 기록을 사용할지 선택해 주세요.`;
+                this.setStatus("progress.conflict_backed_up", { keys: legacyMerge.conflicts.join(", ") });
                 this.persist();
                 this.notify(true);
                 if (this.snapshot.dirty) continue;
@@ -420,22 +449,24 @@ export class AccountProgressStorage {
           this.saveFailed = false;
           this.retryCount = 0;
           this.masteryPending = this.masterySupported !== true && Object.keys(pendingMastery).length > 0;
-          this.status = this.masteryPending
-            ? "기존 진행도는 서버에 저장되었습니다. 새 숙련 기록은 서버 업데이트 전까지 이 기기에 보관됩니다."
-            : this.conflict
-              ? "충돌한 기존 기록은 백업했고 숙련 기록은 서버와 병합했습니다. 서버 기록을 사용해 계속해 주세요."
-              : "서버에 저장되었습니다.";
+          if (this.masteryPending) {
+            this.setStatus("progress.saved_mastery_pending");
+          } else if (this.conflict) {
+            this.setStatus("progress.saved_conflict_resolved");
+          } else {
+            this.setStatus("progress.saved");
+          }
           this.persist();
           this.notify();
         } catch {
           if (generation !== this.generation) return false;
           this.saveFailed = true;
           if (!this.conflict) {
-            this.status = "연결 문제로 저장이 지연되고 있습니다. 자동으로 다시 시도합니다.";
+            this.setStatus("progress.save_delayed_retrying");
             if (this.retryCount++ < 3) {
               this.timer = setTimeout(() => { void this.flush(); }, 10000);
             } else {
-              this.status = "서버 저장이 지연되고 있습니다. 연결을 확인한 뒤 다시 시도해 주세요.";
+              this.setStatus("progress.save_delayed_check_conn");
             }
           }
           this.persist();
@@ -473,7 +504,7 @@ export class AccountProgressStorage {
       const recoverable = this.unsafeCacheRaw ?? this.readLocal(CACHE_PREFIX + this.owner) ?? JSON.stringify(this.snapshot);
       if (!this.archive(recoverable)) throw new Error("백업 실패");
     } catch {
-      this.status = "기기 기록을 백업하지 못했습니다. 서버 기록으로 교체하지 않았습니다.";
+      this.setStatus("progress.backup_failed");
       this.notify();
       return;
     }
@@ -483,7 +514,7 @@ export class AccountProgressStorage {
         if (!local) throw new Error("저장소 없음");
         local.setItem(CACHE_PREFIX + owner, JSON.stringify({ data: {}, revision: 0, dirty: false, base: {} }));
       } catch {
-        this.status = "서버 기록으로 전환할 안전한 기기 캐시를 만들지 못했습니다.";
+        this.setStatus("progress.cache_create_failed");
         this.notify();
         return;
       }
@@ -506,9 +537,13 @@ export class AccountProgressStorage {
     this.ready = true;
     this.saveFailed = false;
     this.masteryPending = this.masterySupported !== true && Object.keys(retainedMastery).length > 0;
-    this.status = this.masteryPending
-      ? "서버의 기존 진행도를 사용합니다. 숙련 기록은 서버 업데이트 전까지 이 계정의 기기 캐시에 보관됩니다."
-      : this.snapshot.dirty ? "서버의 기존 진행도를 사용하고 숙련 기록을 병합하는 중입니다…" : "서버 기록을 사용합니다.";
+    if (this.masteryPending) {
+      this.setStatus("progress.use_server_mastery_pending");
+    } else if (this.snapshot.dirty) {
+      this.setStatus("progress.use_server_merging");
+    } else {
+      this.setStatus("progress.use_server");
+    }
     this.persist();
     this.notify(true);
     if (this.snapshot.dirty) await this.flush();

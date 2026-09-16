@@ -1,3 +1,4 @@
+import { uiText } from "./ui-text";
 import {
   BufferGeometry,
   Matrix4,
@@ -1032,7 +1033,7 @@ function commitActiveLaunch(runtime: InputRuntime): void {
     startLaunchPulse(runtime.aimRuntime, request.pieceId);
     return;
   }
-  const reason = outcome.reason ?? "알 수 없는 이유로 발사 큐가 거절했습니다.";
+  const reason = outcome.reason ?? uiText("launchRejected");
   cancelInteraction(runtime, false);
   runtime.failureReason = reason;
   showAimError(runtime.aimParametersRuntime, reason);
@@ -1217,11 +1218,11 @@ function updateActionBar(runtime: InputRuntime): void {
   for (const button of runtime.actionBar.querySelectorAll("button")) {
     if (button.dataset.action === "swap") {
       button.hidden = !canSwap;
-      button.textContent = runtime.kingSwapMode ? "스왑 취소" : "위치 변경";
+      button.textContent = runtime.kingSwapMode ? uiText("cancelSwap") : uiText("swap");
       button.setAttribute("aria-pressed", String(runtime.kingSwapMode));
     } else if (button.dataset.action === "defend") {
       button.hidden = !canSwap || runtime.kingSwapMode;
-      button.textContent = "철벽 방어";
+      button.textContent = uiText("defend");
       button.setAttribute("aria-pressed", "false");
     } else {
       button.hidden = runtime.mode !== "billiards";
@@ -1975,7 +1976,7 @@ export function createInputRuntime(
   const modeToggle = document.createElement("div");
   modeToggle.className = "input-mode-toggle";
   modeToggle.setAttribute("role", "group");
-  modeToggle.setAttribute("aria-label", "조작 모드");
+  modeToggle.setAttribute("aria-label", uiText("controls"));
 
   const modeButtons: Record<InputMode, HTMLButtonElement> = {
     billiards: document.createElement("button"),
@@ -1998,7 +1999,7 @@ export function createInputRuntime(
   const actionBar = document.createElement("div");
   actionBar.className = "strike-action-bar";
   actionBar.setAttribute("role", "group");
-  actionBar.setAttribute("aria-label", "동작 선택");
+  actionBar.setAttribute("aria-label", uiText("actions"));
   actionBar.hidden = true;
 
   const actionButtons: Record<string, HTMLButtonElement> = {
@@ -2028,13 +2029,16 @@ export function createInputRuntime(
   const updateActionBarLabels = () => {
     actionButtons.launch.textContent = I18nManager.t("ingame.launch");
     actionButtons.strike.textContent = I18nManager.t("ingame.strike_select");
-    actionButtons.swap.textContent = "위치 변경";
-    actionButtons.defend.textContent = "철벽 방어";
+    actionButtons.swap.textContent = uiText("swap");
+    actionButtons.defend.textContent = uiText("defend");
   };
   updateActionBarLabels();
   sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
 
   I18nManager.subscribe(() => {
+    modeToggle.setAttribute("aria-label", uiText("controls"));
+    actionBar.setAttribute("aria-label", uiText("actions"));
+    sceneRuntime.renderer.domElement.setAttribute("aria-label", uiText("board"));
     updateToggleLabels();
     updateActionBarLabels();
     updateModeToggle(runtime);
@@ -2048,7 +2052,7 @@ export function createInputRuntime(
     createStrikePointPanel(overlayContainer);
   const kingSwapBanner = document.createElement("div");
   kingSwapBanner.className = "king-swap-banner";
-  kingSwapBanner.textContent = "교환할 기물을 터치/클릭하세요 (취소: 빈 곳 클릭)";
+  kingSwapBanner.textContent = uiText("swapHint");
   kingSwapBanner.hidden = true;
   overlayContainer.append(kingSwapBanner);
   const runtime: InputRuntime = {
