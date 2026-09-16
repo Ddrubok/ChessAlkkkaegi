@@ -254,8 +254,7 @@ export class PuzzlePhysicsTracker {
       if (
         previous !== undefined &&
         !this.recordedFallenPieces.has(pieceId) &&
-        binding.body.translation().y <= FALL_OUT_Y &&
-        previous.y > FALL_OUT_Y
+        binding.body.translation().y < FALL_OUT_Y
       ) {
         this.fallenPieces.push(this.classifyFall(pieceId, step, previous, current));
         this.recordedFallenPieces.add(pieceId);
