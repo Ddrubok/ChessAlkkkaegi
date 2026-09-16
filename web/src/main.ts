@@ -1061,6 +1061,7 @@ async function bootstrap(): Promise<void> {
     resetPieceHitSoundTracking();
     synchronizePieceMeshes(sceneRuntime, physicsRuntime);
     resetTurnRuntime(turnRuntime);
+    turnHud.reset();
     const runId = typeof crypto !== "undefined" && "randomUUID" in crypto
       ? `match-${crypto.randomUUID()}` : `match-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     masteryRun = {

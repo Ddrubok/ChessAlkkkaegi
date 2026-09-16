@@ -7,6 +7,7 @@ import { I18nManager } from "./i18n";
 export interface TurnHudRuntime {
   element: HTMLElement;
   update: (now: number, frameDelta: number) => void;
+  reset: () => void;
   destroy: () => void;
 }
 
@@ -130,6 +131,13 @@ export function createTurnHud(
   let lastSide: PieceSide | null = null;
   let timeoutTriggered = false;
 
+  // A new board can start on the same side as the previous game.
+  const reset = (): void => {
+    remainingSeconds = TURN_TIME_LIMIT_SECONDS;
+    lastSide = null;
+    timeoutTriggered = false;
+  };
+
   const update = (_now: number, frameDelta: number): void => {
     // 경기 종료 또는 메인 메뉴가 열려있는 경우 숨김
     if (turnRuntime.phase === "match-over" || (options.isMenuVisible && options.isMenuVisible())) {
@@ -153,7 +161,7 @@ export function createTurnHud(
     const mySide = options.getMySide();
     const currentSide = turnRuntime.currentSide;
 
-    // 턴이 바뀌거나 새 턴 준비 단계로 오면 타이머 리셋
+    // 진영이 바뀌면 새 턴의 타이머 리셋 (새 게임은 reset()에서 초기화)
     if (lastSide !== currentSide) {
       lastSide = currentSide;
       remainingSeconds = TURN_TIME_LIMIT_SECONDS;
@@ -248,6 +256,7 @@ export function createTurnHud(
   return {
     element: container,
     update,
+    reset,
     destroy,
   };
 }
