@@ -507,7 +507,8 @@ try {
   const guest = await createMatchRuntime(modules, meta);
   const transports = createFakeTransportPair();
   const resignedEvents = [];
-  let hostBanner = "classic", guestBanner = "slate";
+  let hostBanner = "classic", guestBanner = "plain";
+  let verifiedGuestBanner = "banner_cosmic_knight", bannerLookups = 0;
   const hostOnline = online.createOnlineRuntime(
     transports.host,
     host.turnRuntime,
@@ -516,7 +517,7 @@ try {
     {
       onResigned: (side) => resignedEvents.push(`host:${side}`),
     },
-    { getLocalBannerTheme: () => hostBanner },
+    { getLocalBannerTheme: () => hostBanner, resolveOpponentBanner: async () => { bannerLookups++; return verifiedGuestBanner; } },
   );
   const guestOnline = online.createOnlineRuntime(
     transports.guest,
@@ -530,7 +531,7 @@ try {
   );
   for (const kind of ["ready", "resume"]) {
     const base = { kind, matchId: "banner-check", side: "white", turnIndex: 0, stateHash: "a".repeat(64) };
-    for (const theme of ["classic", "slate", "forest"]) assertCondition(online.parseOnlineMessage({...base, bannerTheme: theme}).bannerTheme === theme, "배너 파싱 실패");
+    for (const theme of ["classic", "slate", "forest", "plain", "banner_cosmic_knight", "banner_crimson_sun", "banner_hidden_myeongnyang"]) assertCondition(online.parseOnlineMessage({...base, bannerTheme: theme}).bannerTheme === theme, "배너 파싱 실패");
     for (const theme of [undefined, null, "unknown", {}, "<script>"]) assertCondition(online.parseOnlineMessage({...base, bannerTheme: theme}).bannerTheme === "classic", "누락/잘못된 배너 기본값 실패");
   }
   let recoveryDiagnostics = null;
@@ -579,7 +580,7 @@ try {
     hostOnline.waitUntilReady(),
     guestOnline.waitUntilReady(),
   ]);
-  assertCondition(hostOnline.opponentBannerTheme === "slate" && guestOnline.opponentBannerTheme === "classic", "양쪽의 서로 다른 배너가 교환되지 않았습니다.");
+  assertCondition(hostOnline.opponentBannerTheme === "banner_cosmic_knight" && guestOnline.opponentBannerTheme === "classic", "양쪽의 서로 다른 배너가 교환되지 않았습니다.");
 
   const blockedRequest = createScriptedRequest(guest, 0);
   const blocked = guestOnline.queueLocalLaunch(blockedRequest);
@@ -826,7 +827,7 @@ try {
       ).accepted,
     "끊김 뒤 양쪽 입력이 차단되지 않았습니다.",
   );
-  hostBanner = "forest"; guestBanner = "classic";
+  hostBanner = "forest"; guestBanner = "classic"; verifiedGuestBanner = "classic";
   const resumedTransports = createFakeTransportPair();
   await Promise.all([
     hostOnline.replaceTransport(resumedTransports.host),

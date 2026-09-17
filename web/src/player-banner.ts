@@ -1,7 +1,7 @@
 ﻿import { I18nManager } from './i18n';
 import { formatTier } from './tier-view';
 import { getRuntimeText } from './runtime-text';
-import { getBannerTheme, subscribeBannerTheme, type BannerTheme } from './banner-theme';
+import { getBannerTheme, getPlayerBannerTheme, subscribeBannerTheme, type BannerAppearance } from './banner-theme';
 import type { UserProfile } from './supabase-auth';
 import type { PieceSide } from './layout';
 import type { GameMode } from './game-mode';
@@ -17,7 +17,7 @@ export interface PlayerBannerState {
   opponent: { id: string; nickname: string; mmr: number } | null;
   rankedMode: 'classic' | 'strategy';
   loggedIn: boolean;
-  opponentBannerTheme?: BannerTheme;
+  opponentBannerTheme?: BannerAppearance;
 }
 
 export function getPlayerBannerModels(state: PlayerBannerState) {
@@ -80,7 +80,7 @@ export function createPlayerBanners(parent: HTMLElement, options: {
       view.detail.textContent = model.detail;
       view.emblem.textContent = model.bot ? '♚' : model.side === 'white' ? '♙' : '♟';
       view.card.dataset.active = String(model.side === state.currentSide);
-      view.card.dataset.theme = view === self ? getBannerTheme() : state.mode === 'online' ? state.opponentBannerTheme ?? 'classic' : 'classic';
+      view.card.dataset.theme = view === self ? getPlayerBannerTheme(state.loggedIn) : state.mode === 'online' ? state.opponentBannerTheme ?? 'classic' : state.mode === 'hotseat' ? 'plain' : 'classic';
       view.card.setAttribute('aria-label', `${model.name} · ${model.detail}`);
     }
     add.hidden = !models.canAddFriend;

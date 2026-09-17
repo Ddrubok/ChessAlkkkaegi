@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { MASTERY_KEYS, mergeMasteryValue, reconcileMasteryValues, validateMasteryValues } from "./mastery.ts";
+import { MASTERY_PROGRESS_KEY, MASTERY_REWARDS_KEY, MASTERY_PREFERENCES_KEY, MASTERY_KEYS, mergeMasteryValue, reconcileMasteryValues, validateMasteryValues } from "./mastery.ts";
 import { getRuntimeText, type RuntimeTextKey } from "./runtime-text.ts";
 
 export const PROGRESS_KEYS = [
@@ -11,8 +11,11 @@ export const PROGRESS_KEYS = [
 type ProgressData = Record<string, string>;
 type LocalStore = Pick<Storage, "getItem" | "setItem">;
 type Snapshot = { data: ProgressData; revision: number; dirty: boolean; base?: ProgressData };
-const CACHE_PREFIX = "ca_account_progress_v1:";
+// Keep new fields away from older clients with strict cache parsers.
+const CACHE_PREFIX = "ca_account_progress_v3:";
+const LEGACY_CACHE_PREFIX = "ca_account_progress_v1:";
 const MASTERY_CAPABILITY = "mastery-v1";
+const BANNERS_CAPABILITY = "banners-v1";
 const CAPABILITY_REPROBE_MS = 5 * 60 * 1000;
 
 function isMasteryKey(key: string): boolean {
@@ -25,6 +28,94 @@ function legacyData(data: ProgressData): ProgressData {
 
 function masteryData(data: ProgressData): ProgressData {
   return Object.fromEntries(Object.entries(data).filter(([key]) => isMasteryKey(key)));
+}
+
+function projectToV2Progress(data: ProgressData): ProgressData {
+  const projected = { ...data };
+  if (projected[MASTERY_PROGRESS_KEY]) {
+    try {
+      const p = JSON.parse(projected[MASTERY_PROGRESS_KEY]);
+      if (p && typeof p === "object" && "banners" in p) {
+        delete p.banners;
+        projected[MASTERY_PROGRESS_KEY] = JSON.stringify(p);
+      }
+    } catch {}
+  }
+  if (projected[MASTERY_REWARDS_KEY]) {
+    try {
+      const r = JSON.parse(projected[MASTERY_REWARDS_KEY]);
+      if (r && typeof r === "object") {
+        if (r.grants && typeof r.grants === "object") {
+          const grants: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(r.grants)) {
+            if (!k.startsWith("banner:")) grants[k] = v;
+          }
+          r.grants = grants;
+        }
+        if (r.items && typeof r.items === "object") {
+          const items: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(r.items)) {
+            if (!k.startsWith("banner:")) items[k] = v;
+          }
+          r.items = items;
+        }
+        projected[MASTERY_REWARDS_KEY] = JSON.stringify(r);
+      }
+    } catch {}
+  }
+  if (projected[MASTERY_PREFERENCES_KEY]) {
+    try {
+      const f = JSON.parse(projected[MASTERY_PREFERENCES_KEY]);
+      if (f && typeof f === "object" && f.equipped && typeof f.equipped === "object") {
+        const equipped: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(f.equipped)) {
+          if (k !== "banner") equipped[k] = v;
+        }
+        f.equipped = equipped;
+        projected[MASTERY_PREFERENCES_KEY] = JSON.stringify(f);
+      }
+    } catch {}
+  }
+  return projected;
+}
+
+function hasBannerExtensions(data: ProgressData): boolean {
+  if (data[MASTERY_PROGRESS_KEY]) {
+    try {
+      const p = JSON.parse(data[MASTERY_PROGRESS_KEY]);
+      if (p && typeof p === "object" && p.banners && typeof p.banners === "object" && Object.keys(p.banners).length > 0) {
+        return true;
+      }
+    } catch {}
+  }
+  if (data[MASTERY_REWARDS_KEY]) {
+    try {
+      const r = JSON.parse(data[MASTERY_REWARDS_KEY]);
+      if (r && typeof r === "object") {
+        if (r.grants && typeof r.grants === "object") {
+          for (const k of Object.keys(r.grants)) {
+            if (k.startsWith("banner:")) return true;
+          }
+        }
+        if (r.items && typeof r.items === "object") {
+          for (const k of Object.keys(r.items)) {
+            if (k.startsWith("banner:")) return true;
+          }
+        }
+      }
+    } catch {}
+  }
+  if (data[MASTERY_PREFERENCES_KEY]) {
+    try {
+      const f = JSON.parse(data[MASTERY_PREFERENCES_KEY]);
+      if (f && typeof f === "object" && f.equipped && typeof f.equipped === "object") {
+        if ("banner" in f.equipped && f.equipped.banner !== undefined && f.equipped.banner !== null) {
+          return true;
+        }
+      }
+    } catch {}
+  }
+  return false;
 }
 
 function isUnknownRpc(error: unknown): boolean {
@@ -138,6 +229,8 @@ export class AccountProgressStorage {
   saveFailed = false;
   masterySupported: boolean | null = null;
   masteryPending = false;
+  bannersSupported: boolean | null = null;
+  bannersPending = false;
   unsafeData = false;
   private retryCount = 0;
   private snapshot: Snapshot = { data: {}, revision: 0, dirty: false };
@@ -153,7 +246,7 @@ export class AccountProgressStorage {
   constructor(local: () => LocalStore | null = browserStorage) {
     this.local = local;
     if (typeof window !== "undefined") window.addEventListener("online", () => {
-      if (this.owner && (this.masterySupported !== false || Date.now() - this.lastCapabilityProbe >= CAPABILITY_REPROBE_MS)) void this.retry(true);
+      if (this.owner && (this.masterySupported !== false || this.bannersSupported !== false || Date.now() - this.lastCapabilityProbe >= CAPABILITY_REPROBE_MS)) void this.retry(true);
     });
   }
 
@@ -215,10 +308,11 @@ export class AccountProgressStorage {
     this.snapshot.data = nextData;
     const includesLegacy = Object.keys(values).some(key => !isMasteryKey(key));
     const includesMastery = Object.keys(values).some(isMasteryKey);
-    if (includesLegacy || (includesMastery && this.masterySupported === true)) this.snapshot.dirty = true;
-    if (includesMastery && this.masterySupported !== true) this.masteryPending = true;
+    if (includesLegacy || (includesMastery && (this.bannersSupported === true || this.masterySupported === true))) this.snapshot.dirty = true;
+    this.bannersPending = this.bannersSupported !== true && hasBannerExtensions(this.snapshot.data);
+    this.masteryPending = this.masterySupported !== true && Object.keys(masteryData(this.snapshot.data)).length > 0;
     this.retryCount = 0;
-    if (this.masteryPending && !includesLegacy) {
+    if ((this.masteryPending || this.bannersPending) && !includesLegacy) {
       this.setStatus("progress.mastery_pending_cached");
     } else {
       this.setStatus("progress.saving");
@@ -235,6 +329,8 @@ export class AccountProgressStorage {
     this.ready = false;
     this.masterySupported = null;
     this.masteryPending = false;
+    this.bannersSupported = null;
+    this.bannersPending = false;
     this.unsafeData = false;
     this.unsafeCacheRaw = null;
     this.setStatus("progress.account_changed_reloading");
@@ -251,6 +347,8 @@ export class AccountProgressStorage {
     this.saveFailed = false;
     this.masterySupported = null;
     this.masteryPending = false;
+    this.bannersSupported = null;
+    this.bannersPending = false;
     this.unsafeData = false;
     this.unsafeCacheRaw = null;
     this.retryCount = 0;
@@ -264,7 +362,7 @@ export class AccountProgressStorage {
     this.notify(true);
     if (!owner) return;
     let cached: Snapshot | null = null;
-    const cachedRaw = this.readLocal(CACHE_PREFIX + owner);
+    const cachedRaw = this.readLocal(CACHE_PREFIX + owner) ?? this.readLocal(LEGACY_CACHE_PREFIX + owner);
     if (cachedRaw) {
       try { cached = readSnapshot(JSON.parse(cachedRaw)); }
       catch {
@@ -281,22 +379,44 @@ export class AccountProgressStorage {
       if (!client) throw new Error("서버 설정 없음");
       let response: { data: unknown; error: any } | null = null;
       this.lastCapabilityProbe = Date.now();
-      const probe = await this.request(client, "get_account_progress_v2", {
-        p_expected_user_id: owner, p_client_capability: MASTERY_CAPABILITY,
+      let probe = await this.request(client, "get_account_progress_v3", {
+        p_expected_user_id: owner, p_client_capability: BANNERS_CAPABILITY,
       });
+      if (generation !== this.generation) return;
       if (!probe.error) {
-        response = probe;
         const capabilities = (probe.data as { capabilities?: unknown } | null)?.capabilities;
-        this.masterySupported = Array.isArray(capabilities) && capabilities.includes(MASTERY_CAPABILITY);
-        if (!this.masterySupported) throw new Error("서버 숙련 기능 응답 오류");
+        const bannersSupported = Array.isArray(capabilities) && capabilities.includes(BANNERS_CAPABILITY);
+        if (!bannersSupported) throw new Error("서버 배너 기능 응답 오류");
+        if (generation !== this.generation) return;
+        this.bannersSupported = true;
+        this.masterySupported = true;
+        response = probe;
       } else if (isUnknownRpc(probe.error) || probe.error?.code === "40001") {
-        // A read-only capability probe cannot legitimately produce our save-CAS code;
-        // older verification adapters route unknown RPC names through their save stub.
-        this.masterySupported = false;
+        probe = await this.request(client, "get_account_progress_v2", {
+          p_expected_user_id: owner, p_client_capability: MASTERY_CAPABILITY,
+        });
+        if (generation !== this.generation) return;
+        if (!probe.error) {
+          const capabilities = (probe.data as { capabilities?: unknown } | null)?.capabilities;
+          const masterySupported = Array.isArray(capabilities) && capabilities.includes(MASTERY_CAPABILITY);
+          if (!masterySupported) throw new Error("서버 숙련 기능 응답 오류");
+          if (generation !== this.generation) return;
+          this.bannersSupported = false;
+          this.masterySupported = true;
+          response = probe;
+        } else if (isUnknownRpc(probe.error) || probe.error?.code === "40001") {
+          if (generation !== this.generation) return;
+          this.bannersSupported = false;
+          this.masterySupported = false;
+        } else {
+          throw probe.error;
+        }
+      } else {
+        throw probe.error;
       }
-      else throw probe.error;
       if (!response) {
         const legacy = await this.request(client, "get_account_progress", { p_expected_user_id: owner });
+        if (generation !== this.generation) return;
         response = legacy;
       }
       const { data, error } = response;
@@ -309,11 +429,15 @@ export class AccountProgressStorage {
         ? mergeLegacyPerKey(cachedLegacy, legacyData(cached.base ?? {}), remoteLegacy)
         : { data: remoteLegacy, conflicts: [] as string[] };
       let mergedMastery: ProgressData = {};
-      if (this.masterySupported) mergedMastery = mergeMasteryDomains(cached?.data ?? {}, remote.data);
+      if (this.bannersSupported || this.masterySupported) mergedMastery = mergeMasteryDomains(cached?.data ?? {}, remote.data);
       else {
         mergedMastery = masteryData(cached?.data ?? {});
-        this.masteryPending = Object.keys(mergedMastery).length > 0;
       }
+      const masteryDirty = this.bannersSupported === true
+        ? !equalData(mergedMastery, masteryData(remote.data))
+        : this.masterySupported === true
+        ? !equalData(projectToV2Progress(mergedMastery), masteryData(remote.data))
+        : false;
       if (legacyMerge.conflicts.length) {
         if (!cachedRaw || !this.archive(cachedRaw)) {
           this.conflict = true;
@@ -324,7 +448,7 @@ export class AccountProgressStorage {
         this.snapshot = {
           data: { ...remoteLegacy, ...mergedMastery },
           revision: remote.revision,
-          dirty: this.masterySupported === true && !equalData(mergedMastery, masteryData(remote.data)),
+          dirty: masteryDirty,
           base: { ...remote.data },
         };
         this.conflict = true;
@@ -335,9 +459,11 @@ export class AccountProgressStorage {
       }
       const chosenLegacy = legacyMerge.data;
       const legacyDirty = !equalData(chosenLegacy, remoteLegacy);
-      this.snapshot = { data: { ...chosenLegacy, ...mergedMastery }, revision: remote.revision, dirty: legacyDirty || (this.masterySupported === true && !equalData(mergedMastery, masteryData(remote.data))), base: { ...remote.data } };
+      this.snapshot = { data: { ...chosenLegacy, ...mergedMastery }, revision: remote.revision, dirty: legacyDirty || masteryDirty, base: { ...remote.data } };
       this.ready = true;
-      if (this.masteryPending) {
+      this.masteryPending = this.masterySupported !== true && Object.keys(masteryData(this.snapshot.data)).length > 0;
+      this.bannersPending = this.bannersSupported !== true && hasBannerExtensions(this.snapshot.data);
+      if (this.masteryPending || this.bannersPending) {
         this.setStatus("progress.loaded_mastery_pending");
       } else {
         this.setStatus("progress.loaded");
@@ -355,7 +481,7 @@ export class AccountProgressStorage {
         this.unsafeData = true;
         this.conflict = true;
         this.setStatus("progress.mastery_version_conflict");
-      } else if (message.includes("mastery") || message.includes("JSON")) {
+      } else if (message.includes("mastery") || message.includes("JSON") || message.includes("배너")) {
         this.unsafeData = true;
         this.setStatus("progress.mastery_unsafe");
       } else {
@@ -377,29 +503,48 @@ export class AccountProgressStorage {
       let casRetries = 0;
       while (this.snapshot.dirty && generation === this.generation) {
         const sentFull = { ...this.snapshot.data };
-        const sent = this.masterySupported === true ? sentFull : legacyData(sentFull);
+        const sent = this.bannersSupported === true
+          ? sentFull
+          : this.masterySupported === true
+          ? projectToV2Progress(sentFull)
+          : legacyData(sentFull);
         const sentRevision = this.snapshot.revision;
         try {
-          const rpc = this.masterySupported === true ? "save_account_progress_v2" : "save_account_progress";
+          const rpc = this.bannersSupported === true
+            ? "save_account_progress_v3"
+            : this.masterySupported === true
+            ? "save_account_progress_v2"
+            : "save_account_progress";
           const args: Record<string, unknown> = { p_data: sent, p_expected_revision: sentRevision, p_expected_user_id: owner };
-          if (this.masterySupported === true) args.p_client_capability = MASTERY_CAPABILITY;
+          if (this.bannersSupported === true) args.p_client_capability = BANNERS_CAPABILITY;
+          else if (this.masterySupported === true) args.p_client_capability = MASTERY_CAPABILITY;
           const { data, error } = await this.request(client, rpc, args);
           if (generation !== this.generation) return false;
           if (error) {
             if (error.code === "40001") {
               if (casRetries++ >= 3) throw new Error("진행도 동시 저장 재시도 한도 초과");
-              const getRpc = this.masterySupported === true ? "get_account_progress_v2" : "get_account_progress";
+              const getRpc = this.bannersSupported === true
+                ? "get_account_progress_v3"
+                : this.masterySupported === true
+                ? "get_account_progress_v2"
+                : "get_account_progress";
               const getArgs: Record<string, unknown> = { p_expected_user_id: owner };
-              if (this.masterySupported === true) getArgs.p_client_capability = MASTERY_CAPABILITY;
+              if (this.bannersSupported === true) getArgs.p_client_capability = BANNERS_CAPABILITY;
+              else if (this.masterySupported === true) getArgs.p_client_capability = MASTERY_CAPABILITY;
               const latestResponse = await this.request(client, getRpc, getArgs);
               if (generation !== this.generation) return false;
               if (latestResponse.error) throw latestResponse.error;
               const latest = readSnapshot(latestResponse.data);
               const current = { ...this.snapshot.data };
               const legacyMerge = mergeLegacyPerKey(legacyData(current), legacyData(this.snapshot.base ?? {}), legacyData(latest.data));
-              const mergedMastery = this.masterySupported === true
+              const mergedMastery = (this.bannersSupported === true || this.masterySupported === true)
                 ? mergeMasteryDomains(current, latest.data)
                 : masteryData(current);
+              const masteryDirty = this.bannersSupported === true
+                ? !equalData(mergedMastery, masteryData(latest.data))
+                : this.masterySupported === true
+                ? !equalData(projectToV2Progress(mergedMastery), masteryData(latest.data))
+                : false;
               if (legacyMerge.conflicts.length) {
                 if (!this.archive(JSON.stringify(this.snapshot))) {
                   this.conflict = true;
@@ -414,7 +559,7 @@ export class AccountProgressStorage {
                 this.snapshot = {
                   data: { ...latestLegacy, ...mergedMastery },
                   revision: latest.revision,
-                  dirty: this.masterySupported === true && !equalData(mergedMastery, masteryData(latest.data)),
+                  dirty: masteryDirty,
                   base: { ...latest.data },
                 };
                 this.setStatus("progress.conflict_backed_up", { keys: legacyMerge.conflicts.join(", ") });
@@ -425,7 +570,7 @@ export class AccountProgressStorage {
               }
               this.snapshot = {
                 data: { ...legacyMerge.data, ...mergedMastery }, revision: latest.revision,
-                dirty: !equalData(legacyMerge.data, legacyData(latest.data)) || (this.masterySupported === true && !equalData(mergedMastery, masteryData(latest.data))),
+                dirty: !equalData(legacyMerge.data, legacyData(latest.data)) || masteryDirty,
                 base: { ...latest.data },
               };
               this.persist();
@@ -437,19 +582,38 @@ export class AccountProgressStorage {
           const remote = readSnapshot(data);
           const currentAfterSave = { ...this.snapshot.data };
           const pendingMastery = masteryData(currentAfterSave);
-          const nextData = this.masterySupported === true ? { ...remote.data } : { ...remote.data, ...pendingMastery };
+          let nextData: ProgressData;
+          if (this.bannersSupported === true) {
+            nextData = { ...remote.data };
+          } else if (this.masterySupported === true) {
+            nextData = { ...remote.data };
+            for (const key of MASTERY_KEYS) {
+              if (currentAfterSave[key]) {
+                try {
+                  nextData[key] = mergeMasteryValue(key, remote.data[key], currentAfterSave[key]) ?? currentAfterSave[key];
+                } catch {
+                  nextData[key] = currentAfterSave[key];
+                }
+              }
+            }
+          } else {
+            nextData = { ...remote.data, ...pendingMastery };
+          }
           for (const [key, value] of Object.entries(currentAfterSave)) if (value !== sentFull[key]) nextData[key] = value;
           readData(nextData);
           this.snapshot.data = nextData;
           this.snapshot.revision = remote.revision;
           this.snapshot.base = { ...remote.data };
-          this.snapshot.dirty = this.masterySupported === true
+          this.snapshot.dirty = this.bannersSupported === true
             ? !equalData(remote.data, this.snapshot.data)
+            : this.masterySupported === true
+            ? !equalData(remote.data, projectToV2Progress(this.snapshot.data))
             : !equalData(remote.data, legacyData(this.snapshot.data));
           this.saveFailed = false;
           this.retryCount = 0;
           this.masteryPending = this.masterySupported !== true && Object.keys(pendingMastery).length > 0;
-          if (this.masteryPending) {
+          this.bannersPending = this.bannersSupported !== true && hasBannerExtensions(this.snapshot.data);
+          if (this.masteryPending || this.bannersPending) {
             this.setStatus("progress.saved_mastery_pending");
           } else if (this.conflict) {
             this.setStatus("progress.saved_conflict_resolved");
@@ -482,7 +646,7 @@ export class AccountProgressStorage {
 
   async retry(reprobe = true): Promise<void> {
     if (this.conflict) return;
-    if (!this.ready || (reprobe && this.owner && this.masterySupported === false)) await this.activate(this.client, this.owner);
+    if (!this.ready || (reprobe && this.owner && (this.masterySupported === false || this.bannersSupported === false))) await this.activate(this.client, this.owner);
     else await this.flush();
   }
 
@@ -530,14 +694,19 @@ export class AccountProgressStorage {
     this.snapshot = {
       data: { ...legacyData(serverBase), ...retainedMastery },
       revision: this.snapshot.revision,
-      dirty: this.masterySupported === true && !equalData(retainedMastery, masteryData(serverBase)),
+      dirty: this.bannersSupported === true
+        ? !equalData(retainedMastery, masteryData(serverBase))
+        : this.masterySupported === true
+        ? !equalData(projectToV2Progress(retainedMastery), masteryData(serverBase))
+        : false,
       base: serverBase,
     };
     this.conflict = false;
     this.ready = true;
     this.saveFailed = false;
     this.masteryPending = this.masterySupported !== true && Object.keys(retainedMastery).length > 0;
-    if (this.masteryPending) {
+    this.bannersPending = this.bannersSupported !== true && hasBannerExtensions(this.snapshot.data);
+    if (this.masteryPending || this.bannersPending) {
       this.setStatus("progress.use_server_mastery_pending");
     } else if (this.snapshot.dirty) {
       this.setStatus("progress.use_server_merging");

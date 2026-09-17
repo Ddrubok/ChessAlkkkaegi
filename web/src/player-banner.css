@@ -1,4 +1,4 @@
-﻿.player-banners { position:absolute; inset:0; z-index:9; pointer-events:none; user-select:none; }
+.player-banners { position:absolute; inset:0; z-index:9; pointer-events:none; user-select:none; }
 .player-banners[hidden] { display:none; }
 .player-banner {
   --banner-ink:#302418; --banner-accent:#795520; --banner-bg:#eee2c9;
@@ -8,8 +8,30 @@
   color:var(--banner-ink); background: var(--banner-bg) url('/assets/banners/classic.webp') center / 100% 100% no-repeat;
   border:0; border-radius:10px; pointer-events:none;
 }
-.player-banner[data-theme="slate"] { --banner-ink:#172c43; --banner-accent:#35506e; --banner-bg:#dce5f0; background-image:url('/assets/banners/slate.webp'); }
-.player-banner[data-theme="forest"] { --banner-ink:#25351e; --banner-accent:#3d542d; --banner-bg:#e1e7cb; background-image:url('/assets/banners/forest.webp'); }
+.player-banner[data-theme="slate"] {
+  --banner-ink:#172c43; --banner-accent:#35506e; --banner-bg:#dce5f0;
+  background-image:url('/assets/banners/slate.webp');
+}
+.player-banner[data-theme="forest"] {
+  --banner-ink:#25351e; --banner-accent:#3d542d; --banner-bg:#e1e7cb;
+  background-image:url('/assets/banners/forest.webp');
+}
+.player-banner[data-theme="banner_cosmic_knight"] {
+  --banner-ink:#f8fafc; --banner-accent:#818cf8; --banner-bg:#0f172a;
+  background-image:url('/assets/banners/banner_cosmic_knight-v1.webp');
+  text-shadow:0 1px 3px rgba(0,0,0,0.85);
+}
+.player-banner[data-theme="banner_crimson_sun"] {
+  --banner-ink:#fff1f2; --banner-accent:#fb7185; --banner-bg:#1c1917;
+  background-image:url('/assets/banners/banner_crimson_sun-v1.webp');
+  text-shadow:0 1px 3px rgba(0,0,0,0.85);
+}
+.player-banner[data-theme="banner_hidden_myeongnyang"] {
+  --banner-ink:#f0fdfa; --banner-accent:#2dd4bf; --banner-bg:#042f2e;
+  background-image:url('/assets/banners/banner_hidden_myeongnyang-v1.webp');
+  text-shadow:0 1px 3px rgba(0,0,0,0.85);
+}
+
 .player-banner[data-owner="opponent"] { top:54px; left:14px; }
 .player-banner[data-owner="self"] { bottom:calc(14px + env(safe-area-inset-bottom, 0px)); right:14px; }
 .player-banner[data-active="true"] .player-banner-text { border-bottom:2px solid var(--banner-accent); }
@@ -51,3 +73,5 @@
   .player-banner { width:180px; padding-left:54px; }
   .player-banner[data-owner="self"] { bottom:calc(4px + env(safe-area-inset-bottom, 0px)); }
 }
+
+.player-banner[data-theme="plain"] { --banner-ink:#f1f5f9; --banner-accent:#94a3b8; --banner-bg:#334155; background-image:none; padding-left:14px; border:1px solid #64748b; }

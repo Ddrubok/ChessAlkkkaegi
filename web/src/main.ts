@@ -1,3 +1,6 @@
+import { createBannerMatch, settleBannerMatch, finishBannerMatch, type BannerMatch } from "./banner-match";
+import { readOpponentBanner } from "./banner-profile";
+import { getPlayerBannerTheme } from "./banner-theme";
 import { createPlayerBanners } from "./player-banner";
 import { uiText } from "./ui-text";
 import "./style.css";
@@ -411,6 +414,7 @@ async function bootstrap(): Promise<void> {
     playerEnemyFalls: Set<string>;
     activePlayerLaunchId: string | null;
     automaticLaunchActive: boolean;
+    banner: BannerMatch;
   } | null = null;
   let masteryNextBoardDebug = false;
   let recentMasteryItems: MasteryProgressItem[] = [];
@@ -451,7 +455,7 @@ async function bootstrap(): Promise<void> {
       const status = menuRuntime.overlay.querySelector<HTMLElement>("[data-progress-status]");
       if (status) status.textContent = progressStorage.status;
       const controls = menuRuntime.overlay.querySelector<HTMLElement>("[data-progress-controls]");
-      if (controls) controls.hidden = !progressStorage.saveFailed && !progressStorage.masteryPending;
+      if (controls) controls.hidden = !progressStorage.saveFailed && !progressStorage.masteryPending && !progressStorage.bannersPending;
     }
   });
   let puzzleHintLevel: 0 | 1 | 2 = 0;
@@ -547,7 +551,7 @@ async function bootstrap(): Promise<void> {
       speedMultiplier: 1,
     };
 
-    if (masteryRun) { masteryRun.activePlayerLaunchId = null; masteryRun.automaticLaunchActive = true; }
+    if (masteryRun) { masteryRun.activePlayerLaunchId = null; masteryRun.automaticLaunchActive = true; masteryRun.banner.eligible = false; }
     if (gameModeRuntime?.mode === "online" && onlineRuntime) {
       onlineRuntime.queueLocalLaunch(timeoutLaunchRequest);
     } else {
@@ -791,6 +795,7 @@ async function bootstrap(): Promise<void> {
           masteryRun.automaticLaunchActive = false;
           const launchEventId = `${masteryRun.eventId}:L${turnRuntime.turnNumber}:${request.pieceId}`.slice(0, 96);
           masteryRun.activePlayerLaunchId = launchEventId;
+          masteryRun.banner.launchType = binding.instance.type;
           if (masteryRun.eligible) addMasteryItems(recordMasteryLaunch(progressStorage, {
             eventId: launchEventId, pieceType: binding.instance.type,
           }).items);
@@ -1071,6 +1076,10 @@ async function bootstrap(): Promise<void> {
       eligible: !masteryNextBoardDebug && tuningIsDefault(),
       enemyFalls: new Set(), ownFalls: new Set(), playerEnemyFalls: new Set(),
       activePlayerLaunchId: null, automaticLaunchActive: false,
+      banner: createBannerMatch(progressStorage.owner, stageOptions.stageNumber,
+        stageOptions.gameMode === "stage" && !masteryNextBoardDebug && tuningIsDefault(),
+        [...physicsRuntime.pieces.values()].filter(p => p.instance.side === "white").length,
+        [...physicsRuntime.pieces.values()].filter(p => p.instance.side === "black").length),
     };
     masteryNextBoardDebug = false;
     recentMasteryItems = [];
@@ -1505,6 +1514,14 @@ async function bootstrap(): Promise<void> {
         eventId: run.activePlayerLaunchId, enemyPieceIds: fallenEnemies, fallCount: fallenEnemies.length,
       }).items);
     }
+    settleBannerMatch(progressStorage, run.banner, {
+      eventId: run.activePlayerLaunchId,
+      enemyPieceIds: evidence.removedPieces.filter(piece => piece.side === "black").map(piece => `${run.eventId}:${piece.id}`),
+      ownRemaining: [...physicsRuntime.pieces.values()].filter(p => p.instance.side === "white").length,
+      enemyRemaining: [...physicsRuntime.pieces.values()].filter(p => p.instance.side === "black").length,
+      playerLaunch: evidence.launchingSide === "white",
+      eligible: run.eligible && run.mode === "stage" && !run.automaticLaunchActive,
+    });
     run.activePlayerLaunchId = null;
     run.automaticLaunchActive = false;
   };
@@ -1558,6 +1575,10 @@ async function bootstrap(): Promise<void> {
         playerEnemyPieceIds: [...masteryRun.playerEnemyFalls],
         ownFallCount: masteryRun.ownFalls.size,
       }).items);
+    }
+    if (masteryRun) {
+      masteryRun.banner.eligible &&= masteryRun.eligible && tuningIsDefault();
+      finishBannerMatch(progressStorage, masteryRun.banner, masteryRun.eventId, gameMode === "stage" && winner === "white");
     }
     const openAllMastery = () => openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });
     if (gameMode === "stage") {
@@ -1858,6 +1879,8 @@ async function bootstrap(): Promise<void> {
         {
           matchId: session.matchId,
           localStrategyDeck: session.strategyDeck,
+          getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
+          resolveOpponentBanner: () => readOpponentBanner(activeMatchOpponent?.id, progressStorage.owner !== null),
         },
       );
       onlineResignButton.hidden = false;
@@ -1986,6 +2009,8 @@ async function bootstrap(): Promise<void> {
       {
         matchId: session.matchId,
         localStrategyDeck: null,
+        getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
+          resolveOpponentBanner: () => readOpponentBanner(activeMatchOpponent?.id, progressStorage.owner !== null),
       },
     );
 

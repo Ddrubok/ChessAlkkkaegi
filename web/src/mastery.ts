@@ -9,7 +9,7 @@ export const MASTERY_KEYS = [MASTERY_PROGRESS_KEY, MASTERY_REWARDS_KEY, MASTERY_
 export const MASTERY_IDS = ["M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08"] as const;
 export type MasteryId = typeof MASTERY_IDS[number];
 export type MasteryCategory = "experience" | "skill";
-export type EquipmentSlot = "badge" | "title" | "frame";
+export type EquipmentSlot = "badge" | "title" | "frame" | "banner";
 
 export interface MasteryDefinition {
   id: MasteryId;
@@ -46,9 +46,28 @@ export interface MasteryVersionRecord {
   firstAchievedAt: string | null;
   personalRecord: { value: number; eventId: string; at: string } | null;
 }
+
+export interface BannerKnightProgress {
+  fallenEnemies: Record<string, { eventId: string; at: string }>;
+  firstAchievedAt: string | null;
+}
+export interface BannerCrimsonProgress {
+  bestTripleOut: { eventId: string; enemyPieceIds: [string, string, string] | string[]; fallCount: number; at: string } | null;
+  firstAchievedAt: string | null;
+}
+export interface BannerComebackProgress {
+  eventIds: Record<string, { at: string; stage: number }>;
+  firstAchievedAt: string | null;
+}
+export interface BannerProgressMap {
+  banner_cosmic_knight?: BannerKnightProgress;
+  banner_crimson_sun?: BannerCrimsonProgress;
+  banner_hidden_myeongnyang?: BannerComebackProgress;
+}
 export interface MasteryProgressStore {
   schemaVersion: 1;
   records: Partial<Record<MasteryId, { versions: Record<string, MasteryVersionRecord> }>>;
+  banners?: BannerProgressMap;
 }
 export interface RewardStore {
   schemaVersion: 1;
@@ -190,9 +209,9 @@ function normalizeVersion(id: MasteryId, raw: unknown, current: boolean): Master
 }
 
 export function normalizeMasteryProgress(raw: unknown): MasteryProgressStore {
-  requireShape(raw, ["schemaVersion", "records"]);
+  requireShape(raw, ["schemaVersion", "records", "banners"], ["schemaVersion", "records"]);
   if (raw.schemaVersion !== 1 || !isObject(raw.records) || Object.keys(raw.records).length > 8) throw new Error("mastery-progress-malformed");
-  const result = emptyProgress();
+  const result: MasteryProgressStore = emptyProgress();
   for (const [idValue, recordRaw] of Object.entries(raw.records)) {
     if (!isMasteryId(idValue)) throw new Error("mastery-medal-id-malformed");
     requireShape(recordRaw, ["versions"]);
@@ -205,6 +224,73 @@ export function normalizeMasteryProgress(raw: unknown): MasteryProgressStore {
     }
     result.records[idValue] = { versions: Object.fromEntries(Object.entries(versions).sort(([a], [b]) => Number(a) - Number(b))) };
   }
+  if (raw.banners !== undefined) {
+    if (!isObject(raw.banners) || Object.keys(raw.banners).some(key => !["banner_cosmic_knight", "banner_crimson_sun", "banner_hidden_myeongnyang"].includes(key))) {
+      throw new Error("mastery-banners-malformed");
+    }
+    const banners: BannerProgressMap = {};
+    if (raw.banners.banner_cosmic_knight !== undefined) {
+      const knightRaw = raw.banners.banner_cosmic_knight;
+      requireShape(knightRaw, ["fallenEnemies", "firstAchievedAt"]);
+      if (!isObject(knightRaw.fallenEnemies) || (knightRaw.firstAchievedAt !== null && !validIso(knightRaw.firstAchievedAt))) {
+        throw new Error("mastery-banner-knight-malformed");
+      }
+      const enemies: Record<string, { eventId: string; at: string }> = {};
+      for (const [enemyId, enemyVal] of Object.entries(knightRaw.fallenEnemies)) {
+        if (!validId(enemyId)) throw new Error("mastery-enemy-id-malformed");
+        requireShape(enemyVal, ["eventId", "at"]);
+        if (!validId(enemyVal.eventId) || !validIso(enemyVal.at)) throw new Error("mastery-enemy-entry-malformed");
+        enemies[enemyId] = { eventId: enemyVal.eventId as string, at: enemyVal.at as string };
+      }
+      const ordered = orderedEntries(enemies, 50);
+      const times = Object.values(ordered).map(e => e.at).sort();
+      const count = Object.keys(ordered).length;
+      const derivedAchievement = count >= 50 ? times[49] ?? null : null;
+      const firstAchievedAt = derivedAchievement ?? (count >= 50 && validIso(knightRaw.firstAchievedAt) ? knightRaw.firstAchievedAt : null);
+      banners.banner_cosmic_knight = { fallenEnemies: ordered, firstAchievedAt };
+    }
+    if (raw.banners.banner_crimson_sun !== undefined) {
+      const crimsonRaw = raw.banners.banner_crimson_sun;
+      requireShape(crimsonRaw, ["bestTripleOut", "firstAchievedAt"]);
+      if ((crimsonRaw.firstAchievedAt !== null && !validIso(crimsonRaw.firstAchievedAt))
+        || (crimsonRaw.bestTripleOut !== null && !isObject(crimsonRaw.bestTripleOut))) {
+        throw new Error("mastery-banner-crimson-malformed");
+      }
+      let bestTripleOut: BannerCrimsonProgress["bestTripleOut"] = null;
+      if (crimsonRaw.bestTripleOut !== null) {
+        const best = crimsonRaw.bestTripleOut;
+        requireShape(best, ["eventId", "enemyPieceIds", "fallCount", "at"]);
+        const fallCount = typeof best.fallCount === "number" ? best.fallCount : Number.NaN;
+        if (!validId(best.eventId) || !validIso(best.at) || !Array.isArray(best.enemyPieceIds) || best.enemyPieceIds.length < 3
+          || !best.enemyPieceIds.every(validId) || new Set(best.enemyPieceIds).size !== best.enemyPieceIds.length
+          || !Number.isInteger(fallCount) || fallCount < 3 || fallCount > 128) {
+          throw new Error("mastery-triple-out-malformed");
+        }
+        bestTripleOut = { eventId: best.eventId, enemyPieceIds: [...best.enemyPieceIds], fallCount, at: best.at };
+      }
+      const firstAchievedAt = bestTripleOut ? bestTripleOut.at : (validIso(crimsonRaw.firstAchievedAt) ? crimsonRaw.firstAchievedAt : null);
+      banners.banner_crimson_sun = { bestTripleOut, firstAchievedAt };
+    }
+    if (raw.banners.banner_hidden_myeongnyang !== undefined) {
+      const comebackRaw = raw.banners.banner_hidden_myeongnyang;
+      requireShape(comebackRaw, ["eventIds", "firstAchievedAt"]);
+      if (!isObject(comebackRaw.eventIds) || (comebackRaw.firstAchievedAt !== null && !validIso(comebackRaw.firstAchievedAt))) {
+        throw new Error("mastery-banner-comeback-malformed");
+      }
+      const events: Record<string, { at: string; stage: number }> = {};
+      for (const [evId, evVal] of Object.entries(comebackRaw.eventIds)) {
+        if (!validId(evId)) throw new Error("mastery-comeback-event-id-malformed");
+        requireShape(evVal, ["at", "stage"]);
+        if (!validIso(evVal.at) || !Number.isInteger(evVal.stage) || (evVal.stage as number) < 5) throw new Error("mastery-comeback-entry-malformed");
+        events[evId] = { at: evVal.at as string, stage: evVal.stage as number };
+      }
+      const ordered = orderedEntries(events, 1);
+      const times = Object.values(ordered).map(e => e.at).sort();
+      const firstAchievedAt = times[0] ?? (Object.keys(ordered).length >= 1 && validIso(comebackRaw.firstAchievedAt) ? comebackRaw.firstAchievedAt : null);
+      banners.banner_hidden_myeongnyang = { eventIds: ordered, firstAchievedAt };
+    }
+    result.banners = banners;
+  }
   return result;
 }
 
@@ -212,12 +298,16 @@ function recognizedGrant(grantId: string, itemIds: readonly string[]): boolean {
   const medal = /^mastery:(M0[1-8]):v1$/.exec(grantId);
   if (medal) return itemIds.length === 1 && itemIds[0] === `badge:mastery-${medal[1].toLowerCase()}`;
   if (grantId === "mastery:milestone:four") return itemIds.length === 2 && itemIds.includes("title:explorer") && itemIds.includes("entitlement:woodgrain-set-scheduled");
-  return grantId === "mastery:milestone:eight" && itemIds.length === 1 && itemIds[0] === "frame:mastery-complete";
+  if (grantId === "mastery:milestone:eight") return itemIds.length === 1 && itemIds[0] === "frame:mastery-complete";
+  if (grantId === "banner:banner_cosmic_knight:v1") return itemIds.length === 1 && itemIds[0] === "banner:banner_cosmic_knight";
+  if (grantId === "banner:banner_crimson_sun:v1") return itemIds.length === 1 && itemIds[0] === "banner:banner_crimson_sun";
+  if (grantId === "banner:banner_hidden_myeongnyang:v1") return itemIds.length === 1 && itemIds[0] === "banner:banner_hidden_myeongnyang";
+  return false;
 }
 export function normalizeRewards(raw: unknown): RewardStore {
   requireShape(raw, ["schemaVersion", "grants", "items"]);
   if (raw.schemaVersion !== 1 || !isObject(raw.grants) || !isObject(raw.items)
-    || Object.keys(raw.grants).length > 16 || Object.keys(raw.items).length > 16) throw new Error("mastery-rewards-malformed");
+    || Object.keys(raw.grants).length > 24 || Object.keys(raw.items).length > 24) throw new Error("mastery-rewards-malformed");
   const result = emptyRewards();
   for (const [id, grant] of Object.entries(raw.grants).sort(([a], [b]) => a.localeCompare(b))) {
     if (!validId(id)) throw new Error("mastery-grant-id-malformed");
@@ -248,12 +338,12 @@ function normalizePreferenceValue(raw: unknown): PreferenceValue {
 }
 export function normalizePreferences(raw: unknown): PreferenceStore {
   requireShape(raw, ["schemaVersion", "tracked", "equipped"]);
-  if (raw.schemaVersion !== 1 || !isObject(raw.equipped) || Object.keys(raw.equipped).some(key => !["badge", "title", "frame"].includes(key))) throw new Error("mastery-preferences-malformed");
+  if (raw.schemaVersion !== 1 || !isObject(raw.equipped) || Object.keys(raw.equipped).some(key => !["badge", "title", "frame", "banner"].includes(key))) throw new Error("mastery-preferences-malformed");
   const result = emptyPreferences();
   requireShape(raw.tracked, ["medalId", "updatedAt", "deviceId"]);
   if ((raw.tracked.medalId !== null && !isMasteryId(raw.tracked.medalId)) || !validIso(raw.tracked.updatedAt) || !validId(raw.tracked.deviceId)) throw new Error("mastery-tracked-malformed");
   result.tracked = { medalId: raw.tracked.medalId as MasteryId | null, updatedAt: raw.tracked.updatedAt, deviceId: raw.tracked.deviceId };
-  for (const slot of ["badge", "title", "frame"] as const) {
+  for (const slot of ["badge", "title", "frame", "banner"] as const) {
     if (Object.hasOwn(raw.equipped, slot)) result.equipped[slot] = normalizePreferenceValue(raw.equipped[slot]);
   }
   return result;
@@ -263,16 +353,30 @@ function readDomain<T>(storage: MasteryStorage, key: string, empty: () => T, nor
   const raw = storage.getItem(key); if (raw === null) return { value: empty(), malformed: false };
   try { return { value: normalize(JSON.parse(raw)), malformed: false }; } catch { return { value: empty(), malformed: true }; }
 }
+function validBannerRewardProgress(progress: MasteryProgressStore, rewards: RewardStore): boolean {
+  const b = progress.banners;
+  return (!rewards.items["banner:banner_cosmic_knight"] || Object.keys(b?.banner_cosmic_knight?.fallenEnemies ?? {}).length >= 50)
+    && (!rewards.items["banner:banner_crimson_sun"] || (b?.banner_crimson_sun?.bestTripleOut?.fallCount ?? 0) >= 3)
+    && (!rewards.items["banner:banner_hidden_myeongnyang"] || Object.keys(b?.banner_hidden_myeongnyang?.eventIds ?? {}).length >= 1);
+}
+
 export function loadMasterySnapshot(storage: MasteryStorage): MasterySnapshot {
   const p = readDomain(storage, MASTERY_PROGRESS_KEY, emptyProgress, normalizeMasteryProgress);
   const r = readDomain(storage, MASTERY_REWARDS_KEY, emptyRewards, normalizeRewards);
   const f = readDomain(storage, MASTERY_PREFERENCES_KEY, emptyPreferences, normalizePreferences);
-  let malformed = p.malformed || r.malformed || f.malformed || (storage as { unsafeData?: boolean }).unsafeData === true;
+  let malformed = p.malformed || r.malformed || f.malformed || !validBannerRewardProgress(p.value, r.value) || (storage as { unsafeData?: boolean }).unsafeData === true;
   if (!malformed) for (const [slot, preference] of Object.entries(f.value.equipped) as [EquipmentSlot, PreferenceValue][]) {
     const itemId = preference.itemId;
-    if (itemId !== null && (!r.value.items[itemId] || !itemId.startsWith(`${slot}:`)
-      || (slot === "badge" && !/^badge:mastery-m0[1-8]$/.test(itemId))
-      || (slot === "title" && itemId !== "title:explorer") || (slot === "frame" && itemId !== "frame:mastery-complete"))) malformed = true;
+    if (itemId !== null) {
+      if (!itemId.startsWith(`${slot}:`)) malformed = true;
+      else if (slot === "badge" && !/^badge:mastery-m0[1-8]$/.test(itemId)) malformed = true;
+      else if (slot === "title" && itemId !== "title:explorer") malformed = true;
+      else if (slot === "frame" && itemId !== "frame:mastery-complete") malformed = true;
+      else if (slot === "banner") {
+        if (!["banner:classic", "banner:slate", "banner:forest", "banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId)) malformed = true;
+        else if (["banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId) && !r.value.items[itemId]) malformed = true;
+      } else if (!r.value.items[itemId]) malformed = true;
+    }
   }
   return { progress: p.value, rewards: r.value, preferences: f.value, malformed };
 }
@@ -312,7 +416,7 @@ function grant(store: RewardStore, grantId: string, itemIds: string[], at: strin
     if (!prior || grantedAt < prior.grantedAt || (grantedAt === prior.grantedAt && grantId < prior.grantId)) store.items[itemId] = { grantId, grantedAt };
   }
 }
-function deriveRewards(snapshot: MasterySnapshot, at: string): string[] {
+export function deriveRewards(snapshot: MasterySnapshot, at: string): string[] {
   const before = new Set(Object.keys(snapshot.rewards.items));
   for (const id of MASTERY_IDS) if (isMedalEarned(snapshot.progress, id)) {
     const achieved = snapshot.progress.records[id]!.versions["1"].firstAchievedAt ?? at;
@@ -323,9 +427,25 @@ function deriveRewards(snapshot: MasterySnapshot, at: string): string[] {
     .map(id => snapshot.progress.records[id]?.versions["1"].firstAchievedAt).filter(validIso).sort();
   if (count >= 4) grant(snapshot.rewards, "mastery:milestone:four", ["title:explorer", "entitlement:woodgrain-set-scheduled"], achievementTimes[3] ?? at);
   if (count >= 8) grant(snapshot.rewards, "mastery:milestone:eight", ["frame:mastery-complete"], achievementTimes[7] ?? at);
+
+  if (snapshot.progress.banners) {
+    const knight = snapshot.progress.banners.banner_cosmic_knight;
+    if (knight && Object.keys(knight.fallenEnemies).length >= 50) {
+      grant(snapshot.rewards, "banner:banner_cosmic_knight:v1", ["banner:banner_cosmic_knight"], knight.firstAchievedAt ?? at);
+    }
+    const crimson = snapshot.progress.banners.banner_crimson_sun;
+    if (crimson?.bestTripleOut && crimson.bestTripleOut.fallCount >= 3) {
+      grant(snapshot.rewards, "banner:banner_crimson_sun:v1", ["banner:banner_crimson_sun"], crimson.firstAchievedAt ?? at);
+    }
+    const comeback = snapshot.progress.banners.banner_hidden_myeongnyang;
+    if (comeback && Object.keys(comeback.eventIds).length >= 1) {
+      grant(snapshot.rewards, "banner:banner_hidden_myeongnyang:v1", ["banner:banner_hidden_myeongnyang"], comeback.firstAchievedAt ?? at);
+    }
+  }
+
   return Object.keys(snapshot.rewards.items).filter(id => !before.has(id));
 }
-function saveSnapshot(storage: MasteryStorage, snapshot: MasterySnapshot): void {
+export function saveSnapshot(storage: MasteryStorage, snapshot: MasterySnapshot): void {
   if (snapshot.malformed) throw new Error("mastery-storage-malformed");
   const values = {
     [MASTERY_PROGRESS_KEY]: JSON.stringify(snapshot.progress),
@@ -414,12 +534,23 @@ export function setTrackedMastery(storage: MasteryStorage, medalId: MasteryId | 
 }
 export function setEquippedMastery(storage: MasteryStorage, slot: EquipmentSlot, itemId: string | null): boolean {
   const snapshot = loadMasterySnapshot(storage); if (snapshot.malformed) return false;
-  if (itemId !== null && (!snapshot.rewards.items[itemId] || !itemId.startsWith(`${slot}:`))) return false;
+  if (itemId !== null) {
+    if (!itemId.startsWith(`${slot}:`)) return false;
+    if (slot === "badge" && (!snapshot.rewards.items[itemId] || !/^badge:mastery-m0[1-8]$/.test(itemId))) return false;
+    if (slot === "title" && (!snapshot.rewards.items[itemId] || itemId !== "title:explorer")) return false;
+    if (slot === "frame" && (!snapshot.rewards.items[itemId] || itemId !== "frame:mastery-complete")) return false;
+    if (slot === "banner") {
+      if (!["banner:classic", "banner:slate", "banner:forest", "banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId)) return false;
+      if (["banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId) && !snapshot.rewards.items[itemId]) return false;
+    }
+  }
   snapshot.preferences.equipped[slot] = { itemId, updatedAt: new Date().toISOString(), deviceId: deviceId(storage) }; saveSnapshot(storage, snapshot); return true;
 }
 export function equippedItem(snapshot: MasterySnapshot, slot: EquipmentSlot): string | null {
   const itemId = snapshot.preferences.equipped[slot]?.itemId ?? null;
-  return itemId && snapshot.rewards.items[itemId] && itemId.startsWith(`${slot}:`) ? itemId : null;
+  if (!itemId || !itemId.startsWith(`${slot}:`)) return null;
+  if (slot === "banner" && ["banner:classic", "banner:slate", "banner:forest"].includes(itemId)) return itemId;
+  return snapshot.rewards.items[itemId] ? itemId : null;
 }
 
 export function mergeMasteryValue(key: string, leftRaw: string | undefined, rightRaw: string | undefined): string | undefined {
@@ -463,6 +594,40 @@ export function mergeMasteryValue(key: string, leftRaw: string | undefined, righ
         (merged.records[id] ??= { versions: {} }).versions[v] = record;
       }
     }
+    if (left.banners || right.banners) {
+      const banners: BannerProgressMap = {};
+      const knightA = left.banners?.banner_cosmic_knight, knightB = right.banners?.banner_cosmic_knight;
+      if (knightA || knightB) {
+        const enemies = { ...(knightA?.fallenEnemies ?? {}), ...(knightB?.fallenEnemies ?? {}) };
+        for (const k of new Set([...Object.keys(knightA?.fallenEnemies ?? {}), ...Object.keys(knightB?.fallenEnemies ?? {})])) {
+          const x = knightA?.fallenEnemies[k], y = knightB?.fallenEnemies[k];
+          if (x && y) enemies[k] = x.at <= y.at ? x : y;
+        }
+        const ordered = orderedEntries(enemies, 50);
+        const times = Object.values(ordered).map(e => e.at).sort();
+        const firstAchievedAt = Object.keys(ordered).length >= 50 ? times[49] ?? null : null;
+        banners.banner_cosmic_knight = { fallenEnemies: ordered, firstAchievedAt };
+      }
+      const crimsonA = left.banners?.banner_crimson_sun, crimsonB = right.banners?.banner_crimson_sun;
+      if (crimsonA || crimsonB) {
+        const candidates = [crimsonA?.bestTripleOut, crimsonB?.bestTripleOut].filter(Boolean) as NonNullable<BannerCrimsonProgress["bestTripleOut"]>[];
+        const best = candidates.sort((x, y) => y.fallCount - x.fallCount || x.at.localeCompare(y.at) || x.eventId.localeCompare(y.eventId))[0] ?? null;
+        banners.banner_crimson_sun = { bestTripleOut: best, firstAchievedAt: best ? best.at : null };
+      }
+      const comebackA = left.banners?.banner_hidden_myeongnyang, comebackB = right.banners?.banner_hidden_myeongnyang;
+      if (comebackA || comebackB) {
+        const events = { ...(comebackA?.eventIds ?? {}), ...(comebackB?.eventIds ?? {}) };
+        for (const k of new Set([...Object.keys(comebackA?.eventIds ?? {}), ...Object.keys(comebackB?.eventIds ?? {})])) {
+          const x = comebackA?.eventIds[k], y = comebackB?.eventIds[k];
+          if (x && y) events[k] = x.at <= y.at ? x : y;
+        }
+        const ordered = orderedEntries(events, 1);
+        const times = Object.values(ordered).map(e => e.at).sort();
+        const firstAchievedAt = times[0] ?? null;
+        banners.banner_hidden_myeongnyang = { eventIds: ordered, firstAchievedAt };
+      }
+      merged.banners = banners;
+    }
     return JSON.stringify(merged);
   }
   if (key === MASTERY_REWARDS_KEY) {
@@ -479,7 +644,7 @@ export function mergeMasteryValue(key: string, leftRaw: string | undefined, righ
     const trackedRight: PreferenceValue = { itemId: right.tracked.medalId, updatedAt: right.tracked.updatedAt, deviceId: right.tracked.deviceId };
     const tracked = preferenceWins(trackedLeft, trackedRight); const merged = emptyPreferences();
     merged.tracked = { medalId: isMasteryId(tracked.itemId) ? tracked.itemId : null, updatedAt: tracked.updatedAt, deviceId: tracked.deviceId };
-    for (const slot of ["badge", "title", "frame"] as const) {
+    for (const slot of ["badge", "title", "frame", "banner"] as const) {
       const a = left.equipped[slot], b = right.equipped[slot]; if (a || b) merged.equipped[slot] = a && b ? preferenceWins(a, b) : (a ?? b)!;
     }
     return JSON.stringify(merged);
@@ -502,11 +667,18 @@ export function validateMasteryValues(data: Record<string, string>): void {
   const progress = data[MASTERY_PROGRESS_KEY] === undefined ? emptyProgress() : normalizeMasteryProgress(JSON.parse(data[MASTERY_PROGRESS_KEY]));
   const rewards = data[MASTERY_REWARDS_KEY] === undefined ? emptyRewards() : normalizeRewards(JSON.parse(data[MASTERY_REWARDS_KEY]));
   const preferences = data[MASTERY_PREFERENCES_KEY] === undefined ? emptyPreferences() : normalizePreferences(JSON.parse(data[MASTERY_PREFERENCES_KEY]));
-  void progress;
+  if (!validBannerRewardProgress(progress, rewards)) throw new Error("mastery-banner-reward-without-progress");
   for (const [slot, preference] of Object.entries(preferences.equipped) as [EquipmentSlot, PreferenceValue][]) {
     const itemId = preference.itemId;
-    if (itemId !== null && (!rewards.items[itemId] || !itemId.startsWith(`${slot}:`)
-      || (slot === "badge" && !/^badge:mastery-m0[1-8]$/.test(itemId))
-      || (slot === "title" && itemId !== "title:explorer") || (slot === "frame" && itemId !== "frame:mastery-complete"))) throw new Error("mastery-equipment-malformed");
+    if (itemId !== null) {
+      if (!itemId.startsWith(`${slot}:`)) throw new Error("mastery-equipment-malformed");
+      if (slot === "badge" && !/^badge:mastery-m0[1-8]$/.test(itemId)) throw new Error("mastery-equipment-malformed");
+      if (slot === "title" && itemId !== "title:explorer") throw new Error("mastery-equipment-malformed");
+      if (slot === "frame" && itemId !== "frame:mastery-complete") throw new Error("mastery-equipment-malformed");
+      if (slot === "banner") {
+        if (!["banner:classic", "banner:slate", "banner:forest", "banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId)) throw new Error("mastery-equipment-malformed");
+        if (["banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId) && !rewards.items[itemId]) throw new Error("mastery-equipment-malformed");
+      } else if (!rewards.items[itemId]) throw new Error("mastery-equipment-malformed");
+    }
   }
 }

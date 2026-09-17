@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 
-const vite = await createServer({ root: fileURLToPath(new URL('../..', import.meta.url)), configFile: false, server: { middlewareMode: true } });
+const vite = await createServer({ root: fileURLToPath(new URL('../..', import.meta.url)), configFile: false, server: { middlewareMode: true, hmr: false } });
 try {
   const { AccountProgressStorage } = await vite.ssrLoadModule('/src/progress-storage.ts');
   const values = new Map();
@@ -15,6 +15,7 @@ try {
   let holdWrite = null;
   const writes = [];
   const client = { rpc: async (name, args) => {
+    if (!['get_account_progress', 'save_account_progress'].includes(name)) return { error: { code: 'PGRST202' } };
     const captured = auth;
     if (name === 'get_account_progress' && holdRead) await holdRead;
     if (name === 'save_account_progress' && holdWrite) await holdWrite;
@@ -96,7 +97,7 @@ try {
 
   // An upload may commit while its response is lost. Reopening recognizes that snapshot.
   auth = 'account-a';
-  const cached = JSON.parse(values.get('ca_account_progress_v1:account-a'));
+  const cached = JSON.parse(values.get('ca_account_progress_v3:account-a'));
   rows.set(auth, { data: cached.data, revision: cached.revision + 1 });
   await store.activate(client, auth);
   assert.equal(store.conflict, false); assert.equal(store.ready, true);
