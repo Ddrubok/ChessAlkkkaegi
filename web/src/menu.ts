@@ -36,6 +36,8 @@ import {
 import type { LobbyMode } from "./lobby";
 import { MASTERY_DEFINITIONS, type MasteryId } from "./mastery";
 import { openMasteryBook } from "./mastery-ui";
+import { questStorage } from "./quest-storage";
+import { openQuestBook } from "./quest-ui";
 
 function openLogoutConfirm(runtime: MainMenuRuntime): void {
   if (runtime.overlay.querySelector(".lobby-logout-confirm")) return;
@@ -635,6 +637,12 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       else if (route === "tutorial") void startLobbyMode(runtime, "tutorial", 1, "basic");
       else openPveLobbyModal(runtime, stage => startLobbyMode(runtime, "stage", stage));
     }, () => renderMainMenu(runtime));
+  });
+  panel.querySelector("[data-open-quests]")?.addEventListener("click", () => {
+    openQuestBook(runtime.overlay, questStorage, (route) => {
+      if (route === "puzzle") void startLobbyMode(runtime, "puzzle");
+      else openPveLobbyModal(runtime, stage => startLobbyMode(runtime, "stage", stage));
+    });
   });
   panel.querySelector("#menu-tutorial-btn")?.addEventListener("click", () => {
     lobbyState.tutorialExpanded = !lobbyState.tutorialExpanded;

@@ -246,6 +246,7 @@ export interface OnlineRuntimeOptions {
   matchId?: string;
   // 로컬 플레이어의 전략 덱 스탯이다.
   localStrategyDeck?: import("./strategy-deck").StrategyDeck | null;
+  onLocalLaunchAccepted?: (event: { matchId: string; turnIndex: number; pieceId: string; side: PieceSide }) => void;
 }
 
 export interface OnlineStartOptions {
@@ -333,7 +334,7 @@ export interface OnlineRuntime {
   // 기존 입력 선택 정책에서 온라인 소유권을 함께 검사한다.
   canSelectLocalPiece(pieceId: string): boolean;
   // 기존 queueTurnLaunch를 그대로 사용하면서 로컬 진영 소유권을 검사한다.
-  queueLocalLaunch(request: TurnLaunchRequest): LaunchQueueResult;
+  queueLocalLaunch(request: TurnLaunchRequest, source?: "player" | "timeout"): LaunchQueueResult;
   // 입력 계층이 상대 조준 중 자체 선택을 건드리지 않게 한다.
   isRemoteTelegraphActive(): boolean;
   // 헤드리스 검사가 비동기 SHA-256·복구 작업 완료를 기다린다.
@@ -839,6 +840,7 @@ export function createOnlineRuntime(
   const sessionMatchId = matchId;
   let hooksAttached = false;
   let launchOrigin: "local" | "remote" = "local";
+  let localLaunchSource: "player" | "timeout" = "player";
   let remoteLaunchTurnIndex: number | null = null;
   let previousLaunchHandler = turnRuntime.onLaunchAccepted;
   let previousSettledHandler = turnRuntime.onTurnSettled;
@@ -1018,6 +1020,9 @@ export function createOnlineRuntime(
           side,
           origin: launchOrigin,
         };
+        if (!replayingResumeTail && launchOrigin === "local" && localLaunchSource === "player") {
+          options.onLocalLaunchAccepted?.({ matchId: runtime.matchId, turnIndex, pieceId: request.pieceId, side });
+        }
         const message: OnlineTurnMessage = {
             kind: "turn",
             turnIndex,
@@ -1208,6 +1213,7 @@ export function createOnlineRuntime(
 
     queueLocalLaunch(
       request: TurnLaunchRequest,
+      source: "player" | "timeout" = "player",
     ): LaunchQueueResult {
       if (sessionEnded) {
         return {
@@ -1228,7 +1234,9 @@ export function createOnlineRuntime(
         };
       }
       launchOrigin = "local";
-      return queueTurnLaunch(turnRuntime, request);
+      localLaunchSource = source;
+      try { return queueTurnLaunch(turnRuntime, request); }
+      finally { localLaunchSource = "player"; }
     },
 
     isRemoteTelegraphActive(): boolean {

@@ -7,7 +7,12 @@ import "./style.css";
 import "./lobby.css";
 import "./progress.css";
 import "./mastery-ui.css";
+import "./quest-ui.css";
 import { progressStorage } from "./progress-storage";
+import { questStorage } from "./quest-storage";
+import { createQuestId, makePieceLaunchEvent, makePuzzleClearEvent, makePveWinEvent, makePvpWinEvent } from "./quest-events";
+import { isQuestPieceType, isQuestPuzzleId } from "./quest-model";
+import { appendQuestResult, captureQuestResultBaseline, openQuestBook, type QuestResultBaseline } from "./quest-ui";
 import { getTier } from "./tier";
 import { formatTier, formatTierProgress } from "./tier-view";
 import { I18nManager } from "./i18n";
@@ -256,6 +261,7 @@ async function bootstrap(): Promise<void> {
   const sessionUser = progressSession?.data.session?.user;
   const progressOwner = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : null;
   await progressStorage.activate(progressClient, progressOwner);
+  await questStorage.activate(progressClient, progressOwner);
   if (progressOwner && progressClient) {
     localStorage.setItem("ca_logged_in_user", "true");
     localStorage.setItem("ca_guest_user_uuid", progressOwner);
@@ -267,15 +273,17 @@ async function bootstrap(): Promise<void> {
     if (changingAccount || nextOwner === progressStorage.owner) return;
     changingAccount = true;
     progressStorage.suspend();
+    questStorage.suspend();
     app.inert = true;
     if (!nextOwner) localStorage.removeItem("ca_logged_in_user");
     // Recreate the board and all in-memory progress on identity changes.
     // Do not make awaited Supabase calls inside its auth callback.
     window.setTimeout(() => { void waitForAuthChange().then(() => window.location.reload()); }, 0);
   });
-  window.addEventListener("online", () => { void progressStorage.retry(); });
+  window.addEventListener("online", () => { void progressStorage.retry(); void questStorage.retry(); });
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) void progressStorage.flush();
+    if (document.hidden) { void progressStorage.flush(); void questStorage.flush(); }
+    else void questStorage.retry();
   });
   const metaRuntime = createMetaRuntime();
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
@@ -401,6 +409,7 @@ async function bootstrap(): Promise<void> {
   let puzzleUI: PuzzleUI | null = null;
   let activePuzzle: PuzzleDefinition | null = null;
   let puzzleAttempt: PuzzleEvaluationInput | null = null;
+  let puzzleQuestAttemptId: string | null = null;
   let puzzleTracker: PuzzlePhysicsTracker | null = null;
   let puzzleProgress = loadPuzzleProgress();
   backfillPuzzleMastery(progressStorage, puzzleProgress);
@@ -416,6 +425,8 @@ async function bootstrap(): Promise<void> {
     automaticLaunchActive: boolean;
     banner: BannerMatch;
   } | null = null;
+  let questRun: { runId: string; mode: GameMode; launchOrdinal: number; eligible: boolean } | null = null;
+  let questResultBaseline: QuestResultBaseline = captureQuestResultBaseline(questStorage);
   let masteryNextBoardDebug = false;
   let recentMasteryItems: MasteryProgressItem[] = [];
   const addMasteryItems = (items: readonly MasteryProgressItem[]): void => {
@@ -430,7 +441,7 @@ async function bootstrap(): Promise<void> {
     return Object.keys(defaults).every(key => tuningRuntime.settings[key as keyof typeof defaults] === defaults[key as keyof typeof defaults])
       && Object.keys(cardTuningRuntime.defaultSettings).every(key => cardTuningRuntime.settings[key as keyof typeof cardTuningRuntime.settings] === cardTuningRuntime.defaultSettings[key as keyof typeof cardTuningRuntime.defaultSettings]);
   };
-  const markMasteryDebugMutation = (): void => { if (masteryRun) masteryRun.eligible = false; };
+  const markMasteryDebugMutation = (): void => { if (masteryRun) masteryRun.eligible = false; if (questRun) questRun.eligible = false; };
   tuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
   tuningRuntime.panel.addEventListener("click", markMasteryDebugMutation);
   cardTuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
@@ -458,6 +469,9 @@ async function bootstrap(): Promise<void> {
       if (controls) controls.hidden = !progressStorage.saveFailed && !progressStorage.masteryPending && !progressStorage.bannersPending;
     }
   });
+  questStorage.subscribe(() => {
+    if (menuRuntime.visible) renderMainMenu(menuRuntime);
+  });
   let puzzleHintLevel: 0 | 1 | 2 = 0;
   let puzzleFinished = false;
   let onPuzzleLaunch: ((request: Parameters<typeof queueTurnLaunch>[1]) => void) | null = null;
@@ -479,18 +493,30 @@ async function bootstrap(): Promise<void> {
     const whiteId = mySide === "white" ? me.id : opponent.id;
     const blackId = mySide === "black" ? me.id : opponent.id;
     const winnerId = matchWinner === "draw" ? null : matchWinner === "white" ? whiteId : blackId;
+    const wonByCurrentUser = winnerId === me.id;
+    if (wonByCurrentUser && questStorage.owner === me.id) {
+      try {
+        const context = questStorage.captureContext();
+        if (context) questStorage.capturePendingPvp(makePvpWinEvent(matchId, context.periods, context.occurredAt));
+      }
+      catch (error) { console.warn("Unable to capture pending quest PVP result", error); }
+    } else {
+      questStorage.discardPendingPvp(matchId);
+    }
     const isCurrentResult = () => onlineRuntime?.matchId === matchId &&
       turnRuntime.phase === "match-over" && menuRuntime.userProfile?.id === me.id;
     const showStatus = (message: string, retry = false): void => {
       if (!isCurrentResult()) return;
       matchRuntime.resultDetails.hidden = false;
-      matchRuntime.resultDetails.textContent = message;
+      let status = matchRuntime.resultDetails.querySelector<HTMLElement>("[data-online-settlement-status]");
+      if (!status) { status = document.createElement("div"); status.dataset.onlineSettlementStatus = ""; matchRuntime.resultDetails.prepend(status); }
+      status.replaceChildren(document.createTextNode(message));
       if (retry) {
         const button = document.createElement("button");
         button.type = "button";
         button.textContent = getRuntimeText("online.settle_retry_btn");
         button.onclick = () => { button.disabled = true; void recordOnlineMatchSettlement(matchWinner); };
-        matchRuntime.resultDetails.appendChild(button);
+        status.appendChild(button);
       }
     };
     showStatus(getRuntimeText("online.settle_checking_opponent"));
@@ -504,6 +530,7 @@ async function bootstrap(): Promise<void> {
         showStatus(getRuntimeText("online.settle_waiting_opponent"), true);
         return;
       }
+      if (wonByCurrentUser && questStorage.owner === me.id) questStorage.confirmPendingPvp(matchId);
       // 서버가 정산한 값을 읽는다. 로컬 Elo 계산이나 프로필 전적 쓰기는 하지 않는다.
       const { data } = await sb.auth.getSession();
       if (data.session?.user.id !== me.id || menuRuntime.userProfile?.id !== me.id) return;
@@ -523,6 +550,7 @@ async function bootstrap(): Promise<void> {
         delta: (delta > 0 ? "+" : "") + delta,
         progress: formatTierProgress(rating),
       }));
+      if (isCurrentResult()) appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
     } catch (error) {
       console.warn("대전 정산 실패:", error);
       showStatus(getRuntimeText("online.settle_failed"), true);
@@ -553,7 +581,7 @@ async function bootstrap(): Promise<void> {
 
     if (masteryRun) { masteryRun.activePlayerLaunchId = null; masteryRun.automaticLaunchActive = true; masteryRun.banner.eligible = false; }
     if (gameModeRuntime?.mode === "online" && onlineRuntime) {
-      onlineRuntime.queueLocalLaunch(timeoutLaunchRequest);
+      onlineRuntime.queueLocalLaunch(timeoutLaunchRequest, "timeout");
     } else {
       queueTurnLaunch(turnRuntime, timeoutLaunchRequest);
     }
@@ -789,6 +817,15 @@ async function bootstrap(): Promise<void> {
           onlineRuntime !== null
           ? onlineRuntime.queueLocalLaunch(launchRequest)
           : queueTurnLaunch(turnRuntime, launchRequest);
+        if (accepted.accepted && binding?.instance.side === "white" && questRun &&
+          ["stage", "tutorial", "puzzle"].includes(gameMode) && questRun.mode === gameMode) {
+          if (!tuningIsDefault()) questRun.eligible = false;
+          if (questRun.eligible && isQuestPieceType(binding.instance.type)) {
+            questRun.launchOrdinal += 1;
+            const context = questStorage.captureContext();
+            if (context) questStorage.enqueue(makePieceLaunchEvent({ source: gameMode as "stage" | "tutorial" | "puzzle", runId: questRun.runId, launchOrdinal: questRun.launchOrdinal, pieceType: binding.instance.type }, context.periods, context.occurredAt));
+          }
+        }
         if (accepted.accepted && binding?.instance.side === "white" && masteryRun &&
           ["stage", "tutorial", "puzzle"].includes(gameMode) && masteryRun.mode === gameMode) {
           if (!tuningIsDefault()) masteryRun.eligible = false;
@@ -1081,6 +1118,8 @@ async function bootstrap(): Promise<void> {
         [...physicsRuntime.pieces.values()].filter(p => p.instance.side === "white").length,
         [...physicsRuntime.pieces.values()].filter(p => p.instance.side === "black").length),
     };
+    questRun = { runId: createQuestId(), mode: stageOptions.gameMode, launchOrdinal: 0, eligible: !masteryNextBoardDebug && tuningIsDefault() };
+    questResultBaseline = captureQuestResultBaseline(questStorage);
     masteryNextBoardDebug = false;
     recentMasteryItems = [];
     resetInputAfterMatch(inputRuntime, physicsRuntime.pieces.keys());
@@ -1566,6 +1605,13 @@ async function bootstrap(): Promise<void> {
       return;
     }
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
+    if (gameMode === "stage" && winner === "white" && questRun) {
+      if (!tuningIsDefault()) questRun.eligible = false;
+      if (questRun.eligible) {
+        const context = questStorage.captureContext();
+        if (context) questStorage.enqueue(makePveWinEvent(questRun.runId, completedStage, context.periods, context.occurredAt));
+      }
+    }
     if (gameMode === "stage" && winner === "white" && masteryRun) {
       if (!tuningIsDefault()) masteryRun.eligible = false;
       if (masteryRun.eligible && masteryRun.enemyFalls.size > 0) addMasteryItems(recordMasteryPveVictory(progressStorage, {
@@ -1604,6 +1650,7 @@ async function bootstrap(): Promise<void> {
           () => returnToMainMenu(menuRuntime),
         );
         appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
+        appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
         return;
       }
     }
@@ -1694,7 +1741,9 @@ async function bootstrap(): Promise<void> {
         : null,
     );
     if (gameMode === "stage") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
+    if (gameMode === "stage") appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
     if (gameMode === "online") {
+      appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
       onlineResignButton.hidden = true;
       void recordOnlineMatchSettlement(winner);
       renderRematchControls(
@@ -1868,6 +1917,7 @@ async function bootstrap(): Promise<void> {
               () => returnToMainMenu(menuRuntime),
               onlineRuntime?.mySide ?? null,
             );
+            appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
             renderRematchControls(
               onlineRuntime?.getRematchStatus() ?? null,
             );
@@ -1881,6 +1931,13 @@ async function bootstrap(): Promise<void> {
           localStrategyDeck: session.strategyDeck,
           getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
           resolveOpponentBanner: () => readOpponentBanner(activeMatchOpponent?.id, progressStorage.owner !== null),
+          onLocalLaunchAccepted: (event) => {
+            const type = physicsRuntime.pieces.get(event.pieceId)?.instance.type;
+            if (event.side === session.mySide && isQuestPieceType(type) && tuningIsDefault()) {
+              const context = questStorage.captureContext();
+              if (context) questStorage.enqueue(makePieceLaunchEvent({ source: "online", matchId: event.matchId, turnIndex: event.turnIndex, pieceType: type }, context.periods, context.occurredAt));
+            }
+          },
         },
       );
       onlineResignButton.hidden = false;
@@ -2000,6 +2057,7 @@ async function bootstrap(): Promise<void> {
             () => returnToMainMenu(menuRuntime),
             onlineRuntime?.mySide ?? null,
           );
+          appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
           renderRematchControls(onlineRuntime?.getRematchStatus() ?? null);
           await recordOnlineMatchSettlement(winner);
           void SocialService.updateMyStatus("online");
@@ -2010,7 +2068,14 @@ async function bootstrap(): Promise<void> {
         matchId: session.matchId,
         localStrategyDeck: null,
         getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
-          resolveOpponentBanner: () => readOpponentBanner(activeMatchOpponent?.id, progressStorage.owner !== null),
+        resolveOpponentBanner: () => readOpponentBanner(activeMatchOpponent?.id, progressStorage.owner !== null),
+        onLocalLaunchAccepted: (event) => {
+          const type = physicsRuntime.pieces.get(event.pieceId)?.instance.type;
+          if (event.side === session.mySide && isQuestPieceType(type) && tuningIsDefault()) {
+            const context = questStorage.captureContext();
+            if (context) questStorage.enqueue(makePieceLaunchEvent({ source: "online", matchId: event.matchId, turnIndex: event.turnIndex, pieceType: type }, context.periods, context.occurredAt));
+          }
+        },
       },
     );
 
@@ -2207,6 +2272,7 @@ async function bootstrap(): Promise<void> {
     activePuzzle = puzzle;
     puzzleHintLevel = 0;
     puzzleFinished = false;
+    puzzleQuestAttemptId = createQuestId();
     puzzleAttempt = {
       launches: 0, fallenIDs: [], contactEvents: [], protectedContactIDs: [],
       holeOutIDs: [], wallDestroyedCounts: {}, customHitUsed: false, rookShots: [],
@@ -2312,6 +2378,13 @@ async function bootstrap(): Promise<void> {
           revision: activePuzzle.revision, gold: evaluation.medal === 3,
         }).items);
       }
+      if (evaluation.status === "success" && questRun && puzzleQuestAttemptId && isQuestPuzzleId(activePuzzle.puzzleId)) {
+        if (!tuningIsDefault()) questRun.eligible = false;
+        if (questRun.eligible && (evaluation.medal === 1 || evaluation.medal === 2 || evaluation.medal === 3)) {
+          const context = questStorage.captureContext();
+          if (context) questStorage.enqueue(makePuzzleClearEvent(puzzleQuestAttemptId, activePuzzle.puzzleId, activePuzzle.revision, evaluation.medal, context.periods, context.occurredAt));
+        }
+      }
       puzzleUI?.showResult(activePuzzle.puzzleId, {
         success: evaluation.status === "success", objectiveMet: evaluation.requiredComplete,
         goldMet: evaluation.medal === 3, medal: evaluation.medal,
@@ -2320,6 +2393,9 @@ async function bootstrap(): Promise<void> {
       const puzzleResultCard = app.querySelector<HTMLElement>(".puzzle-ui-result-card");
       if (puzzleResultCard) appendMasteryResult(puzzleResultCard, recentMasteryItems, () => {
         openMasteryBook(app, progressStorage, () => { void showPuzzleLibrary(); });
+      });
+      if (puzzleResultCard) appendQuestResult(puzzleResultCard, questResultBaseline, questStorage, () => {
+        openQuestBook(app, questStorage);
       });
     } else {
       const nextPlayer = activePuzzle.pieces.find((piece) => piece.side === "white" && physicsRuntime.pieces.has(piece.id));
