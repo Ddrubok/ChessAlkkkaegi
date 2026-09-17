@@ -1764,3 +1764,8 @@ body {
 
 
 
+
+/* Give the turn label its own row on narrow phones. */
+@media (max-width:380px) and (orientation:portrait) {
+  .turn-hud-container { top:50px; }
+}

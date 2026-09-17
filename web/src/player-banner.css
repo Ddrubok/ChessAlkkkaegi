@@ -5,7 +5,7 @@
   position:absolute; display:flex; align-items:center; gap:8px;
   width:min(330px, calc(100vw - 28px)); aspect-ratio:3 / 1;
   padding:12px 14px 12px 100px; box-sizing:border-box;
-  color:var(--banner-ink); background: url('/assets/banners/classic.webp') center / 100% 100% no-repeat;
+  color:var(--banner-ink); background: var(--banner-bg) url('/assets/banners/classic.webp') center / 100% 100% no-repeat;
   border:0; border-radius:10px; pointer-events:none;
 }
 .player-banner[data-theme="slate"] { --banner-ink:#172c43; --banner-accent:#35506e; --banner-bg:#dce5f0; background-image:url('/assets/banners/slate.webp'); }
@@ -34,3 +34,20 @@
   .player-banners:not([hidden]) ~ .turn-hud-container > .mastery-hud-objective { position:absolute; top:145px; width:max-content; }
 }
 #app:has(.player-banners:not([hidden])) .aim-parameters { bottom:calc(134px + env(safe-area-inset-bottom, 0px)); }
+
+/* Short landscape screens need smaller cards to leave the board visible. */
+@media (orientation:landscape) and (max-height:500px) {
+  .player-banner { width:210px; aspect-ratio:3 / 1; padding:7px 9px 7px 62px; gap:5px; }
+  .player-banner-name { font-size:13px; }
+  .player-banner-detail { font-size:11px; }
+  .player-banner-text { gap:3px; padding:2px 0; }
+  .player-banner-add { width:36px; height:40px; }
+  #app:has(.player-banners:not([hidden])) .aim-parameters { bottom:94px; }
+}
+@media (max-width:380px) and (orientation:portrait) {
+  .player-banner[data-owner="opponent"] { top:92px; }
+}
+@media (orientation:landscape) and (max-height:500px) and (max-width:740px) {
+  .player-banner { width:180px; padding-left:54px; }
+  .player-banner[data-owner="self"] { bottom:calc(4px + env(safe-area-inset-bottom, 0px)); }
+}

@@ -66,13 +66,13 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
 
     card.innerHTML = `
       <!-- 헤더 -->
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px; flex-shrink:0;">
         <h3 style="margin:0; font-size:18px; font-weight:800; color:#f8fafc; white-space:nowrap;">${I18nManager.t("common.settings")}</h3>
         <button id="settings-modal-close" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer; padding:4px 8px; line-height:1;">✕</button>
       </div>
 
       <!-- 탭 선택 바 -->
-      <div style="display:flex; gap:6px; background:#0f172a; padding:4px; border-radius:8px;">
+      <div style="display:flex; gap:6px; background:#0f172a; padding:4px; border-radius:8px; flex-shrink:0;">
         <button id="tab-btn-sound" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "sound" ? "#2563eb" : "transparent"}; color:${activeTab === "sound" ? "white" : "#94a3b8"}; white-space:nowrap;">
           ${I18nManager.t("common.sound")}
         </button>
@@ -85,8 +85,8 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
       </div>
 
       <!-- 탭 본문 -->
-      <div id="settings-tab-content" style="min-height:220px; display:flex; flex-direction:column; justify-content:center;"></div>
-      ${AdManager.hasPrivacyOptions() ? `<button id="ad-privacy-options" type="button">${uiText("privacy")}</button>` : ""}
+      <div id="settings-tab-content" style="display:flex; flex-direction:column;"></div>
+      ${AdManager.hasPrivacyOptions() ? `<button id="ad-privacy-options" type="button" style="flex-shrink:0;">${uiText("privacy")}</button>` : ""}
     `;
 
     // 닫기 이벤트

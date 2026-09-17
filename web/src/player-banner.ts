@@ -35,7 +35,7 @@ export function getPlayerBannerModels(state: PlayerBannerState) {
     : state.mode === 'online'
       ? { side: opposite, name: state.opponent?.nickname || getRuntimeText('matchmaking.default_opponent_name'),
           detail: state.opponent ? formatTier(state.opponent.mmr) : I18nManager.t('p2p.subtitle'), bot: false }
-      : { side: opposite, name: I18nManager.t('ingame.turn_black'), detail: I18nManager.t('ingame.unlimited_time'), bot: false };
+      : { side: opposite, name: I18nManager.t('ingame.turn_black'), detail: I18nManager.t('lobby.mode_2p_short'), bot: false };
   return { self, opponent, canAddFriend: state.mode === 'online' && state.loggedIn && !!profile &&
     !!state.opponent && state.opponent.id !== profile.id };
 }

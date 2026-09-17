@@ -20,6 +20,7 @@ try {
  assert.equal(getPlayerBannerModels({...state,opponent:null}).canAddFriend,false);
  assert.equal(getPlayerBannerModels({...state,opponent:{...state.opponent,id:'me'}}).canAddFriend,false);
  assert.equal(getPlayerBannerModels({...state,mode:'hotseat'}).canAddFriend,false);
+ assert.equal(getPlayerBannerModels({...state,mode:'hotseat'}).opponent.detail,I18nManager.t('lobby.mode_2p_short'));
  let changes=0;const unsubscribe=theme.subscribeBannerTheme(()=>changes++);
  theme.setBannerTheme('forest');assert.equal(theme.getBannerTheme(),'forest');assert.equal(localStorage.getItem('chessAlkkagi.bannerTheme'),'forest');
  theme.setBannerTheme('forest');assert.equal(changes,1);theme.setBannerTheme('invalid');assert.equal(theme.getBannerTheme(),'forest');unsubscribe();
