@@ -970,7 +970,7 @@ export async function createPhysicsRuntime(
 
   // 스테이지 기록·측정 호출자가 이전 기본 반폭을 넘겨도 헤더의 모드·단계가 실제 물리 외곽의 단일 원본이다.
   const boardHalfExtent =
-    stageOptions.gameMode === "stage"
+    (stageOptions.gameMode === "stage" || stageOptions.gameMode === "weekly")
       ? computeStageBoardHalfExtent(
           meta.cellSize,
           stageOptions.gameMode,
@@ -1010,7 +1010,7 @@ export async function createPhysicsRuntime(
   for (const instance of spawnInstances) {
     createPieceBody(runtime, instance, meta, stageOptions);
   }
-  validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
+  validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage" || stageOptions.gameMode === "weekly");
   return runtime;
 }
 
@@ -1174,7 +1174,7 @@ export function resetPhysicsPieces(
   for (const instance of spawnInstances) {
     createPieceBody(runtime, instance, meta, stageOptions);
   }
-  validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage");
+  validateSpawnOverlaps(runtime, meta, stageOptions.gameMode === "stage" || stageOptions.gameMode === "weekly");
   const expectedBodyCount =
     spawnInstances.length +
     runtime.breakableWalls.size +

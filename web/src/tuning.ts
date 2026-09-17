@@ -523,12 +523,13 @@ export function setTuningGameMode(
   runtime: TuningRuntime,
   gameMode: GameMode,
 ): void {
-  const useOnlineDefaults = gameMode === "online";
-  if (runtime.onlineDefaultsActive === useOnlineDefaults) {
+  const useFixedDefaults = gameMode === "online" || gameMode === "weekly";
+  if (runtime.onlineDefaultsActive === useFixedDefaults) {
+    runtime.onlineNotice.hidden = gameMode !== "online";
     return;
   }
-  runtime.onlineDefaultsActive = useOnlineDefaults;
-  const targetSettings = useOnlineDefaults
+  runtime.onlineDefaultsActive = useFixedDefaults;
+  const targetSettings = useFixedDefaults
     ? DEFAULT_SETTINGS
     : runtime.localSettings;
   for (const key of Object.keys(DEFAULT_SETTINGS) as TuningKey[]) {
@@ -537,7 +538,7 @@ export function setTuningGameMode(
   for (const elements of runtime.controls.values()) {
     for (const element of elements) {
       if (element instanceof HTMLInputElement) {
-        element.disabled = useOnlineDefaults;
+        element.disabled = useFixedDefaults;
       }
     }
   }
@@ -546,9 +547,9 @@ export function setTuningGameMode(
       "[data-tuning-reset]",
     );
   if (resetButton !== null) {
-    resetButton.disabled = useOnlineDefaults;
+    resetButton.disabled = useFixedDefaults;
   }
-  runtime.onlineNotice.hidden = !useOnlineDefaults;
+  runtime.onlineNotice.hidden = gameMode !== "online";
 }
 
 /** 퍼즐에서는 기기별 조절값과 무관하게 config 기본 튜닝값을 사용한다. */

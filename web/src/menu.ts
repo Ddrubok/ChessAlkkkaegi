@@ -31,6 +31,7 @@ import {
   renderModeCards,
   renderFooterLinks,
   renderTutorialBar,
+  renderWeeklyChallengeEntry,
   lobbyState,
 } from "./lobby";
 import type { LobbyMode } from "./lobby";
@@ -137,6 +138,7 @@ export interface MainMenuRuntime {
   onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>;
   /** 퍼즐 목록을 여는 선택적 연결점입니다. 퍼즐 모듈이 없는 빌드에서는 버튼을 숨깁니다. */
   onOpenPuzzles?: () => void;
+  onOpenWeeklyChallenge?: () => void;
   onReturnToMenu: () => Promise<void>;
   onConfirmAbandon: () => Promise<void>;
   onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
@@ -608,7 +610,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderWeeklyChallengeEntry()}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
     void openRankingModal(runtime.overlay, runtime.userProfile);
@@ -644,6 +646,9 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       else openPveLobbyModal(runtime, stage => startLobbyMode(runtime, "stage", stage));
     });
   });
+  panel.querySelectorAll("[data-open-weekly-challenge]").forEach((button) => button.addEventListener("click", () => {
+    runtime.onOpenWeeklyChallenge?.();
+  }));
   panel.querySelector("#menu-tutorial-btn")?.addEventListener("click", () => {
     lobbyState.tutorialExpanded = !lobbyState.tutorialExpanded;
     renderMainMenu(runtime);

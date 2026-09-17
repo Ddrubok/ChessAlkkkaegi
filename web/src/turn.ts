@@ -53,6 +53,12 @@ export interface TurnSettlementEvidence {
   removedPieces: readonly { id: string; side: PieceSide; type: PieceType }[];
 }
 
+export interface TurnSettledEvent {
+  finishedSide: PieceSide;
+  turnNumber: number;
+  forced: boolean;
+}
+
 export interface TurnLaunchRequest extends LaunchRequest {
   // 플레이어는 1을 생략하고 흑 AI 스테이지 힘 버프만 목표 속도를 배수로 높인다.
   speedMultiplier?: number;
@@ -106,7 +112,7 @@ export interface TurnRuntime {
     | ((request: TurnLaunchRequest, side: PieceSide) => void)
     | null;
   // 낙하 제거와 정착이 끝난 한 턴의 상태 해시 시점을 기록 계층에 알리는 연결점이다.
-  onTurnSettled: (() => void) | null;
+  onTurnSettled: ((event?: TurnSettledEvent) => void) | null;
   // 숙련 기록은 퍼즐을 포함한 실제 한 발의 제거 증거를 재생 기록과 분리해 받는다.
   onMasterySettlement: ((evidence: TurnSettlementEvidence) => void) | null;
   settlementRemovedPieces: { id: string; side: PieceSide; type: PieceType }[];
@@ -606,7 +612,7 @@ export function setLaunchAcceptedHandler(
  */
 export function setTurnSettledHandler(
   runtime: TurnRuntime,
-  handler: (() => void) | null,
+  handler: ((event?: TurnSettledEvent) => void) | null,
 ): void {
   runtime.onTurnSettled = handler;
 }
@@ -964,7 +970,11 @@ function completeSettlement(runtime: TurnRuntime): void {
   }
   if (runtime.onTurnSettled !== null) {
     invokePassiveHook("대국 기록 정착 후크", () => {
-      runtime.onTurnSettled?.();
+      runtime.onTurnSettled?.({
+        finishedSide: justFinishedSide,
+        turnNumber: runtime.turnNumber,
+        forced: runtime.forcedSettleCountedForCurrentSettle,
+      });
     });
   }
   const winner = determineMatchWinner(
@@ -1293,7 +1303,7 @@ function processNextPromotionInQueue(runtime: TurnRuntime): void {
   }
 
   // AI(흑) 차례인 경우 자동 승급 (Queen)
-  if (runtime.currentSide === "black" && runtime.gameMode === "stage") {
+  if (runtime.currentSide === "black" && (runtime.gameMode === "stage" || runtime.gameMode === "weekly")) {
     runtime.promotionQueue.shift();
     runtime.pendingPromotionPawns.delete(pieceId);
     runtime.onPiecePromoted?.(pieceId, "Queen");

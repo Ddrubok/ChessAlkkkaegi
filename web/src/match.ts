@@ -252,6 +252,7 @@ export function showMatchResult(
   onReturnToMenu: (() => Promise<void>) | null = null,
   localSide: PieceSide | null = null,
 ): void {
+  runtime.overlay.classList.remove("weekly-result-open");
   runtime.winner = winner;
   runtime.onRestart = onRestart;
   runtime.onCardSelected = onCardSelected;
@@ -269,7 +270,7 @@ export function showMatchResult(
         : winner === localSide
           ? I18nManager.t("ingame.victory")
           : I18nManager.t("ingame.defeat")
-      : gameMode === "stage"
+      : gameMode === "stage" || gameMode === "weekly"
       ? winner === "white"
         ? I18nManager.t("ingame.stage_clear", { stage: stageNumber })
         : I18nManager.t("ingame.defeat")
@@ -277,20 +278,20 @@ export function showMatchResult(
         ? I18nManager.t("ingame.white_win")
         : I18nManager.t("ingame.black_win");
   const showsCards =
-    gameMode === "stage" &&
+    (gameMode === "stage" || gameMode === "weekly") &&
     winner === "white" &&
     upgradeCards.length > 0 &&
     onCardSelected !== null;
   runtime.cardChoices.replaceChildren();
   runtime.cardChoices.hidden = !showsCards;
   runtime.restartButton.hidden =
-    showsCards || gameMode === "online";
+    showsCards || gameMode === "online" || gameMode === "weekly";
   runtime.restartButton.disabled = false;
   runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
   runtime.menuButton.hidden =
     showsCards ||
     (gameMode === "stage" && winner !== "black") ||
-    (gameMode !== "stage" && gameMode !== "online") ||
+    (gameMode !== "stage" && gameMode !== "weekly" && gameMode !== "online") ||
     onReturnToMenu === null;
   runtime.menuButton.disabled = false;
   runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
@@ -460,6 +461,7 @@ export function showDisconnectedMatchEnd(
  * 메뉴 복귀 뒤 이전 결과 화면이 다음 대전 위에 다시 나타나지 않도록 상태와 DOM을 닫는다.
  */
 export function hideMatchResult(runtime: MatchRuntime): void {
+  runtime.overlay.classList.remove("weekly-result-open");
   runtime.overlay.hidden = true;
   runtime.winner = null;
   runtime.restarting = false;

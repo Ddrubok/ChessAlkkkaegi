@@ -8,11 +8,16 @@ import "./lobby.css";
 import "./progress.css";
 import "./mastery-ui.css";
 import "./quest-ui.css";
+import "./weekly-challenge-ui.css";
 import { progressStorage } from "./progress-storage";
 import { questStorage } from "./quest-storage";
 import { createQuestId, makePieceLaunchEvent, makePuzzleClearEvent, makePveWinEvent, makePvpWinEvent } from "./quest-events";
 import { isQuestPieceType, isQuestPuzzleId } from "./quest-model";
 import { appendQuestResult, captureQuestResultBaseline, openQuestBook, type QuestResultBaseline } from "./quest-ui";
+import { weeklyChallengeStorage } from "./weekly-challenge-storage";
+import { appendWeeklyChallengeResult, appendWeeklyRecoveryControls, openWeeklyChallenge, type WeeklyChallengeUiActions } from "./weekly-challenge-ui";
+import { countWeeklySettledTurn, finishWeeklyStage, pickWeeklyCard } from "./weekly-challenge-run";
+import type { WeeklyChallengeActionKind, WeeklyChallengeEvent, WeeklyChallengePracticeRun } from "./weekly-challenge-model";
 import { getTier } from "./tier";
 import { formatTier, formatTierProgress } from "./tier-view";
 import { I18nManager } from "./i18n";
@@ -52,6 +57,7 @@ import {
   resetRunCardState,
   restoreRunCardState,
   type CardId,
+  UPGRADE_CARDS,
 } from "./cards";
 import {
   createCardEffectTuning,
@@ -262,6 +268,7 @@ async function bootstrap(): Promise<void> {
   const progressOwner = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : null;
   await progressStorage.activate(progressClient, progressOwner);
   await questStorage.activate(progressClient, progressOwner);
+  await weeklyChallengeStorage.activate(progressClient, progressOwner);
   if (progressOwner && progressClient) {
     localStorage.setItem("ca_logged_in_user", "true");
     localStorage.setItem("ca_guest_user_uuid", progressOwner);
@@ -274,16 +281,17 @@ async function bootstrap(): Promise<void> {
     changingAccount = true;
     progressStorage.suspend();
     questStorage.suspend();
+    weeklyChallengeStorage.suspend();
     app.inert = true;
     if (!nextOwner) localStorage.removeItem("ca_logged_in_user");
     // Recreate the board and all in-memory progress on identity changes.
     // Do not make awaited Supabase calls inside its auth callback.
     window.setTimeout(() => { void waitForAuthChange().then(() => window.location.reload()); }, 0);
   });
-  window.addEventListener("online", () => { void progressStorage.retry(); void questStorage.retry(); });
+  window.addEventListener("online", () => { void progressStorage.retry(); void questStorage.retry(); void weeklyChallengeStorage.refresh(); });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { void progressStorage.flush(); void questStorage.flush(); }
-    else void questStorage.retry();
+    else { void questStorage.retry(); void weeklyChallengeStorage.refresh(); }
   });
   const metaRuntime = createMetaRuntime();
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
@@ -315,6 +323,12 @@ async function bootstrap(): Promise<void> {
       await confirmAbandonAction();
     },
   );
+  const weeklyNotReady = async (): Promise<void> => { throw new Error("Weekly challenge world is still loading."); };
+  let weeklyUiActions: WeeklyChallengeUiActions = {
+    practice: weeklyNotReady, start: weeklyNotReady, resume: weeklyNotReady,
+    takeover: weeklyNotReady, terminate: weeklyNotReady,
+  };
+  menuRuntime.onOpenWeeklyChallenge = () => openWeeklyChallenge(weeklyChallengeStorage, weeklyUiActions);
   const assets = await loadChessAssets((event) => {
     const loadedBytes =
       Number.isFinite(event.loaded) && event.loaded > 0
@@ -401,6 +415,18 @@ async function bootstrap(): Promise<void> {
     assets.meta.cellSize,
   );
   const runCardState = createRunCardState();
+  const weeklyTuningSettings = createDefaultRuntimeTuningSettings();
+  let weeklyRun: WeeklyChallengePracticeRun | null = null;
+  let weeklyAccountAttempt = false;
+  let weeklyActionPendingCount = 0;
+  let weeklyResidentRuntime = false;
+  let weeklyPendingAction: { actionId: string; kind: WeeklyChallengeActionKind; playerTurn: number | null } | null = null;
+  let weeklyPendingAckEvent: WeeklyChallengeEvent | null = null;
+  let weeklyPendingLaunchForced = false;
+  let weeklySettlementAck: Promise<boolean> | null = null;
+  let weeklyRunGeneration = 0;
+  let weeklyRecoveryVisible = false;
+  let weeklyRunOwner: string | null = null;
   const stageRunPoints = createStageRunPointState();
   let replayDevelopmentRuntime: ReplayDevelopmentRuntime | null =
     null;
@@ -441,6 +467,91 @@ async function bootstrap(): Promise<void> {
     return Object.keys(defaults).every(key => tuningRuntime.settings[key as keyof typeof defaults] === defaults[key as keyof typeof defaults])
       && Object.keys(cardTuningRuntime.defaultSettings).every(key => cardTuningRuntime.settings[key as keyof typeof cardTuningRuntime.settings] === cardTuningRuntime.defaultSettings[key as keyof typeof cardTuningRuntime.defaultSettings]);
   };
+  const forkWeeklyToPersonal = (): void => {
+    if (!weeklyRun) return;
+    weeklyAccountAttempt = false;
+    weeklyResidentRuntime = true;
+    weeklyChallengeStorage.savePractice(weeklyRun);
+  };
+  const restoreWeeklyBoardInput = (): void => {
+    hideMatchResult(matchRuntime); weeklyRecoveryVisible = false;
+    resetInputAfterMatch(inputRuntime, [...physicsRuntime.pieces.values()].filter((piece) => piece.instance.side === "white").map((piece) => piece.instance.id));
+  };
+  const showWeeklyRecovery = (retry: () => Promise<boolean>, continuePersonal: () => Promise<void>): void => {
+    if (!weeklyRun) return;
+    const definition = weeklyRun.definition;
+    const identity = "weekId" in definition ? definition.weekId : definition.localPracticeId;
+    const definitionHash = "definitionHash" in definition ? definition.definitionHash : definition.localDefinitionHash;
+    const recoveryView = weeklyChallengeStorage.view();
+    const accountPrior = [recoveryView.snapshot?.records.current, recoveryView.snapshot?.records.previous].find((record) => record?.weekId === identity && record.definitionHash === definitionHash) ?? null;
+    const practicePrior = recoveryView.localRecords.find((record) => record.identity === identity && record.definitionHash === definitionHash) ?? null;
+    weeklyResidentRuntime = false; weeklyRecoveryVisible = true; lockInputForMatchOver(inputRuntime);
+    showMatchResult(matchRuntime, "draw", "weekly", weeklyRun.stage, async () => {}, [], null, () => returnToMainMenu(menuRuntime));
+    matchRuntime.restartButton.hidden = true; matchRuntime.menuButton.hidden = true;
+    appendWeeklyChallengeResult(matchRuntime.resultDetails, weeklyRun.score, weeklyAccountAttempt ? accountPrior : practicePrior, weeklyAccountAttempt ? "pending" : "practice");
+    appendWeeklyRecoveryControls(matchRuntime.resultDetails,
+      async () => { if (!await retry()) throw new Error("Weekly synchronization is still pending."); weeklyResidentRuntime = true; restoreWeeklyBoardInput(); },
+      async () => { forkWeeklyToPersonal(); await continuePersonal(); weeklyResidentRuntime = true; restoreWeeklyBoardInput(); },
+      async () => { const response = await weeklyChallengeStorage.control("terminate"); if (!response?.ok) throw new Error(response?.code ?? "Unable to terminate weekly challenge."); await returnToMainMenu(menuRuntime); });
+  };
+  const acknowledgeWeeklyAction = (forced: boolean | null): Promise<boolean> => {
+    if (!weeklyAccountAttempt || !weeklyPendingAction) return Promise.resolve(true);
+    const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
+    if (!attempt) return Promise.resolve(false);
+    const pending = weeklyPendingAction;
+    const runGeneration = weeklyRunGeneration, attemptId = attempt.attemptId;
+    const event: WeeklyChallengeEvent = weeklyPendingAckEvent ?? { clientEventId: crypto.randomUUID(), kind: "action-ack", actionId: pending.actionId, stage: attempt.currentStage, playerTurn: pending.playerTurn, forced };
+    weeklyPendingAckEvent = event;
+    weeklyActionPendingCount += 1;
+    return weeklyChallengeStorage.append(attempt.attemptId, attempt.revision, [event]).then((response) => {
+      if (runGeneration !== weeklyRunGeneration || weeklyChallengeStorage.view().snapshot?.activeAttempt?.attemptId !== attemptId) return false;
+      if (response?.ok) { weeklyPendingAction = null; weeklyPendingAckEvent = null; return true; }
+      window.setTimeout(() => { if (!weeklyRecoveryVisible && gameModeRuntime?.mode === "weekly") showWeeklyRecovery(async () => acknowledgeWeeklyAction(forced), async () => {}); }, 0);
+      return false;
+    }).finally(() => { if (runGeneration === weeklyRunGeneration) weeklyActionPendingCount = Math.max(0, weeklyActionPendingCount - 1); });
+  };
+  const gateWeeklyAction = (
+    kind: WeeklyChallengeActionKind,
+    playerTurn: number | null,
+    execute: () => boolean,
+  ): boolean => {
+    if (gameModeRuntime?.mode !== "weekly" || weeklyRun === null || weeklyActionPendingCount > 0) return false;
+    if (!weeklyAccountAttempt) {
+      const applied = execute();
+      if (applied) weeklyRun.status = "playing";
+      return applied;
+    }
+    const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
+    if (!attempt || attempt.ownerSessionId !== weeklyChallengeStorage.clientSessionId || !weeklyResidentRuntime) return false;
+    const runGeneration = weeklyRunGeneration, owner = weeklyChallengeStorage.owner, sessionId = weeklyChallengeStorage.clientSessionId;
+    const attemptId = attempt.attemptId, ownerFence = attempt.ownerFence, stage = attempt.currentStage;
+    const actionId = crypto.randomUUID(), event: WeeklyChallengeEvent = {
+      clientEventId: crypto.randomUUID(), kind: "action-begin", actionId, actionKind: kind,
+      stage: attempt.currentStage, playerTurn, commandId: crypto.randomUUID(),
+    };
+    weeklyActionPendingCount += 1;
+    const executeAcknowledgedAction = (): boolean => {
+      const current = weeklyChallengeStorage.view().snapshot?.activeAttempt;
+      if (weeklyRunGeneration !== runGeneration || weeklyChallengeStorage.owner !== owner || weeklyChallengeStorage.clientSessionId !== sessionId || gameModeRuntime?.mode !== "weekly" || !weeklyRun || !current || current.attemptId !== attemptId || current.currentStage !== stage || current.ownerFence !== ownerFence || current.ownerSessionId !== sessionId) return false;
+      weeklyPendingAction = { actionId, kind, playerTurn };
+      if (execute()) {
+        weeklyRun.status = "playing";
+        if (kind !== "launch") void acknowledgeWeeklyAction(null);
+        return true;
+      }
+      return false;
+    };
+    const submit = async (): Promise<boolean> => {
+      const response = await weeklyChallengeStorage.append(attemptId, attempt.revision, [event]);
+      if (!response?.ok || !response.data.receipts.some((receipt) => receipt.clientEventId === event.clientEventId && receipt.result === "action-begun")) return false;
+      return executeAcknowledgedAction();
+    };
+    void submit().then((applied) => {
+      if (weeklyRunGeneration !== runGeneration) return;
+      if (!applied) showWeeklyRecovery(submit, async () => { weeklyPendingAction = null; weeklyPendingAckEvent = null; if (!execute()) throw new Error("Weekly action is no longer valid."); if (weeklyRun) weeklyRun.status = "playing"; });
+    }).finally(() => { if (weeklyRunGeneration === runGeneration) weeklyActionPendingCount = Math.max(0, weeklyActionPendingCount - 1); });
+    return true;
+  };
   const markMasteryDebugMutation = (): void => { if (masteryRun) masteryRun.eligible = false; if (questRun) questRun.eligible = false; };
   tuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
   tuningRuntime.panel.addEventListener("click", markMasteryDebugMutation);
@@ -470,6 +581,16 @@ async function bootstrap(): Promise<void> {
     }
   });
   questStorage.subscribe(() => {
+    if (menuRuntime.visible) renderMainMenu(menuRuntime);
+  });
+  weeklyChallengeStorage.subscribe(() => {
+    if (weeklyAccountAttempt && weeklyResidentRuntime) {
+      const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
+      if (weeklyChallengeStorage.owner !== weeklyRunOwner || !attempt || attempt.ownerSessionId !== weeklyChallengeStorage.clientSessionId) {
+        weeklyRunGeneration += 1; weeklyResidentRuntime = false; lockInputForMatchOver(inputRuntime);
+        showWeeklyRecovery(async () => false, async () => {});
+      }
+    }
     if (menuRuntime.visible) renderMainMenu(menuRuntime);
   });
   let puzzleHintLevel: 0 | 1 | 2 = 0;
@@ -580,7 +701,10 @@ async function bootstrap(): Promise<void> {
     };
 
     if (masteryRun) { masteryRun.activePlayerLaunchId = null; masteryRun.automaticLaunchActive = true; masteryRun.banner.eligible = false; }
-    if (gameModeRuntime?.mode === "online" && onlineRuntime) {
+    if (gameModeRuntime?.mode === "weekly" && turnRuntime.currentSide === "white") {
+      weeklyPendingLaunchForced = true;
+      gateWeeklyAction("launch", (weeklyRun?.stageOwnTurns ?? 0) + 1, () => queueTurnLaunch(turnRuntime, timeoutLaunchRequest).accepted);
+    } else if (gameModeRuntime?.mode === "online" && onlineRuntime) {
       onlineRuntime.queueLocalLaunch(timeoutLaunchRequest, "timeout");
     } else {
       queueTurnLaunch(turnRuntime, timeoutLaunchRequest);
@@ -726,6 +850,7 @@ async function bootstrap(): Promise<void> {
         turnRuntime.phase === "match-over" ||
         puzzleInputBlocked ||
         puzzleUI?.blocking === true ||
+        weeklyActionPendingCount > 0 ||
         onlineConnectionBlocked ||
         gameModeRuntime?.switching === true ||
         isMenuBlocking(menuRuntime),
@@ -735,7 +860,7 @@ async function bootstrap(): Promise<void> {
       canSelectPiece: (pieceId) =>
         gameModeRuntime?.mode === "online"
           ? onlineRuntime?.canSelectLocalPiece(pieceId) === true
-          : (gameModeRuntime?.mode !== "stage" ||
+          : ((gameModeRuntime?.mode !== "stage" && gameModeRuntime?.mode !== "weekly") ||
               turnRuntime.currentSide === "white") &&
             canSelectTurnPiece(turnRuntime, pieceId),
       isCameraRotating: () =>
@@ -757,7 +882,7 @@ async function bootstrap(): Promise<void> {
         if (binding?.instance.type !== "King" || binding.instance.side !== side) {
           return false;
         }
-        if (gameModeRuntime?.mode === "stage" && side === "black") {
+        if ((gameModeRuntime?.mode === "stage" || gameModeRuntime?.mode === "weekly") && side === "black") {
           return false;
         }
         if (gameModeRuntime?.mode === "online") {
@@ -767,29 +892,37 @@ async function bootstrap(): Promise<void> {
         return true;
       },
       onKingSwap: (kingPieceId, targetPieceId) => {
-        const swapped = executeKingSwap(turnRuntime, kingPieceId, targetPieceId);
-        if (swapped) {
+        const apply = () => {
+          const swapped = executeKingSwap(turnRuntime, kingPieceId, targetPieceId);
+          if (!swapped) return false;
           playSoundEffect("power90");
           cancelInputInteraction(inputRuntime, true);
           selectPiece(inputRuntime, kingPieceId);
-        }
+          return true;
+        };
+        if (gameModeRuntime?.mode === "weekly") gateWeeklyAction("king-swap", null, apply);
+        else apply();
       },
       onKingDefense: (kingPieceId) => {
-        const defended = executeKingDefense(turnRuntime, kingPieceId);
-        if (defended) {
+        const apply = () => {
+          const defended = executeKingDefense(turnRuntime, kingPieceId);
+          if (!defended) return false;
           playSoundEffect("button");
           cancelInputInteraction(inputRuntime, true);
           selectPiece(inputRuntime, kingPieceId);
-        }
+          return true;
+        };
+        if (gameModeRuntime?.mode === "weekly") gateWeeklyAction("king-defense", null, apply);
+        else apply();
       },
       queueLaunch: (request) => {
         const binding = physicsRuntime.pieces.get(request.pieceId);
         const gameMode = gameModeRuntime?.mode ?? "hotseat";
         let speedMultiplier = 1;
-        if (gameMode === "stage") {
+        if (gameMode === "stage" || gameMode === "weekly") {
           const permanentForceBonus =
             binding?.instance.side === "white"
-              ? computePermanentForceBonus(
+              && gameMode === "stage" ? computePermanentForceBonus(
                   metaRuntime.state.upgrades,
                   binding.instance.type,
                 )
@@ -799,7 +932,7 @@ async function bootstrap(): Promise<void> {
             runCardState,
             permanentForceBonus,
             appliedCardEffectScale,
-            createCardEffectTuning(cardTuningRuntime.settings),
+            createCardEffectTuning(gameMode === "weekly" ? cardTuningRuntime.defaultSettings : cardTuningRuntime.settings),
           );
         } else if (gameMode === "online" && onlineRuntime && binding) {
           const deck =
@@ -813,7 +946,9 @@ async function bootstrap(): Promise<void> {
           ...request,
           speedMultiplier,
         };
-        const accepted = gameMode === "online" &&
+        const accepted = gameMode === "weekly"
+          ? { accepted: gateWeeklyAction("launch", (weeklyRun?.stageOwnTurns ?? 0) + 1, () => queueTurnLaunch(turnRuntime, launchRequest).accepted), reason: null }
+          : gameMode === "online" &&
           onlineRuntime !== null
           ? onlineRuntime.queueLocalLaunch(launchRequest)
           : queueTurnLaunch(turnRuntime, launchRequest);
@@ -883,17 +1018,18 @@ async function bootstrap(): Promise<void> {
     stageNumber: number,
   ): CardTuningAppliedValues => {
     const cardTuning = createCardEffectTuning(
-      cardTuningRuntime.settings,
+      gameMode === "weekly" ? cardTuningRuntime.defaultSettings : cardTuningRuntime.settings,
     );
     const cardEffectScale =
       gameMode === "stage"
         ? tuningRuntime.settings.cardEffectScale
+        : gameMode === "weekly" ? 1
         : CARD_EFFECT_SCALE;
     const stageOptions: StageSpawnOptions = {
       gameMode,
       stageNumber,
       runCards:
-        gameMode === "stage" ? runCardState : undefined,
+        gameMode === "stage" || gameMode === "weekly" ? runCardState : undefined,
       permanentUpgrades:
         gameMode === "stage"
           ? metaRuntime.state.upgrades
@@ -901,9 +1037,10 @@ async function bootstrap(): Promise<void> {
       enemyBuffStepScale:
         gameMode === "stage"
           ? tuningRuntime.settings.enemyStageBuffScale
+          : gameMode === "weekly" ? 1
           : undefined,
       cardEffectScale:
-        gameMode === "stage" ? cardEffectScale : undefined,
+        gameMode === "stage" || gameMode === "weekly" ? cardEffectScale : undefined,
       cardTuning,
     };
     const giantPawnActive = isGiantPawnCardActive(
@@ -1012,7 +1149,7 @@ async function bootstrap(): Promise<void> {
     const stageOptions: StageSpawnOptions = {
       ...baseOptions,
       runCards:
-        baseOptions.gameMode === "stage"
+        baseOptions.gameMode === "stage" || baseOptions.gameMode === "weekly"
           ? runCardState
           : undefined,
       permanentUpgrades:
@@ -1022,13 +1159,15 @@ async function bootstrap(): Promise<void> {
       enemyBuffStepScale:
         baseOptions.gameMode === "stage"
           ? tuningRuntime.settings.enemyStageBuffScale
+          : baseOptions.gameMode === "weekly" ? 1
           : undefined,
       cardEffectScale:
         baseOptions.gameMode === "stage"
           ? tuningRuntime.settings.cardEffectScale
+          : baseOptions.gameMode === "weekly" ? 1
           : undefined,
       cardTuning: createCardEffectTuning(
-        cardTuningRuntime.settings,
+        baseOptions.gameMode === "weekly" ? cardTuningRuntime.defaultSettings : cardTuningRuntime.settings,
       ),
     };
     const boardPuzzle = stageOptions.gameMode === "puzzle" ? activePuzzle : null;
@@ -1153,7 +1292,7 @@ async function bootstrap(): Promise<void> {
       stageOptions.enemyBuffStepScale ??
       tuningRuntime.settings.enemyStageBuffScale;
     appliedCardEffectScale =
-      stageOptions.gameMode === "stage"
+      stageOptions.gameMode === "stage" || stageOptions.gameMode === "weekly"
         ? (stageOptions.cardEffectScale ??
           tuningRuntime.settings.cardEffectScale)
         : CARD_EFFECT_SCALE;
@@ -1235,7 +1374,7 @@ async function bootstrap(): Promise<void> {
       cardTuningRuntime,
       stageOptions.stageNumber,
     );
-    if (stageOptions.gameMode !== "stage") {
+    if (stageOptions.gameMode !== "stage" && stageOptions.gameMode !== "weekly") {
       updateTuningAppliedValues(tuningRuntime, {
         gameMode: stageOptions.gameMode,
         stageNumber: stageOptions.stageNumber,
@@ -1271,7 +1410,7 @@ async function bootstrap(): Promise<void> {
         stageOptions,
       );
       updateTuningAppliedValues(tuningRuntime, {
-        gameMode: "stage",
+        gameMode: stageOptions.gameMode,
         stageNumber: stageOptions.stageNumber,
         enemyWeightFraction:
           enemyStepValues.weightStep * stageBuffs.weightSteps,
@@ -1282,7 +1421,7 @@ async function bootstrap(): Promise<void> {
         enemySizeFraction:
           computeEnemyStageSizeMultiplier(
             stageOptions.stageNumber,
-            tuningRuntime.settings.enemyStageBuffScale,
+            stageOptions.enemyBuffStepScale,
           ) - 1,
         enemySizeSteps: stageBuffs.sizeSteps,
         enemyPawnTier: stageBuffs.pawnTier,
@@ -1296,12 +1435,12 @@ async function bootstrap(): Promise<void> {
         playerForceFractions: playerReadoutInstances.map(
           (instance) =>
             computePlayerLaunchSpeedMultiplier(
-              "stage",
+              stageOptions.gameMode,
               runCardState,
-              computePermanentForceBonus(
+              stageOptions.gameMode === "stage" ? computePermanentForceBonus(
                 metaRuntime.state.upgrades,
                 instance.type,
-              ),
+              ) : 0,
               stageOptions.cardEffectScale,
             ) - 1,
         ),
@@ -1390,10 +1529,12 @@ async function bootstrap(): Promise<void> {
     const previousCards = cloneRunCardState(runCardState);
     const previousRunPoints = { ...stageRunPoints };
     const nextRunPoints = createStageRunPointState(mode === "stage" ? gameModeRuntime?.stageNumber ?? 1 : 1);
-    resetRunCardState(runCardState);
+    if (mode === "weekly" && weeklyRun) restoreRunCardState(runCardState, weeklyRun.cards);
+    else resetRunCardState(runCardState);
     delete stageRunPoints.startedAtStage;
     Object.assign(stageRunPoints, nextRunPoints);
     setTurnGameMode(turnRuntime, mode);
+    turnRuntime.tuningSettings = mode === "weekly" ? weeklyTuningSettings : tuningRuntime.settings;
     setTuningGameMode(tuningRuntime, mode);
     setCardTuningGameMode(cardTuningRuntime, mode);
     if (mode === "puzzle") {
@@ -1408,6 +1549,7 @@ async function bootstrap(): Promise<void> {
       delete stageRunPoints.startedAtStage;
       Object.assign(stageRunPoints, previousRunPoints);
       setTurnGameMode(turnRuntime, previousMode);
+      turnRuntime.tuningSettings = previousMode === "weekly" ? weeklyTuningSettings : tuningRuntime.settings;
       setTuningGameMode(tuningRuntime, previousMode);
       setCardTuningGameMode(cardTuningRuntime, previousMode);
       throw error;
@@ -1565,7 +1707,14 @@ async function bootstrap(): Promise<void> {
     run.automaticLaunchActive = false;
   };
 
-  turnRuntime.onTurnSettled = () => {
+  turnRuntime.onTurnSettled = (settled) => {
+    if (settled && gameModeRuntime?.mode === "weekly" && weeklyRun) {
+      countWeeklySettledTurn(weeklyRun, settled.finishedSide);
+      if (settled.finishedSide === "white" && weeklyPendingAction?.kind === "launch") {
+        weeklySettlementAck = acknowledgeWeeklyAction(settled.forced || weeklyPendingLaunchForced);
+        weeklyPendingLaunchForced = false;
+      }
+    }
     if (gameModeRuntime?.mode === "tutorial") {
       const remainingBlack = [...physicsRuntime.pieces.values()].filter(
         (p) => p.instance.side === "black",
@@ -1605,6 +1754,82 @@ async function bootstrap(): Promise<void> {
       return;
     }
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
+    if (gameMode === "weekly" && weeklyRun) {
+      const runAtResult = weeklyRun;
+      const resultGeneration = weeklyRunGeneration;
+      const definition = runAtResult.definition;
+      const identity = "weekId" in definition ? definition.weekId : definition.localPracticeId;
+      const definitionHash = "definitionHash" in definition ? definition.definitionHash : definition.localDefinitionHash;
+      const recordView = weeklyChallengeStorage.view();
+      const priorRecord = weeklyAccountAttempt ? recordView.snapshot?.records.current ?? null : recordView.localRecords.find((item) => item.identity === identity && item.definitionHash === definitionHash) ?? null;
+      let stageResultEvent: WeeklyChallengeEvent | null = null;
+      const finish = async (): Promise<void> => {
+        const acked = await weeklySettlementAck; weeklySettlementAck = null;
+        if (resultGeneration !== weeklyRunGeneration || weeklyRun !== runAtResult) return;
+        if (acked === false) {
+          showWeeklyRecovery(async () => { const saved = await acknowledgeWeeklyAction(weeklyPendingLaunchForced); if (saved) window.setTimeout(() => { void finish(); }, 0); return saved; }, async () => { if (runAtResult.status === "playing") finishWeeklyStage(runAtResult, winner === "white" ? "white-win" : winner === "black" ? "black-win" : "draw"); weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, runAtResult)); window.setTimeout(() => { void finish(); }, 0); });
+          return;
+        }
+        const weeklyOutcome = winner === "white" ? "white-win" : winner === "black" ? "black-win" : "draw";
+        if (weeklyAccountAttempt) {
+          const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
+          if (!attempt) return;
+          stageResultEvent ??= { clientEventId: crypto.randomUUID(), kind: "stage-result", stage: completedStage, outcome: weeklyOutcome };
+          const response = await weeklyChallengeStorage.append(attempt.attemptId, attempt.revision, [stageResultEvent]);
+          if (resultGeneration !== weeklyRunGeneration || weeklyRun !== runAtResult) return;
+          if (!response?.ok) {
+            showWeeklyRecovery(async () => { const current = weeklyChallengeStorage.view().snapshot?.activeAttempt; if (!current || !stageResultEvent) return false; const retried = await weeklyChallengeStorage.append(current.attemptId, current.revision, [stageResultEvent]); if (retried?.ok) window.setTimeout(() => { void finish(); }, 0); return !!retried?.ok; }, async () => { if (runAtResult.status === "playing") finishWeeklyStage(runAtResult, weeklyOutcome); weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, runAtResult)); window.setTimeout(() => { void finish(); }, 0); });
+            return;
+          }
+          const updated = response.data.snapshot;
+          runAtResult.stage = updated.currentStage;
+          runAtResult.score = { ...updated.score };
+          runAtResult.cards = { ...updated.boundaryCheckpoint.cards };
+          runAtResult.stageOwnTurns = updated.acknowledgedStageOwnTurns;
+          runAtResult.pendingOffer = updated.boundaryCheckpoint.pendingOffer ? { ...updated.boundaryCheckpoint.pendingOffer, choices: [...updated.boundaryCheckpoint.pendingOffer.choices] } : null;
+          runAtResult.status = updated.status === "awaiting-card" ? "awaiting-card" : updated.status === "finished" ? "finished" : "ready-for-stage";
+          runAtResult.endedBy = updated.endedBy === "terminated" ? null : updated.endedBy;
+        } else if (runAtResult.status === "playing") {
+          finishWeeklyStage(runAtResult, weeklyOutcome);
+          weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, runAtResult));
+        }
+        const offer = runAtResult.pendingOffer;
+        const cards = offer ? offer.choices.map((id) => UPGRADE_CARDS.find((card) => card.id === id)).filter((card): card is (typeof UPGRADE_CARDS)[number] => card !== undefined) : [];
+        let pendingCardPickEvent: WeeklyChallengeEvent | null = null;
+        const choose = offer ? async (cardId: CardId): Promise<void> => {
+          if (weeklyAccountAttempt) {
+            const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
+            if (!attempt) throw new Error("Weekly attempt is unavailable.");
+            if (pendingCardPickEvent?.kind === "card-pick" && pendingCardPickEvent.cardId !== cardId) throw new Error("A different weekly card selection is already pending.");
+            const event: WeeklyChallengeEvent = pendingCardPickEvent ?? { clientEventId: crypto.randomUUID(), kind: "card-pick", completedStage, offerId: offer.offerId, cardId };
+            pendingCardPickEvent = event;
+            const response = await weeklyChallengeStorage.append(attempt.attemptId, attempt.revision, [event]);
+            if (resultGeneration !== weeklyRunGeneration || weeklyRun !== runAtResult) throw new Error("Weekly run changed while saving the card.");
+            if (!response?.ok) throw new Error(response?.code ?? "Weekly card save failed.");
+            pendingCardPickEvent = null;
+            const updated = response.data.snapshot;
+            runAtResult.stage = updated.currentStage; runAtResult.score = { ...updated.score }; runAtResult.cards = { ...updated.boundaryCheckpoint.cards }; runAtResult.stageOwnTurns = 0; runAtResult.pendingOffer = null; runAtResult.status = "ready-for-stage";
+          } else {
+            pickWeeklyCard(runAtResult, cardId);
+            weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, runAtResult));
+          }
+          restoreRunCardState(runCardState, runAtResult.cards);
+          setStageNumber(gameModeRuntime!, runAtResult.stage);
+          await resetBoard({ gameMode: "weekly", stageNumber: runAtResult.stage });
+        } : null;
+        showMatchResult(matchRuntime, winner, "weekly", completedStage, async () => returnToMainMenu(menuRuntime), cards, choose, () => returnToMainMenu(menuRuntime));
+        appendWeeklyChallengeResult(matchRuntime.resultDetails, runAtResult.score, priorRecord, weeklyAccountAttempt ? "account" : "practice");
+        if (winner === "white" && completedStage < 10 && cards.length === 0) {
+          if (!weeklyAccountAttempt) runAtResult.stage = completedStage + 1;
+          runAtResult.stageOwnTurns = 0; runAtResult.status = "ready-for-stage";
+          setStageNumber(gameModeRuntime!, runAtResult.stage);
+          await resetBoard({ gameMode: "weekly", stageNumber: runAtResult.stage });
+          hideMatchResult(matchRuntime);
+        }
+      };
+      void finish();
+      return;
+    }
     if (gameMode === "stage" && winner === "white" && questRun) {
       if (!tuningIsDefault()) questRun.eligible = false;
       if (questRun.eligible) {
@@ -1970,8 +2195,54 @@ async function bootstrap(): Promise<void> {
     } else {
       tutorialManager.stop();
     }
-    await switchGameMode(gameModeRuntime, mode, true, mode === "stage" || mode === "tutorial" ? selectedStage ?? 1 : 1);
+    if (mode === "weekly" && !weeklyRun) throw new Error("Weekly challenge run is not prepared.");
+    await switchGameMode(gameModeRuntime, mode, true, mode === "stage" || mode === "tutorial" || mode === "weekly" ? selectedStage ?? 1 : 1);
     ensureGameLoopStarted();
+  };
+
+  const startPreparedWeeklyRun = async (run: WeeklyChallengePracticeRun, account: boolean): Promise<void> => {
+    weeklyRunGeneration += 1; weeklyRun = run; weeklyAccountAttempt = account; weeklyRunOwner = account ? weeklyChallengeStorage.owner : null; weeklyResidentRuntime = true; weeklyActionPendingCount = 0; weeklyPendingAction = null; weeklyPendingAckEvent = null; weeklySettlementAck = null; weeklyRecoveryVisible = false;
+    const runGeneration = weeklyRunGeneration;
+    restoreRunCardState(runCardState, run.cards);
+    await startModeAction!("weekly", run.stage);
+    run.status = run.status === "ready-for-stage" ? "playing" : run.status;
+    if (!account) weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, run));
+    hideMainMenuAfterModeStart(menuRuntime);
+    if (run.pendingOffer) {
+      const offer = run.pendingOffer;
+      let pendingCardPickEvent: WeeklyChallengeEvent | null = null;
+      const cards = offer.choices.map((id) => UPGRADE_CARDS.find((card) => card.id === id)).filter((card): card is (typeof UPGRADE_CARDS)[number] => card !== undefined);
+      showMatchResult(matchRuntime, "white", "weekly", offer.completedStage, async () => returnToMainMenu(menuRuntime), cards, async (cardId) => {
+        if (account) {
+          const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
+          if (!attempt) throw new Error("Weekly attempt is unavailable.");
+          if (pendingCardPickEvent?.kind === "card-pick" && pendingCardPickEvent.cardId !== cardId) throw new Error("A different weekly card selection is already pending.");
+          const event: WeeklyChallengeEvent = pendingCardPickEvent ?? { clientEventId: crypto.randomUUID(), kind: "card-pick", completedStage: offer.completedStage, offerId: offer.offerId, cardId };
+          pendingCardPickEvent = event;
+          const response = await weeklyChallengeStorage.append(attempt.attemptId, attempt.revision, [event]);
+          if (runGeneration !== weeklyRunGeneration || weeklyRun !== run) throw new Error("Weekly run changed while saving the card.");
+          if (!response?.ok) throw new Error(response?.code ?? "Weekly card save failed.");
+          pendingCardPickEvent = null;
+          const updated = response.data.snapshot; run.stage = updated.currentStage; run.cards = { ...updated.boundaryCheckpoint.cards }; run.pendingOffer = null; run.status = "playing";
+        } else {
+          pickWeeklyCard(run, cardId); weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, run)); run.status = "playing";
+        }
+        restoreRunCardState(runCardState, run.cards); setStageNumber(gameModeRuntime!, run.stage); await resetBoard({ gameMode: "weekly", stageNumber: run.stage });
+      }, () => returnToMainMenu(menuRuntime));
+    }
+  };
+  const runFromAccountBoundary = (): WeeklyChallengePracticeRun | null => {
+    const view = weeklyChallengeStorage.view(), attempt = view.snapshot?.activeAttempt, definition = view.snapshot?.currentWeek;
+    if (!attempt || !definition || attempt.definitionHash !== definition.definitionHash || attempt.ownerSessionId !== view.sessionId || !["ready-for-stage", "awaiting-card"].includes(attempt.status)) return null;
+    const cp = attempt.boundaryCheckpoint;
+    return { definition, stage: cp.boundary === "awaiting-card" ? cp.stageToPlay : attempt.currentStage, score: { ...attempt.score }, cards: { ...cp.cards }, stageOwnTurns: attempt.acknowledgedStageOwnTurns, pendingOffer: cp.pendingOffer ? { ...cp.pendingOffer, choices: [...cp.pendingOffer.choices] } : null, status: cp.boundary, endedBy: null };
+  };
+  weeklyUiActions = {
+      practice: async (definition) => { const run = await weeklyChallengeStorage.ensurePractice(definition); await startPreparedWeeklyRun(run, false); },
+      start: async () => { const response = await weeklyChallengeStorage.beginAccountAttempt(); if (!response?.ok) throw new Error(response?.code ?? "Unable to start weekly challenge."); const run = runFromAccountBoundary(); if (!run) throw new Error("Weekly boundary is unavailable."); await startPreparedWeeklyRun(run, true); },
+      resume: async () => { const response = await weeklyChallengeStorage.control("resume"); if (!response?.ok) throw new Error(response?.code ?? "Unable to resume weekly challenge."); const run = runFromAccountBoundary(); if (!run) throw new Error("Weekly boundary is unavailable."); await startPreparedWeeklyRun(run, true); },
+      takeover: async () => { const response = await weeklyChallengeStorage.control("takeover"); if (!response?.ok) throw new Error(response?.code ?? "Unable to take over weekly challenge."); const run = runFromAccountBoundary(); if (!run) throw new Error("Weekly boundary is unavailable."); await startPreparedWeeklyRun(run, true); },
+      terminate: async () => { const response = await weeklyChallengeStorage.control("terminate"); if (!response?.ok) throw new Error(response?.code ?? "Unable to terminate weekly challenge."); },
   };
 
   const startDirectFriendlyMatch = async (
@@ -2151,6 +2422,14 @@ async function bootstrap(): Promise<void> {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
     void SocialService.updateMyStatus("online");
+    if (gameModeRuntime.mode === "weekly") {
+      weeklyRunGeneration += 1;
+      if (!weeklyAccountAttempt && weeklyRun) {
+        weeklyRun.status = "finished"; weeklyRun.endedBy = "draw";
+        weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, weeklyRun!));
+      }
+      weeklyResidentRuntime = false; weeklyRun = null; weeklyAccountAttempt = false; weeklyRunOwner = null; weeklyPendingAction = null; weeklyPendingAckEvent = null; weeklyRecoveryVisible = false;
+    }
     onlineSelfTestRuntime?.destroy();
     onlineRuntime?.close();
     onlineRuntime = null;
