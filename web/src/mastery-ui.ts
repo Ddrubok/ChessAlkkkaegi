@@ -168,8 +168,8 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
   },
 };
 
-export function masteryCopy(): Copy {
-  const language = I18nManager.getLanguage?.() || "en";
+export function masteryCopy(lang?: LanguageCode): Copy {
+  const language = lang || I18nManager.getLanguage?.() || "en";
   const override = localized[language] ?? {};
   return { ...BASE, names: EN_NAMES, conditions: EN_CONDITIONS, tips: EN_TIPS, ...override } as Copy;
 }
@@ -228,7 +228,7 @@ function bannerObjectiveCard(storage: MasteryStorage, bannerId: BannerId, lang: 
   `;
 }
 
-function ownedOptions(storage: MasteryStorage, slot: EquipmentSlot): string {
+function ownedOptions(storage: MasteryStorage, slot: 'badge' | 'title' | 'frame'): string {
   const snapshot = loadMasterySnapshot(storage);
   const copy = masteryCopy();
   const equipped = equippedItem(snapshot, slot);

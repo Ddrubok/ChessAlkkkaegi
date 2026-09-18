@@ -7,7 +7,6 @@ import {
   ACHIEVEMENT_BANNER_IDS,
   isValidTheme,
   isValidBannerAppearance,
-  getEquippedBanner,
   equipBanner,
   ownsBanner,
   getBannerProgress,
@@ -18,6 +17,7 @@ import {
   type BannerAppearance,
 } from "./banner-collection";
 import { bannerCopy, bannerThemeName } from "./banner-copy";
+import { DEFAULT_COSMETICS, GUEST_COSMETICS, getCosmeticLoadout, normalizePublicCosmetics, type CosmeticLoadout } from "./cosmetics";
 
 export type { BannerId, BannerTheme, BannerAppearance };
 export {
@@ -34,10 +34,41 @@ export {
 
 const listeners = new Set<() => void>();
 
+// Visual preview only: never grant rewards or save the selection to an account.
+export const isLocalBannerPreview = Boolean(import.meta.env?.DEV)
+  && typeof location !== "undefined"
+  && ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)
+  && new URLSearchParams(location.search).get("bannerPreview") === "1";
+let previewTheme: BannerTheme = "classic";
+let previewCosmetics: CosmeticLoadout = { ...DEFAULT_COSMETICS };
+let cachedCosmetics: CosmeticLoadout | null = null;
+let cachedOwner: string | null = null;
+
+export function getPlayerCosmetics(isMember: boolean): CosmeticLoadout {
+  if (isLocalBannerPreview) return { ...previewCosmetics, banner: previewTheme };
+  if (!isMember) return { ...GUEST_COSMETICS };
+  if (!cachedCosmetics || cachedOwner !== progressStorage.owner) {
+    cachedCosmetics = getCosmeticLoadout(progressStorage);
+    cachedOwner = progressStorage.owner;
+  }
+  return { ...cachedCosmetics };
+}
+
+export function setLocalCosmeticPreview(value: CosmeticLoadout): boolean {
+  if (!isLocalBannerPreview) return false;
+  const normalized = normalizePublicCosmetics(value);
+  if (!normalized || normalized.banner === 'plain') return false;
+  previewCosmetics = normalized;
+  previewTheme = normalized.banner;
+  listeners.forEach(listener => listener());
+  return true;
+}
+
 
 // Listen to progressStorage updates so account changes automatically trigger banner theme listeners
 if (typeof progressStorage?.subscribe === "function") {
   progressStorage.subscribe(() => {
+    cachedCosmetics = null;
     if (progressStorage.owner && progressStorage.ready) preloadEquippedBanner();
     listeners.forEach((listener) => {
       try {
@@ -55,7 +86,7 @@ if (typeof progressStorage?.subscribe === "function") {
  * Members receive their equipped account banner theme.
  */
 export function getPlayerBannerTheme(isMember: boolean): BannerAppearance {
-  return isMember ? getBannerTheme() : "plain";
+  return isMember || isLocalBannerPreview ? getBannerTheme() : "plain";
 }
 
 /**
@@ -63,8 +94,10 @@ export function getPlayerBannerTheme(isMember: boolean): BannerAppearance {
  * Defaults to "classic".
  */
 export function getBannerTheme(): BannerTheme {
+  if (isLocalBannerPreview) return previewTheme;
   if (progressStorage?.owner) {
-    return getEquippedBanner(progressStorage);
+    const banner = getPlayerCosmetics(true).banner;
+    return banner === 'plain' ? 'classic' : banner;
   }
   return "classic";
 }
@@ -76,7 +109,9 @@ export function setBannerTheme(theme: BannerTheme): void {
   if (!isValidTheme(theme)) {
     return;
   }
-  if (progressStorage?.owner) {
+  if (isLocalBannerPreview) {
+    previewTheme = theme;
+  } else if (progressStorage?.owner) {
     const success = equipBanner(progressStorage, theme);
     if (!success) {
       // If equipping failed because banner is locked or invalid, return early

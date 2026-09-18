@@ -302,6 +302,7 @@ try {
 
   const mockClient = {
     rpc: async (name, args) => {
+      if (name === "get_account_progress_v4") return { error: { code: "PGRST202" } };
       if (args.p_expected_user_id !== currentAuth) return { error: { code: '42501' } };
       if (name === 'get_account_progress_v3') {
         const row = rows.get(currentAuth) ?? { data: {}, revision: 0 };

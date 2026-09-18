@@ -1,5 +1,5 @@
 import { createBannerMatch, settleBannerMatch, finishBannerMatch, type BannerMatch } from "./banner-match";
-import { readOpponentBanner } from "./banner-profile";
+import { readOpponentCosmetics } from "./banner-profile";
 import { getPlayerBannerTheme } from "./banner-theme";
 import { createPlayerBanners } from "./player-banner";
 import { uiText } from "./ui-text";
@@ -567,6 +567,7 @@ async function bootstrap(): Promise<void> {
       profile: menuRuntime.userProfile, opponent: activeMatchOpponent,
       rankedMode: activeOnlineMatchMode,
       opponentBannerTheme: onlineRuntime?.opponentBannerTheme,
+      opponentCosmetics: onlineRuntime?.opponentCosmetics,
       loggedIn: progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id,
     }),
     requestFriend: async (profileId, opponent) => {
@@ -1880,7 +1881,7 @@ async function bootstrap(): Promise<void> {
           matchId: session.matchId,
           localStrategyDeck: session.strategyDeck,
           getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
-          resolveOpponentBanner: () => readOpponentBanner(activeMatchOpponent?.id, progressStorage.owner !== null),
+          resolveOpponentCosmetics: () => readOpponentCosmetics(activeMatchOpponent?.id, progressStorage.owner !== null),
         },
       );
       onlineResignButton.hidden = false;
@@ -2010,7 +2011,7 @@ async function bootstrap(): Promise<void> {
         matchId: session.matchId,
         localStrategyDeck: null,
         getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
-          resolveOpponentBanner: () => readOpponentBanner(activeMatchOpponent?.id, progressStorage.owner !== null),
+          resolveOpponentCosmetics: () => readOpponentCosmetics(activeMatchOpponent?.id, progressStorage.owner !== null),
       },
     );
 

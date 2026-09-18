@@ -1,34 +1,22 @@
+import type { UserProfile } from './supabase-auth';
 import { uiText } from "./ui-text";
 /**
  * 통합 환경 설정 모달 (SettingsModal)
  * - 탭 1: 사운드 설정 (BGM 볼륨, SFX 볼륨, 전체 음소거)
- * - 탭 2: 배너 설정 (6가지 배너 테마 - 보유 배너 장착 / 잠금 배너 진행도 표시)
+ * - 탭 2: 치장품 설정 (6슬롯 외형 꾸미기 - 배경, 프레임, 배지, 배지프레임, 칭호, 칭호프레임)
  * - 탭 3: 언어 설정 (9개국 글로벌 언어 그리드 선택)
  */
 
 import { I18nManager, SUPPORTED_LANGUAGES, type LanguageCode } from "./i18n";
 import { getSoundSettings, updateSoundSettings } from "./sound";
 import { AdManager } from "./ad-manager";
-import {
-  BANNER_IDS,
-  getBannerTheme,
-  setBannerTheme,
-  bannerThemeLabel,
-  bannerSettingsText,
-  ownsBanner,
-  getBannerProgress,
-  bannerImageUrl,
-  type BannerTheme,
-} from "./banner-theme";
-import {
-  bannerCopy,
-  bannerThemeCondition,
-  bannerThemeMode,
-} from "./banner-copy";
 import { progressStorage } from "./progress-storage";
 import { escapeHtml } from "./html";
+import { mountCosmeticsSettingsPanel } from "./cosmetics-settings";
+import { getCosmeticsCopy } from "./cosmetics-copy";
+import "./cosmetics-settings.css";
 
-export function openSettingsModal(parentContainer?: HTMLElement): void {
+export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: () => UserProfile | null): void {
   const container = parentContainer ?? document.body;
   const existing = document.querySelector(".settings-modal-overlay");
   if (existing) existing.dispatchEvent(new Event("settings-request-close"));
@@ -70,12 +58,14 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
 
   let activeTab: "sound" | "banner" | "language" = "sound";
   let closed = false;
+  let cosmeticPanel: ReturnType<typeof mountCosmeticsSettingsPanel> | null = null;
 
   const cleanupListeners: Array<() => void> = [];
 
   const closeModal = () => {
     if (closed) return;
     closed = true;
+    cosmeticPanel?.cleanup(); cosmeticPanel = null;
     cleanupListeners.forEach((cleanup) => cleanup());
     cleanupListeners.length = 0;
     modal.remove();
@@ -85,13 +75,13 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
 
   const render = (): void => {
     if (closed) return;
+    cosmeticPanel?.cleanup(); cosmeticPanel = null;
     const scrollTop = card.scrollTop;
-    const focused = card.contains(document.activeElement) ? document.activeElement as HTMLElement : null;
+    const focused = card.contains(document.activeElement) ? (document.activeElement as HTMLElement) : null;
     const focusId = focused?.id;
-    const focusTheme = focused?.dataset.theme;
     const soundSettings = getSoundSettings();
     const currentLang = I18nManager.currentLang;
-    const copy = bannerCopy(currentLang);
+    const cosmeticsCopy = getCosmeticsCopy(currentLang);
 
     card.innerHTML = `
       <!-- 헤더 -->
@@ -106,7 +96,7 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
           ${escapeHtml(I18nManager.t("common.sound"))}
         </button>
         <button id="tab-btn-banner" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "banner" ? "#2563eb" : "transparent"}; color:${activeTab === "banner" ? "white" : "#94a3b8"}; white-space:nowrap;">
-          ${escapeHtml(bannerSettingsText("tab", currentLang))}
+          ${escapeHtml(cosmeticsCopy.tabTitle)}
         </button>
         <button id="tab-btn-language" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "language" ? "#2563eb" : "transparent"}; color:${activeTab === "language" ? "white" : "#94a3b8"}; white-space:nowrap;">
           ${escapeHtml(I18nManager.t("common.language"))}
@@ -119,7 +109,9 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
     `;
 
     // 닫기 이벤트
-    card.querySelector("#ad-privacy-options")?.addEventListener("click", () => { void AdManager.showPrivacyOptions(); });
+    card.querySelector("#ad-privacy-options")?.addEventListener("click", () => {
+      void AdManager.showPrivacyOptions();
+    });
     card.querySelector("#settings-modal-close")?.addEventListener("click", closeModal);
 
     // 탭 전환 이벤트
@@ -199,138 +191,14 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
       });
     } else if (activeTab === "banner") {
       // -------------------------------------------------------------
-      // 2. 배너 외형 설정 탭 (회원: 6종 카드 / 게스트: 기본 단색 배너 안내)
+      // 2. 6슬롯 치장품 설정 탭 (외형 꾸미기 프로덕션 UI 패널)
       // -------------------------------------------------------------
-      const isMember = progressStorage.owner !== null;
-
-      if (!isMember) {
-        content.innerHTML = `
-          <div style="display:flex; flex-direction:column; gap:14px; align-items:center;">
-            <div style="
-              width: 100%;
-              aspect-ratio: 3/1;
-              background: #334155;
-              border: 1px solid #64748b;
-              border-radius: 12px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              box-sizing: border-box;
-              padding: 14px;
-            ">
-              <div style="display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center;">
-                <span style="font-size:16px; font-weight:750; color:#f8fafc;">${escapeHtml(I18nManager.t("online.guest_mode"))}</span>
-                <span style="font-size:12px; font-weight:600; color:#94a3b8;">${escapeHtml(I18nManager.t("online.guest_mode"))}</span>
-              </div>
-            </div>
-            <div style="font-size:13px; color:#94a3b8; text-align:center; line-height:1.5; padding:0 8px; word-break:keep-all;">
-              ${escapeHtml(copy.guestNotice)}
-            </div>
-          </div>
-        `;
-      } else {
-        const currentTheme = getBannerTheme();
-
-        content.innerHTML = `
-          <div style="display:flex; flex-direction:column; gap:12px;">
-            <div style="display:flex; flex-direction:column; gap:10px;">
-              ${BANNER_IDS.map((theme) => {
-                const owned = ownsBanner(progressStorage, theme);
-                const isSelected = currentTheme === theme;
-                const label = bannerThemeLabel(theme, currentLang);
-                const condition = bannerThemeCondition(theme, currentLang);
-                const mode = bannerThemeMode(theme, currentLang);
-                const progress = getBannerProgress(progressStorage, theme);
-                const imgSrc = bannerImageUrl(theme);
-
-                if (owned) {
-                  return `
-                    <button class="banner-theme-select-btn" data-theme="${escapeHtml(theme)}" aria-pressed="${isSelected ? "true" : "false"}" style="
-                      background: ${isSelected ? "#1e293b" : "#0f172a"};
-                      border: 2px solid ${isSelected ? "#3b82f6" : "#334155"};
-                      color: #f8fafc;
-                      border-radius: 12px;
-                      overflow: hidden;
-                      padding: 0;
-                      cursor: pointer;
-                      display: flex;
-                      flex-direction: column;
-                      transition: border-color 0.15s, transform 0.1s;
-                      text-align: left;
-                      box-sizing: border-box;
-                      width: 100%;
-                    ">
-                      <div style="width:100%; aspect-ratio:3/1; overflow:hidden; background:#0b0f19;">
-                        <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(label)}" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;" />
-                      </div>
-                      <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; width:100%; box-sizing:border-box; gap:10px;">
-                        <div style="display:flex; flex-direction:column; gap:2px; min-width:0; overflow:hidden;">
-                          <span style="font-size:14px; font-weight:700; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(label)}</span>
-                          <span style="font-size:11px; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(condition)}</span>
-                        </div>
-                        ${isSelected ? `<span class="selected-indicator" style="font-size:11px; font-weight:800; background:#2563eb; color:white; padding:3px 7px; border-radius:6px; flex-shrink:0;">${escapeHtml(copy.equipped)} ✓</span>` : `<span style="font-size:11px; font-weight:600; color:#94a3b8; flex-shrink:0;">${escapeHtml(copy.equip)}</span>`}
-                      </div>
-                    </button>
-                  `;
-                }
-
-                // Locked banner card - accurate PvE condition and progress, no fake equip button
-                return `
-                  <div class="banner-theme-locked-card" aria-disabled="true" style="
-                    background: #0b0f19;
-                    border: 1px dashed #475569;
-                    color: #94a3b8;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    padding: 0;
-                    display: flex;
-                    flex-direction: column;
-                    box-sizing: border-box;
-                    width: 100%;
-                    opacity: 0.85;
-                  ">
-                    <div style="width:100%; aspect-ratio:3/1; overflow:hidden; background:#070a10; position:relative; filter:brightness(0.6) grayscale(0.4);">
-                      <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(label)}" loading="lazy" style="width:100%; height:100%; object-fit:cover; display:block;" />
-                      <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); font-size:24px;">
-                        🔒
-                      </div>
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:6px; padding:10px 14px; width:100%; box-sizing:border-box;">
-                      <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                        <span style="font-size:14px; font-weight:700; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(label)}</span>
-                        <span style="font-size:11px; font-weight:700; color:#e2e8f0; background:#334155; padding:2px 6px; border-radius:4px; flex-shrink:0;">${progress.current}/${progress.target}</span>
-                      </div>
-                      <div style="font-size:12px; color:#94a3b8; line-height:1.4;">
-                        ${escapeHtml(condition)}
-                      </div>
-                      <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; color:#64748b; margin-top:2px;">
-                        <span>${escapeHtml(mode)}</span>
-                        <span style="font-weight:600; color:#f59e0b;">${escapeHtml(copy.locked)}</span>
-                      </div>
-                    </div>
-                  </div>
-                `;
-              }).join("")}
-            </div>
-            ${progressStorage.masteryPending || progressStorage.bannersPending || progressStorage.saveFailed ? `<p style="font-size:12px; color:${progressStorage.saveFailed ? "#f87171" : "#38bdf8"}; text-align:center; margin:2px 0;">${escapeHtml(progressStorage.status)}</p><button type="button" data-banner-retry>${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button>` : ""}
-            <div style="font-size:12px; color:#94a3b8; text-align:center; margin-top:4px;">
-              ${escapeHtml(bannerSettingsText("hint", currentLang))}
-            </div>
-          </div>
-        `;
-
-        content.querySelector<HTMLButtonElement>("[data-banner-retry]")?.addEventListener("click", () => { void progressStorage.retry(); });
-        content.querySelectorAll<HTMLButtonElement>(".banner-theme-select-btn").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            if (progressStorage.owner === null || !progressStorage.ready || progressStorage.unsafeData) return;
-            const theme = btn.dataset.theme as BannerTheme;
-            if (theme && ownsBanner(progressStorage, theme)) {
-              setBannerTheme(theme);
-              render();
-            }
-          });
-        });
-      }
+      cosmeticPanel = mountCosmeticsSettingsPanel(content, {
+        getProfile,
+        onApplied: () => {
+          // Additional notification if needed
+        },
+      });
     } else {
       // -------------------------------------------------------------
       // 3. 언어 설정 탭 (9개국 글로벌 언어 그리드)
@@ -380,21 +248,20 @@ export function openSettingsModal(parentContainer?: HTMLElement): void {
       });
     }
     if (focusId) card.querySelector<HTMLElement>(`#${CSS.escape(focusId)}`)?.focus({ preventScroll: true });
-    else if (focusTheme) card.querySelector<HTMLElement>(`[data-theme="${CSS.escape(focusTheme)}"]`)?.focus({ preventScroll: true });
     card.scrollTop = scrollTop;
   };
 
   // Subscribe to progressStorage and I18n updates while modal is open
   if (typeof progressStorage?.subscribe === "function") {
     const unsubProgress = progressStorage.subscribe(() => {
-      if (!closed) render();
+      if (!closed && activeTab !== "banner") render();
     });
     cleanupListeners.push(unsubProgress);
   }
 
   if (typeof I18nManager?.subscribe === "function") {
     const unsubI18n = I18nManager.subscribe(() => {
-      if (!closed) render();
+      if (!closed && activeTab !== "banner") render();
     });
     cleanupListeners.push(unsubI18n);
   }

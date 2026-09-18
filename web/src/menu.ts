@@ -429,7 +429,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     });
 
     panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
-      openSettingsModal(runtime.overlay);
+      openSettingsModal(runtime.overlay, () => runtime.userProfile);
     });
 
     let currentAuthTab: "guest" | "login" | "signup" = "guest";
@@ -621,7 +621,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   });
 
   panel.querySelector("#menu-sound-btn")?.addEventListener("click", () => {
-    openSettingsModal(runtime.overlay);
+    openSettingsModal(runtime.overlay, () => runtime.userProfile);
   });
 
   panel.querySelector("#menu-profile-btn")?.addEventListener("click", () => {

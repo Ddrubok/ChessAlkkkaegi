@@ -1,0 +1,526 @@
+/* ==========================================================================
+   Cosmetics Settings Panel & 6-Slot Banner Preview Styles
+   ========================================================================== */
+
+.cosmetics-panel-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   Top Live Preview Area
+   -------------------------------------------------------------------------- */
+.cosmetics-preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #0b0f19;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.cosmetics-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cosmetics-preview-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cosmetics-draft-chip {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.cosmetics-dev-chip {
+  font-size: 11px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* Banner Live Card Container */
+.cosmetics-banner-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #1e293b;
+  user-select: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+/* Layer 1: Background */
+.cosmetics-layer-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #273344;
+}
+
+.cosmetics-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cosmetics-banner-card[data-bg="plain"] .cosmetics-bg-img {
+  display: none !important;
+}
+
+.cosmetics-banner-card[data-bg="plain"] .cosmetics-layer-bg {
+  background: #334155;
+}
+
+/* Layer 2: Banner Frame */
+.cosmetics-layer-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  border-radius: 8px;
+}
+
+.cosmetics-layer-frame[hidden] {
+  display: none !important;
+}
+
+.cosmetics-layer-frame[data-frame="frame:classic-gold"] {
+  border: 2px solid #b58a41;
+  outline: 1px solid #f4d890;
+  outline-offset: -3px;
+  box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.35);
+}
+
+.cosmetics-layer-frame[data-frame="frame:mastery-complete"] {
+  border: 2px solid #ef4444;
+  outline: 1px solid #f59e0b;
+  outline-offset: -3px;
+  box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.5), 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
+.cosmetics-frame-img {
+  position: absolute;
+  left: -1%;
+  top: -24%;
+  width: 102%;
+  height: 160%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+/* Layer 3: Badge & Layer 4: Badge Frame */
+.cosmetics-layer-badge-box {
+  position: absolute;
+  left: 8%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16%;
+  aspect-ratio: 1;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.cosmetics-layer-badge-box[hidden] {
+  display: none !important;
+}
+
+.cosmetics-badge-glyph {
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #332014 0%, #17110c 100%);
+  color: #ffe7a3;
+  text-shadow: 0 0 6px rgba(255, 231, 163, 0.7);
+}
+
+/* Badge Frame Ring Variations */
+.cosmetics-layer-badge-box[data-badge-frame="badgeFrame:gold"] {
+  border: 2px solid #b58a41;
+  outline: 1.5px solid #f4d890;
+  outline-offset: 1.5px;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+}
+
+.cosmetics-layer-badge-box[data-badge-frame="badgeFrame:silver"] {
+  border: 2px solid #94a3b8;
+  outline: 1.5px solid #cbd5e1;
+  outline-offset: 1.5px;
+  box-shadow: 0 0 8px rgba(203, 213, 225, 0.4);
+}
+
+.cosmetics-layer-badge-box[data-badge-frame="badgeFrame:violet"] {
+  border: 2px solid #a855f7;
+  outline: 1.5px solid #d8b4fe;
+  outline-offset: 1.5px;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.45);
+}
+
+/* Layer 5: Content (Nickname, Tier, Title) */
+.cosmetics-layer-content {
+  position: absolute;
+  left: 28%;
+  right: 6%;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  z-index: 3;
+  color: #f8fafc;
+  pointer-events: none;
+}
+
+.cosmetics-banner-card[data-has-badge="false"] .cosmetics-layer-content {
+  left: 10%;
+}
+
+.cosmetics-player-name {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #f8fafc;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.cosmetics-player-tier {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Title Plate & Title Frame Styles */
+.cosmetics-title-plate {
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #ead0a1;
+  padding: 2px 6px;
+  width: fit-content;
+  border-radius: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 2px solid #b58a41;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.cosmetics-title-plate[hidden] {
+  display: none !important;
+}
+
+.cosmetics-title-plate[data-title-frame="titleFrame:gold"] {
+  --title-edge: #bc904a;
+  --title-ink: #ffe6b2;
+  --title-fill: #322316;
+  color: var(--title-ink);
+  background: var(--title-fill);
+  border: 1px solid var(--title-edge);
+  box-shadow: inset 0 0 0 1px var(--title-fill), inset 0 0 0 2px rgba(188, 144, 74, 0.5);
+}
+
+.cosmetics-title-plate[data-title-frame="titleFrame:silver"] {
+  --title-edge: #a4b8cf;
+  --title-ink: #eef5ff;
+  --title-fill: #1d2c40;
+  color: var(--title-ink);
+  background: var(--title-fill);
+  border: 1px solid var(--title-edge);
+  box-shadow: inset 0 0 0 1px var(--title-fill), inset 0 0 0 2px rgba(164, 184, 207, 0.5);
+}
+
+.cosmetics-title-plate[data-title-frame="titleFrame:violet"] {
+  --title-edge: #b986d7;
+  --title-ink: #f1d9ff;
+  --title-fill: #321c45;
+  color: var(--title-ink);
+  background: var(--title-fill);
+  border: 1px solid var(--title-edge);
+  box-shadow: inset 0 0 0 1px var(--title-fill), inset 0 0 0 2px rgba(185, 134, 215, 0.5);
+}
+
+/* --------------------------------------------------------------------------
+   Action Bar (Apply / Reset)
+   -------------------------------------------------------------------------- */
+.cosmetics-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.cosmetics-btn-apply {
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.cosmetics-btn-apply:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.cosmetics-btn-apply:disabled {
+  background: #334155;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.cosmetics-btn-cancel {
+  background: #0f172a;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.cosmetics-btn-cancel:hover:not(:disabled) {
+  background: #1e293b;
+  color: white;
+}
+
+.cosmetics-btn-cancel:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Slot Category Selector Tabs / Accordeon
+   -------------------------------------------------------------------------- */
+.cosmetics-slot-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: #0f172a;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+.cosmetics-slot-tab-btn {
+  flex: 1 1 30%;
+  min-width: 90px;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: #94a3b8;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.cosmetics-slot-tab-btn.active {
+  background: #334155;
+  color: #f8fafc;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+   Slot Option Grid & Cards
+   -------------------------------------------------------------------------- */
+.cosmetics-slot-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cosmetics-slot-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cosmetics-options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.cosmetics-option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #0f172a;
+  border: 1.5px solid #334155;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+  color: #f8fafc;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.cosmetics-option-card:hover:not(.locked) {
+  background: #1e293b;
+  border-color: #64748b;
+}
+
+.cosmetics-option-card.selected {
+  background: #1e293b;
+  border-color: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+}
+
+.cosmetics-option-card.locked {
+  background: #0b0f19;
+  border-style: dashed;
+  border-color: #475569;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.cosmetics-option-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cosmetics-option-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #070a10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 20px;
+  border: 1px solid #334155;
+}
+
+.cosmetics-option-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Original badge artwork needs enough room to read its fine details. */
+[data-slot="badge"] .cosmetics-option-thumb {
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+[data-slot="badge"] .cosmetics-option-thumb img { object-fit: contain; }
+
+.cosmetics-option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.cosmetics-option-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cosmetics-option-cond {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cosmetics-option-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.cosmetics-badge-equipped {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.cosmetics-badge-locked {
+  background: #334155;
+  color: #f59e0b;
+}
+
+.cosmetics-slot-hint {
+  font-size: 11px;
+  color: #38bdf8;
+  margin: 0;
+}
+
+/* Match the live in-game renderer; settings never scale it into a different layout. */
+.player-banner.cosmetics-live-card { position:relative; inset:auto; width:100%; max-width:420px; margin:0 auto; }
+
+.cosmetics-title-detail { padding:12px; display:flex; justify-content:center; background:#0b0f19; border-radius:6px; }
+.cosmetics-title-sample { font-size:14px; color:#f8fafc; padding:4px 12px; }
+.cosmetics-title-sample:not([data-frame="none"]) { border:1px solid #c69a50; background:#322316; color:#ffe6b2; border-radius:3px; }
+.cosmetics-title-sample[data-frame="silver"] { border-color:#a4b8cf; background:#1d2c40; color:#eef5ff; }
+.cosmetics-title-sample[data-frame="violet"] { border-color:#b986d7; background:#321c45; color:#f1d9ff; }

@@ -1,4 +1,5 @@
 import { getBannerTheme, isValidBannerAppearance, type BannerAppearance } from "./banner-theme";
+import { GUEST_COSMETICS, normalizePublicCosmetics, type CosmeticLoadout } from "./cosmetics";
 import { uiText } from "./ui-text";
 import { Vector3 } from "three";
 import {
@@ -242,6 +243,7 @@ export interface OnlineLobbyOptions {
 export interface OnlineRuntimeOptions {
   getLocalBannerTheme?: () => BannerAppearance;
   resolveOpponentBanner?: () => Promise<BannerAppearance>;
+  resolveOpponentCosmetics?: () => Promise<CosmeticLoadout>;
   // 두 피어가 ready와 resume에서 반드시 일치시킬 매치 식별자다.
   matchId?: string;
   // 로컬 플레이어의 전략 덱 스탯이다.
@@ -302,6 +304,7 @@ export interface OnlineRuntime {
   // 상대의 ready 메시지를 받았는지 나타낸다.
   remoteReady: boolean;
   opponentBannerTheme: BannerAppearance;
+  opponentCosmetics?: CosmeticLoadout;
   // 양쪽 준비와 연결이 끝나 로컬 선택을 허용하는 상태다.
   active: boolean;
   // 다음에 수락할 순차 턴 번호다.
@@ -1769,13 +1772,21 @@ export function createOnlineRuntime(
   let bannerLookup = 0;
   let bannerLookupPending: string | null = null;
   const updateOpponentBanner = (reported: BannerAppearance): void => {
-    if (!options.resolveOpponentBanner) { runtime.opponentBannerTheme = reported; return; }
+    if (!options.resolveOpponentBanner && !options.resolveOpponentCosmetics) { runtime.opponentBannerTheme = reported; return; }
     if (bannerLookupPending === runtime.matchId) return;
     bannerLookupPending = runtime.matchId;
     const lookup = ++bannerLookup, expectedMatch = runtime.matchId;
     runtime.opponentBannerTheme = "plain";
-    void options.resolveOpponentBanner().then(theme => {
-      if (lookup === bannerLookup && !sessionEnded && runtime.matchId === expectedMatch) runtime.opponentBannerTheme = isValidBannerAppearance(theme) ? theme : "plain";
+    runtime.opponentCosmetics = { ...GUEST_COSMETICS };
+    const request = options.resolveOpponentCosmetics
+      ? options.resolveOpponentCosmetics()
+      : options.resolveOpponentBanner!().then(banner => ({ ...GUEST_COSMETICS, banner }));
+    void request.then(value => {
+      if (lookup === bannerLookup && !sessionEnded && runtime.matchId === expectedMatch) {
+        const cosmetics = normalizePublicCosmetics(value) ?? { ...GUEST_COSMETICS };
+        runtime.opponentCosmetics = cosmetics;
+        runtime.opponentBannerTheme = cosmetics.banner;
+      }
     }).catch(() => { /* Keep the plain fallback; cosmetics never block a match. */ }).finally(() => { if (lookup === bannerLookup) bannerLookupPending = null; });
   };
 

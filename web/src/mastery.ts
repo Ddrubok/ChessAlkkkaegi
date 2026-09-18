@@ -9,7 +9,7 @@ export const MASTERY_KEYS = [MASTERY_PROGRESS_KEY, MASTERY_REWARDS_KEY, MASTERY_
 export const MASTERY_IDS = ["M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08"] as const;
 export type MasteryId = typeof MASTERY_IDS[number];
 export type MasteryCategory = "experience" | "skill";
-export type EquipmentSlot = "badge" | "title" | "frame" | "banner";
+export type EquipmentSlot = "badge" | "title" | "frame" | "banner" | "badgeFrame" | "titleFrame";
 
 export interface MasteryDefinition {
   id: MasteryId;
@@ -127,7 +127,7 @@ function canonicalJson(value: unknown): string {
 }
 function emptyProgress(): MasteryProgressStore { return { schemaVersion: 1, records: {} }; }
 function emptyRewards(): RewardStore { return { schemaVersion: 1, grants: {}, items: {} }; }
-function deviceId(storage?: MasteryStorage): string {
+export function deviceId(storage?: MasteryStorage): string {
   const owner = (storage as { owner?: string | null } | undefined)?.owner;
   const key = `ca_mastery_device_v1:${owner ?? "guest"}`;
   try {
@@ -338,12 +338,12 @@ function normalizePreferenceValue(raw: unknown): PreferenceValue {
 }
 export function normalizePreferences(raw: unknown): PreferenceStore {
   requireShape(raw, ["schemaVersion", "tracked", "equipped"]);
-  if (raw.schemaVersion !== 1 || !isObject(raw.equipped) || Object.keys(raw.equipped).some(key => !["badge", "title", "frame", "banner"].includes(key))) throw new Error("mastery-preferences-malformed");
+  if (raw.schemaVersion !== 1 || !isObject(raw.equipped) || Object.keys(raw.equipped).some(key => !["badge", "title", "frame", "banner", "badgeFrame", "titleFrame"].includes(key))) throw new Error("mastery-preferences-malformed");
   const result = emptyPreferences();
   requireShape(raw.tracked, ["medalId", "updatedAt", "deviceId"]);
   if ((raw.tracked.medalId !== null && !isMasteryId(raw.tracked.medalId)) || !validIso(raw.tracked.updatedAt) || !validId(raw.tracked.deviceId)) throw new Error("mastery-tracked-malformed");
   result.tracked = { medalId: raw.tracked.medalId as MasteryId | null, updatedAt: raw.tracked.updatedAt, deviceId: raw.tracked.deviceId };
-  for (const slot of ["badge", "title", "frame", "banner"] as const) {
+  for (const slot of ["badge", "title", "frame", "banner", "badgeFrame", "titleFrame"] as const) {
     if (Object.hasOwn(raw.equipped, slot)) result.equipped[slot] = normalizePreferenceValue(raw.equipped[slot]);
   }
   return result;
@@ -369,10 +369,16 @@ export function loadMasterySnapshot(storage: MasteryStorage): MasterySnapshot {
     const itemId = preference.itemId;
     if (itemId !== null) {
       if (!itemId.startsWith(`${slot}:`)) malformed = true;
-      else if (slot === "badge" && !/^badge:mastery-m0[1-8]$/.test(itemId)) malformed = true;
-      else if (slot === "title" && itemId !== "title:explorer") malformed = true;
-      else if (slot === "frame" && itemId !== "frame:mastery-complete") malformed = true;
-      else if (slot === "banner") {
+      else if (slot === "badge" && (!/^badge:mastery-m0[1-8]$/.test(itemId) || !r.value.items[itemId])) malformed = true;
+      else if (slot === "title") {
+        if (itemId !== "title:challenger" && (itemId !== "title:explorer" || !r.value.items[itemId])) malformed = true;
+      } else if (slot === "frame") {
+        if (itemId !== "frame:classic-gold" && (itemId !== "frame:mastery-complete" || !r.value.items[itemId])) malformed = true;
+      } else if (slot === "badgeFrame") {
+        if (!["badgeFrame:gold", "badgeFrame:silver", "badgeFrame:violet"].includes(itemId)) malformed = true;
+      } else if (slot === "titleFrame") {
+        if (!["titleFrame:gold", "titleFrame:silver", "titleFrame:violet"].includes(itemId)) malformed = true;
+      } else if (slot === "banner") {
         if (!["banner:classic", "banner:slate", "banner:forest", "banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId)) malformed = true;
         else if (["banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId) && !r.value.items[itemId]) malformed = true;
       } else if (!r.value.items[itemId]) malformed = true;
@@ -537,8 +543,22 @@ export function setEquippedMastery(storage: MasteryStorage, slot: EquipmentSlot,
   if (itemId !== null) {
     if (!itemId.startsWith(`${slot}:`)) return false;
     if (slot === "badge" && (!snapshot.rewards.items[itemId] || !/^badge:mastery-m0[1-8]$/.test(itemId))) return false;
-    if (slot === "title" && (!snapshot.rewards.items[itemId] || itemId !== "title:explorer")) return false;
-    if (slot === "frame" && (!snapshot.rewards.items[itemId] || itemId !== "frame:mastery-complete")) return false;
+    if (slot === "title") {
+      if (itemId === "title:challenger") { /* basic implicitly owned */ }
+      else if (itemId === "title:explorer" && snapshot.rewards.items[itemId]) { /* earned */ }
+      else return false;
+    }
+    if (slot === "frame") {
+      if (itemId === "frame:classic-gold") { /* basic implicitly owned */ }
+      else if (itemId === "frame:mastery-complete" && snapshot.rewards.items[itemId]) { /* earned */ }
+      else return false;
+    }
+    if (slot === "badgeFrame") {
+      if (!["badgeFrame:gold", "badgeFrame:silver", "badgeFrame:violet"].includes(itemId)) return false;
+    }
+    if (slot === "titleFrame") {
+      if (!["titleFrame:gold", "titleFrame:silver", "titleFrame:violet"].includes(itemId)) return false;
+    }
     if (slot === "banner") {
       if (!["banner:classic", "banner:slate", "banner:forest", "banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId)) return false;
       if (["banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId) && !snapshot.rewards.items[itemId]) return false;
@@ -550,6 +570,10 @@ export function equippedItem(snapshot: MasterySnapshot, slot: EquipmentSlot): st
   const itemId = snapshot.preferences.equipped[slot]?.itemId ?? null;
   if (!itemId || !itemId.startsWith(`${slot}:`)) return null;
   if (slot === "banner" && ["banner:classic", "banner:slate", "banner:forest"].includes(itemId)) return itemId;
+  if (slot === "frame" && itemId === "frame:classic-gold") return itemId;
+  if (slot === "title" && itemId === "title:challenger") return itemId;
+  if (slot === "badgeFrame" && ["badgeFrame:gold", "badgeFrame:silver", "badgeFrame:violet"].includes(itemId)) return itemId;
+  if (slot === "titleFrame" && ["titleFrame:gold", "titleFrame:silver", "titleFrame:violet"].includes(itemId)) return itemId;
   return snapshot.rewards.items[itemId] ? itemId : null;
 }
 
@@ -644,7 +668,7 @@ export function mergeMasteryValue(key: string, leftRaw: string | undefined, righ
     const trackedRight: PreferenceValue = { itemId: right.tracked.medalId, updatedAt: right.tracked.updatedAt, deviceId: right.tracked.deviceId };
     const tracked = preferenceWins(trackedLeft, trackedRight); const merged = emptyPreferences();
     merged.tracked = { medalId: isMasteryId(tracked.itemId) ? tracked.itemId : null, updatedAt: tracked.updatedAt, deviceId: tracked.deviceId };
-    for (const slot of ["badge", "title", "frame", "banner"] as const) {
+    for (const slot of ["badge", "title", "frame", "banner", "badgeFrame", "titleFrame"] as const) {
       const a = left.equipped[slot], b = right.equipped[slot]; if (a || b) merged.equipped[slot] = a && b ? preferenceWins(a, b) : (a ?? b)!;
     }
     return JSON.stringify(merged);
@@ -672,13 +696,15 @@ export function validateMasteryValues(data: Record<string, string>): void {
     const itemId = preference.itemId;
     if (itemId !== null) {
       if (!itemId.startsWith(`${slot}:`)) throw new Error("mastery-equipment-malformed");
-      if (slot === "badge" && !/^badge:mastery-m0[1-8]$/.test(itemId)) throw new Error("mastery-equipment-malformed");
-      if (slot === "title" && itemId !== "title:explorer") throw new Error("mastery-equipment-malformed");
-      if (slot === "frame" && itemId !== "frame:mastery-complete") throw new Error("mastery-equipment-malformed");
+      if (slot === "badge" && (!rewards.items[itemId] || !/^badge:mastery-m0[1-8]$/.test(itemId))) throw new Error("mastery-equipment-malformed");
+      if (slot === "title" && itemId !== "title:challenger" && (itemId !== "title:explorer" || !rewards.items[itemId])) throw new Error("mastery-equipment-malformed");
+      if (slot === "frame" && itemId !== "frame:classic-gold" && (itemId !== "frame:mastery-complete" || !rewards.items[itemId])) throw new Error("mastery-equipment-malformed");
+      if (slot === "badgeFrame" && !["badgeFrame:gold", "badgeFrame:silver", "badgeFrame:violet"].includes(itemId)) throw new Error("mastery-equipment-malformed");
+      if (slot === "titleFrame" && !["titleFrame:gold", "titleFrame:silver", "titleFrame:violet"].includes(itemId)) throw new Error("mastery-equipment-malformed");
       if (slot === "banner") {
         if (!["banner:classic", "banner:slate", "banner:forest", "banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId)) throw new Error("mastery-equipment-malformed");
         if (["banner:banner_cosmic_knight", "banner:banner_crimson_sun", "banner:banner_hidden_myeongnyang"].includes(itemId) && !rewards.items[itemId]) throw new Error("mastery-equipment-malformed");
-      } else if (!rewards.items[itemId]) throw new Error("mastery-equipment-malformed");
+      }
     }
   }
 }

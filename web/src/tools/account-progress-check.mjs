@@ -15,6 +15,7 @@ try {
   let holdWrite = null;
   const writes = [];
   const client = { rpc: async (name, args) => {
+      if (name === "get_account_progress_v4") return { error: { code: "PGRST202" } };
     if (!['get_account_progress', 'save_account_progress'].includes(name)) return { error: { code: 'PGRST202' } };
     const captured = auth;
     if (name === 'get_account_progress' && holdRead) await holdRead;
@@ -97,7 +98,7 @@ try {
 
   // An upload may commit while its response is lost. Reopening recognizes that snapshot.
   auth = 'account-a';
-  const cached = JSON.parse(values.get('ca_account_progress_v3:account-a'));
+  const cached = JSON.parse(values.get('ca_account_progress_v4:account-a'));
   rows.set(auth, { data: cached.data, revision: cached.revision + 1 });
   await store.activate(client, auth);
   assert.equal(store.conflict, false); assert.equal(store.ready, true);

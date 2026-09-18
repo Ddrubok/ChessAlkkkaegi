@@ -67,6 +67,7 @@ try {
 
   const client = {
     rpc: async (name, args) => {
+      if (name === "get_account_progress_v4") return { error: { code: "PGRST202" } };
       const targetUser = args.p_expected_user_id;
       if (targetUser !== auth) return { error: { code: '42501' } };
 
@@ -170,7 +171,7 @@ try {
   assert.equal(store.bannersPending, true);
   assert.equal(store.saveFailed, false);
 
-  assert.ok(values.has('ca_account_progress_v3:' + auth), 'new client must use separate cache namespace');
+  assert.ok(values.has('ca_account_progress_v4:' + auth), 'new client must use separate cache namespace');
   assert.equal(values.has('ca_account_progress_v1:' + auth), false, 'old strict parser cache must not receive new fields');
   console.log('--- TEST 2: Preservation Through Reload ---');
   const reloaded = new AccountProgressStorage(() => local);
@@ -201,6 +202,7 @@ try {
 
   const staleProbeClient = {
     rpc: async (name, args) => {
+      if (name === "get_account_progress_v4") return { error: { code: "PGRST202" } };
       if (args.p_expected_user_id === 'account-slow-a') {
         if (name === 'get_account_progress_v3') {
           await lateProbePromise;
@@ -251,6 +253,7 @@ try {
   console.log('--- TEST 5: Reject Successful V3 Response Lacking Capabilities ---');
   const invalidV3Client = {
     rpc: async (name) => {
+      if (name === "get_account_progress_v4") return { error: { code: "PGRST202" } };
       if (name === 'get_account_progress_v3') {
         return {
           data: {
@@ -293,6 +296,7 @@ try {
 
   const concurrentClient = {
     rpc: async (name, args) => {
+      if (name === "get_account_progress_v4") return { error: { code: "PGRST202" } };
       if (name === 'get_account_progress_v3') {
         return {
           data: {
