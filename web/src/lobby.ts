@@ -10,6 +10,10 @@ import { progressStorage } from "./progress-storage";
 import { PUZZLE_CATALOG, getPuzzleProgress, loadPuzzleProgress } from "./puzzle";
 import { equippedItem, loadMasterySnapshot } from "./mastery";
 import { masteryCopy, renderMasteryProfileSummary } from "./mastery-ui";
+import { questStorage } from "./quest-storage";
+import { renderQuestProfileSummary } from "./quest-ui";
+import { weeklyChallengeStorage } from "./weekly-challenge-storage";
+import { renderWeeklyChallengeSummary, weeklyChallengeCopy } from "./weekly-challenge-ui";
 
 export const PVE_MAX_STAGE = 10;
 export const lobbyState = { profileExpanded: false, tutorialExpanded: false };
@@ -146,9 +150,14 @@ export function renderFooterLinks(): string {
   return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>`;
 }
 
+export function renderWeeklyChallengeEntry(): string {
+  const c = weeklyChallengeCopy();
+  return `<section class="lobby-weekly-entry"><div><span>${renderHeaderActions("trophy", 22)}</span><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.entryDetail)}</small></div></div><button type="button" data-open-weekly-challenge>${escapeHtml(c.view)}</button></section>`;
+}
+
 export function renderProfilePanel(user: UserProfile, points: number): string {
   const inert = lobbyState.profileExpanded ? "" : " inert";
-  return `<div class="lobby-profile-body"><div id="menu-profile-panel" class="lobby-profile-panel" aria-hidden="${!lobbyState.profileExpanded}"${inert}><p class="lobby-profile-points">${escapeHtml(I18nManager.t("common.points"))} <strong>${points} P</strong></p><div class="menu-tier-columns"><div class="menu-tier-column"><div class="tier-label tier-label-classic">${I18nManager.t("online.classic_tab")}</div><div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 }))}</div></div><div class="menu-tier-column"><div class="tier-label tier-label-strategy">${I18nManager.t("online.strategy_tab")}</div><div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 }))}</div></div></div>${renderMasteryProfileSummary(progressStorage)}</div></div>`;
+  return `<div class="lobby-profile-body"><div id="menu-profile-panel" class="lobby-profile-panel" aria-hidden="${!lobbyState.profileExpanded}"${inert}><p class="lobby-profile-points">${escapeHtml(I18nManager.t("common.points"))} <strong>${points} P</strong></p><div class="menu-tier-columns"><div class="menu-tier-column"><div class="tier-label tier-label-classic">${I18nManager.t("online.classic_tab")}</div><div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 }))}</div></div><div class="menu-tier-column"><div class="tier-label tier-label-strategy">${I18nManager.t("online.strategy_tab")}</div><div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 }))}</div></div></div>${renderMasteryProfileSummary(progressStorage)}${renderQuestProfileSummary(questStorage)}${renderWeeklyChallengeSummary(weeklyChallengeStorage)}</div></div>`;
 }
 
 export function renderProfileCard(user: UserProfile, points: number): string {

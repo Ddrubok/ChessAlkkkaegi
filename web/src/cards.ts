@@ -270,7 +270,7 @@ export function computeEffectiveGeneralCardGrade(
     return 0;
   }
   const runGrade =
-    gameMode === "stage" ? getGeneralCardGrade(state, cardId) : 0;
+    gameMode === "stage" || gameMode === "weekly" ? getGeneralCardGrade(state, cardId) : 0;
   if (tuning === undefined) {
     return runGrade;
   }
@@ -347,7 +347,7 @@ export function isGiantPawnCardActive(
 ): boolean {
   return (
     gameMode !== "online" &&
-    ((gameMode === "stage" && state.giantPawn) ||
+    (((gameMode === "stage" || gameMode === "weekly") && state.giantPawn) ||
       tuning?.giantPawnEnabled === true)
   );
 }
@@ -362,7 +362,7 @@ export function isProneStartCardActive(
 ): boolean {
   return (
     gameMode !== "online" &&
-    ((gameMode === "stage" && state.proneStart) ||
+    (((gameMode === "stage" || gameMode === "weekly") && state.proneStart) ||
       tuning?.proneStartEnabled === true)
   );
 }

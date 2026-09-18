@@ -100,7 +100,7 @@ export function computeStageBoardScale(
       `판 배율 스테이지 번호 ${stageNumber}가 1 이상의 정수가 아닙니다.`,
     );
   }
-  return gameMode === "stage" && stageNumber >= 2
+  return (gameMode === "stage" || gameMode === "weekly") && stageNumber >= 2
     ? STAGE_BOARD_SCALE
     : 1;
 }
@@ -283,7 +283,7 @@ export function computeStagePieceScale(
         : PLAYER_MAX_SIZE_SCALE,
     );
   }
-  if (options.gameMode !== "stage") {
+  if (options.gameMode !== "stage" && options.gameMode !== "weekly") {
     return 1;
   }
   const buffs = computeStageBuffs(options.stageNumber);
@@ -537,7 +537,7 @@ export function computeUpgradeWeightFraction(
           );
     return cardFraction + permanentFraction;
   }
-  if (options.gameMode !== "stage") {
+  if (options.gameMode !== "stage" && options.gameMode !== "weekly") {
     return 0;
   }
   return (
@@ -554,7 +554,7 @@ export function computeUpgradeWeightFraction(
 export function computeStageAiSpeedMultiplier(
   options: StageSpawnOptions,
 ): number {
-  if (options.gameMode !== "stage") {
+  if (options.gameMode !== "stage" && options.gameMode !== "weekly") {
     return 1;
   }
   return (

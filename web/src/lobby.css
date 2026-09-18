@@ -628,3 +628,4 @@
   color: #fff;
   background: #ef4444;
 }
+.lobby-weekly-entry{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;padding:14px;border:1px solid #92400e;border-radius:14px;background:linear-gradient(135deg,#27170a,#111827);color:#f8fafc}.lobby-weekly-entry>div{display:flex;align-items:center;gap:12px}.lobby-weekly-entry>div>span{display:grid;place-items:center;width:44px;height:44px;border-radius:10px;background:#78350f;color:#fde68a}.lobby-weekly-entry strong,.lobby-weekly-entry small{display:block}.lobby-weekly-entry small{margin-top:3px;color:#cbd5e1}.lobby-weekly-entry button{min-height:44px;padding:0 16px;border:1px solid #f59e0b;border-radius:10px;background:#92400e;color:#fff;font:inherit;font-weight:700;cursor:pointer}@media(max-width:599px){.lobby-weekly-entry{align-items:stretch;flex-direction:column}.lobby-weekly-entry button{width:100%}}

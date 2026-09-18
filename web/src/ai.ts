@@ -568,7 +568,7 @@ function queueAiDecision(runtime: AiRuntime): boolean {
  */
 function canScheduleAiShot(runtime: AiRuntime): boolean {
   if (
-    runtime.getGameMode() !== "stage" ||
+    (runtime.getGameMode() !== "stage" && runtime.getGameMode() !== "weekly") ||
     runtime.turnRuntime.phase !== "ready" ||
     runtime.turnRuntime.currentSide !== "black"
   ) {
