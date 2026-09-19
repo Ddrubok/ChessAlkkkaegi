@@ -251,8 +251,6 @@ export function updateStrikePreview(
   runtime.redDot.visible = true;
   runtime.root.hidden = false;
   runtime.error.hidden = true;
-  const velocity = solution.initialDeltaVelocity;
-  const omega = solution.initialDeltaOmega;
   const percent = Math.round(runtime.normalizedPower * 100);
   const isBishopSpin =
     (binding.instance.type === "Bishop" || binding.instance.type === "Queen") &&
@@ -266,8 +264,6 @@ export function updateStrikePreview(
   runtime.feedback.textContent = [
     `${powerText} · ${uiText("pitch")} ${solution.cameraPitchDegrees.toFixed(1)}°`,
     `${uiText("elevation")} ${solution.elevationDegrees.toFixed(1)}°`,
-    `Δv (${velocity.x.toFixed(2)}, ${velocity.y.toFixed(2)}, ${velocity.z.toFixed(2)})`,
-    `Δω (${omega.x.toFixed(2)}, ${omega.y.toFixed(2)}, ${omega.z.toFixed(2)})`,
   ].join("\n");
   return solution;
 }

@@ -5,6 +5,7 @@ import { failureReason, medalText, puzzleText } from "./puzzle-text";
 import { describePuzzleRule } from "./puzzle-rule-text";
 import { getPuzzleDefinition } from "./puzzle";
 import "./puzzle-ui.css";
+import { uiPolishCopy } from "./ui-polish-copy";
 
 export interface PuzzlePreviewPiece {
   id?: string;
@@ -321,7 +322,7 @@ export class PuzzleUI {
     card.innerHTML = `<header class="puzzle-ui-header"><div><h2 data-title></h2><p data-desc></p></div><button type="button" data-action="exit"></button></header><div class="puzzle-ui-chapters" data-chapters></div>`;
     card.querySelector<HTMLElement>("[data-title]")!.textContent = puzzleText("library_title");
     card.querySelector<HTMLElement>("[data-desc]")!.textContent = puzzleText("library_desc");
-    card.querySelector<HTMLButtonElement>('[data-action="exit"]')!.textContent = puzzleText("close");
+    card.querySelector<HTMLButtonElement>('[data-action="exit"]')!.textContent = I18nManager.t("common.close");
     const chapters = card.querySelector<HTMLElement>("[data-chapters]")!;
     for (let chapter = 1; chapter <= 3; chapter++) {
       const section = document.createElement("section");
@@ -355,7 +356,7 @@ export class PuzzleUI {
   private renderBriefing(): void {
     const puzzle = this.currentPuzzle!;
     const card = this.createCard("puzzle-ui-briefing-card");
-    card.innerHTML = `<header class="puzzle-ui-header"><div><small data-chapter></small><h2 data-title></h2></div><button type="button" data-action="library"></button></header><div class="puzzle-ui-detail-layout"><div class="puzzle-ui-preview"><h3 data-preview-label></h3><div data-board></div></div><div class="puzzle-ui-briefing-copy"><div class="puzzle-ui-info"><h3 data-objective-label></h3><p data-objective></p><h3 data-gold-label></h3><p data-gold></p><h3 data-limit-label></h3><p data-limit></p></div><div class="puzzle-ui-hints"><h3 data-hint-label></h3><div data-hints></div></div><p class="puzzle-ui-action-error" data-action-error hidden></p></div></div><div class="puzzle-ui-rules"><p data-policy></p><p data-king></p><p data-promotion></p></div><footer class="puzzle-ui-footer"><button type="button" data-action="start" class="puzzle-ui-primary"></button></footer>`;
+    card.innerHTML = `<header class="puzzle-ui-header"><div><small data-chapter></small><h2 data-title></h2></div><button type="button" data-action="library"></button></header><section class="puzzle-ui-info"><h3 data-objective-label></h3><p data-objective></p><p class="puzzle-ui-policy" data-policy></p><p data-specific-limit hidden></p></section><div class="puzzle-ui-footer"><button type="button" data-action="start" class="puzzle-ui-primary"></button></div><p class="puzzle-ui-action-error" data-action-error hidden></p><div class="puzzle-ui-detail-layout"><div class="puzzle-ui-preview"><h3 data-preview-label></h3><div data-board></div></div><div class="puzzle-ui-briefing-copy"><details class="puzzle-ui-extra"><summary data-gold-label></summary><p data-gold></p></details><div class="puzzle-ui-hints"><h3 data-hint-label></h3><div data-hints></div></div></div></div>`;
     card.querySelector<HTMLElement>("[data-chapter]")!.textContent = puzzleText("chapter", { chapter: puzzle.chapter ?? Math.floor((puzzle.index - 1) / 4) + 1 });
     card.querySelector<HTMLElement>("[data-title]")!.textContent = this.localized(puzzle.title, puzzle.titleKey ?? this.defaultKey(puzzle, "title"), puzzleText("default_title", { index: puzzle.index }));
     card.querySelector<HTMLButtonElement>('[data-action="library"]')!.textContent = puzzleText("back");
@@ -364,8 +365,12 @@ export class PuzzleUI {
     card.querySelector<HTMLElement>("[data-objective]")!.textContent = this.objectiveText(puzzle);
     card.querySelector<HTMLElement>("[data-gold-label]")!.textContent = puzzleText("gold_condition");
     card.querySelector<HTMLElement>("[data-gold]")!.textContent = this.goldText(puzzle);
-    card.querySelector<HTMLElement>("[data-limit-label]")!.textContent = puzzleText("restrictions");
-    card.querySelector<HTMLElement>("[data-limit]")!.textContent = this.localized(puzzle.abilityLimit, puzzle.abilityLimitKey ?? this.defaultKey(puzzle, "limit"), puzzleText("default_limit"));
+    const limit = this.localized(puzzle.abilityLimit, puzzle.abilityLimitKey ?? this.defaultKey(puzzle, "limit"), puzzleText("default_limit"));
+    const specificLimit = card.querySelector<HTMLElement>("[data-specific-limit]")!;
+    // Catalog limit keys currently share a generic instruction, not a rule.
+    // Keep explicit/custom restrictions while omitting both generic variants.
+    specificLimit.hidden = !limit || limit === puzzleText("default_limit") || limit === puzzleText("puzzle_01_limit");
+    specificLimit.textContent = specificLimit.hidden ? "" : limit;
     card.querySelector<HTMLElement>("[data-hint-label]")!.textContent = puzzleText("hint");
     const hints = card.querySelector<HTMLElement>("[data-hints]")!;
     const hintValues = puzzle.hints ?? puzzle.hintKeys ?? [`puzzle_${String(puzzle.index).padStart(2, "0")}_hint_1`, `puzzle_${String(puzzle.index).padStart(2, "0")}_hint_2`];
@@ -380,9 +385,7 @@ export class PuzzleUI {
       content.textContent = puzzle.hints ? value : puzzleText(value);
       hints.append(button, content);
     });
-    card.querySelector<HTMLElement>("[data-policy]")!.textContent = puzzleText("ability_policy");
-    card.querySelector<HTMLElement>("[data-king]")!.textContent = puzzleText("special_king");
-    card.querySelector<HTMLElement>("[data-promotion]")!.textContent = puzzleText("special_promotion");
+    card.querySelector<HTMLElement>("[data-policy]")!.textContent = uiPolishCopy().puzzlePolicy;
     const briefingError = card.querySelector<HTMLElement>("[data-action-error]")!;
     briefingError.hidden = !this.actionError;
     briefingError.textContent = this.actionError;
