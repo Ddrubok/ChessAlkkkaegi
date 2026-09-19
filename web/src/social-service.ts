@@ -301,9 +301,9 @@ export class SocialService {
   /**
    * 친구 목록 조회
    */
-  public static async getFriendsList(myUserId: string): Promise<FriendProfile[]> {
+  public static async getFriendsList(myUserId: string): Promise<FriendProfile[] | null> {
     const sb = getSupabaseClient();
-    if (!sb) return [];
+    if (!sb) return null;
 
     try {
       const { data, error } = await sb
@@ -312,7 +312,7 @@ export class SocialService {
         .eq("status", "accepted")
         .or(`requester_id.eq.${myUserId},addressee_id.eq.${myUserId}`);
 
-      if (error || !data) return [];
+      if (error || !data) return null;
 
       const list: FriendProfile[] = [];
       for (const row of data as any[]) {
@@ -332,16 +332,16 @@ export class SocialService {
       return list;
     } catch (err) {
       console.error("getFriendsList error:", err);
-      return [];
+      return null;
     }
   }
 
   /**
    * 받은 친구 요청 목록 조회
    */
-  public static async getPendingRequests(myUserId: string): Promise<FriendRequestItem[]> {
+  public static async getPendingRequests(myUserId: string): Promise<FriendRequestItem[] | null> {
     const sb = getSupabaseClient();
-    if (!sb) return [];
+    if (!sb) return null;
 
     try {
       const { data, error } = await sb
@@ -350,7 +350,7 @@ export class SocialService {
         .eq("addressee_id", myUserId)
         .eq("status", "pending");
 
-      if (error || !data) return [];
+      if (error || !data) return null;
 
       return (data as any[]).map((row) => ({
         friendshipId: row.id,
@@ -362,7 +362,7 @@ export class SocialService {
       }));
     } catch (err) {
       console.error("getPendingRequests error:", err);
-      return [];
+      return null;
     }
   }
 

@@ -7,6 +7,11 @@ import {
 import type { UserProfile } from "./supabase-auth";
 import { escapeHtml } from "./html";
 import { renderTierBadge } from "./tier-view";
+import { progressStorage } from './progress-storage';
+import { friendsCopy } from './friends-copy';
+import './friends-modal.css';
+
+let closeActiveFriends: (() => void) | undefined;
 
 export interface FriendsModalCallbacks {
   onStartFriendlyMatch: (
@@ -24,8 +29,8 @@ export async function openFriendsModal(
   userProfile: UserProfile | null,
   callbacks?: FriendsModalCallbacks,
 ): Promise<void> {
-  const existing = document.querySelector(".friends-modal-overlay");
-  if (existing) existing.remove();
+  closeActiveFriends?.();
+  const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   const overlay = document.createElement("div");
   overlay.className = "friends-modal-overlay";
@@ -43,6 +48,10 @@ export async function openFriendsModal(
 
   const card = document.createElement("div");
   card.className = "friends-modal-card";
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-modal', 'true');
+  card.setAttribute('aria-label', I18nManager.t('friends.title'));
+  card.tabIndex = -1;
   card.style.cssText = `
     width: min(480px, 100%);
     max-height: 85vh;
@@ -57,7 +66,57 @@ export async function openFriendsModal(
     font-family: inherit;
   `;
 
-  if (!userProfile) {
+  let closed = false;
+  let generation = 0;
+  let activeChallengeRoom: string | null = null;
+  let challengePending = false;
+  let unsubscribePresence = () => {};
+  let unsubscribeOwner = () => {};
+  const background: Array<[HTMLElement, boolean]> = [];
+  overlay.appendChild(card);
+  parentContainer.appendChild(overlay);
+  for (let node: HTMLElement = overlay; node.parentElement; node = node.parentElement) {
+    for (const sibling of node.parentElement.children) {
+      if (sibling !== node && sibling instanceof HTMLElement) {
+        background.push([sibling, sibling.inert]);
+        sibling.inert = true;
+      }
+    }
+  }
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    generation++;
+    if (activeChallengeRoom) {
+      const roomId = activeChallengeRoom;
+      activeChallengeRoom = null;
+      SocialService.cancelChallenge(roomId);
+    }
+    unsubscribePresence();
+    unsubscribeOwner();
+    document.removeEventListener('keydown', onKeydown, true);
+    overlay.remove();
+    background.forEach(([element, inert]) => { element.inert = inert; });
+    if (closeActiveFriends === close) closeActiveFriends = undefined;
+    if (opener?.isConnected) opener.focus();
+  };
+  const onKeydown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); }
+    if (event.key !== 'Tab') return;
+    const focusable = [...overlay.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]')].filter(element => !element.hidden && !element.closest('[inert]'));
+    const first = focusable[0] ?? card;
+    const last = focusable[focusable.length - 1] ?? card;
+    if (!overlay.contains(document.activeElement) || (event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
+      event.preventDefault(); (event.shiftKey ? last : first).focus();
+    }
+  };
+  closeActiveFriends = close;
+  document.addEventListener('keydown', onKeydown, true);
+  overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+  const isMember = () => progressStorage.owner !== null && progressStorage.owner === userProfile?.id;
+  unsubscribeOwner = progressStorage.subscribe(() => { if (!isMember()) close(); });
+
+  if (!userProfile || !isMember()) {
     card.innerHTML = `
       <div style="padding:24px; text-align:center;">
         <h2 style="margin:0 0 12px; font-size:18px;">👥 ${I18nManager.t("friends.title")}</h2>
@@ -67,23 +126,27 @@ export async function openFriendsModal(
         </button>
       </div>
     `;
-    overlay.appendChild(card);
-    parentContainer.appendChild(overlay);
-    card.querySelector("#friends-login-close-btn")?.addEventListener("click", () => overlay.remove());
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    card.querySelector<HTMLButtonElement>("#friends-login-close-btn")?.addEventListener("click", close);
+    card.querySelector<HTMLButtonElement>('button')?.focus();
     return;
   }
 
   let currentTab: "list" | "requests" | "add" = "list";
   let friendsList: FriendProfile[] = [];
   let pendingRequests: FriendRequestItem[] = [];
+  let readState: 'loading' | 'success' | 'error' = 'loading';
+  let listLoaded = false;
+  let requestsLoaded = false;
 
-  const renderContent = async () => {
-    // 데이터 새로고침
-    if (currentTab === "list") {
-      friendsList = await SocialService.getFriendsList(userProfile.id);
-    } else if (currentTab === "requests") {
-      pendingRequests = await SocialService.getPendingRequests(userProfile.id);
+  const renderContent = async (load = true) => {
+    if (closed || !isMember()) { close(); return; }
+    const activeId = card.contains(document.activeElement) ? (document.activeElement as HTMLElement).id : '';
+    const requestGeneration = load ? ++generation : generation;
+    const requestedTab = currentTab;
+    if (load && currentTab !== 'add') {
+      readState = 'loading';
+      if (currentTab === 'list') listLoaded = false;
+      else requestsLoaded = false;
     }
 
     card.innerHTML = `
@@ -92,16 +155,16 @@ export async function openFriendsModal(
         <h2 style="margin:0; font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px;">
           <span>👥</span> ${I18nManager.t("friends.title")}
         </h2>
-        <button id="friends-close-btn" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer; padding:4px 8px; line-height:1;">✕</button>
+        <button id="friends-close-btn" aria-label="${escapeHtml(I18nManager.t('common.close'))}" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer; padding:4px 8px; line-height:1;">✕</button>
       </div>
 
       <!-- 탭 바 (친구 목록 / 받은 요청 / 친구 추가) -->
       <div style="display:flex; gap:6px; padding:10px 20px; background:#1e293b; border-bottom:1px solid #334155;">
         <button id="tab-friends-list" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:${currentTab === "list" ? "#2563eb" : "transparent"}; color:${currentTab === "list" ? "white" : "#94a3b8"};">
-          ${I18nManager.t("friends.tab_list")} (${friendsList.length})
+          ${I18nManager.t("friends.tab_list")} ${listLoaded ? `(${friendsList.length})` : ''}
         </button>
         <button id="tab-friends-requests" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:${currentTab === "requests" ? "#2563eb" : "transparent"}; color:${currentTab === "requests" ? "white" : "#94a3b8"};">
-          ${I18nManager.t("friends.tab_requests")} ${pendingRequests.length > 0 ? `(${pendingRequests.length})` : ""}
+          ${I18nManager.t("friends.tab_requests")} ${requestsLoaded ? `(${pendingRequests.length})` : ""}
         </button>
         <button id="tab-friends-add" style="flex:1; border:none; border-radius:6px; padding:8px 4px; font-size:12px; font-weight:700; cursor:pointer; background:${currentTab === "add" ? "#2563eb" : "transparent"}; color:${currentTab === "add" ? "white" : "#94a3b8"};">
           ${I18nManager.t("friends.tab_add")}
@@ -112,7 +175,7 @@ export async function openFriendsModal(
       <div id="friends-tab-body" style="flex:1; overflow-y:auto; padding:16px 20px; min-height:260px; max-height:400px;"></div>
     `;
 
-    card.querySelector("#friends-close-btn")?.addEventListener("click", () => overlay.remove());
+    card.querySelector("#friends-close-btn")?.addEventListener("click", close);
 
     card.querySelector("#tab-friends-list")?.addEventListener("click", () => {
       currentTab = "list";
@@ -128,6 +191,24 @@ export async function openFriendsModal(
     });
 
     const body = card.querySelector("#friends-tab-body") as HTMLElement;
+    (activeId ? card.querySelector<HTMLElement>(`#${activeId}`) : null)?.focus();
+    if (!card.contains(document.activeElement)) card.querySelector<HTMLElement>('#friends-close-btn')?.focus();
+
+    if (currentTab !== 'add' && readState !== 'success') {
+      body.innerHTML = `<p role="${readState === 'error' ? 'alert' : 'status'}">${escapeHtml(friendsCopy(readState === 'error' ? 'error' : 'loading'))}</p>${readState === 'error' ? `<button id="friends-retry-btn">${escapeHtml(friendsCopy('retry'))}</button>` : ''}`;
+      body.setAttribute('aria-busy', String(readState === 'loading'));
+      body.querySelector('#friends-retry-btn')?.addEventListener('click', () => void renderContent());
+      if (load) {
+        let result: FriendProfile[] | FriendRequestItem[] | null = null;
+        try { result = requestedTab === 'list' ? await SocialService.getFriendsList(userProfile.id) : await SocialService.getPendingRequests(userProfile.id); } catch { /* Render the same recoverable error for thrown transports. */ }
+        if (closed || requestGeneration !== generation || !isMember()) { if (!isMember()) close(); return; }
+        readState = result === null ? 'error' : 'success';
+        if (requestedTab === 'list') { friendsList = (result as FriendProfile[] | null) ?? []; listLoaded = result !== null; }
+        else { pendingRequests = (result as FriendRequestItem[] | null) ?? []; requestsLoaded = result !== null; }
+        await renderContent(false);
+      }
+      return;
+    }
 
     // -------------------------------------------------------------
     // 탭 1: 친구 목록
@@ -202,13 +283,25 @@ export async function openFriendsModal(
 
           // 대전 신청 버튼
           row.querySelector(".btn-challenge")?.addEventListener("click", async () => {
-            if (!canChallenge) return;
+            if (!canChallenge || closed || !isMember() || challengePending) return;
+            challengePending = true;
             const challengeBtn = row.querySelector(".btn-challenge") as HTMLButtonElement;
             challengeBtn.disabled = true;
             challengeBtn.textContent = "...";
+            const restoreChallengeFocus = () => {
+              challengePending = false;
+              card.inert = false;
+              challengeBtn.disabled = false;
+              challengeBtn.textContent = `⚔️ ${I18nManager.t('friends.challenge_btn')}`;
+              if (!closed && isMember()) {
+                (challengeBtn.isConnected ? challengeBtn : card.querySelector<HTMLElement>('#friends-close-btn') ?? card).focus();
+              }
+            };
 
             try {
               const { roomId, responsePromise } = await SocialService.sendChallenge(friend.id, "classic");
+              if (closed || !isMember()) { SocialService.cancelChallenge(roomId); return; }
+              activeChallengeRoom = roomId;
               
               // 15초 대기 팝업 렌더링
               const waitOverlay = document.createElement("div");
@@ -220,41 +313,44 @@ export async function openFriendsModal(
                   <button id="cancel-challenge-btn" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:700; cursor:pointer;">${I18nManager.t("common.cancel")}</button>
                 </div>
               `;
-              document.body.appendChild(waitOverlay);
+              overlay.appendChild(waitOverlay);
+              card.inert = true;
+              waitOverlay.querySelector<HTMLButtonElement>('button')?.focus();
               let cancelled = false;
               waitOverlay.querySelector("#cancel-challenge-btn")?.addEventListener("click", () => {
                 cancelled = true;
+                activeChallengeRoom = null;
                 SocialService.cancelChallenge(roomId);
                 waitOverlay.remove();
+                restoreChallengeFocus();
               });
 
               const accepted = await responsePromise;
+              if (activeChallengeRoom === roomId) activeChallengeRoom = null;
               waitOverlay.remove();
-              if (cancelled || !overlay.isConnected) {
-                challengeBtn.disabled = false;
-                challengeBtn.textContent = `⚔️ ${I18nManager.t("friends.challenge_btn")}`;
+              restoreChallengeFocus();
+              if (cancelled || !overlay.isConnected || !isMember()) {
                 return;
               }
 
               if (accepted) {
-                overlay.remove();
+                close();
                 if (callbacks?.onStartFriendlyMatch) {
                   callbacks.onStartFriendlyMatch(friend, roomId, true);
                 }
               } else {
                 alert(I18nManager.t("friends.challenge_rejected"));
-                challengeBtn.disabled = false;
-                challengeBtn.textContent = `⚔️ ${I18nManager.t("friends.challenge_btn")}`;
               }
             } catch (err) {
+              restoreChallengeFocus();
+              if (closed || !isMember()) return;
               alert(String(err));
-              challengeBtn.disabled = false;
-              challengeBtn.textContent = `⚔️ ${I18nManager.t("friends.challenge_btn")}`;
             }
           });
 
           // 친구 삭제 버튼
           row.querySelector(".btn-delete")?.addEventListener("click", async () => {
+            if (closed || !isMember()) return;
             if (friend.friendshipId && confirm(`${friend.nickname} - ${I18nManager.t("friends.delete_btn")}?`)) {
               await SocialService.deleteFriend(friend.friendshipId);
               void renderContent();
@@ -310,11 +406,13 @@ export async function openFriendsModal(
           `;
 
           row.querySelector(".btn-accept")?.addEventListener("click", async () => {
+            if (closed || !isMember()) return;
             await SocialService.respondFriendRequest(req.friendshipId, true);
             void renderContent();
           });
 
           row.querySelector(".btn-reject")?.addEventListener("click", async () => {
+            if (closed || !isMember()) return;
             await SocialService.respondFriendRequest(req.friendshipId, false);
             void renderContent();
           });
@@ -330,8 +428,8 @@ export async function openFriendsModal(
     else if (currentTab === "add") {
       body.innerHTML = `
         <div style="display:flex; flex-direction:column; gap:14px;">
-          <div style="display:flex; gap:8px;">
-            <input type="text" id="friend-search-input" placeholder="${I18nManager.t("friends.search_placeholder")}" style="flex:1; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:10px 14px; color:#f8fafc; font-size:14px; box-sizing:border-box;" />
+          <div class="friends-search-form">
+            <input type="text" id="friend-search-input" aria-label="${escapeHtml(I18nManager.t('friends.search_placeholder'))}" placeholder="${I18nManager.t("friends.search_placeholder")}" style="flex:1; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:10px 14px; color:#f8fafc; font-size:14px; box-sizing:border-box;" />
             <button id="friend-search-btn" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">
               ${I18nManager.t("friends.search_btn")}
             </button>
@@ -345,6 +443,7 @@ export async function openFriendsModal(
       const statusDiv = body.querySelector("#friend-add-status") as HTMLElement;
 
       const handleAdd = async () => {
+        if (closed || !isMember() || searchBtn.disabled) return;
         const queryNick = searchInput.value.trim();
         if (!queryNick) return;
 
@@ -353,6 +452,7 @@ export async function openFriendsModal(
         statusDiv.textContent = "...";
 
         const res = await SocialService.sendFriendRequest(userProfile.id, queryNick);
+        if (closed || !isMember() || requestGeneration !== generation) return;
         searchBtn.disabled = false;
 
         if (res.success) {
@@ -381,20 +481,11 @@ export async function openFriendsModal(
   };
 
   // 실시간 Presence 상태 변화 구독 (친구 온/오프라인 실시간 반영)
-  const unsubscribePresence = SocialService.subscribePresence(() => {
+  unsubscribePresence = SocialService.subscribePresence(() => {
     if (currentTab === "list") {
       void renderContent();
     }
   });
 
   await renderContent();
-  overlay.appendChild(card);
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      unsubscribePresence();
-      overlay.remove();
-    }
-  });
-
-  parentContainer.appendChild(overlay);
 }
