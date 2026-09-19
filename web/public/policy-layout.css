@@ -1,0 +1,10 @@
+/* Shared, readable policy documents. Policy content and translations stay intact. */
+h1, h2, p, li { word-break: keep-all; overflow-wrap: anywhere; }
+h1 { display:block; text-wrap: balance; }
+@media (max-width: 600px) {
+  body { padding: 16px 12px; }
+  .container { padding: 24px 20px; }
+  h1 { font-size: 24px; line-height: 1.45; }
+  h2 { font-size: 18px; }
+  .notice-box, .steps-box, .contact-box { padding: 14px; }
+}
