@@ -191,14 +191,14 @@ export function renderMasteryProfileSummary(storage: MasteryStorage): string {
   return `<section class="mastery-profile-summary${frame ? " mastery-frame-equipped" : ""}"><div><strong>${escapeHtml(copy.summary)} ${count}/8</strong>${title ? `<span class="mastery-equipped-title">${escapeHtml(title)}</span>` : ""}${badge ? `<span class="mastery-equipped-badge">${escapeHtml(badge.slice(-3).toUpperCase())}</span>` : ""}</div><button type="button" data-open-mastery>${escapeHtml(copy.book)}</button></section>`;
 }
 
-function medalCard(storage: MasteryStorage, id: MasteryId): string {
+function medalCard(storage: MasteryStorage, id: MasteryId, detailMarkup = ""): string {
   const snapshot = loadMasterySnapshot(storage);
   const copy = masteryCopy();
   const def = MASTERY_DEFINITIONS.find(item => item.id === id)!;
   const value = medalProgress(snapshot.progress, id);
   const earned = isMedalEarned(snapshot.progress, id);
   const tracked = snapshot.preferences.tracked.medalId === id;
-  return `<article class="mastery-card${earned ? " is-earned" : ""}" data-mastery-id="${id}"><button type="button" class="mastery-card-main" data-mastery-detail="${id}" aria-label="${escapeHtml(copy.details)}: ${escapeHtml(copy.names[id])}"><span class="mastery-medal-mark">${id}</span><span><small>${escapeHtml(def.category === "experience" ? copy.experience : copy.skill)}</small><strong>${escapeHtml(copy.names[id])}</strong><em>${earned ? escapeHtml(copy.complete) : `${value}/${def.threshold}`}</em></span></button><button type="button" class="mastery-track-btn" data-mastery-track="${id}" aria-pressed="${tracked}">${escapeHtml(tracked ? copy.tracking : copy.track)}</button></article>`;
+  return `<article class="mastery-card${earned ? " is-earned" : ""}" data-mastery-id="${id}"><button type="button" class="mastery-card-main" data-mastery-detail="${id}" aria-expanded="${!!detailMarkup}" aria-label="${escapeHtml(copy.details)}: ${escapeHtml(copy.names[id])}"><span class="mastery-medal-mark">${id}</span><span><small>${escapeHtml(def.category === "experience" ? copy.experience : copy.skill)}</small><strong>${escapeHtml(copy.names[id])}</strong><em>${earned ? escapeHtml(copy.complete) : `${value}/${def.threshold}`}</em></span></button><button type="button" class="mastery-track-btn" data-mastery-track="${id}" aria-pressed="${tracked}">${escapeHtml(tracked ? copy.tracking : copy.track)}</button>${detailMarkup}</article>`;
 }
 
 function bannerObjectiveCard(storage: MasteryStorage, bannerId: BannerId, lang: LanguageCode): string {
@@ -327,6 +327,21 @@ export function openMasteryBook(container: HTMLElement, storage: MasteryStorage,
     const detailDef = detail ? MASTERY_DEFINITIONS.find(item => item.id === detail)! : null;
     const currentLanguage = I18nManager.getLanguage?.() || lang;
 
+    const detailMarkup = detail && detailDef ? `
+          <section class="mastery-detail" tabindex="-1" aria-labelledby="mastery-detail-title">
+            <h3 id="mastery-detail-title">${escapeHtml(copy.names[detail])}</h3>
+            <p>${escapeHtml(copy.conditions[detail])}</p>
+            <dl>
+              <div><dt>${escapeHtml(copy.modes)}</dt><dd>${detailDef.eligibleModes.map(modeLabel).map(escapeHtml).join(" · ")}</dd></div>
+              <div><dt>${escapeHtml(copy.reward)}</dt><dd>${escapeHtml(rewardLabel(detail))}</dd></div>
+              <div><dt>${escapeHtml(copy.play)}</dt><dd>${escapeHtml(copy.tips[detail])}</dd></div>
+            </dl>
+            <div class="mastery-detail-actions">
+              <button type="button" data-mastery-route="${detail}">${escapeHtml(copy.play)}</button>
+              <button type="button" data-mastery-track="${detail}">${escapeHtml(snapshot.preferences.tracked.medalId === detail ? copy.untrack : copy.track)}</button>
+            </div>
+          </section>
+        ` : "";
     modal.innerHTML = `
       <div class="mastery-dialog">
         <header>
@@ -341,23 +356,9 @@ export function openMasteryBook(container: HTMLElement, storage: MasteryStorage,
         ${!snapshot.malformed && ((storage as { masteryPending?: boolean }).masteryPending || (storage as { bannersPending?: boolean }).bannersPending) ? `<p class="mastery-state" role="status">${escapeHtml(copy.pending)}</p>` : ""}
 
         <!-- 8 메달 도감 그리드 (기존 8종 유지) -->
-        <div class="mastery-grid">${MASTERY_IDS.map(id => medalCard(storage, id)).join("")}</div>
+        <div class="mastery-grid">${MASTERY_IDS.map(id => medalCard(storage, id, id === detail ? detailMarkup : "")).join("")}</div>
 
-        ${detail && detailDef ? `
-          <section class="mastery-detail" tabindex="-1" aria-labelledby="mastery-detail-title">
-            <h3 id="mastery-detail-title">${escapeHtml(copy.names[detail])}</h3>
-            <p>${escapeHtml(copy.conditions[detail])}</p>
-            <dl>
-              <div><dt>${escapeHtml(copy.modes)}</dt><dd>${detailDef.eligibleModes.map(modeLabel).map(escapeHtml).join(" · ")}</dd></div>
-              <div><dt>${escapeHtml(copy.reward)}</dt><dd>${escapeHtml(rewardLabel(detail))}</dd></div>
-              <div><dt>${escapeHtml(copy.play)}</dt><dd>${escapeHtml(copy.tips[detail])}</dd></div>
-            </dl>
-            <div class="mastery-detail-actions">
-              <button type="button" data-mastery-route="${detail}">${escapeHtml(copy.play)}</button>
-              <button type="button" data-mastery-track="${detail}">${escapeHtml(snapshot.preferences.tracked.medalId === detail ? copy.untrack : copy.track)}</button>
-            </div>
-          </section>
-        ` : ""}
+
 
         <!-- 신규 3종 배너 업적 섹션 (별도 목표 카드) -->
         <section class="mastery-banner-section" style="display:flex; flex-direction:column; gap:12px; margin-top:16px;">
@@ -389,9 +390,12 @@ export function openMasteryBook(container: HTMLElement, storage: MasteryStorage,
     modal.querySelector("[data-mastery-close]")?.addEventListener("click", () => close());
     for (const button of modal.querySelectorAll<HTMLButtonElement>("[data-mastery-detail]")) {
       button.onclick = () => {
-        detail = button.dataset.masteryDetail as MasteryId;
+        const id = button.dataset.masteryDetail as MasteryId;
+        detail = detail === id ? null : id;
         render();
-        modal.querySelector<HTMLElement>(".mastery-detail")?.focus();
+        const target = detail ? modal.querySelector<HTMLElement>(".mastery-detail") : modal.querySelector<HTMLElement>(`[data-mastery-detail="${id}"]`);
+        target?.focus({ preventScroll: true });
+        target?.scrollIntoView({ block: "nearest" });
       };
     }
     for (const button of modal.querySelectorAll<HTMLButtonElement>("[data-mastery-track]")) {
