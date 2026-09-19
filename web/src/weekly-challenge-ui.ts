@@ -1,3 +1,6 @@
+import { progressUiCopy } from "./progress-ui-copy";
+import { formatProgressDuration } from "./progress-duration";
+import { deriveWeeklyPresentation } from "./weekly-challenge-presentation";
 import { escapeHtml } from "./html";
 import { I18nManager, type LanguageCode } from "./i18n";
 import type { WeeklyChallengeStorage } from "./weekly-challenge-storage";
@@ -61,25 +64,31 @@ const RESULT_PENDING_STATUS: Partial<Record<LanguageCode, string>> = {
   ru: "Ожидается сохранение в аккаунте",
   "pt-BR": "Aguardando salvamento na conta",
 };
-export function weeklyChallengeCopy(): Copy { const language = I18nManager.getLanguage(), local = TRANSLATED[language] ?? {}, result = RESULT_STATUS[language] ?? {}; return { ...EN, ...local, ...result, pendingStatus: RESULT_PENDING_STATUS[language] ?? EN.pendingStatus, cardNames: { ...EN.cardNames, ...(local.cardNames ?? {}) } }; }
+export function weeklyChallengeCopy(): Copy & ReturnType<typeof progressUiCopy> { const language = I18nManager.getLanguage(), local = TRANSLATED[language] ?? {}, result = RESULT_STATUS[language] ?? {}; return { ...EN, ...local, ...result, ...progressUiCopy(), pendingStatus: RESULT_PENDING_STATUS[language] ?? EN.pendingStatus, cardNames: { ...EN.cardNames, ...(local.cardNames ?? {}) } }; }
 function countdown(endsAt: string, now: number): string {
-  const seconds = Math.max(0, Math.floor((Date.parse(endsAt) - now) / 1000));
-  const d = Math.floor(seconds / 86400), h = Math.floor(seconds % 86400 / 3600), m = Math.floor(seconds % 3600 / 60);
-  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
+  return formatProgressDuration(Date.parse(endsAt), now, I18nManager.getLanguage());
 }
-export function renderWeeklyChallengeSummary(storage: WeeklyChallengeStorage): string {
+function weeklySummaryText(storage: WeeklyChallengeStorage): string {
   const c = weeklyChallengeCopy(), view = storage.view();
   const definition = view.snapshot?.currentWeek ?? view.localDefinitions[0] ?? view.practice?.definition;
   const identity = definition ? ("weekId" in definition ? definition.weekId : definition.localPracticeId) : null;
   const hash = definition ? ("definitionHash" in definition ? definition.definitionHash : definition.localDefinitionHash) : null;
   const accountRecord = view.snapshot?.records.current ?? null;
   const localRecord = identity && hash ? view.localRecords.find((item) => item.identity === identity && item.definitionHash === hash) : null;
-  const values = [accountRecord ? `${accountRecord.completedStages}/10 · ${accountRecord.completedStageOwnTurns} · ${c.savedStatus}` : null, localRecord ? `${localRecord.completedStages}/10 · ${localRecord.completedStageOwnTurns} · ${c.practiceStatus}` : null].filter((value): value is string => value !== null);
-  return `<section class="weekly-profile-summary"><div><strong>${escapeHtml(c.summary)}</strong><span>${values.length ? values.map(escapeHtml).join(" / ") : escapeHtml(c.noRecord)}</span></div><button type="button" data-open-weekly-challenge>${escapeHtml(c.title)}</button></section>`;
+  const values = [accountRecord ? `${accountRecord.completedStages}/10 ${c.stages} · ${accountRecord.completedStageOwnTurns} ${c.turns} · ${c.savedStatus}` : null, localRecord ? `${localRecord.completedStages}/10 ${c.stages} · ${localRecord.completedStageOwnTurns} ${c.turns} · ${c.practiceStatus}` : null].filter((value): value is string => value !== null);
+  return view.ready ? values.length ? values.join(" / ") : c.noRecord : c.loading;
+}
+export function renderWeeklyChallengeSummary(storage: WeeklyChallengeStorage): string {
+  const c = weeklyChallengeCopy();
+  return `<section class="weekly-profile-summary"><div><strong>${escapeHtml(c.summary)}</strong><span data-weekly-summary-score>${escapeHtml(weeklySummaryText(storage))}</span></div><button type="button" data-open-weekly-challenge>${escapeHtml(c.title)}</button></section>`;
+}
+export function updateWeeklyChallengeSummaries(root: HTMLElement, storage: WeeklyChallengeStorage): void {
+  const text = weeklySummaryText(storage);
+  root.querySelectorAll<HTMLElement>("[data-weekly-summary-score]").forEach(node => { node.textContent = text; });
 }
 export interface WeeklyChallengeUiActions {
   practice: (definition: WeeklyChallengeDefinition | LocalPracticeDefinition) => Promise<void>; start: () => Promise<void>; resume: () => Promise<void>;
-  takeover: () => Promise<void>; terminate: () => Promise<void>;
+  takeover: () => Promise<void>; terminate: () => Promise<void>; retry: () => Promise<void>;
 }
 let activeClose: (() => void) | null = null;
 export function openWeeklyChallenge(storage: WeeklyChallengeStorage, actions: WeeklyChallengeUiActions): void {
@@ -87,7 +96,8 @@ export function openWeeklyChallenge(storage: WeeklyChallengeStorage, actions: We
   const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const openedOwner = storage.owner, modal = document.createElement("section");
   modal.className = "weekly-modal"; modal.setAttribute("role", "dialog"); modal.setAttribute("aria-modal", "true"); modal.setAttribute("aria-labelledby", "weekly-title");
-  let tab: "current" | "previous" = "current", closed = false, unsubscribe = () => {}, timer: number | null = null, actionFailed = false, actionPending = false, boundaryRefreshAttempted = "";
+  let tab: "current" | "previous" = "current", closed = false, unsubscribe = () => {}, timer: number | null = null, actionFailed = false, actionPending = false, boundaryRefreshPending = false, retryPending = false;
+  const detailsOpen = {current:false, previous:false};
   const background = [...document.body.children] as HTMLElement[], inert = background.map((node) => node.inert);
   const priorHtmlOverflowX = document.documentElement.style.overflowX, priorBodyOverflowX = document.body.style.overflowX;
   const hadOpenClass = document.body.classList.contains("weekly-modal-open");
@@ -96,42 +106,41 @@ export function openWeeklyChallenge(storage: WeeklyChallengeStorage, actions: We
   document.documentElement.style.overflowX = "hidden"; document.body.style.overflowX = "hidden"; document.body.classList.add("weekly-modal-open");
   const close = () => { if (closed) return; closed = true; unsubscribe(); if (timer !== null) clearInterval(timer); modal.remove(); document.documentElement.style.overflowX = priorHtmlOverflowX; document.body.style.overflowX = priorBodyOverflowX; if (!hadOpenClass) document.body.classList.remove("weekly-modal-open"); window.scrollTo(scrollX, scrollY); background.forEach((node, index) => { node.inert = inert[index]; }); if (activeClose === close) activeClose = null; (opener?.isConnected ? opener : document.querySelector<HTMLElement>("[data-open-weekly-challenge]"))?.focus(); };
   const render = (preserve = false) => {
+    if (closed) return;
     const view = storage.view(), c = weeklyChallengeCopy(); if (view.owner !== openedOwner || !view.ready) { close(); return; }
     const scrollTop = preserve ? modal.querySelector<HTMLElement>('.weekly-dialog')?.scrollTop ?? 0 : 0;
-    const focused = preserve && document.activeElement instanceof HTMLElement && modal.contains(document.activeElement) ? document.activeElement.dataset.weeklyAction ?? document.activeElement.dataset.weeklyTab ?? null : null;
-    const definition = tab === "current" ? (view.snapshot?.currentWeek ?? view.localDefinitions[0] ?? view.practice?.definition) : (view.snapshot?.previousWeek ?? view.localDefinitions[1]);
+    const focused = preserve && document.activeElement instanceof HTMLElement && modal.contains(document.activeElement) ? document.activeElement.dataset.weeklyAction ?? document.activeElement.dataset.weeklyTab ?? document.activeElement.dataset.weeklyFocus ?? null : null;
+    const presentation = deriveWeeklyPresentation(view, tab, storage.estimatedNow());
+    const definition = presentation.definition;
+    if (preserve) detailsOpen[tab] = modal.querySelector<HTMLDetailsElement>("[data-weekly-details]")?.open ?? detailsOpen[tab];
     const record = tab === "current" ? view.snapshot?.records.current : view.snapshot?.records.previous;
     const definitionIdentity = definition ? ("weekId" in definition ? definition.weekId : definition.localPracticeId) : null;
     const definitionHash = definition ? ("definitionHash" in definition ? definition.definitionHash : definition.localDefinitionHash) : null;
     const localRecord = definitionIdentity && definitionHash ? view.localRecords.find((item) => item.identity === definitionIdentity && item.definitionHash === definitionHash) : view.localRecords[tab === "current" ? 0 : 1];
-    const scoreText = [record ? `${record.completedStages}/10 · ${record.completedStageOwnTurns} · ${c.savedStatus}` : null, localRecord ? `${localRecord.completedStages}/10 · ${localRecord.completedStageOwnTurns} · ${c.practiceStatus}` : null].filter((value): value is string => value !== null).join(" / ");
-    const storedAttempt = view.snapshot?.activeAttempt;
-    const attempt = storedAttempt && !["finished", "terminated", "expired"].includes(storedAttempt.status) ? storedAttempt : null;
-    const attemptIsCurrent = !!attempt && attempt.weekId === view.snapshot?.currentWeek.weekId && attempt.definitionHash === view.snapshot.currentWeek.definitionHash;
-    const disabled = actionPending || !definition ? " disabled" : "";
-    let actionHtml = `<button type="button" data-weekly-action="practice"${disabled}>${escapeHtml(c.practice)}</button>`;
-    if (tab === "current" && view.owner && view.syncState === "synced") {
-      if (!attempt) actionHtml += `<button type="button" data-weekly-action="start"${disabled}>${escapeHtml(c.start)}</button>`;
-      else if (view.recoveryHold || !attemptIsCurrent) actionHtml += `<button type="button" data-weekly-action="terminate"${disabled}>${escapeHtml(c.terminate)}</button>`;
-      else if (attempt.ownerSessionId === view.sessionId) actionHtml += `<button type="button" data-weekly-action="resume"${disabled}>${escapeHtml(c.resume)}</button>`;
-      else actionHtml += `<button type="button" data-weekly-action="takeover"${disabled}>${escapeHtml(c.takeover)}</button><button type="button" data-weekly-action="terminate"${disabled}>${escapeHtml(c.terminate)}</button>`;
-    }
-    const status = actionFailed ? c.actionError : view.recoveryHold ? c.hold : ["missing-server", "offline"].includes(view.syncState) ? c.serverMissing : view.syncState === "practice" ? c.practiceStatus : view.syncState === "synced" ? c.savedStatus : view.syncState === "blocked" ? c.blockedStatus : view.syncState === "error" ? c.errorStatus : c.loading;
+    const scoreText = [record ? `${record.completedStages}/10 ${c.stages} · ${record.completedStageOwnTurns} ${c.turns} · ${c.savedStatus}` : null, localRecord ? `${localRecord.completedStages}/10 ${c.stages} · ${localRecord.completedStageOwnTurns} ${c.turns} · ${c.practiceStatus}` : null].filter((value): value is string => value !== null).join(" / ");
+    const disabled = actionPending || retryPending ? " disabled" : "";
+    const labels = {start:c.start,resume:c.accountResume,takeover:c.accountTakeover,terminate:c.terminate};
+    let actionHtml = presentation.accountActions.map(action => `<button type="button" data-weekly-action="${action}" class="${action === "terminate" ? "" : "is-primary"}"${disabled}>${escapeHtml(labels[action])}</button>`).join("");
+    actionHtml += `<button type="button" data-weekly-action="practice" class="${presentation.accountActions.some(action => action !== "terminate") ? "" : "is-primary"}"${actionPending || !presentation.canPractice ? " disabled" : ""}>${escapeHtml(presentation.practice === "resume" ? c.practiceResume : c.practiceStart)}</button>`;
+    if (presentation.canRetry || retryPending) actionHtml += `<button type="button" data-weekly-action="retry"${disabled}>${escapeHtml(retryPending ? c.retrying : c.retry)}</button>`;
+    const status = view.recoveryHold ? c.modalRecoveryHold : ["missing-server", "offline"].includes(view.syncState) ? c.serverMissing : view.syncState === "practice" ? "" : view.syncState === "synced" ? c.savedStatus : view.syncState === "blocked" ? c.blockedStatus : view.syncState === "error" ? c.errorStatus : c.loading;
     const slots = definition?.prioritySlots ?? [["force", "weight", "size"], ["weight", "size", "giantPawn"], ["force", "size", "proneStart"], ["force", "weight", "size"], ["force", "size", "giantPawn"], ["weight", "force", "proneStart"], ["force", "weight", "size"], ["force", "size", "giantPawn"], ["weight", "size", "proneStart"]];
     const cardRows = slots.map((slot) => `<li>${slot.map((id) => c.cardNames[String(id)] ?? String(id)).map(escapeHtml).join(" · ")}</li>`).join("");
     const endsAt = definition ? ("endsAt" in definition ? definition.endsAt : definition.localEndsAt) : null;
     const now = storage.estimatedNow();
-    const deadline = endsAt ? Date.parse(endsAt) <= now ? c.ended : c.deadline.replace("{time}", countdown(endsAt, now)) : c.loading;
-    modal.innerHTML = `<div class="weekly-dialog"><header><div><p>${escapeHtml(c.summary)}</p><h2 id="weekly-title" tabindex="-1">${escapeHtml(c.title)}</h2></div><button type="button" data-weekly-action="close" aria-label="${escapeHtml(c.close)}">×</button></header><div class="weekly-tabs" role="tablist"><button id="weekly-tab-current" type="button" role="tab" data-weekly-tab="current" aria-controls="weekly-panel" aria-selected="${tab === "current"}" tabindex="${tab === "current" ? 0 : -1}">${escapeHtml(c.current)}</button><button id="weekly-tab-previous" type="button" role="tab" data-weekly-tab="previous" aria-controls="weekly-panel" aria-selected="${tab === "previous"}" tabindex="${tab === "previous" ? 0 : -1}">${escapeHtml(c.previous)}</button></div><div id="weekly-panel" role="tabpanel" aria-labelledby="weekly-tab-${tab}"><section class="weekly-hero"><span>${escapeHtml(c.condition)}</span><strong>${escapeHtml(deadline)}</strong></section><p>${escapeHtml(c.rules)}</p><div class="weekly-rules"><article><h3>${escapeHtml(c.cards)}</h3><ol>${cardRows}</ol><p>${escapeHtml(c.fallback)}</p></article><article><h3>${escapeHtml(c.score)}</h3><p>${escapeHtml(c.researchOff)}</p><p>${escapeHtml(c.boundary)}</p></article></div><section class="weekly-record"><strong>${escapeHtml(c.record)}</strong><span>${scoreText ? escapeHtml(scoreText) : escapeHtml(c.noRecord)}</span></section><p class="weekly-status" role="status">${escapeHtml(status)}</p><div class="weekly-actions">${actionHtml}</div></div></div>`;
-    if (focused) modal.querySelector<HTMLElement>(`[data-weekly-action="${CSS.escape(focused)}"],[data-weekly-tab="${CSS.escape(focused)}"]`)?.focus({ preventScroll: true });
+    const deadline = endsAt ? Date.parse(endsAt) <= now ? c.ended : Date.parse(endsAt) - now < 60000 ? c.endsSoon : c.deadline.replace("{time}", countdown(endsAt, now)) : c.loading;
+    modal.innerHTML = `<div class="weekly-dialog"><header><div><p>${escapeHtml(c.summary)}</p><h2 id="weekly-title" tabindex="-1" data-weekly-focus="title">${escapeHtml(c.title)}</h2></div><button type="button" data-weekly-action="close" aria-label="${escapeHtml(c.close)}">×</button></header><div class="weekly-tabs" role="tablist"><button id="weekly-tab-current" type="button" role="tab" data-weekly-tab="current" aria-controls="weekly-panel" aria-selected="${tab === "current"}" tabindex="${tab === "current" ? 0 : -1}">${escapeHtml(c.current)}</button><button id="weekly-tab-previous" type="button" role="tab" data-weekly-tab="previous" aria-controls="weekly-panel" aria-selected="${tab === "previous"}" tabindex="${tab === "previous" ? 0 : -1}">${escapeHtml(c.previous)}</button></div><div id="weekly-panel" role="tabpanel" aria-labelledby="weekly-tab-${tab}"><section class="weekly-hero"><span>${escapeHtml(c.condition)}</span><strong>${escapeHtml(deadline)}</strong></section><p class="weekly-goal">${escapeHtml(c.rules)}</p><section class="weekly-record"><strong>${escapeHtml(c.record)}</strong><span>${scoreText ? escapeHtml(scoreText) : escapeHtml(c.noRecord)}</span></section><p class="weekly-limit">${escapeHtml(c.researchOff)} ${escapeHtml(c.boundary)}</p>${status || actionFailed || retryPending ? `<p class="weekly-status" role="status">${escapeHtml(status)}${retryPending ? `<br>${escapeHtml(c.retrying)}` : ""}${actionFailed ? `<br>${escapeHtml(c.actionError)}` : ""}</p>` : ""}${presentation.practiceStage !== null ? `<p class="weekly-limit">${escapeHtml(c.practiceStage.replace("{stage}", String(presentation.practiceStage)))}</p>` : ""}${presentation.accountActions.includes("takeover") ? `<p>${escapeHtml(c.takeoverNotice)}</p>` : ""}<div class="weekly-actions">${actionHtml}</div><details class="weekly-details" data-weekly-details${detailsOpen[tab] ? " open" : ""}><summary data-weekly-focus="details">${escapeHtml(c.details)}</summary><div class="weekly-rules"><article><h3>${escapeHtml(c.cards)}</h3><ol>${cardRows}</ol><p>${escapeHtml(c.fallback)}</p></article><article><h3>${escapeHtml(c.score)}</h3></article></div></details></div></div>`;
+    if (focused) (modal.querySelector<HTMLElement>(`[data-weekly-action="${CSS.escape(focused)}"],[data-weekly-tab="${CSS.escape(focused)}"],[data-weekly-focus="${CSS.escape(focused)}"]`) ?? modal.querySelector<HTMLElement>("#weekly-title"))?.focus({ preventScroll: true });
+    const renderedTab = tab, details = modal.querySelector<HTMLDetailsElement>("[data-weekly-details]");
+    details?.addEventListener("toggle", () => { if (details.isConnected) detailsOpen[renderedTab] = details.open; });
     const dialog = modal.querySelector<HTMLElement>('.weekly-dialog');
     if (dialog) dialog.scrollTop = scrollTop;
   };
   activeClose = close; unsubscribe = storage.subscribe(() => render(true)); document.body.append(modal); render(); if (closed) return;
   modal.querySelector<HTMLElement>("#weekly-title")?.focus(); timer = window.setInterval(() => {
-    const view = storage.view(), identity = view.snapshot?.currentWeek.weekId ?? view.localDefinitions[0]?.localPracticeId ?? "";
+    const view = storage.view();
     const endsAt = view.snapshot?.currentWeek.endsAt ?? view.localDefinitions[0]?.localEndsAt;
-    if (endsAt && storage.estimatedNow() >= Date.parse(endsAt) && boundaryRefreshAttempted !== identity) { boundaryRefreshAttempted = identity; void storage.refreshAtBoundary().finally(() => { if (!closed) render(true); }); }
+    if (endsAt && storage.estimatedNow() >= Date.parse(endsAt) && !boundaryRefreshPending && !actionPending && !retryPending) { boundaryRefreshPending = true; void storage.refreshAtBoundary().catch(() => {}).finally(() => { boundaryRefreshPending = false; if (!closed) render(true); }); }
     else render(true);
   }, 30_000);
   modal.addEventListener("click", (event) => {
@@ -141,15 +150,39 @@ export function openWeeklyChallenge(storage: WeeklyChallengeStorage, actions: We
     if (nextTab === "current" || nextTab === "previous") { tab = nextTab; render(); modal.querySelector<HTMLElement>(`[data-weekly-tab="${tab}"]`)?.focus(); return; }
     const action = button.dataset.weeklyAction as keyof WeeklyChallengeUiActions | "close" | undefined;
     if (action === "close") { close(); return; }
-    if (!action || !(action in actions) || actionPending) return;
+    if (action === 'retry') {
+      if (retryPending || actionPending || !deriveWeeklyPresentation(
+        storage.view(), tab, storage.estimatedNow(),
+      ).canRetry) return;
+      retryPending = true;
+      actionFailed = false;
+      render(true);
+      void (async () => {
+        try {
+          await actions.retry();
+          if (closed || storage.owner !== openedOwner) return;
+          const latest = storage.view();
+          actionFailed = latest.syncState !== 'synced';
+        } catch {
+          if (!closed && storage.owner === openedOwner) actionFailed = true;
+        } finally {
+          retryPending = false;
+          if (!closed && storage.owner === openedOwner) render(true);
+        }
+      })();
+      return;
+    }
+
+    if (!action || !(action in actions) || actionPending || (retryPending && action !== "practice")) return;
     const view = storage.view();
-    const definition = tab === "current" ? (view.snapshot?.currentWeek ?? view.localDefinitions[0] ?? view.practice?.definition) : (view.snapshot?.previousWeek ?? view.localDefinitions[1]);
-    if (action === "practice" && !definition) return;
+    const presentation = deriveWeeklyPresentation(view, tab, storage.estimatedNow());
+    const definition = presentation.definition;
+    if (action === "practice" ? !presentation.canPractice : !presentation.accountActions.includes(action)) return;
     actionFailed = false; actionPending = true; render(true);
     const promise = action === "practice" ? actions.practice(definition!) : actions[action]();
     void promise.then(() => { if (action !== "terminate") close(); else { actionPending = false; render(true); } }).catch(() => { actionPending = false; actionFailed = true; if (!closed) render(true); });
   });
-  modal.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); close(); return; } if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) && document.activeElement instanceof HTMLElement && document.activeElement.dataset.weeklyTab) { event.preventDefault(); tab = event.key === "ArrowLeft" || event.key === "Home" ? "current" : "previous"; render(); modal.querySelector<HTMLElement>(`[data-weekly-tab="${tab}"]`)?.focus(); return; } if (event.key !== "Tab") return; const items = [...modal.querySelectorAll<HTMLElement>('button:not([disabled]),[tabindex="0"]')]; if (!items.length) return; const current = items.indexOf(document.activeElement as HTMLElement), next = event.shiftKey ? (current <= 0 ? items.length - 1 : current - 1) : (current < 0 || current === items.length - 1 ? 0 : current + 1); event.preventDefault(); items[next].focus(); });
+  modal.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); close(); return; } if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) && document.activeElement instanceof HTMLElement && document.activeElement.dataset.weeklyTab) { event.preventDefault(); tab = event.key === "ArrowLeft" || event.key === "Home" ? "current" : "previous"; render(); modal.querySelector<HTMLElement>(`[data-weekly-tab="${tab}"]`)?.focus(); return; } if (event.key !== "Tab") return; const items = [...modal.querySelectorAll<HTMLElement>('button:not([disabled]),summary,[tabindex="0"]')].filter(node => node.tabIndex >= 0 && node.getClientRects().length > 0 && !node.closest("[hidden], [inert]")); if (!items.length) return; const current = items.indexOf(document.activeElement as HTMLElement), next = event.shiftKey ? (current <= 0 ? items.length - 1 : current - 1) : (current < 0 || current === items.length - 1 ? 0 : current + 1); event.preventDefault(); items[next].focus(); });
 }
 
 export function appendWeeklyChallengeResult(container: HTMLElement, scoreValue: WeeklyChallengeScore, prior: WeeklyChallengeScore | null, source: "account" | "practice" | "pending"): void {
@@ -172,7 +205,7 @@ export function appendWeeklyRecoveryControls(container: HTMLElement, onRetry: ()
   const c = weeklyChallengeCopy(), controls = document.createElement("section"); controls.className = "weekly-recovery";
   const status = document.createElement("p"); status.textContent = c.actionError; status.setAttribute("role", "status");
   const actions = document.createElement("div");
-  for (const [label, callback] of [[I18nManager.t("tier.retry"), onRetry], [c.practice, onPractice], [c.terminate, onTerminate]] as const) {
+  for (const [label, callback] of [[I18nManager.t("tier.retry"), onRetry], [c.livePracticeContinue, onPractice], [c.terminate, onTerminate]] as const) {
     const button = document.createElement("button"); button.type = "button"; button.textContent = label;
     button.addEventListener("click", () => { for (const item of actions.querySelectorAll("button")) item.disabled = true; void callback().catch(() => { status.textContent = c.actionError; for (const item of actions.querySelectorAll("button")) item.disabled = false; }); });
     actions.append(button);
