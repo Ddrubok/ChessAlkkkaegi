@@ -114,7 +114,7 @@ function getOrCreateGuestUuid(): string {
 /**
  * 현재 로그인된 유저 세션을 보장하고 익명 계정 또는 로컬 게스트 ID로 세션을 활성화한다.
  */
-export async function ensureAuthUser(client: SupabaseClient): Promise<{ id: string; email?: string; isGuest?: boolean }> {
+export async function ensureAuthUser(client: SupabaseClient): Promise<{ id: string; email?: string; isGuest?: boolean; app_metadata?: { provider?: string; providers?: string[] } }> {
   try {
     if (client?.auth?.getSession) {
       const { data: sessionData } = await client.auth.getSession();
@@ -243,7 +243,9 @@ export async function getOrCreateUserProfile(client: SupabaseClient): Promise<Us
 
   // 신규 프로필 생성 또는 오프라인 게스트 처리
   const isGuest = Boolean(user.isGuest);
-  const savedNick = localStorage.getItem(NICKNAME_STORAGE_KEY) || generateRandomNickname();
+  // OAuth profiles must not inherit the previous player/device's cached name.
+  const googleMember = !isGuest && (user.app_metadata?.provider === 'google' || user.app_metadata?.providers?.includes('google'));
+  const savedNick = googleMember ? `Player_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}` : localStorage.getItem(NICKNAME_STORAGE_KEY) || generateRandomNickname();
   const savedClassicMmr = isGuest
     ? Number(localStorage.getItem("ca_guest_classic_mmr") || localStorage.getItem("ca_local_classic_mmr") || 1200)
     : 1200;
@@ -569,25 +571,18 @@ export async function updateNickname(
   userId: string,
   newNickname: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const trimmed = newNickname.trim();
-  if (trimmed.length < 2 || trimmed.length > 20) {
+  const trimmed = newNickname.normalize('NFKC').trim();
+  if ([...trimmed].length < 2 || [...trimmed].length > 20) {
     return { success: false, error: I18nManager.t("auth.nickname_length") };
   }
 
-  const { error } = await client
-    .from("profiles")
-    .update({ nickname: trimmed, updated_at: new Date().toISOString() })
-    .eq("id", userId);
-
-  if (error) {
-    if (error.code === "23505") {
-      return { success: false, error: I18nManager.t("auth.nickname_already_used") };
-    }
-    return { success: false, error: formatAuthError(error.message) };
+  try {
+    const { changeNickname } = await import('./nickname');
+    await changeNickname(client, userId, trimmed, crypto.randomUUID());
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : I18nManager.t('auth.generic_error') };
   }
-
-  localStorage.setItem(NICKNAME_STORAGE_KEY, trimmed);
-  return { success: true };
 }
 
 /**

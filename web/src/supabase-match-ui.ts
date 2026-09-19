@@ -6,9 +6,10 @@ import {
   signInWithEmail,
   signOutUser,
   signUpWithEmail,
-  updateNickname,
   type UserProfile,
 } from "./supabase-auth";
+import { openNicknameDialog } from './nickname';
+import { SocialService } from './social-service';
 import {
   getSavedSupabaseConfig,
   getSupabaseClient,
@@ -335,15 +336,12 @@ export class SupabaseMatchUi {
     editBtn.title = I18nManager.t("online.edit_nickname_title");
     editBtn.style.cssText = "background:transparent; border:none; color:#60a5fa; cursor:pointer; font-size:14px;";
     editBtn.onclick = async () => {
-      const newName = prompt(I18nManager.t("online.edit_nickname_prompt"), profile.nickname);
-      if (newName && this.client) {
-        const res = await updateNickname(this.client, profile.id, newName);
-        if (res.success) {
-          profile.nickname = newName.trim();
+      if (this.client) {
+        openNicknameDialog(this.client, profile, name => {
+          profile.nickname = name;
+          SocialService.init(profile);
           this.renderProfileCard(container, profile);
-        } else {
-          alert(res.error || I18nManager.t("online.edit_nickname_failed"));
-        }
+        });
       }
     };
 

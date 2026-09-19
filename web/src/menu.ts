@@ -10,6 +10,7 @@ import { openFriendsModal } from "./friends-modal";
 import { I18nManager } from "./i18n";
 import { SocialService } from "./social-service";
 import { appendGoogleSignIn } from './google-auth';
+import { nicknameCopy, openNicknameDialog } from './nickname';
 import {
   getOrCreateUserProfile,
   signInWithEmail,
@@ -615,6 +616,24 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
 
   panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderWeeklyChallengeEntry()}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
+  if (progressStorage.owner === user.id) {
+    const editName = document.createElement('button');
+    editName.type = 'button';
+    editName.dataset.editNickname = '';
+    editName.textContent = nicknameCopy()[0];
+    editName.style.cssText = 'min-height:44px;padding:8px 12px;font:inherit;white-space:normal;';
+    editName.onclick = () => {
+      const client = getSupabaseClient();
+      if (client) openNicknameDialog(client, user, name => {
+        if (runtime.userProfile?.id === user.id) {
+          runtime.userProfile.nickname = name;
+          SocialService.init(runtime.userProfile);
+          renderMainMenu(runtime);
+        }
+      });
+    };
+    panel.querySelector('#menu-profile-panel')?.append(editName);
+  }
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
     void openRankingModal(runtime.overlay, runtime.userProfile);
   });
