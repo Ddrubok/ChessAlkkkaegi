@@ -169,20 +169,20 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
       </div>
 
       <!-- 탭 선택 바 -->
-      <div style="display:flex; gap:6px; background:#0f172a; padding:4px; border-radius:8px; flex-shrink:0;">
-        <button id="tab-btn-sound" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "sound" ? "#2563eb" : "transparent"}; color:${activeTab === "sound" ? "white" : "#94a3b8"}; white-space:nowrap;">
+      <div role="tablist" aria-label="${escapeHtml(I18nManager.t("common.settings"))}" style="display:flex; gap:6px; background:#0f172a; padding:4px; border-radius:8px; flex-shrink:0;">
+        <button id="tab-btn-sound" role="tab" aria-selected="${activeTab === 'sound'}" aria-controls="settings-tab-content" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "sound" ? "#2563eb" : "transparent"}; color:${activeTab === "sound" ? "white" : "#94a3b8"}; white-space:nowrap;">
           ${escapeHtml(I18nManager.t("common.sound"))}
         </button>
-        <button id="tab-btn-banner" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "banner" ? "#2563eb" : "transparent"}; color:${activeTab === "banner" ? "white" : "#94a3b8"}; white-space:nowrap;">
+        <button id="tab-btn-banner" role="tab" aria-selected="${activeTab === 'banner'}" aria-controls="settings-tab-content" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "banner" ? "#2563eb" : "transparent"}; color:${activeTab === "banner" ? "white" : "#94a3b8"}; white-space:nowrap;">
           ${escapeHtml(cosmeticsCopy.tabTitle)}
         </button>
-        <button id="tab-btn-language" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "language" ? "#2563eb" : "transparent"}; color:${activeTab === "language" ? "white" : "#94a3b8"}; white-space:nowrap;">
+        <button id="tab-btn-language" role="tab" aria-selected="${activeTab === 'language'}" aria-controls="settings-tab-content" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "language" ? "#2563eb" : "transparent"}; color:${activeTab === "language" ? "white" : "#94a3b8"}; white-space:nowrap;">
           ${escapeHtml(I18nManager.t("common.language"))}
         </button>
       </div>
 
       <!-- 탭 본문 -->
-      <div id="settings-tab-content" style="display:flex; flex-direction:column;"></div>
+      <div id="settings-tab-content" role="tabpanel" aria-labelledby="tab-btn-${activeTab}" style="display:flex; flex-direction:column;"></div>
       ${AdManager.hasPrivacyOptions() ? `<button id="ad-privacy-options" type="button" style="flex-shrink:0;">${escapeHtml(uiText("privacy"))}</button>` : ""}
     `;
 
@@ -193,6 +193,24 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     card.querySelector("#settings-modal-close")?.addEventListener("click", () => closeModal());
 
     // 탭 전환 이벤트
+    const tabNames = ["sound", "banner", "language"] as const;
+    tabNames.forEach((name, index) => {
+      const tab = card.querySelector<HTMLButtonElement>(`#tab-btn-${name}`);
+      if (!tab) return;
+      tab.tabIndex = activeTab === name ? 0 : -1;
+      tab.addEventListener("keydown", (event) => {
+        let next = index;
+        if (event.key === "ArrowRight") next = (index + 1) % tabNames.length;
+        else if (event.key === "ArrowLeft") next = (index + tabNames.length - 1) % tabNames.length;
+        else if (event.key === "Home") next = 0;
+        else if (event.key === "End") next = tabNames.length - 1;
+        else return;
+        event.preventDefault();
+        activeTab = tabNames[next];
+        render();
+        card.querySelector<HTMLButtonElement>(`#tab-btn-${activeTab}`)?.focus();
+      });
+    });
     card.querySelector("#tab-btn-sound")?.addEventListener("click", () => {
       activeTab = "sound";
       render();
@@ -221,7 +239,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
               <div style="font-size:14px; font-weight:700; color:#f8fafc; white-space:nowrap;">${escapeHtml(I18nManager.t("common.mute"))}</div>
               <div style="font-size:12px; color:#94a3b8; margin-top:2px;">${escapeHtml(I18nManager.t("common.muteDesc"))}</div>
             </div>
-            <input type="checkbox" id="settings-mute-toggle" ${soundSettings.muted ? "checked" : ""} style="width:20px; height:20px; cursor:pointer; accent-color:#3b82f6;" />
+            <input type="checkbox" id="settings-mute-toggle" aria-label="${escapeHtml(I18nManager.t("common.mute"))}" ${soundSettings.muted ? "checked" : ""} style="width:20px; height:20px; cursor:pointer; accent-color:#3b82f6;" />
           </div>
 
           <!-- BGM 볼륨 -->
@@ -230,7 +248,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
               <span style="font-size:13px; font-weight:600; color:#cbd5e1; white-space:nowrap;">${escapeHtml(I18nManager.t("common.bgm"))}</span>
               <span id="settings-bgm-val" style="font-size:13px; font-weight:700; color:#38bdf8;">${Math.round(soundSettings.bgmVolume * 100)}%</span>
             </div>
-            <input type="range" id="settings-bgm-slider" min="0" max="100" value="${Math.round(soundSettings.bgmVolume * 100)}" ${soundSettings.muted ? "disabled" : ""} style="width:100%; cursor:pointer; accent-color:#38bdf8;" />
+            <input type="range" id="settings-bgm-slider" aria-label="${escapeHtml(I18nManager.t("common.bgm"))}" min="0" max="100" value="${Math.round(soundSettings.bgmVolume * 100)}" ${soundSettings.muted ? "disabled" : ""} style="width:100%; cursor:pointer; accent-color:#38bdf8;" />
           </div>
 
           <!-- SFX 볼륨 -->
@@ -239,7 +257,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
               <span style="font-size:13px; font-weight:600; color:#cbd5e1; white-space:nowrap;">${escapeHtml(I18nManager.t("common.sfx"))}</span>
               <span id="settings-sfx-val" style="font-size:13px; font-weight:700; color:#38bdf8;">${Math.round(soundSettings.sfxVolume * 100)}%</span>
             </div>
-            <input type="range" id="settings-sfx-slider" min="0" max="100" value="${Math.round(soundSettings.sfxVolume * 100)}" ${soundSettings.muted ? "disabled" : ""} style="width:100%; cursor:pointer; accent-color:#38bdf8;" />
+            <input type="range" id="settings-sfx-slider" aria-label="${escapeHtml(I18nManager.t("common.sfx"))}" min="0" max="100" value="${Math.round(soundSettings.sfxVolume * 100)}" ${soundSettings.muted ? "disabled" : ""} style="width:100%; cursor:pointer; accent-color:#38bdf8;" />
           </div>
         </div>
       `;
