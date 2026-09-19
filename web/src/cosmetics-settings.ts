@@ -49,16 +49,19 @@ const BADGE_GLYPHS: Record<string, string> = {
  */
 export function mountCosmeticsSettingsPanel(
   container: HTMLElement,
-  options?: { onApplied?: () => void; getProfile?: () => UserProfile | null }
+  options?: {
+    onApplied?: () => void;
+    getProfile?: () => UserProfile | null;
+    initialDraft?: CosmeticLoadout;
+    onDraftChange?: (draft: CosmeticLoadout, isDirty: boolean) => void;
+  }
 ): { cleanup: () => void; render: () => void } {
   let activeSlotTab: CosmeticSlot = "banner";
   let activeLang: LanguageCode = I18nManager.currentLang;
   let equippedLoadout: CosmeticLoadout = getCosmeticLoadout(progressStorage);
-  let draftLoadout: CosmeticLoadout = { ...equippedLoadout };
+  let draftLoadout: CosmeticLoadout = options?.initialDraft ? { ...options.initialDraft } : { ...equippedLoadout };
   let isDirty = false;
   let lastOwner: string | null | undefined = progressStorage?.owner;
-
-
 
   const checkDirty = () => {
     isDirty =
@@ -68,7 +71,10 @@ export function mountCosmeticsSettingsPanel(
       draftLoadout.badgeFrame !== equippedLoadout.badgeFrame ||
       draftLoadout.title !== equippedLoadout.title ||
       draftLoadout.titleFrame !== equippedLoadout.titleFrame;
+    options?.onDraftChange?.(draftLoadout, isDirty);
   };
+
+  checkDirty();
 
   const render = (): void => {
     // Detect account switch and reset draft
@@ -76,7 +82,7 @@ export function mountCosmeticsSettingsPanel(
       lastOwner = progressStorage?.owner;
       equippedLoadout = getCosmeticLoadout(progressStorage);
       draftLoadout = { ...equippedLoadout };
-      isDirty = false;
+      checkDirty();
     }
 
     activeLang = I18nManager.currentLang;
@@ -365,7 +371,7 @@ export function mountCosmeticsSettingsPanel(
       const success = equipCosmeticLoadout(progressStorage, draftLoadout);
       if (success) {
         equippedLoadout = { ...draftLoadout };
-        isDirty = false;
+        checkDirty();
         render();
         options?.onApplied?.();
       }
@@ -375,7 +381,7 @@ export function mountCosmeticsSettingsPanel(
     container.querySelector<HTMLButtonElement>("#cosmetics-btn-cancel")?.addEventListener("click", () => {
       if (!isDirty) return;
       draftLoadout = { ...equippedLoadout };
-      isDirty = false;
+      checkDirty();
       render();
     });
 
@@ -386,7 +392,15 @@ export function mountCosmeticsSettingsPanel(
   };
 
   const unsubProgress = progressStorage.subscribe(() => {
-    if (!isDirty || lastOwner !== progressStorage.owner) { equippedLoadout = getCosmeticLoadout(progressStorage); draftLoadout = { ...equippedLoadout }; }
+    if (lastOwner !== progressStorage.owner) {
+      lastOwner = progressStorage.owner;
+      equippedLoadout = getCosmeticLoadout(progressStorage);
+      draftLoadout = { ...equippedLoadout };
+      checkDirty();
+    } else if (!isDirty) {
+      equippedLoadout = getCosmeticLoadout(progressStorage);
+      draftLoadout = { ...equippedLoadout };
+    }
     render();
   });
   const unsubLanguage = I18nManager.subscribe(render);

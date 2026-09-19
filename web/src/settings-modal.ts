@@ -13,6 +13,7 @@ import { AdManager } from "./ad-manager";
 import { progressStorage } from "./progress-storage";
 import { escapeHtml } from "./html";
 import { mountCosmeticsSettingsPanel } from "./cosmetics-settings";
+import type { CosmeticLoadout } from "./cosmetics";
 import { getCosmeticsCopy } from "./cosmetics-copy";
 import "./cosmetics-settings.css";
 
@@ -21,8 +22,19 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
   const existing = document.querySelector(".settings-modal-overlay");
   if (existing) existing.dispatchEvent(new Event("settings-request-close"));
 
+  const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const openerSelector = previousFocus?.id
+    ? `#${CSS.escape(previousFocus.id)}`
+    : previousFocus?.hasAttribute("data-open-settings")
+      ? "[data-open-settings]"
+      : null;
+
   const modal = document.createElement("div");
   modal.className = "settings-modal-overlay";
+  modal.setAttribute("role", "dialog");
+  modal.setAttribute("aria-modal", "true");
+  modal.setAttribute("aria-labelledby", "settings-modal-title");
+  modal.tabIndex = -1;
   modal.style.cssText = `
     position: fixed;
     inset: 0;
@@ -59,23 +71,89 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
   let activeTab: "sound" | "banner" | "language" = "sound";
   let closed = false;
   let cosmeticPanel: ReturnType<typeof mountCosmeticsSettingsPanel> | null = null;
+  let modalDraftLoadout: CosmeticLoadout | null = null;
+  let lastOwner: string | null | undefined = progressStorage?.owner;
+
+  const background = [...container.children]
+    .filter((element): element is HTMLElement => element instanceof HTMLElement && element !== modal)
+    .map((element) => ({ element, inert: element.inert }));
 
   const cleanupListeners: Array<() => void> = [];
 
-  const closeModal = () => {
+  const focusable = () =>
+    [
+      ...modal.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex='0']"
+      ),
+    ].filter((element) => element.getClientRects().length > 0);
+
+  const closeModal = (restoreFocus = true) => {
     if (closed) return;
     closed = true;
-    cosmeticPanel?.cleanup(); cosmeticPanel = null;
+    document.removeEventListener("keydown", trapFocus, true);
+    background.forEach(({ element, inert }) => {
+      element.inert = inert;
+    });
+    cosmeticPanel?.cleanup();
+    cosmeticPanel = null;
+    modalDraftLoadout = null;
     cleanupListeners.forEach((cleanup) => cleanup());
     cleanupListeners.length = 0;
     modal.remove();
+    if (restoreFocus) {
+      queueMicrotask(() => {
+        const target = previousFocus?.isConnected
+          ? previousFocus
+          : openerSelector
+            ? document.querySelector<HTMLElement>(openerSelector)
+            : null;
+        target?.focus();
+      });
+    }
   };
 
-  modal.addEventListener("settings-request-close", closeModal, { once: true });
+  const trapFocus = (event: KeyboardEvent) => {
+    if (closed) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeModal();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const items = focusable();
+    if (!items.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      modal.focus();
+      return;
+    }
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    if (event.shiftKey) {
+      if (index <= 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        items[items.length - 1].focus();
+      }
+    } else {
+      if (index === -1 || index >= items.length - 1) {
+        event.preventDefault();
+        event.stopPropagation();
+        items[0].focus();
+      }
+    }
+  };
+
+  modal.addEventListener("settings-request-close", () => closeModal(false), { once: true });
 
   const render = (): void => {
     if (closed) return;
-    cosmeticPanel?.cleanup(); cosmeticPanel = null;
+    if (progressStorage?.owner !== lastOwner) {
+      lastOwner = progressStorage?.owner;
+      modalDraftLoadout = null;
+    }
+    cosmeticPanel?.cleanup();
+    cosmeticPanel = null;
     const scrollTop = card.scrollTop;
     const focused = card.contains(document.activeElement) ? (document.activeElement as HTMLElement) : null;
     const focusId = focused?.id;
@@ -86,7 +164,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     card.innerHTML = `
       <!-- 헤더 -->
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px; flex-shrink:0;">
-        <h3 style="margin:0; font-size:18px; font-weight:800; color:#f8fafc; white-space:nowrap;">${escapeHtml(I18nManager.t("common.settings"))}</h3>
+        <h3 id="settings-modal-title" style="margin:0; font-size:18px; font-weight:800; color:#f8fafc; white-space:nowrap;">${escapeHtml(I18nManager.t("common.settings"))}</h3>
         <button id="settings-modal-close" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer; padding:4px 8px; line-height:1;" aria-label="${escapeHtml(I18nManager.t("common.close") || "Close")}">✕</button>
       </div>
 
@@ -112,7 +190,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     card.querySelector("#ad-privacy-options")?.addEventListener("click", () => {
       void AdManager.showPrivacyOptions();
     });
-    card.querySelector("#settings-modal-close")?.addEventListener("click", closeModal);
+    card.querySelector("#settings-modal-close")?.addEventListener("click", () => closeModal());
 
     // 탭 전환 이벤트
     card.querySelector("#tab-btn-sound")?.addEventListener("click", () => {
@@ -195,8 +273,12 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
       // -------------------------------------------------------------
       cosmeticPanel = mountCosmeticsSettingsPanel(content, {
         getProfile,
+        initialDraft: modalDraftLoadout ?? undefined,
+        onDraftChange: (draft, isDirty) => {
+          modalDraftLoadout = isDirty ? draft : null;
+        },
         onApplied: () => {
-          // Additional notification if needed
+          modalDraftLoadout = null;
         },
       });
     } else {
@@ -266,13 +348,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     cleanupListeners.push(unsubI18n);
   }
 
-  const handleKeydown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      closeModal();
-    }
-  };
-  document.addEventListener("keydown", handleKeydown);
-  cleanupListeners.push(() => document.removeEventListener("keydown", handleKeydown));
+  document.addEventListener("keydown", trapFocus, true);
 
   modal.addEventListener("pointerdown", (event) => {
     if (event.target === modal) closeModal();
@@ -281,4 +357,8 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
   render();
   modal.appendChild(card);
   container.appendChild(modal);
+  background.forEach(({ element }) => {
+    element.inert = true;
+  });
+  card.querySelector<HTMLButtonElement>("#settings-modal-close")?.focus();
 }

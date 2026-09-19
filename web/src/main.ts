@@ -172,6 +172,7 @@ import { SocialService } from "./social-service";
 import { openChallengeReceivedModal } from "./challenge-modal";
 import { getSupabaseClient } from "./supabase-client";
 import { getOrCreateUserProfile, waitForAuthChange, type UserProfile } from "./supabase-auth";
+import { initializeGoogleAuth } from './google-auth';
 import {
   computeEnemyStageStepValues,
   computeEnemyStageSizeMultiplier,
@@ -262,6 +263,7 @@ async function bootstrap(): Promise<void> {
   app.replaceChildren(loadingPanel);
   initializeSound();
   const progressClient = getSupabaseClient();
+  await initializeGoogleAuth(progressClient);
   const progressSession = progressClient ? await progressClient.auth.getSession() : null;
   if (progressSession?.error) throw new Error("로그인 상태를 확인하지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.");
   const sessionUser = progressSession?.data.session?.user;
@@ -2026,7 +2028,9 @@ async function bootstrap(): Promise<void> {
     void AdManager.hideBanner();
     if (mode === "online") {
       onlineSelfTestRuntime?.destroy();
-      const { createOnlineRuntime, openOnlineLobby } = await import("./online");
+      const { createOnlineRuntime } = await import("./online");
+      const { openFriendlyLobby } = await import("./friendly-lobby");
+      const { openFriendsModal } = await import("./friends-modal");
 
       const session = await new Promise<{
         transport: OnlineTransport;
@@ -2038,6 +2042,21 @@ async function bootstrap(): Promise<void> {
         finishLobby: () => void;
         strategyDeck?: import("./strategy-deck").StrategyDeck | null;
       }>((resolve, reject) => {
+        const openFriendly = async () => {
+          try {
+            const member = progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id;
+            const manualSession = await openFriendlyLobby(menuRuntime.overlay, member ? () => {
+              void openFriendsModal(menuRuntime.overlay, menuRuntime.userProfile, {
+                onStartFriendlyMatch: (friend, roomId, isHost) => {
+                  void menuRuntime.onStartFriendlyMatch?.(friend, roomId, isHost);
+                },
+              });
+            } : undefined);
+            resolve({ transport: manualSession.link, mySide: manualSession.mySide, matchId: manualSession.matchId,
+              rejoining: false, opponent: null, myProfile: null, strategyDeck: null, finishLobby: manualSession.finishLobby });
+          } catch (error) { reject(error); }
+        };
+        if (progressStorage.owner === null) { void openFriendly(); return; }
         const matchUiContainer = document.createElement("div");
         menuRuntime.overlay.appendChild(matchUiContainer);
 
@@ -2070,25 +2089,11 @@ async function bootstrap(): Promise<void> {
             },
             onOpenManualP2P: async () => {
               matchUiContainer.remove();
-              try {
-                const manualSession = await openOnlineLobby(menuRuntime.overlay);
-                resolve({
-                  transport: manualSession.link,
-                  mySide: manualSession.mySide,
-                  matchId: manualSession.matchId,
-                  rejoining: manualSession.rejoining,
-                  opponent: null,
-                  myProfile: null,
-                  strategyDeck: null,
-                  finishLobby: manualSession.finishLobby,
-                });
-              } catch (err) {
-                reject(err);
-              }
+              await openFriendly();
             },
             onClose: () => {
               matchUiContainer.remove();
-              reject(new Error("대국 로비를 닫았습니다."));
+              reject(new DOMException("Online lobby closed", "AbortError"));
             },
           },
           menuRuntime.userProfile,
@@ -2252,7 +2257,24 @@ async function bootstrap(): Promise<void> {
     opponent: { id: string; nickname: string; mmr: number },
   ): Promise<void> => {
     const sb = getSupabaseClient();
-    if (!sb || !menuRuntime.userProfile || !gameModeRuntime) return;
+    if (!sb || !menuRuntime.userProfile || !gameModeRuntime || menuRuntime.busy) return;
+    const { getFriendlyCopy } = await import('./friendly-copy');
+    menuRuntime.busy = true;
+    const connectionPanel = document.createElement('section');
+    connectionPanel.className = 'online-lobby-panel';
+    connectionPanel.setAttribute('role', 'dialog');
+    connectionPanel.setAttribute('aria-modal', 'true');
+    const connectionCard = document.createElement('div');
+    connectionCard.className = 'online-lobby-card';
+    const connectionStatus = document.createElement('p');
+    connectionStatus.textContent = getFriendlyCopy('guest_connecting');
+    const cancelConnection = document.createElement('button');
+    cancelConnection.textContent = I18nManager.t('common.cancel');
+    connectionCard.append(connectionStatus, cancelConnection);
+    connectionPanel.append(connectionCard);
+    app.append(connectionPanel);
+    const matchmaker = new SupabaseMatchmaker(sb, menuRuntime.userProfile, 'classic');
+    try {
 
     onlineSelfTestRuntime?.destroy();
     void AdManager.hideBanner();
@@ -2266,11 +2288,7 @@ async function bootstrap(): Promise<void> {
       matchId: string;
       opponent: { id: string; nickname: string; mmr: number };
     }>((resolve, reject) => {
-      const matchmaker = new SupabaseMatchmaker(
-        sb,
-        menuRuntime.userProfile!,
-        "classic",
-      );
+      cancelConnection.onclick = () => { matchmaker.cancel(); reject(new DOMException('Friendly connection cancelled', 'AbortError')); };
 
       void matchmaker.startDirectFriendlyMatch(
         roomId,
@@ -2280,11 +2298,13 @@ async function bootstrap(): Promise<void> {
           resolve({ transport, mySide, matchId, opponent: opp });
         },
         (err) => reject(err),
-      );
+      ).catch(reject);
     });
+    cancelConnection.disabled = true;
 
     activeMatchOpponent = session.opponent;
-    activeMyProfile = menuRuntime.userProfile;
+    // Friendly rooms have no ranked match settlement or ranked-win quest credit.
+    activeMyProfile = null;
     activeOnlineMatchMode = "classic";
 
     onlineRuntime?.close();
@@ -2357,6 +2377,18 @@ async function bootstrap(): Promise<void> {
     ensureGameLoopStarted();
     await onlineRuntime.waitUntilReady();
     hideMainMenuAfterModeStart(menuRuntime);
+    } catch (error) {
+      matchmaker.cancel();
+      void SocialService.updateMyStatus('online');
+      if (!(error instanceof Error && error.name === 'AbortError')) {
+        const status = menuRuntime.overlay.querySelector<HTMLElement>('[data-menu-status]');
+        if (status) status.textContent = getFriendlyCopy('peer_error');
+        console.warn('Friendly connection failed', error);
+      }
+    } finally {
+      connectionPanel.remove();
+      menuRuntime.busy = false;
+    }
   };
 
   menuRuntime.onStartFriendlyMatch = async (friend, roomId, isHost) => {
@@ -2705,8 +2737,8 @@ async function bootstrap(): Promise<void> {
   await AdManager.init();
   await AdManager.showBanner();
 
-  if (menuRuntime.userProfile) {
-    SocialService.init(menuRuntime.userProfile, (challenge) => {
+  SocialService.setChallengeHandler((challenge) => {
+      if (!menuRuntime.visible || menuRuntime.busy || progressStorage.owner !== menuRuntime.userProfile?.id) return;
       openChallengeReceivedModal(challenge, {
         onAccept: (req) => {
           void startDirectFriendlyMatch(req.roomId, false, {
@@ -2718,7 +2750,7 @@ async function bootstrap(): Promise<void> {
         onReject: () => {},
       });
     });
-  }
+  if (menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
 }
 
 void bootstrap().catch((error: unknown) => {

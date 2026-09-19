@@ -15,11 +15,14 @@
     "check:ads": "node --experimental-vm-modules src/tools/ads-check.mjs",
     "check:regressions": "npm run check:tiers && node src/tools/auth-regression-check.mjs && node src/tools/nickname-safety-check.mjs && node src/tools/gameplay-regression-check.mjs && node src/tools/settlement-client-check.mjs && node src/tools/matchmaking-presence-check.mjs && node --import ./src/tools/headless-browser-env.mjs src/tools/online-check.mjs && npm run check:i18n && node src/tools/selection-check.mjs && node src/tools/player-banner-check.mjs && node src/tools/banner-progress-check.mjs && node src/tools/banner-storage-check.mjs && node src/tools/banner-match-check.mjs && node src/tools/turn-timer-check.mjs",
     "check:i18n": "node src/tools/i18n-check.mjs && node src/tools/verify-site-i18n.mjs",
-    "check:cosmetics": "node src/tools/cosmetics-storage-check.mjs && node src/tools/cosmetics-profile-check.mjs && node src/tools/cosmetics-view-check.mjs"
+    "check:cosmetics": "node src/tools/cosmetics-storage-check.mjs && node src/tools/cosmetics-profile-check.mjs && node src/tools/cosmetics-view-check.mjs",
+    "check:auth-interaction": "node src/tools/google-auth-check.mjs && node src/tools/friendly-code-check.mjs && node src/tools/classic-cancel-check.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.1.0",
     "@capacitor/android": "^8.4.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/browser": "^8.0.4",
     "@capacitor/cli": "^8.4.2",
     "@capacitor/core": "^8.4.2",
     "@dimforge/rapier3d-compat": "0.19.3",

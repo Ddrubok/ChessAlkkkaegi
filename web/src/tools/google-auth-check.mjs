@@ -1,0 +1,35 @@
+import './headless-browser-env.mjs';
+import assert from 'node:assert/strict';
+import { createServer } from 'vite';
+import { fileURLToPath } from 'node:url';
+const vite = await createServer({ root: fileURLToPath(new URL('../..', import.meta.url)), logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false } });
+try {
+  const auth = await vite.ssrLoadModule('/src/google-auth.ts');
+  const base = 'https://ddrubok.github.io/ChessAlkkkaegi/';
+  assert.equal(auth.googleRedirectUrl(false, base + '?bannerPreview=1#test'), base);
+  assert.equal(auth.googleRedirectUrl(true, base), auth.GOOGLE_APP_CALLBACK);
+  for (const url of ['https://evil.test/auth/callback?code=a', 'com.chessalkkagi.app://auth/other?code=a', 'com.chessalkkagi.app://auth.evil/callback?code=a', 'not a url']) assert.equal(auth.isGoogleAppCallback(url), false);
+  const key = 'ca_google_oauth_pending'; let exchanges = 0;
+  const client = { auth: { async exchangeCodeForSession(code) { exchanges++; assert.equal(code, 'valid-code'); return {data:{session:{user:{id:'account-1'}}}, error:null}; } } };
+  const callback = auth.GOOGLE_APP_CALLBACK + '?code=valid-code';
+  assert.equal(await auth.completeGoogleAppCallback(client, callback), false);
+  localStorage.setItem(key, String(Date.now() - 601_000));
+  assert.equal(await auth.completeGoogleAppCallback(client, callback), false);
+  localStorage.setItem(key, String(Date.now()));
+  assert.equal(await auth.completeGoogleAppCallback(client, 'https://evil.test/?code=valid-code'), false);
+  assert.equal(await auth.completeGoogleAppCallback(client, callback), true);
+  assert.equal(await auth.completeGoogleAppCallback(client, callback), false);
+  assert.equal(exchanges, 1);
+  localStorage.setItem(key, String(Date.now()));
+  await assert.rejects(auth.completeGoogleAppCallback(client, auth.GOOGLE_APP_CALLBACK + '#access_token=untrusted&refresh_token=untrusted'));
+  localStorage.setItem(key, String(Date.now()));
+  await assert.rejects(auth.completeGoogleAppCallback({auth:{exchangeCodeForSession:async()=>({data:{session:null},error:new Error('bad code')})}}, callback));
+  let request, redirected;
+  window.location = {href:base,assign:url=>{redirected=url;}};
+  await auth.signInWithGoogle({auth:{signInWithOAuth:async value=>{request=value;return {data:{url:'https://auth.example/authorize'},error:null};}}});
+  assert.equal(request.provider,'google');assert.equal(request.options.redirectTo,base);assert.equal(request.options.skipBrowserRedirect,true);assert.equal(redirected,'https://auth.example/authorize');
+  await assert.rejects(auth.signInWithGoogle({auth:{signInWithOAuth:async()=>({data:{url:null},error:new Error('provider disabled')})}}));
+  await auth.signInWithGoogle({auth:{signInWithOAuth:async()=>({data:{url:'https://auth.example/retry'},error:null})}});
+  assert.equal(redirected,'https://auth.example/retry');
+  console.log('PASS Google OAuth: project-path redirects, explicit provider, strict native callback, pending/expiry/duplicate checks, code-only exchange, failed exchange and provider retry');
+} finally { await vite.close(); }

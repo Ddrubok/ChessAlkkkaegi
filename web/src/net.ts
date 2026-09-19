@@ -47,6 +47,7 @@ export interface PeerLink {
 }
 
 export interface PeerLinkTimingOptions {
+  iceServers?: RTCIceServer[];
   // 생략하면 배포 기본값을 쓰는 테스트용 ping 간격이다.
   heartbeatIntervalMs?: number;
   // 생략하면 배포 기본값을 쓰는 테스트용 무수신 판정 시간이다.
@@ -609,7 +610,7 @@ export function createPeerLink(
       throw new Error("이 브라우저는 WebRTC RTCPeerConnection을 지원하지 않습니다.");
     }
     const connection = new RTCPeerConnection({
-      iceServers: [
+      iceServers: timing.iceServers ?? [
         { urls: STUN_URL },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" },

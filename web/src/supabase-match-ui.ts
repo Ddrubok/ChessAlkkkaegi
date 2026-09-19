@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { appendGoogleSignIn } from './google-auth';
 import {
   getOrCreateUserProfile,
   getSessionEmail,
@@ -595,6 +596,7 @@ export class SupabaseMatchUi {
       });
 
       const submitBtn = modalOverlay.querySelector("#auth-submit-btn") as HTMLButtonElement;
+      appendGoogleSignIn(modalOverlay);
       submitBtn?.addEventListener("click", async () => {
         if (!this.client) return;
         const email = (modalOverlay.querySelector("#auth-email") as HTMLInputElement)?.value.trim();

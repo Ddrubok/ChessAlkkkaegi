@@ -9,6 +9,7 @@ import { openRankingModal } from "./ranking-modal";
 import { openFriendsModal } from "./friends-modal";
 import { I18nManager } from "./i18n";
 import { SocialService } from "./social-service";
+import { appendGoogleSignIn } from './google-auth';
 import {
   getOrCreateUserProfile,
   signInWithEmail,
@@ -110,10 +111,11 @@ async function startLobbyMode(
     else await runtime.onStartMode(mode);
     hideMainMenuAfterModeStart(runtime);
   } catch (error: unknown) {
-    console.error(error);
     const status = runtime.overlay.querySelector<HTMLElement>("[data-menu-status]");
     runtime.busy = false;
     renderMainMenu(runtime);
+    if (error instanceof Error && error.name === "AbortError") return;
+    console.error(error);
     const nextStatus = runtime.overlay.querySelector<HTMLElement>("[data-menu-status]");
     const message = mode === "stage"
       ? I18nManager.t("lobby.stage_start_failed")
@@ -584,6 +586,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
           }
         });
       }
+      appendGoogleSignIn(content);
     };
 
     panel.querySelector("#auth-tab-guest")?.addEventListener("click", () => {

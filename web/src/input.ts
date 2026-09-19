@@ -61,7 +61,12 @@ import {
   TOUCH_PIECE_HIT_RADIUS_PIXELS,
   TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER,
 } from "./config";
-import { isTouchPointerEvent } from "./input-capability";
+import "./input.css";
+import { inputCancelCopy } from "./input-cancel-copy";
+import {
+  isCoarsePointerEnvironment,
+  isTouchPointerEvent,
+} from "./input-capability";
 import type { PhysicsRuntime } from "./physics";
 import {
   hideAimOccluders,
@@ -243,6 +248,11 @@ export interface InputRuntime {
   kingSwapMode: boolean;
   // 킹 위치 변경 안내 배너 엘리먼트
   kingSwapBanner: HTMLElement;
+  // 발사 조준 취소 제어 UI 엘리먼트
+  cancelControl?: HTMLElement;
+  cancelControlTitle?: HTMLElement;
+  cancelControlHint?: HTMLElement;
+  isPointerOverCancel?: boolean;
 }
 
 // 탭과 카메라 공전 드래그를 같은 캔버스 포인터에서 구별하는 최대 이동 거리다.
@@ -901,6 +911,29 @@ export function selectPiece(
 }
 
 /**
+ * 주어진 클라이언트 좌표가 특정 DOM 엘리먼트 영역 내에 있는지 검사한다.
+ */
+export function isPointerOverElement(
+  element: HTMLElement | null | undefined,
+  clientX: number,
+  clientY: number,
+): boolean {
+  if (!element || element.hidden) {
+    return false;
+  }
+  if (typeof element.getBoundingClientRect !== "function") {
+    return false;
+  }
+  const rect = element.getBoundingClientRect();
+  return (
+    clientX >= rect.left &&
+    clientX <= rect.right &&
+    clientY >= rect.top &&
+    clientY <= rect.bottom
+  );
+}
+
+/**
  * 숨김·캡처·키·카메라 잠금을 단일 경로에서 복구하고 선택 유지 여부만 호출자가 정한다.
  */
 function cancelInteraction(
@@ -910,6 +943,11 @@ function cancelInteraction(
   const captureElement = runtime.activeCaptureElement;
   const pointerId = runtime.activePointerId;
   runtime.state = "cancel";
+  runtime.isPointerOverCancel = false;
+  if (runtime.cancelControl) {
+    runtime.cancelControl.hidden = true;
+    runtime.cancelControl.classList.remove("is-hovered");
+  }
   runtime.strategy.onAimCancel(runtime);
   cancelAim(runtime.aimRuntime, clearSelection);
   clearStrikePreview(runtime.aimParametersRuntime);
@@ -934,9 +972,15 @@ function cancelInteraction(
   if (
     captureElement !== null &&
     pointerId !== null &&
-    captureElement.hasPointerCapture(pointerId)
+    typeof captureElement.hasPointerCapture === "function"
   ) {
-    captureElement.releasePointerCapture(pointerId);
+    try {
+      if (captureElement.hasPointerCapture(pointerId)) {
+        captureElement.releasePointerCapture(pointerId);
+      }
+    } catch {
+      // 캡처 해제 예외는 안전하게 무시
+    }
   }
   const controls = runtime.sceneRuntime.controls;
   controls.enableDamping = true;
@@ -1568,7 +1612,19 @@ function handleCanvasPointerDown(
     event.stopImmediatePropagation();
     return;
   }
-  if (runtime.state === "charging") {
+  if (event.pointerType === "mouse" && event.button !== 0) {
+    if (
+      runtime.state === "aiming" ||
+      runtime.state === "charging" ||
+      runtime.activePointerId !== null
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      cancelInteraction(runtime, false);
+    }
+    return;
+  }
+  if (runtime.state === "aiming" || runtime.state === "charging") {
     event.preventDefault();
     event.stopImmediatePropagation();
     cancelInteraction(runtime, false);
@@ -1583,9 +1639,6 @@ function handleCanvasPointerDown(
     runtime.cameraTransition !== null ||
     runtime.policy.isCameraRotating()
   ) {
-    return;
-  }
-  if (event.pointerType === "mouse" && event.button !== 0) {
     return;
   }
 
@@ -1606,6 +1659,11 @@ function handleCanvasPointerDown(
     event.stopImmediatePropagation();
     runtime.sceneRuntime.controls.enabled = false;
     runtime.state = "charging";
+    runtime.isPointerOverCancel = false;
+    if (runtime.cancelControl) {
+      runtime.cancelControl.hidden = false;
+      runtime.cancelControl.classList.remove("is-hovered");
+    }
     runtime.activePointerId = event.pointerId;
     runtime.activeCaptureElement = canvas;
     runtime.gesture = {
@@ -1669,6 +1727,11 @@ function handleCanvasPointerDown(
     event.stopImmediatePropagation();
     runtime.sceneRuntime.controls.enabled = false;
     runtime.state = "aiming";
+    runtime.isPointerOverCancel = false;
+    if (runtime.cancelControl) {
+      runtime.cancelControl.hidden = false;
+      runtime.cancelControl.classList.remove("is-hovered");
+    }
     runtime.activePointerId = event.pointerId;
     runtime.activeCaptureElement = canvas;
     runtime.gesture = {
@@ -1732,6 +1795,17 @@ function handleCanvasPointerMove(
   );
   if (gesture.source === "classic-canvas") {
     event.preventDefault();
+    const overCancel = isPointerOverElement(
+      runtime.cancelControl,
+      event.clientX,
+      event.clientY,
+    );
+    runtime.isPointerOverCancel = overCancel;
+    if (overCancel) {
+      runtime.cancelControl?.classList.add("is-hovered");
+    } else {
+      runtime.cancelControl?.classList.remove("is-hovered");
+    }
     updateAimPointer(
       runtime.aimRuntime,
       event.clientX,
@@ -1739,6 +1813,17 @@ function handleCanvasPointerMove(
     );
   } else if (gesture.source === "red-dot") {
     event.preventDefault();
+    const overCancel = isPointerOverElement(
+      runtime.cancelControl,
+      event.clientX,
+      event.clientY,
+    );
+    runtime.isPointerOverCancel = overCancel;
+    if (overCancel) {
+      runtime.cancelControl?.classList.add("is-hovered");
+    } else {
+      runtime.cancelControl?.classList.remove("is-hovered");
+    }
     const selectedPieceId = runtime.aimRuntime.selectedPieceId;
     const isRook =
       selectedPieceId !== null &&
@@ -1792,6 +1877,18 @@ function handleCanvasPointerUp(
     event.pointerId !== runtime.activePointerId ||
     gesture === null
   ) {
+    return;
+  }
+  if (
+    runtime.isPointerOverCancel ||
+    isPointerOverElement(
+      runtime.cancelControl,
+      event.clientX,
+      event.clientY,
+    )
+  ) {
+    event.preventDefault();
+    cancelInteraction(runtime, false);
     return;
   }
   const canvas = runtime.sceneRuntime.renderer.domElement;
@@ -2035,12 +2132,41 @@ export function createInputRuntime(
   updateActionBarLabels();
   sceneRuntime.renderer.domElement.parentElement?.append(actionBar);
 
+  const cancelControl = document.createElement("div");
+  cancelControl.className = "classic-cancel-control";
+  cancelControl.hidden = true;
+
+  const cancelControlBtn = document.createElement("button");
+  cancelControlBtn.type = "button";
+  cancelControlBtn.className = "classic-cancel-btn";
+
+  const cancelControlTitle = document.createElement("span");
+  cancelControlTitle.className = "classic-cancel-title";
+
+  const cancelControlHint = document.createElement("span");
+  cancelControlHint.className = "classic-cancel-hint";
+
+  cancelControlBtn.append(cancelControlTitle, cancelControlHint);
+  cancelControl.append(cancelControlBtn);
+
+  const updateCancelControlLabels = () => {
+    const isCoarse = isCoarsePointerEnvironment();
+    const copy = inputCancelCopy();
+    cancelControlTitle.textContent = copy.cancelTitle;
+    cancelControlHint.textContent = isCoarse
+      ? copy.cancelHintMobile
+      : copy.cancelHintDesktop;
+    cancelControl.setAttribute("aria-label", copy.cancelTitle);
+  };
+  updateCancelControlLabels();
+
   I18nManager.subscribe(() => {
     modeToggle.setAttribute("aria-label", uiText("controls"));
     actionBar.setAttribute("aria-label", uiText("actions"));
     sceneRuntime.renderer.domElement.setAttribute("aria-label", uiText("board"));
     updateToggleLabels();
     updateActionBarLabels();
+    updateCancelControlLabels();
     updateModeToggle(runtime);
   });
   const overlayContainer =
@@ -2048,6 +2174,7 @@ export function createInputRuntime(
   if (overlayContainer === null) {
     throw new Error("타점 패널을 붙일 게임 컨테이너가 없습니다.");
   }
+  overlayContainer.append(cancelControl);
   const strikePointPanel =
     createStrikePointPanel(overlayContainer);
   const kingSwapBanner = document.createElement("div");
@@ -2091,7 +2218,25 @@ export function createInputRuntime(
     strikePointPanel,
     kingSwapMode: false,
     kingSwapBanner,
+    cancelControl,
+    cancelControlTitle,
+    cancelControlHint,
+    isPointerOverCancel: false,
   };
+
+  const handleCancelControlEvent = (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (
+      runtime.state === "aiming" ||
+      runtime.state === "charging" ||
+      runtime.activePointerId !== null
+    ) {
+      cancelInteraction(runtime, false);
+    }
+  };
+  cancelControl.addEventListener("pointerdown", handleCancelControlEvent);
+  cancelControl.addEventListener("click", handleCancelControlEvent);
 
   for (const eventName of [
     "pointerdown",
@@ -2236,9 +2381,16 @@ export function createInputRuntime(
     });
   }
   const canvas = sceneRuntime.renderer.domElement;
-  canvas.addEventListener("contextmenu", (event) =>
-    event.preventDefault(),
-  );
+  canvas.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    if (
+      runtime.state === "aiming" ||
+      runtime.state === "charging" ||
+      runtime.activePointerId !== null
+    ) {
+      cancelInteraction(runtime, false);
+    }
+  });
   canvas.addEventListener(
     "pointerdown",
     (event) => handleCanvasPointerDown(runtime, event),
@@ -2267,6 +2419,11 @@ export function createInputRuntime(
   };
   canvas.addEventListener("pointercancel", cancelPointer);
   canvas.addEventListener("lostpointercapture", cancelPointer);
+  window.addEventListener("touchcancel", () => {
+    if (runtime.activePointerId !== null) {
+      cancelInteraction(runtime, false);
+    }
+  });
 
   window.addEventListener("keydown", (event) => {
     if (isTextInputTarget(event.target)) {

@@ -388,8 +388,9 @@
 
 .cosmetics-options-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+  width: 100%;
 }
 
 .cosmetics-option-card {
@@ -407,6 +408,8 @@
   transition: border-color 0.15s ease, background 0.15s ease;
   box-sizing: border-box;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .cosmetics-option-card:hover:not(.locked) {
@@ -471,6 +474,7 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1;
   overflow: hidden;
 }
 
@@ -481,14 +485,17 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .cosmetics-option-cond {
   font-size: 11px;
   color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-height: 1.35;
+  min-width: 0;
 }
 
 .cosmetics-option-badge {

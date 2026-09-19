@@ -89,7 +89,7 @@ export function openChallengeReceivedModal(
     timeLeft -= 1;
     if (timeLeft <= 0) {
       close();
-      void SocialService.respondChallenge(payload.challengerId, payload.roomId, false);
+      void SocialService.respondChallenge(payload.challengerId, payload.roomId, false).catch(console.warn);
       callbacks.onReject(payload);
     } else {
       timerDisplay.textContent = uiText("remaining", {time:timeLeft});
@@ -97,14 +97,22 @@ export function openChallengeReceivedModal(
   }, 1000);
 
   card.querySelector("#challenge-accept-btn")?.addEventListener("click", async () => {
-    close();
-    await SocialService.respondChallenge(payload.challengerId, payload.roomId, true);
-    callbacks.onAccept(payload);
+    if (timerId !== null) clearInterval(timerId);
+    card.querySelectorAll('button').forEach(button => { button.disabled = true; });
+    try {
+      await SocialService.respondChallenge(payload.challengerId, payload.roomId, true);
+      close();
+      callbacks.onAccept(payload);
+    } catch {
+      timerDisplay.textContent = I18nManager.t('lobby.match_start_failed');
+      const dismiss = card.querySelector<HTMLButtonElement>('#challenge-reject-btn');
+      if (dismiss) { dismiss.disabled = false; dismiss.textContent = I18nManager.t('common.close'); }
+    }
   });
 
   card.querySelector("#challenge-reject-btn")?.addEventListener("click", async () => {
     close();
-    await SocialService.respondChallenge(payload.challengerId, payload.roomId, false);
+    await SocialService.respondChallenge(payload.challengerId, payload.roomId, false).catch(console.warn);
     callbacks.onReject(payload);
   });
 

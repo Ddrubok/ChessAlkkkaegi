@@ -5,6 +5,7 @@ import type { PeerDisconnectCause, PeerLinkState } from "./net";
 import type { UserProfile } from "./supabase-auth";
 import { getUnifiedIceServers } from "./metered-turn";
 import { getRuntimeText } from "./runtime-text";
+import { getFriendlyCopy } from "./friendly-copy";
 
 const DATA_CHANNEL_LABEL = "chess-alkkaegi-p2p";
 
@@ -61,6 +62,12 @@ type SignalMessage =
       toId: string;
       hostId: string;
       guestId: string;
+    }
+  | {
+      type: "guest-ready";
+      matchId: string;
+      fromId: string;
+      toId: string;
     }
   | {
       type: "offer";
@@ -251,6 +258,12 @@ export class SupabaseMatchmaker {
   private pendingIceCandidates: RTCIceCandidateInit[] = [];
   private isConnectionEstablished = false;
   private signalingTimeoutTimer: number | null = null;
+  private offerRetryTimer: number | null = null;
+  private guestReadyTimer: number | null = null;
+  private hostOfferSdp: string | null = null;
+  private friendlyRoom = false;
+  private processingOffer = false;
+  private processingAnswer = false;
   private setupGuestPromise: Promise<void> | null = null;
   private failedOpponentsCooldown: Map<string, number> = new Map();
 
@@ -429,6 +442,10 @@ export class SupabaseMatchmaker {
     this.clearSignalingTimeout();
     this.signalingTimeoutTimer = window.setTimeout(() => {
       if (this.isConnectionEstablished || this.isCancelled) return;
+      if (this.friendlyRoom) {
+        this.handleError(new Error(getFriendlyCopy("room_timeout")));
+        return;
+      }
       console.warn(`[Matchmaker] 15초 WebRTC/TURN 시그널링 타임아웃 발생 (상대방: ${opponentId}, 매치: ${matchId})`);
       this.failedOpponentsCooldown.set(opponentId, Date.now() + 15000);
       this.resetSignalingState();
@@ -443,8 +460,21 @@ export class SupabaseMatchmaker {
     }
   }
 
+  private clearRetryTimers(): void {
+    if (this.offerRetryTimer !== null) {
+      clearInterval(this.offerRetryTimer);
+      this.offerRetryTimer = null;
+    }
+    if (this.guestReadyTimer !== null) {
+      clearInterval(this.guestReadyTimer);
+      this.guestReadyTimer = null;
+    }
+    this.hostOfferSdp = null;
+  }
+
   private resetSignalingState(): void {
     this.clearSignalingTimeout();
+    this.clearRetryTimers();
     this.setupGuestPromise = null;
     if (this.dataChannel) {
       try { this.dataChannel.close(); } catch {}
@@ -476,11 +506,27 @@ export class SupabaseMatchmaker {
   private async handleIncomingSignal(signal: SignalMessage): Promise<void> {
     if (this.isCancelled || !signal || !signal.toId) return;
     if (signal.toId.toLowerCase() !== this.user.id.toLowerCase()) return;
+    if (this.friendlyRoom && (signal.matchId !== this.activeMatchId || signal.fromId !== this.opponentProfile?.id)) return;
 
     console.log(`[Matchmaker Signal Received] ${signal.type} from ${signal.fromId}`);
 
     try {
-      if (signal.type === "offer") {
+      if (signal.type === "guest-ready") {
+        if (this.isHost && this.hostOfferSdp && this.activeMatchId === signal.matchId) {
+          await this.sendSignal({
+            type: "offer",
+            matchId: signal.matchId,
+            fromId: this.user.id,
+            toId: signal.fromId,
+            sdp: this.peerConnection?.localDescription?.sdp || this.hostOfferSdp,
+          });
+        }
+      } else if (signal.type === "offer") {
+        if (this.guestReadyTimer !== null) {
+          clearInterval(this.guestReadyTimer);
+          this.guestReadyTimer = null;
+        }
+
         if (!this.activeMatchId || this.activeMatchId.startsWith("pending-")) {
           this.activeMatchId = signal.matchId;
           void this.trackQueueMatch(signal.matchId);
@@ -497,6 +543,13 @@ export class SupabaseMatchmaker {
         }
 
         if (!this.isHost) {
+          if (this.processingOffer) return;
+          if (this.peerConnection?.localDescription?.type === "answer") {
+            await this.sendSignal({ type: "answer", matchId: signal.matchId, fromId: this.user.id, toId: signal.fromId, sdp: this.peerConnection.localDescription.sdp });
+            return;
+          }
+          this.processingOffer = true;
+          try {
           await this.setupGuestWebRTC(signal.fromId, signal.matchId);
 
           if (this.peerConnection) {
@@ -520,9 +573,18 @@ export class SupabaseMatchmaker {
               sdp: answer.sdp || "",
             });
           }
+          } finally { this.processingOffer = false; }
         }
       } else if (signal.type === "answer") {
+        if (this.offerRetryTimer !== null) {
+          clearInterval(this.offerRetryTimer);
+          this.offerRetryTimer = null;
+        }
+
         if (this.isHost && this.peerConnection) {
+          if (this.processingAnswer || this.peerConnection.remoteDescription?.type === "answer") return;
+          this.processingAnswer = true;
+          try {
           this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_confirming"));
           await this.peerConnection.setRemoteDescription(new RTCSessionDescription({
             type: "answer",
@@ -531,6 +593,7 @@ export class SupabaseMatchmaker {
 
           // 버퍼링된 조기 ICE Candidate 적용
           await this.flushPendingIceCandidates();
+          } finally { this.processingAnswer = false; }
         }
       } else if (signal.type === "ice") {
         if (signal.candidate) {
@@ -571,6 +634,7 @@ export class SupabaseMatchmaker {
   private async setupHostWebRTC(guestId: string, matchId: string): Promise<void> {
     this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_creating_offer"));
     const iceServers = await getUnifiedIceServers();
+    if (this.isCancelled || !this.channel) return;
     const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 2 });
     this.peerConnection = pc;
 
@@ -617,14 +681,25 @@ export class SupabaseMatchmaker {
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
+    this.hostOfferSdp = offer.sdp || "";
 
-    await this.sendSignal({
-      type: "offer",
-      matchId,
-      fromId: this.user.id,
-      toId: guestId,
-      sdp: offer.sdp || "",
-    });
+    const sendOffer = () => {
+      if (this.isConnectionEstablished || this.isCancelled || !this.hostOfferSdp) return;
+      void this.sendSignal({
+        type: "offer",
+        matchId,
+        fromId: this.user.id,
+        toId: guestId,
+        sdp: this.peerConnection?.localDescription?.sdp || this.hostOfferSdp,
+      });
+    };
+
+    sendOffer();
+
+    if (this.offerRetryTimer !== null) {
+      clearInterval(this.offerRetryTimer);
+    }
+    this.offerRetryTimer = window.setInterval(sendOffer, 1500);
   }
 
   /**
@@ -637,6 +712,7 @@ export class SupabaseMatchmaker {
     this.setupGuestPromise = (async () => {
       this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_responding"));
       const iceServers = await getUnifiedIceServers();
+      if (this.isCancelled || !this.channel) return;
       const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 2 });
       this.peerConnection = pc;
 
@@ -681,6 +757,23 @@ export class SupabaseMatchmaker {
         }, 80);
         checkOpen();
       };
+
+      const sendGuestReady = () => {
+        if (this.isConnectionEstablished || this.isCancelled || (this.peerConnection && this.peerConnection.remoteDescription)) return;
+        void this.sendSignal({
+          type: "guest-ready",
+          matchId,
+          fromId: this.user.id,
+          toId: hostId,
+        });
+      };
+
+      sendGuestReady();
+
+      if (this.guestReadyTimer !== null) {
+        clearInterval(this.guestReadyTimer);
+      }
+      this.guestReadyTimer = window.setInterval(sendGuestReady, 1500);
     })();
 
     return this.setupGuestPromise;
@@ -698,6 +791,7 @@ export class SupabaseMatchmaker {
     if (this.isConnectionEstablished) return;
     this.isConnectionEstablished = true;
     this.clearSignalingTimeout();
+    this.clearRetryTimers();
 
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);
@@ -769,6 +863,7 @@ export class SupabaseMatchmaker {
     onError?: (error: Error) => void,
   ): Promise<void> {
     await this.cleanup();
+    this.friendlyRoom = true;
     this.isHost = isHost;
     this.opponentProfile = opponent;
     this.activeMatchId = roomId;
@@ -800,11 +895,13 @@ export class SupabaseMatchmaker {
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
           this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_exchanging_signals"), 0, 0, opponent);
+          try {
           if (isHost) {
             await this.setupHostWebRTC(opponent.id, roomId);
           } else {
             await this.setupGuestWebRTC(opponent.id, roomId);
           }
+          } catch { this.handleError(new Error(getFriendlyCopy('peer_error'))); }
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           this.handleError(new Error(`친선전 채널 연결 오류: ${status}`));
         }
@@ -821,9 +918,11 @@ export class SupabaseMatchmaker {
   }
 
   private async cleanup(): Promise<void> {
+    this.friendlyRoom = false;
     this.waitingPlayers = null;
     this.queueSynced = false;
     this.clearSignalingTimeout();
+    this.clearRetryTimers();
     this.setupGuestPromise = null;
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);

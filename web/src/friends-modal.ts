@@ -221,10 +221,20 @@ export async function openFriendsModal(
                 </div>
               `;
               document.body.appendChild(waitOverlay);
-              waitOverlay.querySelector("#cancel-challenge-btn")?.addEventListener("click", () => waitOverlay.remove());
+              let cancelled = false;
+              waitOverlay.querySelector("#cancel-challenge-btn")?.addEventListener("click", () => {
+                cancelled = true;
+                SocialService.cancelChallenge(roomId);
+                waitOverlay.remove();
+              });
 
               const accepted = await responsePromise;
               waitOverlay.remove();
+              if (cancelled || !overlay.isConnected) {
+                challengeBtn.disabled = false;
+                challengeBtn.textContent = `⚔️ ${I18nManager.t("friends.challenge_btn")}`;
+                return;
+              }
 
               if (accepted) {
                 overlay.remove();

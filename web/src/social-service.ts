@@ -2,6 +2,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabase-client";
 import type { UserProfile } from "./supabase-auth";
 import { KING_MMR } from "./tier";
+import { getFriendlyCopy } from "./friendly-copy";
 
 export type UserStatus = "online" | "in_game" | "in_queue" | "offline";
 
@@ -64,6 +65,15 @@ export class SocialService {
   private static onChallengeCallback: ((payload: ChallengeRequestPayload) => void) | null = null;
   private static challengeResponseCallbacks: Map<string, (accepted: boolean) => void> = new Map();
 
+  public static setChallengeHandler(handler: (payload: ChallengeRequestPayload) => void): void {
+    this.onChallengeCallback = handler;
+  }
+
+  public static cancelChallenge(roomId: string): void {
+    this.challengeResponseCallbacks.get(roomId)?.(false);
+    this.challengeResponseCallbacks.delete(roomId);
+  }
+
   /**
    * 소셜 서비스 초기화 (로그인 시 1회 호출)
    */
@@ -72,7 +82,7 @@ export class SocialService {
     onChallengeReceived?: (payload: ChallengeRequestPayload) => void,
   ): void {
     this.myProfile = profile;
-    this.onChallengeCallback = onChallengeReceived || null;
+    if (onChallengeReceived) this.onChallengeCallback = onChallengeReceived;
 
     const sb = getSupabaseClient();
     if (!sb) return;
@@ -482,14 +492,6 @@ export class SocialService {
       roomId,
     };
 
-    // 상대방 알림 채널로 브로드캐스트 발송
-    const channel = sb.channel(`user_notify:${targetUserId}`);
-    await channel.send({
-      type: "broadcast",
-      event: "challenge_request",
-      payload,
-    });
-
     const responsePromise = new Promise<boolean>((resolve) => {
       this.challengeResponseCallbacks.set(roomId, resolve);
       // 15초 타임아웃
@@ -500,6 +502,17 @@ export class SocialService {
         }
       }, 15000);
     });
+
+    // Register the response before sending: a fast accept must not be dropped.
+    const channel = sb.channel(`user_notify:${targetUserId}`);
+    try {
+      const result = await channel.send({ type: "broadcast", event: "challenge_request", payload });
+      if (result !== "ok") throw new Error(getFriendlyCopy('peer_error'));
+    } catch (error) {
+      this.challengeResponseCallbacks.get(roomId)?.(false);
+      this.challengeResponseCallbacks.delete(roomId);
+      throw error;
+    } finally { await sb.removeChannel(channel); }
 
     return { roomId, responsePromise };
   }
@@ -516,7 +529,7 @@ export class SocialService {
     if (!sb || !this.myProfile) return;
 
     const channel = sb.channel(`user_notify:${challengerId}`);
-    await channel.send({
+    try { const result = await channel.send({
       type: "broadcast",
       event: "challenge_response",
       payload: {
@@ -525,6 +538,8 @@ export class SocialService {
         accepted: isAccepted,
       } as ChallengeResponsePayload,
     });
+    if (result !== "ok") throw new Error(getFriendlyCopy('peer_error'));
+    } finally { await sb.removeChannel(channel); }
   }
 
   /**
@@ -541,8 +556,8 @@ export class SocialService {
     }
     this.presenceUsers.clear();
     this.presenceListeners.clear();
+    this.challengeResponseCallbacks.forEach(resolve => resolve(false));
     this.challengeResponseCallbacks.clear();
-    this.onChallengeCallback = null;
     this.myProfile = null;
   }
 }

@@ -43,6 +43,7 @@ export function saveSupabaseConfig(config: SupabaseConfig): SupabaseClient {
   currentConfig = { url: config.url.trim(), anonKey: config.anonKey.trim() };
   supabaseInstance = createClient(currentConfig.url, currentConfig.anonKey, {
     auth: {
+      flowType: "pkce",
       persistSession: true,
       autoRefreshToken: true,
     },
@@ -78,6 +79,7 @@ export function getSupabaseClient(): SupabaseClient | null {
     currentConfig = config;
     supabaseInstance = createClient(config.url, config.anonKey, {
       auth: {
+        flowType: "pkce",
         persistSession: true,
         autoRefreshToken: true,
       },

@@ -1,0 +1,77 @@
+.classic-cancel-control {
+  position: absolute;
+  bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
+  max-width: calc(100% - 32px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.classic-cancel-control[hidden] {
+  display: none !important;
+}
+
+.classic-cancel-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 130px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 10px 18px;
+  background: rgba(30, 20, 20, 0.88);
+  color: #ff5252;
+  border: 2px solid rgba(255, 82, 82, 0.65);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.15s ease;
+}
+
+.classic-cancel-btn .classic-cancel-hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 3px;
+}
+
+.classic-cancel-control.is-hovered .classic-cancel-btn,
+.classic-cancel-btn:hover,
+.classic-cancel-btn:active {
+  background: rgba(220, 38, 38, 0.95);
+  color: #ffffff;
+  border-color: #ffffff;
+  transform: scale(1.06);
+  box-shadow: 0 6px 22px rgba(239, 68, 68, 0.6);
+}
+
+.classic-cancel-control.is-hovered .classic-cancel-btn .classic-cancel-hint {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+@media (max-width: 600px) {
+  .classic-cancel-control {
+    right: 10px;
+  }
+  .classic-cancel-btn {
+    min-width: 105px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  .classic-cancel-btn .classic-cancel-hint {
+    font-size: 10px;
+  }
+}

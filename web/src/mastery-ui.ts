@@ -21,7 +21,8 @@ import {
 type Copy = {
   book: string; summary: string; personal: string; experience: string; skill: string; complete: string; locked: string;
   track: string; tracking: string; untrack: string; details: string; modes: string; reward: string; play: string; close: string;
-  rewards: string; badge: string; title: string; frame: string; banner: string; none: string; equip: string; explorer: string; completeFrame: string;
+  rewards: string; badge: string; title: string; frame: string; banner: string; none: string; equip: string;
+  explorer: string; challenger: string; completeFrame: string; classicFrame: string;
   future: string; pending: string; malformed: string; result: string; viewAll: string;
   bannerObjectives: string; bannerReward: string;
   names: Record<MasteryId, string>; conditions: Record<MasteryId, string>; tips: Record<MasteryId, string>;
@@ -49,7 +50,7 @@ const BASE: Omit<Copy, "names" | "conditions" | "tips"> = {
   complete: "Earned", locked: "In progress", track: "Track objective", tracking: "Tracked", untrack: "Stop tracking",
   details: "Condition details", modes: "Eligible modes", reward: "Reward", play: "Recommended play", close: "Close",
   rewards: "Rewards & equipment", badge: "Badge", title: "Title", frame: "Profile frame", banner: "Banner", none: "None", equip: "Equip",
-  explorer: "Explorer", completeFrame: "Mastery Complete frame", bannerObjectives: "Banner Objectives", bannerReward: "Banner",
+  explorer: "Explorer", challenger: "Challenger", completeFrame: "Mastery Complete frame", classicFrame: "Classic Gold Frame", bannerObjectives: "Banner Objectives", bannerReward: "Banner",
   future: "Woodgrain set entitlement — cosmetic scheduled for a future release.",
   pending: "New mastery records await server storage and are safe in this account's device cache.",
   malformed: "Mastery data needs recovery. New writes are paused to preserve it.",
@@ -61,7 +62,7 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
     book: "숙련 메달 도감", summary: "숙련", personal: "개인 기록", experience: "경험", skill: "기술", complete: "획득",
     locked: "진행 중", track: "목표 추적", tracking: "추적 중", untrack: "추적 해제", details: "조건 상세", modes: "인정 모드",
     reward: "보상", play: "추천 플레이", close: "닫기", rewards: "보상 및 장착", badge: "배지", title: "칭호", frame: "프로필 프레임", banner: "배너",
-    none: "없음", equip: "장착", explorer: "탐구자", completeFrame: "숙련 완성 프레임", bannerObjectives: "배너 업적", bannerReward: "배너",
+    none: "없음", equip: "장착", explorer: "탐구자", challenger: "도전자", completeFrame: "숙련 완성 프레임", classicFrame: "클래식 골드 프레임", bannerObjectives: "배너 업적", bannerReward: "배너",
     future: "나뭇결 세트 이용권 — 꾸미기 아이템은 향후 출시 예정입니다.",
     pending: "새 숙련 기록이 서버 저장을 기다리며 이 계정의 기기 캐시에 안전하게 보관됩니다.",
     malformed: "숙련 기록 복구가 필요하여 원본 보존을 위해 새 저장을 멈췄습니다.",
@@ -74,7 +75,7 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
     book: "熟練メダルブック", summary: "熟練", personal: "個人記録", experience: "経験", skill: "技術", complete: "獲得済み",
     locked: "進行中", track: "目標を追跡", tracking: "追跡中", untrack: "追跡解除", details: "条件詳細", modes: "対象モード",
     reward: "報酬", play: "おすすめプレイ", close: "閉じる", rewards: "報酬と装備", badge: "バッジ", title: "称号", frame: "プロフィールフレーム", banner: "バナー",
-    none: "なし", equip: "装備", explorer: "探究者", completeFrame: "熟練達成フレーム", bannerObjectives: "バナー実績", bannerReward: "バナー",
+    none: "なし", equip: "装備", explorer: "探究者", challenger: "挑戦者", completeFrame: "熟練達成フレーム", classicFrame: "クラシックゴールド枠", bannerObjectives: "バナー実績", bannerReward: "バナー",
     future: "木目セット権利 — コスメは今後リリース予定です。",
     pending: "新しい熟練記録はサーバー保存待ちで、この端末のアカウントキャッシュに安全に保持されています。",
     malformed: "熟練データの復旧が必要です。保護のため新しい保存を停止しました。",
@@ -87,7 +88,7 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
     book: "精通勋章册", summary: "精通", personal: "个人记录", experience: "经验", skill: "技巧", complete: "已获得",
     locked: "进行中", track: "追踪目标", tracking: "追踪中", untrack: "停止追踪", details: "条件详情", modes: "适用模式",
     reward: "奖励", play: "推荐玩法", close: "关闭", rewards: "奖励与装备", badge: "徽章", title: "称号", frame: "头像框", banner: "横幅",
-    none: "无", equip: "装备", explorer: "探索者", completeFrame: "熟练完成头像框", bannerObjectives: "横幅成就", bannerReward: "横幅",
+    none: "无", equip: "装备", explorer: "探索者", challenger: "挑战者", completeFrame: "熟练完成头像框", classicFrame: "经典金色边框", bannerObjectives: "横幅成就", bannerReward: "横幅",
     future: "木纹套装权益 — 外观内容计划未来推出。",
     pending: "新的熟练记录正在等待服务器存储，并安全保存在此设备的账户缓存中。",
     malformed: "熟练数据需要恢复。为保护数据，已暂停写入。",
@@ -101,7 +102,7 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
     skill: "Fertigkeit", complete: "Verdient", locked: "In Arbeit", track: "Ziel verfolgen", tracking: "Verfolgt",
     untrack: "Nicht mehr verfolgen", details: "Bedingungen", modes: "Gültige Modi", reward: "Belohnung", play: "Empfohlen",
     close: "Schließen", rewards: "Belohnungen & Ausrüstung", badge: "Abzeichen", title: "Titel", frame: "Profilrahmen", banner: "Banner",
-    none: "Keine", equip: "Ausrüsten", explorer: "Entdecker", completeFrame: "Meisterschaftsrahmen", bannerObjectives: "Banner-Ziele",
+    none: "Keine", equip: "Ausrüsten", explorer: "Entdecker", challenger: "Herausforderer", completeFrame: "Meisterschaftsrahmen", classicFrame: "Klassischer Goldrahmen", bannerObjectives: "Banner-Ziele",
     bannerReward: "Banner", future: "Holzmaserungs-Set-Berechtigung — Kosmetik erscheint später.",
     pending: "Neue Meisterschaftsdaten warten auf die Serverspeicherung und bleiben sicher im Gerätespeicher dieses Kontos.",
     malformed: "Die Meisterschaftsdaten müssen wiederhergestellt werden. Neue Speicherungen sind zum Schutz angehalten.",
@@ -115,7 +116,7 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
     complete: "Obtenue", locked: "En cours", track: "Suivre l’objectif", tracking: "Suivi", untrack: "Arrêter le suivi",
     details: "Conditions", modes: "Modes éligibles", reward: "Récompense", play: "Jeu conseillé", close: "Fermer",
     rewards: "Récompenses et équipement", badge: "Badge", title: "Titre", frame: "Cadre de profil", banner: "Bannière", none: "Aucun",
-    equip: "Équiper", explorer: "Explorateur", completeFrame: "Cadre Maîtrise accomplie", bannerObjectives: "Objectifs de bannière",
+    equip: "Équiper", explorer: "Explorateur", challenger: "Challenger", completeFrame: "Cadre Maîtrise accomplie", classicFrame: "Cadre or classique", bannerObjectives: "Objectifs de bannière",
     bannerReward: "Bannière", future: "Droit au set bois — cosmétique prévu pour une sortie future.",
     pending: "Les nouvelles données de maîtrise attendent le stockage serveur et restent protégées dans le cache de ce compte sur cet appareil.",
     malformed: "Les données de maîtrise doivent être restaurées. Les nouvelles sauvegardes sont suspendues pour les protéger.",
@@ -129,7 +130,7 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
     complete: "Obtenida", locked: "En progreso", track: "Seguir objetivo", tracking: "Siguiendo", untrack: "Dejar de seguir",
     details: "Condiciones", modes: "Modos válidos", reward: "Recompensa", play: "Juego recomendado", close: "Cerrar",
     rewards: "Recompensas y equipo", badge: "Insignia", title: "Título", frame: "Marco de perfil", banner: "Estandarte", none: "Ninguno",
-    equip: "Equipar", explorer: "Explorador", completeFrame: "Marco Maestría completa", bannerObjectives: "Objetivos de estandarte",
+    equip: "Equipar", explorer: "Explorador", challenger: "Aspirante", completeFrame: "Marco Maestría completa", classicFrame: "Marco de oro clásico", bannerObjectives: "Objetivos de estandarte",
     bannerReward: "Estandarte", future: "Derecho al set de madera — cosmético previsto para el futuro.",
     pending: "Los nuevos datos de maestría esperan guardarse en el servidor y permanecen seguros en la caché de esta cuenta en el dispositivo.",
     malformed: "Los datos de maestría necesitan recuperación. Se han pausado los guardados nuevos para protegerlos.",
@@ -143,7 +144,7 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
     complete: "Получено", locked: "В процессе", track: "Отслеживать", tracking: "Отслеживается", untrack: "Не отслеживать",
     details: "Условия", modes: "Доступные режимы", reward: "Награда", play: "Рекомендуемая игра", close: "Закрыть",
     rewards: "Награды и снаряжение", badge: "Значок", title: "Титул", frame: "Рамка профиля", banner: "Баннер", none: "Нет",
-    equip: "Надеть", explorer: "Исследователь", completeFrame: "Рамка «Мастерство»", bannerObjectives: "Задачи баннеров",
+    equip: "Надеть", explorer: "Исследователь", challenger: "Претендент", completeFrame: "Рамка «Мастерство»", classicFrame: "Классическая золотая рамка", bannerObjectives: "Задачи баннеров",
     bannerReward: "Баннер", future: "Право на набор «Дерево» — косметика выйдет позже.",
     pending: "Новые записи мастерства ожидают сохранения на сервере и безопасно хранятся в кэше этой учётной записи на устройстве.",
     malformed: "Данные мастерства требуют восстановления. Новые сохранения приостановлены для их защиты.",
@@ -157,7 +158,7 @@ const localized: Partial<Record<LanguageCode, Partial<Copy>>> = {
     complete: "Obtida", locked: "Em progresso", track: "Acompanhar objetivo", tracking: "Acompanhando", untrack: "Parar de acompanhar",
     details: "Condições", modes: "Modos válidos", reward: "Recompensa", play: "Jogo recomendado", close: "Fechar",
     rewards: "Recompensas e equipamento", badge: "Distintivo", title: "Título", frame: "Moldura de perfil", banner: "Banner", none: "Nenhum",
-    equip: "Equipar", explorer: "Explorador", completeFrame: "Moldura Maestria completa", bannerObjectives: "Objetivos de Banner",
+    equip: "Equipar", explorer: "Explorador", challenger: "Desafiante", completeFrame: "Moldura Maestria completa", classicFrame: "Moldura Ouro Clássico", bannerObjectives: "Objetivos de Banner",
     bannerReward: "Banner", future: "Direito ao conjunto amadeirado — cosmético previsto para o futuro.",
     pending: "Novos dados de maestria aguardam o servidor e permanecem seguros no cache desta conta no dispositivo.",
     malformed: "Os dados de maestria precisam de recuperação. Novos salvamentos foram pausados para protegê-los.",
@@ -183,7 +184,8 @@ export function renderMasteryProfileSummary(storage: MasteryStorage): string {
   const snapshot = loadMasterySnapshot(storage);
   const copy = masteryCopy();
   const count = earnedMedalCount(snapshot.progress);
-  const title = equippedItem(snapshot, "title") === "title:explorer" ? copy.explorer : "";
+  const eqTitle = equippedItem(snapshot, "title");
+  const title = eqTitle === "title:explorer" ? copy.explorer : eqTitle === "title:challenger" ? copy.challenger : "";
   const badge = equippedItem(snapshot, "badge");
   const frame = equippedItem(snapshot, "frame");
   return `<section class="mastery-profile-summary${frame ? " mastery-frame-equipped" : ""}"><div><strong>${escapeHtml(copy.summary)} ${count}/8</strong>${title ? `<span class="mastery-equipped-title">${escapeHtml(title)}</span>` : ""}${badge ? `<span class="mastery-equipped-badge">${escapeHtml(badge.slice(-3).toUpperCase())}</span>` : ""}</div><button type="button" data-open-mastery>${escapeHtml(copy.book)}</button></section>`;
@@ -232,8 +234,33 @@ function ownedOptions(storage: MasteryStorage, slot: 'badge' | 'title' | 'frame'
   const snapshot = loadMasterySnapshot(storage);
   const copy = masteryCopy();
   const equipped = equippedItem(snapshot, slot);
-  const items = Object.keys(snapshot.rewards.items).filter(id => id.startsWith(`${slot}:`)).sort();
-  const label = (id: string) => id === "title:explorer" ? copy.explorer : id === "frame:mastery-complete" ? copy.completeFrame : `${copy.badge} ${id.slice(-3).toUpperCase()}`;
+  const itemSet = new Set<string>();
+
+  if (slot === "frame") {
+    itemSet.add("frame:classic-gold");
+  } else if (slot === "title") {
+    itemSet.add("title:challenger");
+  }
+
+  for (const id of Object.keys(snapshot.rewards.items)) {
+    if (id.startsWith(`${slot}:`)) {
+      itemSet.add(id);
+    }
+  }
+
+  if (equipped && equipped.startsWith(`${slot}:`)) {
+    itemSet.add(equipped);
+  }
+
+  const items = Array.from(itemSet).sort();
+  const label = (id: string) => {
+    if (id === "title:challenger") return copy.challenger;
+    if (id === "title:explorer") return copy.explorer;
+    if (id === "frame:classic-gold") return copy.classicFrame;
+    if (id === "frame:mastery-complete") return copy.completeFrame;
+    if (id.startsWith("badge:")) return `${copy.badge} ${id.slice(-3).toUpperCase()}`;
+    return id;
+  };
   return `<fieldset><legend>${escapeHtml(copy[slot])}</legend><button type="button" data-equip-slot="${slot}" data-equip-item="" aria-pressed="${equipped === null}">${escapeHtml(copy.none)}</button>${items.map(id => `<button type="button" data-equip-slot="${slot}" data-equip-item="${escapeHtml(id)}" aria-pressed="${equipped === id}">${escapeHtml(label(id))}</button>`).join("")}</fieldset>`;
 }
 

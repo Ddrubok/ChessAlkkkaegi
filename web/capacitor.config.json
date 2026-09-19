@@ -1,5 +1,6 @@
 {
   "appId": "com.chessalkkagi.app",
   "appName": "ChessAlkkagi",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": { "App": { "disableBackButtonHandler": true } }
 }
