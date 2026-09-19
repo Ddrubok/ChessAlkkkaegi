@@ -40,7 +40,7 @@ import type { LobbyMode } from "./lobby";
 import { MASTERY_DEFINITIONS, type MasteryId } from "./mastery";
 import { openMasteryBook } from "./mastery-ui";
 import { questStorage } from "./quest-storage";
-import { openQuestBook } from "./quest-ui";
+import { openQuestBook, renderQuestLobbyEntry } from "./quest-ui";
 
 function openLogoutConfirm(runtime: MainMenuRuntime): void {
   if (runtime.overlay.querySelector(".lobby-logout-confirm")) return;
@@ -614,7 +614,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderWeeklyChallengeEntry()}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderQuestLobbyEntry(questStorage)}${renderWeeklyChallengeEntry()}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   if (progressStorage.owner === user.id) {
     const editName = document.createElement('button');
@@ -650,10 +650,10 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     openSettingsModal(runtime.overlay, () => runtime.userProfile);
   });
 
-  panel.querySelector("#menu-profile-btn")?.addEventListener("click", () => {
+  panel.querySelectorAll("[data-profile-toggle]").forEach(button => button.addEventListener("click", () => {
     lobbyState.profileExpanded = !lobbyState.profileExpanded;
     renderMainMenu(runtime);
-  });
+  }));
   panel.querySelector("[data-open-mastery]")?.addEventListener("click", () => {
     openMasteryBook(runtime.overlay, progressStorage, (id: MasteryId) => {
       const route = MASTERY_DEFINITIONS.find(definition => definition.id === id)?.route;
@@ -662,12 +662,12 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       else openPveLobbyModal(runtime, stage => startLobbyMode(runtime, "stage", stage));
     }, () => renderMainMenu(runtime));
   });
-  panel.querySelector("[data-open-quests]")?.addEventListener("click", () => {
+  panel.querySelectorAll("[data-open-quests]").forEach(button => button.addEventListener("click", () => {
     openQuestBook(runtime.overlay, questStorage, (route) => {
       if (route === "puzzle") void startLobbyMode(runtime, "puzzle");
       else openPveLobbyModal(runtime, stage => startLobbyMode(runtime, "stage", stage));
     });
-  });
+  }));
   panel.querySelectorAll("[data-open-weekly-challenge]").forEach((button) => button.addEventListener("click", () => {
     runtime.onOpenWeeklyChallenge?.();
   }));
