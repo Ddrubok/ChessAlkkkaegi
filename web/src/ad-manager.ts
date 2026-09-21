@@ -20,6 +20,11 @@ let privacyOptionsRequired = false;
 let initializing: Promise<void> | undefined;
 let busy = false;
 let gameplayActive = false;
+let bannerSizeListener: PluginListenerHandle | undefined;
+function reserveBannerSpace(height: number): void {
+  const inset = Number.isFinite(height) && height > 0 ? height + 24 : 0;
+  document.documentElement.style.setProperty("--menu-ad-inset", `${inset}px`);
+}
 let restoreInput: (() => void) | undefined;
 
 function pauseForAd(): void {
@@ -155,13 +160,20 @@ export const AdManager = {
     gameplayActive = false;
     if (!Capacitor.isNativePlatform() || !nativeReady || !nativeId("banner")) return;
     try {
-      const { AdMob, BannerAdPosition, BannerAdSize } = await import("@capacitor-community/admob");
+      const { AdMob, BannerAdPosition, BannerAdSize, BannerAdPluginEvents } = await import("@capacitor-community/admob");
+      if (!bannerSizeListener) {
+        bannerSizeListener = await AdMob.addListener(BannerAdPluginEvents.SizeChanged, size => {
+          reserveBannerSpace(gameplayActive ? 0 : size.height);
+        });
+      }
+      if (gameplayActive) return;
       await AdMob.showBanner({ adId: nativeId("banner"), position: BannerAdPosition.BOTTOM_CENTER,
         adSize: BannerAdSize.ADAPTIVE_BANNER, isTesting: adTestMode });
     } catch (error) { console.warn("배너를 표시하지 못했습니다.", error); }
   },
   hideBanner: async (): Promise<void> => {
     gameplayActive = true;
+    reserveBannerSpace(0);
     if (!Capacitor.isNativePlatform() || !nativeReady) return;
     try { const { AdMob } = await import("@capacitor-community/admob"); await AdMob.hideBanner(); }
     catch (error) { console.warn("배너를 닫지 못했습니다.", error); }

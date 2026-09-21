@@ -33,6 +33,7 @@ import {
   renderRecommendationCard,
   renderModeCards,
   renderFooterLinks,
+  renderCommunityLink,
   renderTutorialBar,
   renderWeeklyChallengeEntry,
   lobbyState,
@@ -423,7 +424,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       </div>
 
       <div id="auth-tab-content"></div>
-      <nav class="site-menu-links" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./about.html">${escapeHtml(I18nManager.t("lobby.nav_about"))}</a><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.nav_guide"))}</a><a href="./tiers.html">${escapeHtml(I18nManager.t("lobby.nav_tiers"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>
+      <nav class="site-menu-links" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./about.html">${escapeHtml(I18nManager.t("lobby.nav_about"))}</a><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.nav_guide"))}</a><a href="./tiers.html">${escapeHtml(I18nManager.t("lobby.nav_tiers"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>${renderCommunityLink()}
       <p class="main-menu-status" data-menu-status aria-live="polite" style="margin-top:12px; font-size:13px; min-height:16px; color:#ef4444;"></p>
     `;
 

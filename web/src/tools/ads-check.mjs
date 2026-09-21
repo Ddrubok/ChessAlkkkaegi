@@ -4,12 +4,13 @@ import { readFile } from 'node:fs/promises';
 import { stripTypeScriptTypes } from 'node:module';
 import { SourceTextModule, SyntheticModule, createContext } from 'node:vm';
 
-async function setup({ native = false, mode = 'off', consent = true, blocked = false, ids = true } = {}) {
+async function setup({ native = false, mode = 'off', consent = true, blocked = false, ids = true, banner = false } = {}) {
   const scripts = [], listeners = new Map(), timers = new Map(), storage = new Map();
   let muted = false, initialized = 0, rewardBehavior = () => {};
   const app = { inert: false };
   const window = { location: { search: '' }, setTimeout: (fn) => { timers.set(fn, fn); return fn; } };
   const document = {
+    documentElement: { style: { setProperty: (key, value) => storage.set(key, value) } },
     getElementById: () => app,
     createElement: () => ({ dataset: {}, style: {} }),
     head: { append: (script) => {
@@ -30,6 +31,7 @@ async function setup({ native = false, mode = 'off', consent = true, blocked = f
     prepareRewardVideoAd: async () => {},
     showRewardVideoAd: () => { rewardBehavior(); return new Promise(() => {}); },
     hideBanner: async () => {},
+    showBanner: async () => { listeners.get('bannerSize')?.({ height: 60 }); },
   };
   const rewardEvents = { Dismissed: 'dismissed', FailedToShow: 'failed', Showed: 'shown', Rewarded: 'reward' };
   const context = createContext({ window, document, console, URLSearchParams, Date,
@@ -39,12 +41,14 @@ async function setup({ native = false, mode = 'off', consent = true, blocked = f
   });
   const cache = new Map();
   const env = { DEV: false, VITE_WEB_ADS_MODE: mode,
+    VITE_ADMOB_BANNER_ID: banner ? 'ca-app-pub-1234567890123456/1234567890' : '',
     VITE_ADSENSE_SLOT_ID: '1234567890',
     VITE_ADMOB_REWARDED_ID: ids ? 'ca-app-pub-1234567890123456/1234567890' : '' };
   async function load(name) {
     if (cache.has(name)) return cache.get(name);
     const exports = name === '@capacitor/core' ? { Capacitor: { isNativePlatform: () => native } }
       : name === '@capacitor-community/admob' ? { AdMob: sdk, RewardAdPluginEvents: rewardEvents,
+          BannerAdPluginEvents: { SizeChanged: 'bannerSize' }, BannerAdPosition: { BOTTOM_CENTER: 'bottom' }, BannerAdSize: { ADAPTIVE_BANNER: 'adaptive' },
           InterstitialAdPluginEvents: rewardEvents, AdmobConsentStatus: { REQUIRED: 'REQUIRED' } }
       : name === './sound' ? { setAdSoundMuted: (value) => { muted = value; } } : null;
     let module;
@@ -65,7 +69,7 @@ async function setup({ native = false, mode = 'off', consent = true, blocked = f
   const mod = await load('./ad-manager'); await mod.evaluate();
   const manager = mod.namespace.AdManager;
   await manager.init();
-  return { manager, scripts, window, timers, app, listeners, sdk,
+  return { manager, scripts, window, timers, app, listeners, sdk, storage,
     web: cache.get('./web-ads').namespace,
     muted: () => muted, initialized: () => initialized,
     nativeReward: (fn) => { rewardBehavior = fn; },
@@ -128,3 +132,13 @@ assert.equal(await native.manager.showRewardVideo(() => rewards++), true);
 assert.equal(rewards, 1); assert.equal(native.listeners.size, 0);
 assert.equal(native.app.inert, false); assert.equal(native.muted(), false);
 console.log('PASS: platform/approval gates, display slot, blocked SDK, no fill, cancel, timeout, duplicate reward, native dismissal and cleanup');
+const banner = await setup({ native: true, banner: true });
+await banner.manager.showBanner();
+assert.equal(banner.storage.get('--menu-ad-inset'), '84px');
+await banner.manager.showBanner(); assert.equal(banner.listeners.size, 1);
+banner.listeners.get('bannerSize')({ height: 100 });
+assert.equal(banner.storage.get('--menu-ad-inset'), '124px');
+await banner.manager.hideBanner();
+banner.listeners.get('bannerSize')({ height: 60 });
+assert.equal(banner.storage.get('--menu-ad-inset'), '0px');
+console.log('PASS banner space: measured height plus gap, resize, one listener, hide and late-event guard');

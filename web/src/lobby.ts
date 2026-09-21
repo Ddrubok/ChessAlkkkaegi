@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import type { MainMenuRuntime } from "./menu";
 import { getMaxClearedStage, type MetaRuntime } from "./meta";
 import { I18nManager } from "./i18n";
@@ -149,8 +150,15 @@ export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: numbe
   return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${cards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
 }
 
+export function renderCommunityLink(): string {
+  if (I18nManager.getLanguage() !== "ko") return "";
+  // Capacitor routes external HTTP links to Android's ACTION_VIEW handler.
+  const target = Capacitor.isNativePlatform() ? "_self" : "_blank";
+  return `<a class="lobby-community-link" href="https://cafe.naver.com/chessalkkagi" target="${target}" rel="noopener noreferrer"><span>질문·버그 제보 <span aria-hidden="true">↗</span></span><small>네이버 카페로 이동</small></a>`;
+}
+
 export function renderFooterLinks(): string {
-  return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>`;
+  return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>${renderCommunityLink()}`;
 }
 
 export function renderWeeklyChallengeEntry(): string {
