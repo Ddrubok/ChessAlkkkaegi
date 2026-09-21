@@ -3,6 +3,7 @@ import type { ChessAssets } from "./assets";
 import type { PieceType } from "./config";
 import type { PieceStatMutationResult } from "./piece-stat-model";
 import { PieceUpgradeEffects } from "./piece-upgrade-effects";
+import { isMotionReduced, subscribeMotion } from './ui-motion';
 
 export interface PiecePreviewServices { renderer: WebGLRenderer; assets: ChessAssets }
 
@@ -60,7 +61,7 @@ export class PiecePreviewRenderer {
   private readonly target = new WebGLRenderTarget(1, 1, { depthBuffer: true });
   private readonly context: CanvasRenderingContext2D | null;
   private readonly resizeObserver: ResizeObserver;
-  private readonly motion = matchMedia("(prefers-reduced-motion: reduce)");
+  private readonly unsubscribeMotion: () => void;
   private mesh: Mesh | null = null;
   private pixels = new Uint8Array(4);
   private imageData: ImageData | null = null;
@@ -92,7 +93,7 @@ export class PiecePreviewRenderer {
     canvas.addEventListener("pointercancel", this.pointerUp);
     canvas.addEventListener("lostpointercapture", this.pointerUp);
     document.addEventListener("visibilitychange", this.wake);
-    this.motion.addEventListener("change", this.motionChanged);
+    this.unsubscribeMotion = subscribeMotion(this.motionChanged);
     services.renderer.domElement.addEventListener("webglcontextlost", this.contextLost);
     services.renderer.domElement.addEventListener("webglcontextrestored", this.contextRestored);
   }
@@ -109,10 +110,10 @@ export class PiecePreviewRenderer {
   setSize(fraction: number): void { this.sizeScale = 1 + fraction; this.wake(); }
   resetView(): void { this.rotation.rotation.y = -0.35; this.resumeAt = performance.now() + 2500; this.wake(); }
   play(result: PieceStatMutationResult): void {
-    if (!this.motion.matches) this.effects.play(result, performance.now());
+    if (!isMotionReduced()) this.effects.play(result, performance.now());
     this.wake();
   }
-  private readonly motionChanged = () => { this.effects.clear(); this.wake(); };
+  private readonly motionChanged = () => { this.effects.clear(); this.model.rotation.z = 0; this.model.scale.setScalar(this.sizeScale); this.wake(); };
   private readonly contextLost = () => { this.lost = true; cancelAnimationFrame(this.frame); this.frame = 0; this.onAvailability(false); };
   private readonly contextRestored = () => { this.lost = false; this.wake(); };
   private readonly pointerDown = (event: PointerEvent) => {
@@ -137,7 +138,7 @@ export class PiecePreviewRenderer {
     if (this.disposed || this.lost || !this.context || !this.mesh || document.hidden) return;
     const bounds = this.canvas.getBoundingClientRect();
     if (!this.canvas.isConnected || bounds.width < 1 || bounds.height < 1) return;
-    const moving = !this.motion.matches;
+    const moving = !isMotionReduced();
     if (!this.dirty && now - this.lastFrame < 1000 / 30) { if (moving) this.frame = requestAnimationFrame(this.draw); return; }
     const elapsed = Math.min((now - this.lastFrame) / 1000, 0.1);
     this.lastFrame = now; this.dirty = false;
@@ -190,7 +191,7 @@ export class PiecePreviewRenderer {
     this.canvas.removeEventListener("lostpointercapture", this.pointerUp);
     if (this.pointer !== null && this.canvas.hasPointerCapture(this.pointer)) this.canvas.releasePointerCapture(this.pointer);
     document.removeEventListener("visibilitychange", this.wake);
-    this.motion.removeEventListener("change", this.motionChanged);
+    this.unsubscribeMotion();
     this.services.renderer.domElement.removeEventListener("webglcontextlost", this.contextLost);
     this.services.renderer.domElement.removeEventListener("webglcontextrestored", this.contextRestored);
     this.target.dispose(); this.effects.dispose(); this.material.dispose();

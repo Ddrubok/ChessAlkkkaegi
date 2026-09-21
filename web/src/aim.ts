@@ -1,4 +1,5 @@
 import { uiText } from "./ui-text";
+import { isMotionReduced, subscribeMotion } from './ui-motion';
 import {
   Box3,
   BufferGeometry,
@@ -1570,6 +1571,7 @@ export function handleAimPieceRemoved(
   pieceId: string,
 ): void {
   runtime.pulses.delete(pieceId);
+  if (!runtime.pulses.size) pulseRuntimes.delete(runtime);
   if (
     runtime.selectedPieceId === pieceId ||
     runtime.activeAim?.pieceId === pieceId
@@ -1585,6 +1587,7 @@ export function startLaunchPulse(
   runtime: AimRuntime,
   pieceId: string,
 ): void {
+  if (isMotionReduced()) { clearLaunchMotion(runtime); return; }
   const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
   if (mesh === undefined) {
     return;
@@ -1598,7 +1601,18 @@ export function startLaunchPulse(
     baseScale: mesh.scale.clone(),
     startedAt: performance.now(),
   });
+  pulseRuntimes.add(runtime);
 }
+
+const pulseRuntimes = new Set<AimRuntime>();
+function clearLaunchMotion(runtime: AimRuntime): void {
+  for (const pulse of runtime.pulses.values()) pulse.mesh.scale.copy(pulse.baseScale);
+  runtime.pulses.clear();
+  pulseRuntimes.delete(runtime);
+}
+subscribeMotion(() => { if (isMotionReduced()) for (const runtime of pulseRuntimes) clearLaunchMotion(runtime); });
+if (typeof window !== 'undefined') window.addEventListener('pagehide', () => { for (const runtime of pulseRuntimes) clearLaunchMotion(runtime); });
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden) for (const runtime of pulseRuntimes) clearLaunchMotion(runtime); });
 
 /**
  * 발사 펄스의 화면 시간만 진행해 물리 step과 독립적으로 렌더 강조 배율을 갱신한다.
@@ -1607,6 +1621,7 @@ export function updateLaunchPulses(
   runtime: AimRuntime,
   now: number,
 ): void {
+  if (isMotionReduced()) { clearLaunchMotion(runtime); return; }
   for (const [pieceId, pulse] of runtime.pulses) {
     const progress =
       (now - pulse.startedAt) / 1000 / LAUNCH_PULSE_SECONDS;
@@ -1621,6 +1636,7 @@ export function updateLaunchPulses(
         1 + Math.sin(progress * Math.PI) * 0.06,
       );
   }
+  if (!runtime.pulses.size) pulseRuntimes.delete(runtime);
 }
 
 /**
