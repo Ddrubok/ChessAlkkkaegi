@@ -1,4 +1,6 @@
 import { progressStorage } from "./progress-storage";
+import { createPanelMotion } from './ui-motion';
+import { beginResultMotion, closeResultMotion } from './result-motion';
 import type { PieceType } from "./config";
 import { I18nManager, type LanguageCode } from "./i18n";
 import { failureReason, medalText, puzzleText } from "./puzzle-text";
@@ -137,6 +139,7 @@ export class PuzzleUI {
   private activeHintLevel: 0 | 1 | 2 = 0;
   private busy = false;
   private actionError = "";
+  private readonly motion = createPanelMotion();
 
   constructor(private readonly app: HTMLElement, private readonly options: PuzzleUiOptions) {
     this.puzzles = options.puzzles?.length ? options.puzzles : DEFAULT_PUZZLES;
@@ -227,11 +230,15 @@ export class PuzzleUI {
   }
 
   hide(): void {
+    closeResultMotion(this.root);
+    this.motion.cancel();
     this.root.hidden = true;
     this.root.replaceChildren();
   }
 
   dispose(): void {
+    closeResultMotion(this.root);
+    this.motion.cancel();
     this.unsubscribe();
     this.root.removeEventListener("click", this.handleClick);
     this.root.removeEventListener("keydown", this.handleKeydown);
@@ -308,6 +315,7 @@ export class PuzzleUI {
   }
 
   private render(): void {
+    if (this.screen !== 'result') closeResultMotion(this.root);
     this.root.dataset.screen = this.screen;
     this.root.dataset.hintOpen = this.screen === "playing" ? String(this.hintOpen) : "false";
     this.root.replaceChildren();
@@ -315,6 +323,12 @@ export class PuzzleUI {
     else if (this.screen === "briefing") this.renderBriefing();
     else if (this.screen === "playing") this.renderPlaying();
     else this.renderResult();
+    if (this.screen === 'result') {
+      const title = this.root.querySelector<HTMLElement>('[data-result-title]');
+      if (title) beginResultMotion(this.root, `puzzle:${this.currentPuzzle?.id}:${this.result?.success}`, title);
+    }
+    if (this.screen === 'library' || this.screen === 'briefing') this.motion.refresh(this.root.firstElementChild as HTMLElement | null, `${this.screen}:${this.currentPuzzle?.id ?? ''}`);
+    else this.motion.cancel();
   }
 
   private renderLibrary(): void {

@@ -1,4 +1,5 @@
 import { I18nManager } from "./i18n";
+import { createPanelMotion } from './ui-motion';
 import {
   SocialService,
   type FriendProfile,
@@ -67,6 +68,7 @@ export async function openFriendsModal(
   `;
 
   let closed = false;
+  const motion = createPanelMotion();
   let generation = 0;
   let activeChallengeRoom: string | null = null;
   let challengePending = false;
@@ -86,6 +88,7 @@ export async function openFriendsModal(
   const close = () => {
     if (closed) return;
     closed = true;
+    motion.cancel();
     generation++;
     if (activeChallengeRoom) {
       const roomId = activeChallengeRoom;
@@ -128,6 +131,7 @@ export async function openFriendsModal(
     `;
     card.querySelector<HTMLButtonElement>("#friends-login-close-btn")?.addEventListener("click", close);
     card.querySelector<HTMLButtonElement>('button')?.focus();
+    motion.refresh(card);
     return;
   }
 
@@ -191,6 +195,7 @@ export async function openFriendsModal(
     });
 
     const body = card.querySelector("#friends-tab-body") as HTMLElement;
+    motion.refresh(card, currentTab, body);
     (activeId ? card.querySelector<HTMLElement>(`#${activeId}`) : null)?.focus();
     if (!card.contains(document.activeElement)) card.querySelector<HTMLElement>('#friends-close-btn')?.focus();
 
