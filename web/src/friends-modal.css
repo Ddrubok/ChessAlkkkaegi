@@ -1,0 +1,11 @@
+.friends-modal-card { min-width: 0; overflow-wrap: anywhere; }
+.friends-modal-card button { min-width: 0; }
+.friends-search-form { display: flex; gap: 8px; }
+.friends-search-form input { min-width: 0; width: 0; }
+#friends-retry-btn { border: 0; border-radius: 8px; padding: 10px 16px; background: #2563eb; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+.friends-modal-card :focus-visible { outline: 2px solid #7dd3fc; outline-offset: 3px; }
+@media (max-width: 420px) {
+  .friends-search-form { flex-direction: column; }
+  .friends-search-form input { width: 100%; }
+  .friends-search-form button { width: 100%; white-space: normal !important; }
+}

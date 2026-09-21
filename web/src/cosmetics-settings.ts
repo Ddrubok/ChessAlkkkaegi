@@ -106,8 +106,7 @@ export function mountCosmeticsSettingsPanel(
             <div class="cosmetics-banner-card" data-bg="plain" data-has-badge="false">
               <div class="cosmetics-layer-bg"></div>
               <div class="cosmetics-layer-content" style="left:12%;">
-                <div class="cosmetics-player-name">${escapeHtml(copy.guestBadge)}</div>
-                <div class="cosmetics-player-tier">${escapeHtml(copy.guestNotice)}</div>
+                <div class="cosmetics-player-name">${escapeHtml(options?.getProfile?.()?.nickname || copy.guestBadge)}</div>
               </div>
             </div>
           </div>

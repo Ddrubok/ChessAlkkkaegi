@@ -1,3 +1,5 @@
+import { createWeeklyChallengeHud } from "./weekly-challenge-hud";
+import { updateQuestSummaries } from "./quest-ui";
 import { createBannerMatch, settleBannerMatch, finishBannerMatch, type BannerMatch } from "./banner-match";
 import { readOpponentCosmetics } from "./banner-profile";
 import { getPlayerBannerTheme } from "./banner-theme";
@@ -15,7 +17,7 @@ import { createQuestId, makePieceLaunchEvent, makePuzzleClearEvent, makePveWinEv
 import { isQuestPieceType, isQuestPuzzleId } from "./quest-model";
 import { appendQuestResult, captureQuestResultBaseline, openQuestBook, type QuestResultBaseline } from "./quest-ui";
 import { weeklyChallengeStorage } from "./weekly-challenge-storage";
-import { appendWeeklyChallengeResult, appendWeeklyRecoveryControls, openWeeklyChallenge, type WeeklyChallengeUiActions } from "./weekly-challenge-ui";
+import { appendWeeklyChallengeResult, appendWeeklyRecoveryControls, openWeeklyChallenge, updateWeeklyChallengeSummaries, weeklyChallengeCopy, type WeeklyChallengeUiActions } from "./weekly-challenge-ui";
 import { countWeeklySettledTurn, finishWeeklyStage, pickWeeklyCard } from "./weekly-challenge-run";
 import type { WeeklyChallengeActionKind, WeeklyChallengeEvent, WeeklyChallengePracticeRun } from "./weekly-challenge-model";
 import { getTier } from "./tier";
@@ -328,7 +330,7 @@ async function bootstrap(): Promise<void> {
   const weeklyNotReady = async (): Promise<void> => { throw new Error("Weekly challenge world is still loading."); };
   let weeklyUiActions: WeeklyChallengeUiActions = {
     practice: weeklyNotReady, start: weeklyNotReady, resume: weeklyNotReady,
-    takeover: weeklyNotReady, terminate: weeklyNotReady,
+    takeover: weeklyNotReady, terminate: weeklyNotReady, retry: weeklyNotReady,
   };
   menuRuntime.onOpenWeeklyChallenge = () => openWeeklyChallenge(weeklyChallengeStorage, weeklyUiActions);
   const assets = await loadChessAssets((event) => {
@@ -429,6 +431,7 @@ async function bootstrap(): Promise<void> {
   let weeklyRunGeneration = 0;
   let weeklyRecoveryVisible = false;
   let weeklyRunOwner: string | null = null;
+  let weeklySavePending = false, weeklySaveError = false;
   const stageRunPoints = createStageRunPointState();
   let replayDevelopmentRuntime: ReplayDevelopmentRuntime | null =
     null;
@@ -583,9 +586,12 @@ async function bootstrap(): Promise<void> {
     }
   });
   questStorage.subscribe(() => {
-    if (menuRuntime.visible) renderMainMenu(menuRuntime);
+    if (menuRuntime.visible) updateQuestSummaries(menuRuntime.overlay, questStorage);
   });
   weeklyChallengeStorage.subscribe(() => {
+    const view = weeklyChallengeStorage.view();
+    weeklySavePending = view.pending.length > 0 || view.pendingCommands.length > 0;
+    weeklySaveError = ["offline", "missing-server", "error", "blocked"].includes(view.syncState);
     if (weeklyAccountAttempt && weeklyResidentRuntime) {
       const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
       if (weeklyChallengeStorage.owner !== weeklyRunOwner || !attempt || attempt.ownerSessionId !== weeklyChallengeStorage.clientSessionId) {
@@ -593,7 +599,7 @@ async function bootstrap(): Promise<void> {
         showWeeklyRecovery(async () => false, async () => {});
       }
     }
-    if (menuRuntime.visible) renderMainMenu(menuRuntime);
+    if (menuRuntime.visible) updateWeeklyChallengeSummaries(menuRuntime.overlay, weeklyChallengeStorage);
   });
   let puzzleHintLevel: 0 | 1 | 2 = 0;
   let puzzleFinished = false;
@@ -741,6 +747,9 @@ async function bootstrap(): Promise<void> {
     onTimeoutLaunch: handleTurnTimeout,
     getTrackedObjective: () => trackedMasteryText(progressStorage),
   });
+  const weeklyHud = createWeeklyChallengeHud(app);
+  let weeklyHudLanguage = I18nManager.getLanguage();
+  let weeklyHudCopy = weeklyChallengeCopy();
   let appliedEnemyBuffStepScale =
     tuningRuntime.settings.enemyStageBuffScale;
   let appliedCardEffectScale =
@@ -1997,6 +2006,20 @@ async function bootstrap(): Promise<void> {
       (now, frameDelta) => {
         turnHud.update(now, frameDelta);
         playerBanners.update();
+        const weeklyVisible = gameModeRuntime?.mode === "weekly" && weeklyRun !== null && !isMenuBlocking(menuRuntime) && !gameModeRuntime.switching && turnRuntime.phase !== "match-over" && !weeklyRecoveryVisible;
+        if (weeklyRun && weeklyVisible) {
+          if (weeklyHudLanguage !== I18nManager.getLanguage()) {
+            weeklyHudLanguage = I18nManager.getLanguage();
+            weeklyHudCopy = weeklyChallengeCopy();
+          }
+          const c = weeklyHudCopy;
+          weeklyHud.update({
+            visible:true, source:weeklyAccountAttempt ? "account" : "practice", stage:weeklyRun.stage,
+            completedStages:weeklyRun.score.completedStages, completedStageOwnTurns:weeklyRun.score.completedStageOwnTurns,
+            status:weeklyRun.status === "ready-for-stage" ? "playing" : weeklyRun.status,
+            saveState:!weeklyAccountAttempt ? "none" : weeklySaveError ? "error" : weeklySavePending || weeklyActionPendingCount > 0 || !!weeklyPendingAction || !!weeklyPendingAckEvent ? "pending" : "none",
+          }, {title:c.title,account:c.account,practice:c.practiceStatus,playing:c.playing,choosing:c.choosing,finished:c.finished,allCleared:c.allCleared,score:c.hudScore,pending:c.pendingStatus,error:c.errorStatus});
+        } else if (!weeklyHud.element.hidden) weeklyHud.element.hidden = true;
         if (activePuzzle && gameModeRuntime?.mode === "puzzle") {
           puzzleUI?.updateMarkers(activePuzzle.pieces.flatMap((piece) => {
             const binding = physicsRuntime.pieces.get(piece.id);
@@ -2244,6 +2267,7 @@ async function bootstrap(): Promise<void> {
     return { definition, stage: cp.boundary === "awaiting-card" ? cp.stageToPlay : attempt.currentStage, score: { ...attempt.score }, cards: { ...cp.cards }, stageOwnTurns: attempt.acknowledgedStageOwnTurns, pendingOffer: cp.pendingOffer ? { ...cp.pendingOffer, choices: [...cp.pendingOffer.choices] } : null, status: cp.boundary, endedBy: null };
   };
   weeklyUiActions = {
+    retry: async () => { await weeklyChallengeStorage.refresh(); },
       practice: async (definition) => { const run = await weeklyChallengeStorage.ensurePractice(definition); await startPreparedWeeklyRun(run, false); },
       start: async () => { const response = await weeklyChallengeStorage.beginAccountAttempt(); if (!response?.ok) throw new Error(response?.code ?? "Unable to start weekly challenge."); const run = runFromAccountBoundary(); if (!run) throw new Error("Weekly boundary is unavailable."); await startPreparedWeeklyRun(run, true); },
       resume: async () => { const response = await weeklyChallengeStorage.control("resume"); if (!response?.ok) throw new Error(response?.code ?? "Unable to resume weekly challenge."); const run = runFromAccountBoundary(); if (!run) throw new Error("Weekly boundary is unavailable."); await startPreparedWeeklyRun(run, true); },
@@ -2451,6 +2475,7 @@ async function bootstrap(): Promise<void> {
     );
   });
   returnToMenuAction = async (): Promise<void> => {
+    weeklyHud.element.hidden = true;
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }

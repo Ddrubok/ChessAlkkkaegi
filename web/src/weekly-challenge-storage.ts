@@ -396,7 +396,7 @@ export class WeeklyChallengeStorage {
   }
   async refreshAtBoundary(): Promise<void> {
     const current = this.cache.snapshot?.currentWeek;
-    if (this.network && current && this.estimatedNow() >= Date.parse(current.endsAt)) { await this.refresh(); return; }
+    if (this.network && (!current || this.estimatedNow() >= Date.parse(current.endsAt))) { await this.refresh(); return; }
     if (!this.network && (!this.cache.localDefinitions[0] || this.estimatedNow() >= Date.parse(this.cache.localDefinitions[0].localEndsAt))) {
       const generation = this.generation, owner = this.owner, now = new Date(this.estimatedNow());
       const localDefinition = await createFallbackPracticeDefinition(now);

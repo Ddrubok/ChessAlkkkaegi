@@ -1,3 +1,7 @@
+import { progressUiCopy } from "./progress-ui-copy";
+import { formatProgressDuration } from "./progress-duration";
+import { summarizeQuestTargets } from "./quest-target-summary";
+import { puzzleText } from "./puzzle-text";
 import { escapeHtml } from "./html";
 import { I18nManager, type LanguageCode } from "./i18n";
 import { eventSupportsMetric, questDefinitionsFor } from "./quest-definitions";
@@ -58,11 +62,15 @@ const STATE_ROWS: Partial<Record<LanguageCode, Copy["states"]>> = {
   ru: { active: "В процессе", completed: "Завершено", expired: "Истекло", awaiting: "Ожидает синхронизации", stale: "Событие закрытого периода сохранено" },
   "pt-BR": { active: "Em andamento", completed: "Concluída", expired: "Expirada", awaiting: "Aguardando sincronização", stale: "Evento de período encerrado preservado" },
 };
-function copy(): Copy {
+function copy(): Copy & ReturnType<typeof progressUiCopy> {
   const language = I18nManager.getLanguage(), local = COPY[language] ?? {};
   const names = NAME_ROWS[language] ? Object.fromEntries(NAME_IDS.map((id, index) => [id, NAME_ROWS[language]![index]])) : {};
   const sync = SYNC_ROWS[language] ? Object.fromEntries(SYNC_KEYS.map((id, index) => [id, SYNC_ROWS[language]![index]])) : {};
-  return { ...EN, ...local, sync: { ...EN.sync, ...sync, ...(local.sync ?? {}) }, names: { ...EN.names, ...names, ...(local.names ?? {}) }, states: { ...EN.states, ...(STATE_ROWS[language] ?? {}), ...(local.states ?? {}) } };
+  const extra = progressUiCopy();
+  const winTemplates: Record<LanguageCode, string> = { en: "Win {count} Stage or Online Ranked matches", ko: "스테이지 또는 온라인 랭크 {count}승", ja: "ステージまたはオンラインランクで{count}勝", "zh-CN": "关卡或在线排位获胜{count}次", de: "{count} Siege im Stufenkampf oder Online-Rangmodus", fr: "Gagner {count} combats de niveau ou classés en ligne", es: "Gana {count} batallas de etapa o clasificatorias en línea", ru: "{count} побед на этапах или в сетевом рейтинге", "pt-BR": "Vença {count} batalhas de fase ou ranqueadas online" };
+  const winName = (count: number) => winTemplates[language].replace("{count}", String(count));
+  const winNames = { "daily-wins": winName(2), "weekly-wins": winName(10) };
+  return { ...EN, ...local, ...extra, sync: { ...EN.sync, ...sync, ...(local.sync ?? {}) }, names: { ...EN.names, ...names, ...(local.names ?? {}), ...winNames }, states: { ...EN.states, ...(STATE_ROWS[language] ?? {}), ...(local.states ?? {}) } };
 }
 
 function activeProgress(view: QuestStorageView, cadence: QuestCadence): QuestProgress[] {
@@ -74,12 +82,10 @@ function syncLabel(view: QuestStorageView, c = copy()): string { return c.sync[v
 function countdown(view: QuestStorageView, cadence: QuestCadence): string {
   const end = view.periods.find((item) => item.cadence === cadence)?.endsAt;
   if (!end) return "—";
-  const seconds = Math.max(0, Math.floor((Date.parse(end) - Date.parse(view.estimatedNow)) / 1000));
-  const days = Math.floor(seconds / 86400), hours = Math.floor((seconds % 86400) / 3600), minutes = Math.floor((seconds % 3600) / 60);
-  return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+  return formatProgressDuration(Date.parse(end), Date.parse(view.estimatedNow), I18nManager.getLanguage());
 }
-function eligibleModes(metric: string, c: Copy): string {
-  if (metric === "wins") return [c.stage, c.online].join(" · ");
+function eligibleModes(metric: string, c: ReturnType<typeof copy>): string {
+  if (metric === "wins") return [c.stage, c.ranked].join(" · ");
   if (metric === "piece-types") return [c.stage, c.online, c.puzzle, c.tutorial].join(" · ");
   return c.puzzle;
 }
@@ -89,17 +95,34 @@ function questHasPendingEvent(view: QuestStorageView, periodId: string, questId:
   return view.outbox.some((event) => event.requestedPeriods.some((period) => period.periodId === periodId) && eventSupportsMetric(event.kind, definition.metric, event.kind === "puzzle-clear" ? event.payload.medal : undefined));
 }
 
-export function renderQuestProfileSummary(storage: QuestStorage): string {
+function summaryCounts(view: QuestStorageView): string {
+  const c = copy();
+  return view.ready ? `${c.daily} ${completed(view, "daily")}/3 · ${c.weekly} ${completed(view, "weekly")}/5` : c.sync.loading;
+}
+function renderQuestEntry(storage: QuestStorage, location: "lobby" | "profile"): string {
   const view = storage.view(), c = copy();
-  return `<section class="quest-profile-summary"><div><strong>${escapeHtml(c.summary)}</strong><span>${escapeHtml(c.daily)} ${completed(view, "daily")}/3 · ${escapeHtml(c.weekly)} ${completed(view, "weekly")}/5</span></div><button type="button" data-open-quests>${escapeHtml(c.title)}</button></section>`;
+  return `<section class="quest-${location === "lobby" ? "lobby-entry" : "profile-summary"}"><div><strong>${escapeHtml(location === "lobby" ? c.todayQuests : c.summary)}</strong><span data-quest-summary-counts>${escapeHtml(summaryCounts(view))}</span></div><button type="button" data-open-quests data-quest-opener="${location}"${view.ready ? "" : " disabled"}>${escapeHtml(location === "lobby" ? c.viewAll : c.title)}</button></section>`;
+}
+export function renderQuestProfileSummary(storage: QuestStorage): string { return renderQuestEntry(storage, "profile"); }
+export function renderQuestLobbyEntry(storage: QuestStorage): string { return renderQuestEntry(storage, "lobby"); }
+export function updateQuestSummaries(root: HTMLElement, storage: QuestStorage): void {
+  const view = storage.view();
+  root.querySelectorAll<HTMLElement>("[data-quest-summary-counts]").forEach(node => { node.textContent = summaryCounts(view); });
+  root.querySelectorAll<HTMLButtonElement>("[data-open-quests]").forEach(node => { node.disabled = !view.ready; });
 }
 function listHtml(view: QuestStorageView, cadence: QuestCadence): string {
   const c = copy(), progress = activeProgress(view, cadence);
   return questDefinitionsFor(cadence).map((definition) => {
     const item = progress.find((candidate) => candidate.questId === definition.id);
     const value = item ? questProgressCount(item) : 0;
+    const targets = summarizeQuestTargets(definition, item, view.periods.find(p => p.cadence === cadence)?.periodId ?? "");
+    const pieceNames: Record<string, string> = { Pawn:I18nManager.t("lobby.piece_pawn"), Knight:I18nManager.t("lobby.piece_knight"), Bishop:I18nManager.t("lobby.piece_bishop"), Rook:I18nManager.t("lobby.piece_rook"), Queen:I18nManager.t("lobby.piece_queen"), King:I18nManager.t("lobby.piece_king") };
+    const targetName = (id: string) => targets?.kind === "pieces" ? pieceNames[id] ?? id
+      : /^P(0[1-9]|1[0-2])$/.test(id) ? puzzleText("puzzle_" + id.slice(1) + "_title") : id;
+    const targetHtml = targets ? `<ul class="quest-targets" aria-label="${escapeHtml(c.achievedTargets)}">${targets.achievedIds.map(id => `<li class="is-achieved">✓ ${escapeHtml(targetName(id))}</li>`).join("")}</ul>${targets.unrecordedIds.length ? `<small>${escapeHtml(c.unrecordedPieces)}</small><ul class="quest-targets" aria-label="${escapeHtml(c.unrecordedPieces)}">${targets.unrecordedIds.map(id => `<li>${escapeHtml(targetName(id))}</li>`).join("")}</ul>` : ""}<small class="quest-next">${escapeHtml(targets.complete ? c.targetComplete : (targets.kind === "pieces" ? c.needPieces : definition.metric === "distinct-gold-puzzles" ? c.needGoldPuzzles : c.needPuzzles).replace("{count}", String(targets.remaining)))}</small>` : "";
+
     const state = item?.status === "completed" ? c.states.completed : item?.status === "expired" ? c.states.expired : item && questHasPendingEvent(view, item.periodId, item.questId) ? c.states.awaiting : c.states.active;
-    return `<article class="quest-card${item?.status === "completed" ? " is-complete" : ""}"><div><strong>${escapeHtml(c.names[definition.id] ?? definition.id)}</strong><span>${value}/${definition.target}</span></div><small>${escapeHtml(c.eligible)}: ${escapeHtml(eligibleModes(definition.metric, c))}</small><em>${escapeHtml(state)}</em><progress max="${definition.target}" value="${Math.min(value, definition.target)}">${value}/${definition.target}</progress></article>`;
+    return `<article class="quest-card${item?.status === "completed" ? " is-complete" : ""}"><div><strong>${escapeHtml(c.names[definition.id] ?? definition.id)}</strong><span>${value}/${definition.target}</span></div><small>${escapeHtml(c.eligible)}: ${escapeHtml(eligibleModes(definition.metric, c))}</small>${definition.metric === "wins" ? `<small>${escapeHtml(c.winExclusions)}</small>` : ""}<em>${escapeHtml(state)}</em><progress max="${definition.target}" value="${Math.min(value, definition.target)}">${value}/${definition.target}</progress>${targetHtml}</article>`;
   }).join("");
 }
 
@@ -107,6 +130,7 @@ let activeQuestBookClose: (() => void) | null = null;
 export function openQuestBook(_container: HTMLElement, storage: QuestStorage, onRoute?: (route: "stage" | "puzzle") => void): void {
   activeQuestBookClose?.();
   const c = copy(), opener = document.activeElement instanceof HTMLElement ? document.activeElement : null, openedOwner = storage.owner;
+  const openerKey = opener?.dataset.questOpener;
   const modal = document.createElement("section");
   modal.className = "quest-modal"; modal.setAttribute("role", "dialog"); modal.setAttribute("aria-modal", "true"); modal.setAttribute("aria-labelledby", "quest-title");
   let cadence: QuestCadence = "daily", closed = false, unsubscribe = () => {}, countdownTimer: number | null = null;
@@ -129,7 +153,7 @@ export function openQuestBook(_container: HTMLElement, storage: QuestStorage, on
     const historyExpired = view.progress.filter((item) => item.status === "expired").length;
     const staleText = view.staleOutcomes.length ? ` · ${c.states.stale}: ${view.staleOutcomes.length}` : "";
     const routes = onRoute ? `<h3>${escapeHtml(c.routes)}</h3><div><button type="button" data-quest-route="stage">${escapeHtml(c.stage)}</button><button type="button" data-quest-route="puzzle">${escapeHtml(c.puzzle)}</button></div>` : "";
-    modal.innerHTML = `<div class="quest-dialog"><header><div><p>${escapeHtml(c.summary)}</p><h2 id="quest-title" tabindex="-1">${escapeHtml(c.title)}</h2></div><button type="button" data-quest-close="" aria-label="${escapeHtml(c.close)}">×</button></header><div class="quest-tabs" role="tablist" aria-label="${escapeHtml(c.title)}"><button id="quest-tab-daily" type="button" role="tab" data-cadence="daily" aria-selected="${cadence === "daily"}" aria-controls="quest-panel-daily" tabindex="${cadence === "daily" ? 0 : -1}">${escapeHtml(c.daily)} ${completed(view, "daily")}/3</button><button id="quest-tab-weekly" type="button" role="tab" data-cadence="weekly" aria-selected="${cadence === "weekly"}" aria-controls="quest-panel-weekly" tabindex="${cadence === "weekly" ? 0 : -1}">${escapeHtml(c.weekly)} ${completed(view, "weekly")}/5</button></div><p class="quest-countdown">${escapeHtml(c.resets.replace("{time}", countdown(view, cadence)))}</p><div id="quest-panel-${cadence}" class="quest-list" role="tabpanel" aria-labelledby="quest-tab-${cadence}">${listHtml(view, cadence)}</div>${historyExpired ? `<p class="quest-history-status">${escapeHtml(c.states.expired)}: ${historyExpired}</p>` : ""}<section class="quest-routes"><h3>${escapeHtml(c.eligible)}</h3><p>${escapeHtml([c.stage, c.online, c.puzzle, c.tutorial].join(" · "))}</p>${routes}</section><footer><p class="quest-sync is-${view.syncState}" role="status">${escapeHtml(syncLabel(view, c) + staleText)}</p>${["offline", "missing-server", "auth-error"].includes(view.syncState) ? `<button type="button" data-quest-retry="">${escapeHtml(I18nManager.t("lobby.progress_retry"))}</button>` : ""}</footer></div>`;
+    modal.innerHTML = `<div class="quest-dialog"><header><div><p>${escapeHtml(c.summary)}</p><h2 id="quest-title" tabindex="-1">${escapeHtml(c.title)}</h2></div><button type="button" data-quest-close="" aria-label="${escapeHtml(c.close)}">×</button></header><div class="quest-tabs" role="tablist" aria-label="${escapeHtml(c.title)}"><button id="quest-tab-daily" type="button" role="tab" data-cadence="daily" aria-selected="${cadence === "daily"}" aria-controls="quest-panel-daily" tabindex="${cadence === "daily" ? 0 : -1}">${escapeHtml(c.daily)} ${completed(view, "daily")}/3</button><button id="quest-tab-weekly" type="button" role="tab" data-cadence="weekly" aria-selected="${cadence === "weekly"}" aria-controls="quest-panel-weekly" tabindex="${cadence === "weekly" ? 0 : -1}">${escapeHtml(c.weekly)} ${completed(view, "weekly")}/5</button></div><p class="quest-countdown">${escapeHtml(Date.parse(view.periods.find(p => p.cadence === cadence)?.endsAt ?? "") - Date.parse(view.estimatedNow) < 60000 ? c.resetsSoon : c.resets.replace("{time}", countdown(view, cadence)))}</p><div id="quest-panel-${cadence}" class="quest-list" role="tabpanel" aria-labelledby="quest-tab-${cadence}">${listHtml(view, cadence)}</div>${historyExpired ? `<p class="quest-history-status">${escapeHtml(c.states.expired)}: ${historyExpired}</p>` : ""}<section class="quest-routes">${routes}</section><footer><p class="quest-sync is-${view.syncState}" role="status">${escapeHtml(syncLabel(view, c) + staleText)}</p>${["offline", "missing-server", "auth-error"].includes(view.syncState) ? `<button type="button" data-quest-retry="">${escapeHtml(I18nManager.t("lobby.progress_retry"))}</button>` : ""}</footer></div>`;
     const dialog = modal.querySelector<HTMLElement>(".quest-dialog"); if (dialog) dialog.scrollTop = priorScroll;
     if (selector) (modal.querySelector<HTMLElement>(selector) ?? modal.querySelector<HTMLElement>("[data-quest-close]") ?? modal.querySelector<HTMLElement>("#quest-title"))?.focus();
   };
@@ -138,7 +162,10 @@ export function openQuestBook(_container: HTMLElement, storage: QuestStorage, on
     background.forEach((node, index) => { node.inert = previousInert[index]; });
     document.documentElement.style.overflowX = priorHtmlOverflowX; document.body.style.overflowX = priorBodyOverflowX; if (!hadOpenClass) document.body.classList.remove("quest-modal-open");
     window.scrollTo(scrollX, scrollY); if (activeQuestBookClose === close) activeQuestBookClose = null;
-    const liveOpener = opener?.isConnected ? opener : document.querySelector<HTMLElement>("[data-open-quests]"); liveOpener?.focus();
+    const visible = (node: HTMLElement | null): node is HTMLElement => !!node?.isConnected && node.getClientRects().length > 0 && !node.closest("[inert], [hidden]");
+    const keyed = openerKey ? document.querySelector<HTMLElement>(`[data-quest-opener="${CSS.escape(openerKey)}"]`) : null;
+    const liveOpener = visible(opener) ? opener : visible(keyed) ? keyed : [...document.querySelectorAll<HTMLElement>("[data-open-quests]")].find(visible);
+    liveOpener?.focus();
   };
   activeQuestBookClose = close;
   unsubscribe = storage.subscribe(() => render(true));

@@ -102,6 +102,10 @@
 .pve-stage-footer button { width: 100%; min-height: 48px; padding: 12px 18px; border: 0; border-radius: 9px; background: #16a34a; color: #fff; font: 700 15px/1.5 system-ui, sans-serif; cursor: pointer; }
 .pve-lobby-modal button:focus-visible { outline: 3px solid #f5ce83; outline-offset: 2px; }
 @media (max-width: 780px) {
+  .piece-stat-workbench[data-mode="research"] .psw-pieces { order: 0; }
+  .piece-stat-workbench[data-mode="research"] .psw-editor { order: 1; }
+  .piece-stat-workbench[data-mode="research"] .psw-preview-column { order: 2; }
+  .piece-stat-workbench[data-mode="research"] .psw-canvas-wrap { height: 140px; }
   .psw-layout { grid-template-columns: 1fr; gap: 14px; }
   .psw-pieces { flex-direction: row; overflow-x: auto; padding: 3px 3px 8px; }
   .psw-pieces button { flex: 0 0 80px; }

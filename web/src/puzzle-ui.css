@@ -22,7 +22,14 @@
 .puzzle-ui-overlay[hidden] { display: none; }
 .piece-stat-modal-card.puzzle-ui-card-shell { max-width: 980px; width: 100%; max-height: calc(100dvh - 40px); overflow-y: auto; }
 .puzzle-ui-library-card, .puzzle-ui-briefing-card { height: min(960px, calc(100dvh - 40px)); }
-.puzzle-ui-briefing-card > .puzzle-ui-footer { margin-top: auto; }
+.puzzle-ui-briefing-card > .puzzle-ui-footer { margin-top: 0; padding-top:0; border:0; }
+.puzzle-ui-briefing-card > .puzzle-ui-footer button { width:100%; min-height:44px; }
+.puzzle-ui-info .puzzle-ui-policy { font-size:12px; color:#aebbd0; margin:0; }
+.puzzle-ui-extra { padding:12px; border:1px solid #34445e; border-radius:10px; }
+.puzzle-ui-extra summary { cursor:pointer; min-height:24px; color:#f5ce83; font-weight:700; }
+.puzzle-ui-extra p { color:#d5deec; font-size:14px; line-height:1.6; }
+.puzzle-ui-header > div { min-width:0; }
+.puzzle-ui-header button { flex-shrink:0; white-space:nowrap; min-height:44px; }
 .puzzle-ui-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px solid #34445e; }
 .puzzle-ui-header h2, .puzzle-ui-header h3, .puzzle-ui-result-heading h2 { margin: 0; color: #f8fafc; }
 .puzzle-ui-header h2 { font-size: 22px; line-height: 1.25; }

@@ -9,11 +9,9 @@ import { resolveRuntimeAssetUrl } from "./portable-assets";
 import { progressStorage } from "./progress-storage";
 import { PUZZLE_CATALOG, getPuzzleProgress, loadPuzzleProgress } from "./puzzle";
 import { equippedItem, loadMasterySnapshot } from "./mastery";
-import { masteryCopy, renderMasteryProfileSummary } from "./mastery-ui";
-import { questStorage } from "./quest-storage";
-import { renderQuestProfileSummary } from "./quest-ui";
-import { weeklyChallengeStorage } from "./weekly-challenge-storage";
-import { renderWeeklyChallengeSummary, weeklyChallengeCopy } from "./weekly-challenge-ui";
+import { masteryCopy } from "./mastery-ui";
+import { weeklyChallengeCopy } from "./weekly-challenge-ui";
+import { uiPolishCopy } from "./ui-polish-copy";
 
 export const PVE_MAX_STAGE = 10;
 export const lobbyState = { profileExpanded: false, tutorialExpanded: false };
@@ -39,7 +37,7 @@ export function safeRuntimeAssetUrl(asset: Parameters<typeof resolveRuntimeAsset
   }
 }
 
-export type HeaderActionIcon = "ranking" | "friends" | "settings" | "profile" | "tutorial" | "trophy" | "users" | "gear" | "globe" | "flag" | "bulb" | "gamepad" | "chevron" | "logout";
+export type HeaderActionIcon = "ranking" | "friends" | "settings" | "profile" | "tutorial" | "trophy" | "users" | "gear" | "globe" | "flag" | "bulb" | "gamepad" | "chevron" | "logout" | "medal";
 
 export function renderHeaderActions(options?: { showLogout?: boolean }): string;
 export function renderHeaderActions(name: HeaderActionIcon, iconSize?: number): string;
@@ -51,6 +49,7 @@ export function renderHeaderActions(nameOrOptions?: HeaderActionIcon | { showLog
   }
   const name = nameOrOptions;
   const paths: Record<typeof name, string> = {
+    medal: '<circle cx="12" cy="9" r="5"/><path d="m8.5 13-1 8 4.5-3 4.5 3-1-8"/><path d="m12 6.5.7 1.5 1.6.2-1.2 1.2.3 1.6-1.4-.8-1.4.8.3-1.6-1.2-1.2 1.6-.2Z"/>',
     ranking: '<path d="M5 19v-8m7 8V5m7 14v-5"/><path d="M3 19h18"/>',
     friends: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 19c.4-3.1 2.2-4.7 5.5-4.7s5.1 1.6 5.5 4.7M14 14.8c2.9-.4 5.1 1 5.6 4.2"/>',
     settings: '<path d="M12 8.7a3.3 3.3 0 1 0 0 6.6 3.3 3.3 0 0 0 0-6.6Z"/><path d="m19.4 15 .1.1-1.7 2.9-.2-.1a2 2 0 0 0-2.1 0l-.2.1-1.7-2.9.1-.1a2 2 0 0 0 0-2.2l-.1-.1 1.7-2.9.2.1a2 2 0 0 0 2.1 0l.2-.1 1.7 2.9-.1.1a2 2 0 0 0 0 2.2ZM4.6 15l-.1.1 1.7 2.9.2-.1a2 2 0 0 1 2.1 0l.2.1 1.7-2.9-.1-.1a2 2 0 0 1 0-2.2l.1-.1-1.7-2.9-.2.1a2 2 0 0 1-2.1 0l-.2-.1-1.7 2.9.1.1a2 2 0 0 1 0 2.2Z"/>',
@@ -90,15 +89,16 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     };
   }
   if (recommendation.kind === "online") {
+    const member = progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id;
     return {
       mode: "online",
       tutorialType: "basic",
       stage: 1,
       assetId: "lobbyHeroTutorial",
-      eyebrow: I18nManager.t("lobby.hero_eyebrow_ranked"),
-      title: I18nManager.t("lobby.mode_online"),
-      body: I18nManager.t("lobby.hero_sub_online", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }),
-      cta: I18nManager.t("lobby.hero_cta_online"),
+      eyebrow: member ? I18nManager.t("lobby.hero_eyebrow_ranked") : uiPolishCopy().rankedHint,
+      title: member ? I18nManager.t("lobby.mode_online") : uiPolishCopy().friendlyTitle,
+      body: member ? I18nManager.t("lobby.hero_sub_online", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
+      cta: member ? I18nManager.t("lobby.hero_cta_online") : uiPolishCopy().friendlyTitle,
     };
   }
   const stage = recommendation.stage;
@@ -119,7 +119,9 @@ export function renderProfileChip(user: UserProfile): string {
   const snapshot = loadMasterySnapshot(progressStorage);
   const frame = equippedItem(snapshot, "frame");
   const title = equippedItem(snapshot, "title") === "title:explorer" ? masteryCopy().explorer : "";
-  return `<button type="button" id="menu-profile-btn" class="lobby-chip${frame ? " mastery-frame-equipped" : ""}" data-profile-toggle aria-expanded="${lobbyState.profileExpanded}" aria-controls="menu-profile-panel" aria-label="${escapeHtml(I18nManager.t("lobby.profile_chip_open"))}"><img src="${escapeHtml(avatar)}" alt="" width="30" height="30"><span class="lobby-chip-name">${escapeHtml(user.nickname)}${title ? `<small class="mastery-equipped-title">${escapeHtml(title)}</small>` : ""}</span><span class="lobby-chip-tier">${renderTierBadge(user.classicMmr ?? user.mmr, false)}</span><span class="lobby-chip-chevron">${renderHeaderActions("chevron")}</span></button>`;
+  const profileLabel = escapeHtml(I18nManager.t("lobby.profile_chip_open"));
+  const medalLabel = escapeHtml(masteryCopy().book);
+  return `<div class="lobby-chip lobby-profile-heading${frame ? " mastery-frame-equipped" : ""}"><button type="button" id="menu-profile-btn" class="lobby-profile-identity" data-profile-toggle aria-expanded="${lobbyState.profileExpanded}" aria-controls="menu-profile-panel" aria-label="${profileLabel}"><img src="${escapeHtml(avatar)}" alt="" width="30" height="30"><span class="lobby-chip-name">${escapeHtml(user.nickname)}${title ? `<small class="mastery-equipped-title">${escapeHtml(title)}</small>` : ""}</span></button><button type="button" class="lobby-icon-btn lobby-mastery-btn" data-open-mastery aria-label="${medalLabel}" title="${medalLabel}">${renderHeaderActions("medal", 20)}</button><button type="button" class="lobby-profile-rank" data-profile-toggle aria-expanded="${lobbyState.profileExpanded}" aria-controls="menu-profile-panel" aria-label="${profileLabel} · ${escapeHtml(formatTier(user.classicMmr ?? user.mmr))}"><span class="lobby-chip-tier">${renderTierBadge(user.classicMmr ?? user.mmr, false)}</span><span class="lobby-chip-chevron">${renderHeaderActions("chevron")}</span></button></div>`;
 }
 
 export function renderRecommendationCard(recommendation: ReturnType<typeof getRecommendation>, heroAsset: string): string {
@@ -127,6 +129,7 @@ export function renderRecommendationCard(recommendation: ReturnType<typeof getRe
 }
 
 export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: number): string {
+  const member = progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id;
   const cards = [
     { mode: "online" as const, icon: "globe" as const, label: "lobby.mode_online", status: "lobby.card_online_status", detail: "" },
     { mode: "stage" as const, icon: "flag" as const, label: "lobby.mode_stage_short", status: "lobby.card_stage_status", detail: "" },
@@ -139,11 +142,11 @@ export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: numbe
   const statusByMode: Record<LobbyMode, string> = {
     stage: I18nManager.t("lobby.card_stage_status", { cleared: maxClearedStage, max: PVE_MAX_STAGE }),
     puzzle: I18nManager.t("lobby.card_puzzle_status", { count: puzzleCount }),
-    online: I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }),
+    online: member ? I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
     hotseat: I18nManager.t("lobby.card_2p_status"),
     tutorial: "",
   };
-  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${cards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
+  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${cards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
 }
 
 export function renderFooterLinks(): string {
@@ -157,7 +160,7 @@ export function renderWeeklyChallengeEntry(): string {
 
 export function renderProfilePanel(user: UserProfile, points: number): string {
   const inert = lobbyState.profileExpanded ? "" : " inert";
-  return `<div class="lobby-profile-body"><div id="menu-profile-panel" class="lobby-profile-panel" aria-hidden="${!lobbyState.profileExpanded}"${inert}><p class="lobby-profile-points">${escapeHtml(I18nManager.t("common.points"))} <strong>${points} P</strong></p><div class="menu-tier-columns"><div class="menu-tier-column"><div class="tier-label tier-label-classic">${I18nManager.t("online.classic_tab")}</div><div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 }))}</div></div><div class="menu-tier-column"><div class="tier-label tier-label-strategy">${I18nManager.t("online.strategy_tab")}</div><div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 }))}</div></div></div>${renderMasteryProfileSummary(progressStorage)}${renderQuestProfileSummary(questStorage)}${renderWeeklyChallengeSummary(weeklyChallengeStorage)}</div></div>`;
+  return `<div class="lobby-profile-body"><div id="menu-profile-panel" class="lobby-profile-panel" aria-hidden="${!lobbyState.profileExpanded}"${inert}><p class="lobby-profile-full-name">${escapeHtml(user.nickname)}</p><p class="lobby-profile-points">${escapeHtml(I18nManager.t("common.points"))} <strong>${points} P</strong></p><div class="menu-tier-columns"><div class="menu-tier-column"><div class="tier-label tier-label-classic">${I18nManager.t("online.classic_tab")}</div><div>${renderTierBadge(user.classicMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.classicWins ?? 0, draws: user.classicDraws ?? 0, losses: user.classicLosses ?? 0 }))}</div></div><div class="menu-tier-column"><div class="tier-label tier-label-strategy">${I18nManager.t("online.strategy_tab")}</div><div>${renderTierBadge(user.strategyMmr ?? user.mmr, true)}</div><div class="menu-tier-record">${escapeHtml(I18nManager.t("lobby.win_draw_loss", { wins: user.strategyWins ?? 0, draws: user.strategyDraws ?? 0, losses: user.strategyLosses ?? 0 }))}</div></div></div></div></div>`;
 }
 
 export function renderProfileCard(user: UserProfile, points: number): string {
