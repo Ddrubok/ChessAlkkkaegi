@@ -49,10 +49,11 @@ interface SoundRuntime {
   bgm: HTMLAudioElement;
   // 파일별 디코딩이 끝난 효과음 버퍼다.
   buffers: Map<SoundEffectId, AudioBuffer>;
-  // 첫 사용자 입력 뒤 자동재생 잠금 해제를 중복 실행하지 않는 상태다.
+  // 최초 사용자 입력 이후에만 재생과 복귀 재시도를 허용한다.
   unlocked: boolean;
-  // 같은 첫 입력에서 BGM과 버튼음을 순서대로 잇기 위해 진행 중인 잠금 해제 작업을 공유한다.
-  unlockPromise: Promise<void> | null;
+  // 중단된 효과음은 복귀 시 뒤늦게 재생하지 않는다. 볼륨은 공통 gain에서 제어한다.
+  sources: Set<AudioBufferSourceNode>;
+  sfxGain: GainNode;
   // 개별 파일 로딩 실패를 한 번만 알리기 위한 경고 키 집합이다.
   warningKeys: Set<string>;
   // 한 드래그 안에서 위쪽 임계 통과만 재생하는 세기 상태다.
@@ -81,15 +82,12 @@ const BGM_URL = resolveRuntimeAssetUrl("bgm");
 // 모듈 하나가 메뉴와 대국 전체에서 같은 BGM·버퍼·제한 상태를 공유한다.
 let soundRuntime: SoundRuntime | null = null;
 let adSoundMuted = false;
+let pageInactive = false;
 
 /** Mute advertising breaks without changing saved player preferences. */
 export function setAdSoundMuted(muted: boolean): void {
   adSoundMuted = muted;
   applySoundSettings();
-  if (muted && soundRuntime?.context.state === "running") void soundRuntime.context.suspend();
-  if (!muted && soundRuntime?.unlocked && soundRuntime.context.state === "suspended" && !document.hidden) {
-    void soundRuntime.context.resume();
-  }
 }
 
 /**
@@ -189,12 +187,38 @@ export function updateSoundSettings(patch: Partial<SoundSettings>): SoundSetting
   return { ...currentSoundSettings };
 }
 
+function canPlaySound(): boolean {
+  return !currentSoundSettings.muted && !adSoundMuted && !pageInactive && !document.hidden;
+}
+
+async function syncSoundPlayback(runtime: SoundRuntime): Promise<void> {
+  if (runtime.context.state === "closed") return;
+  if (!runtime.unlocked || !canPlaySound()) {
+    runtime.bgm.pause();
+    for (const source of runtime.sources) source.stop();
+    runtime.sources.clear();
+    if (runtime.context.state === "running") await runtime.context.suspend().catch(() => {});
+    return;
+  }
+  try {
+    if (runtime.context.state !== "running") await runtime.context.resume();
+    // A mute/background transition can happen while resume is pending.
+    if (!canPlaySound()) return;
+    if (runtime.bgm.volume > 0 && runtime.bgm.paused) {
+      void runtime.bgm.play().catch(error => warnSoundOnce(runtime, "bgm", "BGM playback failed.", error));
+    } else if (runtime.bgm.volume === 0) runtime.bgm.pause();
+  } catch (error) {
+    warnSoundOnce(runtime, "unlock", "Audio resume failed.", error);
+  }
+}
+
 export function applySoundSettings(): void {
-  if (soundRuntime === null) return;
-  const effectiveBgm = currentSoundSettings.muted || adSoundMuted
-    ? 0
-    : SOUND_BGM_VOLUME * currentSoundSettings.masterVolume * currentSoundSettings.bgmVolume;
-  soundRuntime.bgm.volume = Math.max(0, Math.min(1, effectiveBgm));
+  const runtime = soundRuntime;
+  if (runtime === null) return;
+  const master = canPlaySound() ? currentSoundSettings.masterVolume : 0;
+  runtime.bgm.volume = Math.max(0, Math.min(1, SOUND_BGM_VOLUME * master * currentSoundSettings.bgmVolume));
+  runtime.sfxGain.gain.value = Math.max(0, Math.min(1, SOUND_SFX_VOLUME * master * currentSoundSettings.sfxVolume));
+  void syncSoundPlayback(runtime);
 }
 
 /**
@@ -205,6 +229,7 @@ export function playSoundEffect(id: SoundEffectId): void {
   if (
     runtime === null ||
     !runtime.unlocked ||
+    !canPlaySound() || runtime.sfxGain.gain.value === 0 ||
     runtime.context.state !== "running"
   ) {
     return;
@@ -215,14 +240,10 @@ export function playSoundEffect(id: SoundEffectId): void {
   }
   try {
     const source = runtime.context.createBufferSource();
-    const gain = runtime.context.createGain();
     source.buffer = buffer;
-    const effectiveSfx = currentSoundSettings.muted || adSoundMuted
-      ? 0
-      : SOUND_SFX_VOLUME * currentSoundSettings.masterVolume * currentSoundSettings.sfxVolume;
-    gain.gain.value = Math.max(0, Math.min(1, effectiveSfx));
-    source.connect(gain);
-    gain.connect(runtime.context.destination);
+    source.connect(runtime.sfxGain);
+    runtime.sources.add(source);
+    source.onended = () => { runtime.sources.delete(source); source.disconnect(); };
     source.start();
   } catch (error: unknown) {
     warnSoundOnce(
@@ -238,42 +259,8 @@ export function playSoundEffect(id: SoundEffectId): void {
  * 최초 포인터·키 입력에서 Web Audio와 지속 BGM을 함께 시작한다.
  */
 function unlockSound(runtime: SoundRuntime): Promise<void> {
-  if (runtime.unlocked) {
-    return Promise.resolve();
-  }
-  if (runtime.unlockPromise !== null) {
-    return runtime.unlockPromise;
-  }
-  runtime.unlockPromise = (async () => {
-    try {
-      if (runtime.context.state !== "running") {
-        await runtime.context.resume();
-      }
-      runtime.unlocked = runtime.context.state === "running";
-    } catch (error: unknown) {
-      warnSoundOnce(
-        runtime,
-        "unlock",
-        "브라우저 오디오 잠금을 해제하지 못했습니다.",
-        error,
-      );
-    }
-    if (runtime.unlocked) {
-      try {
-        await runtime.bgm.play();
-      } catch (error: unknown) {
-        warnSoundOnce(
-          runtime,
-          "bgm",
-          "배경 음악을 재생하지 못했습니다.",
-          error,
-        );
-      }
-    }
-  })().finally(() => {
-    runtime.unlockPromise = null;
-  });
-  return runtime.unlockPromise;
+  runtime.unlocked = true;
+  return syncSoundPlayback(runtime);
 }
 
 /**
@@ -289,6 +276,8 @@ export function initializeSound(): void {
     return;
   }
   const context = new window.AudioContext();
+  const sfxGain = context.createGain();
+  sfxGain.connect(context.destination);
   const bgm = new Audio(BGM_URL);
   bgm.loop = true;
   bgm.preload = "auto";
@@ -298,7 +287,8 @@ export function initializeSound(): void {
     bgm,
     buffers: new Map(),
     unlocked: false,
-    unlockPromise: null,
+    sources: new Set(),
+    sfxGain,
     warningKeys: new Set(),
     powerThresholds: {
       power10Armed: true,
@@ -312,35 +302,19 @@ export function initializeSound(): void {
     },
   };
   soundRuntime = runtime;
+  // Reconcile late suspend/resume completions against the latest mute/visibility state.
+  context.addEventListener("statechange", applySoundSettings);
+  applySoundSettings();
   for (const [id, url] of Object.entries(
     SOUND_EFFECT_URLS,
   ) as Array<[SoundEffectId, string]>) {
     void preloadSoundEffect(runtime, id, url);
   }
 
-  const unlockOnFirstGesture = (): void => {
-    void unlockSound(runtime).then(() => {
-      if (!runtime.unlocked) {
-        return;
-      }
-      document.removeEventListener(
-        "pointerdown",
-        unlockOnFirstGesture,
-        true,
-      );
-      document.removeEventListener(
-        "keydown",
-        unlockOnFirstGesture,
-        true,
-      );
-    });
-  };
-  document.addEventListener(
-    "pointerdown",
-    unlockOnFirstGesture,
-    true,
-  );
-  document.addEventListener("keydown", unlockOnFirstGesture, true);
+  // Keep gesture retries available after browser/OS interruptions.
+  const unlockOnGesture = (): void => { void unlockSound(runtime); };
+  document.addEventListener("pointerdown", unlockOnGesture, true);
+  document.addEventListener("keydown", unlockOnGesture, true);
   document.addEventListener("click", (event) => {
     const target = event.target;
     if (
@@ -353,31 +327,9 @@ export function initializeSound(): void {
     }
   });
 
-  const handlePause = (): void => {
-    runtime.bgm.pause();
-    if (runtime.context.state === "running") {
-      void runtime.context.suspend();
-    }
-  };
-
-  const handleResume = (): void => {
-    if (runtime.unlocked && !currentSoundSettings.muted && !adSoundMuted) {
-      void runtime.bgm.play().catch(() => {});
-      if (runtime.context.state === "suspended") {
-        void runtime.context.resume();
-      }
-    }
-  };
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      handlePause();
-    } else {
-      handleResume();
-    }
-  });
-  window.addEventListener("pagehide", handlePause);
-  window.addEventListener("pageshow", handleResume);
+  document.addEventListener("visibilitychange", applySoundSettings);
+  window.addEventListener("pagehide", () => { pageInactive = true; applySoundSettings(); });
+  window.addEventListener("pageshow", () => { pageInactive = false; applySoundSettings(); });
 }
 
 /**
@@ -401,7 +353,7 @@ export function resetAimPowerSounds(): void {
 }
 
 /**
- * 현재 세기가 10·50·90%를 위로 통과한 순간만 해당 효과음을 재생하고 하강 시 재무장한다.
+ * 한 갱신에서는 가장 높은 단계음만 재생하고 3% 아래로 내려간 뒤 재무장한다.
  */
 export function updateAimPowerSounds(normalizedPower: number): void {
   const thresholds = soundRuntime?.powerThresholds;
@@ -417,14 +369,16 @@ export function updateAimPowerSounds(normalizedPower: number): void {
     ["power50Armed", 0.5, "power50"],
     ["power90Armed", 0.9, "power90"],
   ] as const;
+  let cue: SoundEffectId | undefined;
   for (const [armedKey, threshold, soundId] of definitions) {
-    if (clampedPower < threshold) {
+    if (clampedPower < threshold - 0.03) {
       thresholds[armedKey] = true;
-    } else if (thresholds[armedKey]) {
+    } else if (clampedPower >= threshold && thresholds[armedKey]) {
       thresholds[armedKey] = false;
-      playSoundEffect(soundId);
+      cue = soundId;
     }
   }
+  if (cue) playSoundEffect(cue);
 }
 
 /**
@@ -771,4 +725,3 @@ export function openSoundSettingsModal(parentContainer?: HTMLElement): void {
     if (e.target === modal) closeModal();
   });
 }
-

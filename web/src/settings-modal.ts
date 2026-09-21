@@ -221,7 +221,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
               <div style="font-size:14px; font-weight:700; color:#f8fafc; white-space:nowrap;">${escapeHtml(I18nManager.t("common.mute"))}</div>
               <div style="font-size:12px; color:#94a3b8; margin-top:2px;">${escapeHtml(I18nManager.t("common.muteDesc"))}</div>
             </div>
-            <input type="checkbox" id="settings-mute-toggle" ${soundSettings.muted ? "checked" : ""} style="width:20px; height:20px; cursor:pointer; accent-color:#3b82f6;" />
+            <input type="checkbox" id="settings-mute-toggle" aria-label="${escapeHtml(I18nManager.t("common.mute"))}" ${soundSettings.muted ? "checked" : ""} style="width:20px; height:20px; cursor:pointer; accent-color:#3b82f6;" />
           </div>
 
           <!-- BGM 볼륨 -->
@@ -230,7 +230,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
               <span style="font-size:13px; font-weight:600; color:#cbd5e1; white-space:nowrap;">${escapeHtml(I18nManager.t("common.bgm"))}</span>
               <span id="settings-bgm-val" style="font-size:13px; font-weight:700; color:#38bdf8;">${Math.round(soundSettings.bgmVolume * 100)}%</span>
             </div>
-            <input type="range" id="settings-bgm-slider" min="0" max="100" value="${Math.round(soundSettings.bgmVolume * 100)}" ${soundSettings.muted ? "disabled" : ""} style="width:100%; cursor:pointer; accent-color:#38bdf8;" />
+            <input type="range" id="settings-bgm-slider" aria-label="${escapeHtml(I18nManager.t("common.bgm"))}" min="0" max="100" value="${Math.round(soundSettings.bgmVolume * 100)}" ${soundSettings.muted ? "disabled" : ""} style="width:100%; cursor:pointer; accent-color:#38bdf8;" />
           </div>
 
           <!-- SFX 볼륨 -->
@@ -239,7 +239,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
               <span style="font-size:13px; font-weight:600; color:#cbd5e1; white-space:nowrap;">${escapeHtml(I18nManager.t("common.sfx"))}</span>
               <span id="settings-sfx-val" style="font-size:13px; font-weight:700; color:#38bdf8;">${Math.round(soundSettings.sfxVolume * 100)}%</span>
             </div>
-            <input type="range" id="settings-sfx-slider" min="0" max="100" value="${Math.round(soundSettings.sfxVolume * 100)}" ${soundSettings.muted ? "disabled" : ""} style="width:100%; cursor:pointer; accent-color:#38bdf8;" />
+            <input type="range" id="settings-sfx-slider" aria-label="${escapeHtml(I18nManager.t("common.sfx"))}" min="0" max="100" value="${Math.round(soundSettings.sfxVolume * 100)}" ${soundSettings.muted ? "disabled" : ""} style="width:100%; cursor:pointer; accent-color:#38bdf8;" />
           </div>
         </div>
       `;

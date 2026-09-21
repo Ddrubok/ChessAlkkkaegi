@@ -2,7 +2,7 @@ import "./headless-browser-env.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { Scene, Mesh, PerspectiveCamera } from "three";
+import { Scene, Mesh, PerspectiveCamera, Vector3 } from "three";
 import { createServer } from "vite";
 
 const webRoot = fileURLToPath(new URL("../..", import.meta.url));
@@ -227,9 +227,11 @@ try {
         const pawn = world.pieces.get("white-pawn-e2");
         assert.equal(turn.queueTurnLaunch(turnRuntime, {
           pieceId: pawn.instance.id, normalizedPower: 0.1,
-          direction: { x: 0, y: 0, z: -1 }, applicationPoint: pawn.body.worldCom(),
+          direction: new Vector3(0, 0, -1), applicationPoint: pawn.body.worldCom(),
         }).accepted, true);
         assert.equal(turnRuntime.lastLaunchHitOpponent, false, "A new attempt clears the previous hit");
+        assert.equal(turn.applyPendingLaunchBeforeStep(turnRuntime), true, "Actual launch signals one sound cue");
+        assert.equal(turn.applyPendingLaunchBeforeStep(turnRuntime), false, "Following physics steps cannot repeat the launch cue");
         turnRuntime.lastLaunchHitOpponent = true;
         turn.resetTurnRuntime(turnRuntime);
         assert.equal(turnRuntime.lastLaunchHitOpponent, false, "Re-entry clears the previous hit");

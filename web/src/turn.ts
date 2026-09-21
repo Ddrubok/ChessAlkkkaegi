@@ -712,7 +712,7 @@ export function queueTurnLaunch(
  */
 export function applyPendingLaunchBeforeStep(
   runtime: TurnRuntime,
-): void {
+): boolean {
   applyPendingBreakableWallDestructions(
     runtime.physicsRuntime,
   );
@@ -722,13 +722,13 @@ export function applyPendingLaunchBeforeStep(
   );
   const request = runtime.pendingLaunch;
   if (request === null) {
-    return;
+    return false;
   }
   runtime.pendingLaunch = null;
   const binding = runtime.physicsRuntime.pieces.get(request.pieceId);
   const mesh = runtime.sceneRuntime.pieceMeshes.get(request.pieceId);
   if (binding === undefined || mesh === undefined) {
-    return;
+    return false;
   }
 
   // 킹 방어 활성화 상태로 Fixed였던 기물이라면 발사를 위해 Dynamic으로 전환
@@ -842,6 +842,7 @@ export function applyPendingLaunchBeforeStep(
       `[발사] ${binding.instance.type}의 초기 속도 오차가 1%를 넘었습니다: ${(relativeError * 100).toFixed(3)}%`,
     );
   }
+  return true;
 }
 
 /**
