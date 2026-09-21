@@ -65,6 +65,7 @@ function rendererDouble() {
 }
 try {
   const { computePreviewFit, renderPreviewTarget, PiecePreviewRenderer } = await vite.ssrLoadModule("/src/piece-preview-renderer.ts");
+  const sharedMotionListeners = motion.listenerCount;
   const { PieceUpgradeEffects } = await vite.ssrLoadModule("/src/piece-upgrade-effects.ts");
   const bytes = await readFile(new URL("../../public/assets/chess-pieces.glb", import.meta.url));
   const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), "");
@@ -155,7 +156,7 @@ try {
     preview.dispose(); preview.dispose();
     assert.equal(disposedMaterials, ownedMaterials.size);
     assert.equal(disposedGeometries, ownedGeometries.size);
-    assert.equal(canvas.listenerCount, 0); assert.equal(renderer.domElement.listenerCount, 0); assert.equal(motion.listenerCount, 0);
+    assert.equal(canvas.listenerCount, 0); assert.equal(renderer.domElement.listenerCount, 0); assert.equal(motion.listenerCount, sharedMotionListeners, 'preview must not add/leak per-instance system listeners');
     assert.equal(frames.size, 0); assert.equal(resizeObservers.size, 0);
     assert.equal(sharedDisposals, 0, "shared GLB geometry must survive preview disposal");
   }

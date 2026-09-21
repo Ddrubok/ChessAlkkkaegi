@@ -1,4 +1,6 @@
 import { progressUiCopy } from "./progress-ui-copy";
+import { createPanelMotion } from './ui-motion';
+import { notifyResultProgress } from './result-motion';
 import { formatProgressDuration } from "./progress-duration";
 import { summarizeQuestTargets } from "./quest-target-summary";
 import { puzzleText } from "./puzzle-text";
@@ -155,10 +157,12 @@ export function openQuestBook(_container: HTMLElement, storage: QuestStorage, on
     const routes = onRoute ? `<h3>${escapeHtml(c.routes)}</h3><div><button type="button" data-quest-route="stage">${escapeHtml(c.stage)}</button><button type="button" data-quest-route="puzzle">${escapeHtml(c.puzzle)}</button></div>` : "";
     modal.innerHTML = `<div class="quest-dialog"><header><div><p>${escapeHtml(c.summary)}</p><h2 id="quest-title" tabindex="-1">${escapeHtml(c.title)}</h2></div><button type="button" data-quest-close="" aria-label="${escapeHtml(c.close)}">×</button></header><div class="quest-tabs" role="tablist" aria-label="${escapeHtml(c.title)}"><button id="quest-tab-daily" type="button" role="tab" data-cadence="daily" aria-selected="${cadence === "daily"}" aria-controls="quest-panel-daily" tabindex="${cadence === "daily" ? 0 : -1}">${escapeHtml(c.daily)} ${completed(view, "daily")}/3</button><button id="quest-tab-weekly" type="button" role="tab" data-cadence="weekly" aria-selected="${cadence === "weekly"}" aria-controls="quest-panel-weekly" tabindex="${cadence === "weekly" ? 0 : -1}">${escapeHtml(c.weekly)} ${completed(view, "weekly")}/5</button></div><p class="quest-countdown">${escapeHtml(Date.parse(view.periods.find(p => p.cadence === cadence)?.endsAt ?? "") - Date.parse(view.estimatedNow) < 60000 ? c.resetsSoon : c.resets.replace("{time}", countdown(view, cadence)))}</p><div id="quest-panel-${cadence}" class="quest-list" role="tabpanel" aria-labelledby="quest-tab-${cadence}">${listHtml(view, cadence)}</div>${historyExpired ? `<p class="quest-history-status">${escapeHtml(c.states.expired)}: ${historyExpired}</p>` : ""}<section class="quest-routes">${routes}</section><footer><p class="quest-sync is-${view.syncState}" role="status">${escapeHtml(syncLabel(view, c) + staleText)}</p>${["offline", "missing-server", "auth-error"].includes(view.syncState) ? `<button type="button" data-quest-retry="">${escapeHtml(I18nManager.t("lobby.progress_retry"))}</button>` : ""}</footer></div>`;
     const dialog = modal.querySelector<HTMLElement>(".quest-dialog"); if (dialog) dialog.scrollTop = priorScroll;
+    motion.refresh(dialog, cadence, modal.querySelector<HTMLElement>('[role="tabpanel"]'));
     if (selector) (modal.querySelector<HTMLElement>(selector) ?? modal.querySelector<HTMLElement>("[data-quest-close]") ?? modal.querySelector<HTMLElement>("#quest-title"))?.focus();
   };
+  const motion = createPanelMotion();
   const close = () => {
-    if (closed) return; closed = true; unsubscribe(); if (countdownTimer !== null) window.clearInterval(countdownTimer); modal.remove();
+    if (closed) return; closed = true; motion.cancel(); unsubscribe(); if (countdownTimer !== null) window.clearInterval(countdownTimer); modal.remove();
     background.forEach((node, index) => { node.inert = previousInert[index]; });
     document.documentElement.style.overflowX = priorHtmlOverflowX; document.body.style.overflowX = priorBodyOverflowX; if (!hadOpenClass) document.body.classList.remove("quest-modal-open");
     window.scrollTo(scrollX, scrollY); if (activeQuestBookClose === close) activeQuestBookClose = null;
@@ -201,4 +205,8 @@ export function appendQuestResult(container: HTMLElement, before: QuestResultBas
   const section = document.createElement("section"); section.className = "quest-result";
   section.innerHTML = `<h3>${escapeHtml(c.result)}</h3>${changed.map(({ item, value }) => { const target = questDefinitionsFor(item.questId.startsWith("daily-") ? "daily" : "weekly").find((definition) => definition.id === item.questId)?.target ?? value; return `<p><span>${escapeHtml(c.names[item.questId] ?? item.questId)}</span><strong>${value}/${target}</strong></p>`; }).join("")}<button type="button" data-quest-view-all>${escapeHtml(c.viewAll)}</button>`;
   section.querySelector("button")?.addEventListener("click", onViewAll); container.appendChild(section); container.hidden = false;
+  section.querySelectorAll<HTMLElement>('p').forEach((row, index) => {
+    const {item, value, prior} = changed[index];
+    notifyResultProgress(container, row, `quest:${item.periodId}:${item.questId}`, prior, value, view.syncState === 'synced' || view.syncState === 'provisional');
+  });
 }

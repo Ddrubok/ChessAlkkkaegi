@@ -3,6 +3,7 @@ import type { PieceSide } from "./layout";
 import type { GameMode } from "./game-mode";
 import type { CardId, UpgradeCard } from "./cards";
 import { I18nManager } from "./i18n";
+import { beginResultMotion, closeResultMotion } from './result-motion';
 
 export interface RemainingPieceCounts {
   // 판에 남아 있는 백 말 수다.
@@ -145,6 +146,7 @@ export function createMatchRuntime(
         runtime.restarting = false;
         restartButton.disabled = false;
         restartButton.textContent = I18nManager.t("ingame.restart_btn");
+        closeResultMotion(overlay);
         overlay.hidden = true;
       },
       (error: unknown) => {
@@ -178,6 +180,7 @@ export function createMatchRuntime(
         restartButton.disabled = false;
         menuButton.disabled = false;
         menuButton.textContent = I18nManager.t("ingame.menu_btn");
+        closeResultMotion(overlay);
         overlay.hidden = true;
       },
       (error: unknown) => {
@@ -320,6 +323,7 @@ export function showMatchResult(
           () => {
             runtime.winner = null;
             runtime.restarting = false;
+            closeResultMotion(runtime.overlay);
             runtime.overlay.hidden = true;
           },
           (error: unknown) => {
@@ -350,6 +354,7 @@ export function showMatchResult(
       ? runtime.menuButton
       : runtime.restartButton)
   ).focus();
+  beginResultMotion(runtime.overlay, `${gameMode}:${stageNumber}:${winner}`, runtime.winnerHeading, gameMode !== 'online' || localSide !== null);
 }
 
 /**
@@ -427,6 +432,7 @@ export function showStageRunResult(
   runtime.menuButton.textContent = copy.buttonLabel;
   runtime.overlay.hidden = false;
   runtime.menuButton.focus();
+  beginResultMotion(runtime.overlay, `stage-end:${stageNumber}:${completed}`, runtime.winnerHeading);
 }
 
 /**
@@ -436,6 +442,7 @@ export function showDisconnectedMatchEnd(
   runtime: MatchRuntime,
   onReturnToMenu: () => Promise<void>,
 ): void {
+  closeResultMotion(runtime.overlay);
   runtime.winner = null;
   runtime.restarting = false;
   runtime.onCardSelected = null;
@@ -461,6 +468,7 @@ export function showDisconnectedMatchEnd(
  * 메뉴 복귀 뒤 이전 결과 화면이 다음 대전 위에 다시 나타나지 않도록 상태와 DOM을 닫는다.
  */
 export function hideMatchResult(runtime: MatchRuntime): void {
+  closeResultMotion(runtime.overlay);
   runtime.overlay.classList.remove("weekly-result-open");
   runtime.overlay.hidden = true;
   runtime.winner = null;

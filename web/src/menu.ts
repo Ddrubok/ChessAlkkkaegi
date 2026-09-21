@@ -1,4 +1,5 @@
 import type { PieceType } from "./config";
+import { createPanelMotion, markMenuPressables } from './ui-motion';
 import type { GameMode } from "./game-mode";
 import { getMaxClearedStage, type MetaRuntime } from "./meta";
 import { createPermanentResearchAdapter } from "./permanent-research-adapter";
@@ -164,12 +165,14 @@ export function openPveLobbyModal(
   card.className = "piece-stat-modal-card";
   const adapter = createPermanentResearchAdapter(runtime.metaRuntime);
   let workbench: PieceStatWorkbench | null = null;
+  const motion = createPanelMotion();
   let selectedPiece: PieceType = "Pawn";
   const unsubscribeLang = I18nManager.subscribe(() => {
     if (modal.isConnected) renderContent();
   });
   const close = () => {
     unsubscribeLang();
+    motion.cancel();
     workbench?.dispose(); workbench = null;
     modal.remove(); runtime.closePveLobby = undefined;
     renderMainMenu(runtime); unbindModal();
@@ -285,11 +288,12 @@ export function openPveLobbyModal(
       });
       body.append(workbench.element);
     }
+    motion.refresh(card, activeTab, body);
   };
 
-  renderContent();
   modal.appendChild(card);
   runtime.overlay.appendChild(modal);
+  renderContent();
 }
 
 /**
@@ -616,6 +620,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
 
   panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderQuestLobbyEntry(questStorage)}${renderWeeklyChallengeEntry()}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
+  markMenuPressables(panel);
   if (progressStorage.owner === user.id) {
     const editName = document.createElement('button');
     editName.type = 'button';
