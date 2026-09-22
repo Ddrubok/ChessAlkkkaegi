@@ -1,4 +1,6 @@
 import { progressUiCopy } from "./progress-ui-copy";
+import { createPanelMotion } from './ui-motion';
+import { notifyResultProgress } from './result-motion';
 import { formatProgressDuration } from "./progress-duration";
 import { deriveWeeklyPresentation } from "./weekly-challenge-presentation";
 import { escapeHtml } from "./html";
@@ -104,7 +106,8 @@ export function openWeeklyChallenge(storage: WeeklyChallengeStorage, actions: We
   const scrollX = window.scrollX, scrollY = window.scrollY;
   background.forEach((node) => { node.inert = true; });
   document.documentElement.style.overflowX = "hidden"; document.body.style.overflowX = "hidden"; document.body.classList.add("weekly-modal-open");
-  const close = () => { if (closed) return; closed = true; unsubscribe(); if (timer !== null) clearInterval(timer); modal.remove(); document.documentElement.style.overflowX = priorHtmlOverflowX; document.body.style.overflowX = priorBodyOverflowX; if (!hadOpenClass) document.body.classList.remove("weekly-modal-open"); window.scrollTo(scrollX, scrollY); background.forEach((node, index) => { node.inert = inert[index]; }); if (activeClose === close) activeClose = null; (opener?.isConnected ? opener : document.querySelector<HTMLElement>("[data-open-weekly-challenge]"))?.focus(); };
+  const motion = createPanelMotion();
+  const close = () => { if (closed) return; closed = true; motion.cancel(); unsubscribe(); if (timer !== null) clearInterval(timer); modal.remove(); document.documentElement.style.overflowX = priorHtmlOverflowX; document.body.style.overflowX = priorBodyOverflowX; if (!hadOpenClass) document.body.classList.remove("weekly-modal-open"); window.scrollTo(scrollX, scrollY); background.forEach((node, index) => { node.inert = inert[index]; }); if (activeClose === close) activeClose = null; (opener?.isConnected ? opener : document.querySelector<HTMLElement>("[data-open-weekly-challenge]"))?.focus(); };
   const render = (preserve = false) => {
     if (closed) return;
     const view = storage.view(), c = weeklyChallengeCopy(); if (view.owner !== openedOwner || !view.ready) { close(); return; }
@@ -131,6 +134,7 @@ export function openWeeklyChallenge(storage: WeeklyChallengeStorage, actions: We
     const deadline = endsAt ? Date.parse(endsAt) <= now ? c.ended : Date.parse(endsAt) - now < 60000 ? c.endsSoon : c.deadline.replace("{time}", countdown(endsAt, now)) : c.loading;
     modal.innerHTML = `<div class="weekly-dialog"><header><div><p>${escapeHtml(c.summary)}</p><h2 id="weekly-title" tabindex="-1" data-weekly-focus="title">${escapeHtml(c.title)}</h2></div><button type="button" data-weekly-action="close" aria-label="${escapeHtml(c.close)}">×</button></header><div class="weekly-tabs" role="tablist"><button id="weekly-tab-current" type="button" role="tab" data-weekly-tab="current" aria-controls="weekly-panel" aria-selected="${tab === "current"}" tabindex="${tab === "current" ? 0 : -1}">${escapeHtml(c.current)}</button><button id="weekly-tab-previous" type="button" role="tab" data-weekly-tab="previous" aria-controls="weekly-panel" aria-selected="${tab === "previous"}" tabindex="${tab === "previous" ? 0 : -1}">${escapeHtml(c.previous)}</button></div><div id="weekly-panel" role="tabpanel" aria-labelledby="weekly-tab-${tab}"><section class="weekly-hero"><span>${escapeHtml(c.condition)}</span><strong>${escapeHtml(deadline)}</strong></section><p class="weekly-goal">${escapeHtml(c.rules)}</p><section class="weekly-record"><strong>${escapeHtml(c.record)}</strong><span>${scoreText ? escapeHtml(scoreText) : escapeHtml(c.noRecord)}</span></section><p class="weekly-limit">${escapeHtml(c.researchOff)} ${escapeHtml(c.boundary)}</p>${status || actionFailed || retryPending ? `<p class="weekly-status" role="status">${escapeHtml(status)}${retryPending ? `<br>${escapeHtml(c.retrying)}` : ""}${actionFailed ? `<br>${escapeHtml(c.actionError)}` : ""}</p>` : ""}${presentation.practiceStage !== null ? `<p class="weekly-limit">${escapeHtml(c.practiceStage.replace("{stage}", String(presentation.practiceStage)))}</p>` : ""}${presentation.accountActions.includes("takeover") ? `<p>${escapeHtml(c.takeoverNotice)}</p>` : ""}<div class="weekly-actions">${actionHtml}</div><details class="weekly-details" data-weekly-details${detailsOpen[tab] ? " open" : ""}><summary data-weekly-focus="details">${escapeHtml(c.details)}</summary><div class="weekly-rules"><article><h3>${escapeHtml(c.cards)}</h3><ol>${cardRows}</ol><p>${escapeHtml(c.fallback)}</p></article><article><h3>${escapeHtml(c.score)}</h3></article></div></details></div></div>`;
     if (focused) (modal.querySelector<HTMLElement>(`[data-weekly-action="${CSS.escape(focused)}"],[data-weekly-tab="${CSS.escape(focused)}"],[data-weekly-focus="${CSS.escape(focused)}"]`) ?? modal.querySelector<HTMLElement>("#weekly-title"))?.focus({ preventScroll: true });
+    motion.refresh(modal.querySelector<HTMLElement>('.weekly-dialog'), tab, modal.querySelector<HTMLElement>('#weekly-panel'));
     const renderedTab = tab, details = modal.querySelector<HTMLDetailsElement>("[data-weekly-details]");
     details?.addEventListener("toggle", () => { if (details.isConnected) detailsOpen[renderedTab] = details.open; });
     const dialog = modal.querySelector<HTMLElement>('.weekly-dialog');
@@ -199,6 +203,7 @@ export function appendWeeklyChallengeResult(container: HTMLElement, scoreValue: 
   }
   section.append(title, score, detail); container.querySelector(".weekly-result")?.remove(); container.append(section); container.hidden = false;
   container.closest(".match-result-overlay")?.classList.add("weekly-result-open");
+  if (comparison > 0) notifyResultProgress(container, section, `weekly:${scoreValue.completedStages}:${scoreValue.completedStageOwnTurns}`, 0, 1, source !== 'pending');
 }
 
 export function appendWeeklyRecoveryControls(container: HTMLElement, onRetry: () => Promise<void>, onPractice: () => Promise<void>, onTerminate: () => Promise<void>): void {

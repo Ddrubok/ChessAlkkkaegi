@@ -1,0 +1,21 @@
+.ui-motion-pressable { transition: filter 100ms ease, scale 100ms ease; }
+.ui-motion-pressable:enabled:active { filter:brightness(1.12); scale:.98; }
+.ui-motion-reduced .ui-motion-pressable { transition:none; }
+.ui-motion-reduced .ui-motion-pressable:enabled:active { scale:1; }
+.ui-motion-reduced .lobby-profile-body,
+.ui-motion-reduced .lobby-tutorial-body,
+.ui-motion-reduced .lobby-chip-chevron,
+.ui-motion-reduced .lobby-profile-chevron { transition:none !important; }
+.ui-motion-reduced .piece-stat-workbench *,
+.ui-motion-reduced .piece-stat-workbench *::before,
+.ui-motion-reduced .piece-stat-workbench *::after { animation:none !important; transition:none !important; }
+@media(prefers-reduced-motion:reduce) {
+ .ui-motion-pressable { transition:none; }
+ .ui-motion-pressable:enabled:active { scale:1; }
+ .lobby-profile-body { transition:none !important; }
+}
+.motion-settings { margin-top:20px; padding-top:16px; border-top:1px solid #475569; }
+.motion-settings h4 { margin:0 0 10px; }
+.motion-settings label { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; }
+.motion-settings input { width:20px; height:20px; flex-shrink:0; }
+.motion-settings p { margin:8px 0 0; color:#cbd5e1; font-size:12px; line-height:1.5; }

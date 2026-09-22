@@ -1,4 +1,6 @@
 import type { UserProfile } from './supabase-auth';
+import { createPanelMotion, getMotionPreference, setMotionReduced, subscribeMotion } from './ui-motion';
+import { motionCopy } from './ui-motion-copy';
 import { uiText } from "./ui-text";
 /**
  * 통합 환경 설정 모달 (SettingsModal)
@@ -70,6 +72,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
 
   let activeTab: "sound" | "banner" | "language" = "sound";
   let closed = false;
+  const motion = createPanelMotion();
   let cosmeticPanel: ReturnType<typeof mountCosmeticsSettingsPanel> | null = null;
   let modalDraftLoadout: CosmeticLoadout | null = null;
   let lastOwner: string | null | undefined = progressStorage?.owner;
@@ -90,6 +93,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
   const closeModal = (restoreFocus = true) => {
     if (closed) return;
     closed = true;
+    motion.cancel();
     document.removeEventListener("keydown", trapFocus, true);
     background.forEach(({ element, inert }) => {
       element.inert = inert;
@@ -160,6 +164,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     const soundSettings = getSoundSettings();
     const currentLang = I18nManager.currentLang;
     const cosmeticsCopy = getCosmeticsCopy(currentLang);
+    const effects = motionCopy();
 
     card.innerHTML = `
       <!-- 헤더 -->
@@ -263,6 +268,8 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
       `;
 
       // 사운드 컨트롤 핸들러
+      content.insertAdjacentHTML('beforeend', `<section class="motion-settings"><h4>${escapeHtml(effects.title)}</h4><label for="settings-motion-toggle">${escapeHtml(effects.label)}<input id="settings-motion-toggle" type="checkbox" aria-describedby="settings-motion-description" ${getMotionPreference() ? 'checked' : ''}></label><p id="settings-motion-description">${escapeHtml(effects.description)} ${escapeHtml(effects.system)}</p></section>`);
+      content.querySelector<HTMLInputElement>('#settings-motion-toggle')?.addEventListener('change', event => setMotionReduced((event.target as HTMLInputElement).checked));
       const muteToggle = content.querySelector("#settings-mute-toggle") as HTMLInputElement;
       const bgmSlider = content.querySelector("#settings-bgm-slider") as HTMLInputElement;
       const sfxSlider = content.querySelector("#settings-sfx-slider") as HTMLInputElement;
@@ -349,9 +356,11 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     }
     if (focusId) card.querySelector<HTMLElement>(`#${CSS.escape(focusId)}`)?.focus({ preventScroll: true });
     card.scrollTop = scrollTop;
+    motion.refresh(card, activeTab, content);
   };
 
   // Subscribe to progressStorage and I18n updates while modal is open
+  cleanupListeners.push(subscribeMotion(() => { if (!closed) render(); }));
   if (typeof progressStorage?.subscribe === "function") {
     const unsubProgress = progressStorage.subscribe(() => {
       if (!closed && activeTab !== "banner") render();
@@ -372,9 +381,9 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     if (event.target === modal) closeModal();
   });
 
-  render();
   modal.appendChild(card);
   container.appendChild(modal);
+  render();
   background.forEach(({ element }) => {
     element.inert = true;
   });

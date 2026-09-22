@@ -1,4 +1,6 @@
 import { escapeHtml } from "./html";
+import { createPanelMotion } from './ui-motion';
+import { notifyResultProgress } from './result-motion';
 import { I18nManager, type LanguageCode } from "./i18n";
 import {
   MASTERY_DEFINITIONS, MASTERY_IDS, earnedMedalCount, equippedItem, isMedalEarned,
@@ -291,12 +293,14 @@ export function openMasteryBook(container: HTMLElement, storage: MasteryStorage,
   let detail: MasteryId | null = null;
   let changed = false;
   let closed = false;
+  const motion = createPanelMotion();
 
   const focusable = () => [...modal.querySelectorAll<HTMLElement>("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex='0']")].filter(element => element.getClientRects().length > 0);
 
   const close = (restoreFocus = true) => {
     if (closed) return;
     closed = true;
+    motion.cancel();
     document.removeEventListener("keydown", trapFocus, true);
     background.forEach(({ element, inert }) => { element.inert = inert; });
     modal.remove();
@@ -387,6 +391,7 @@ export function openMasteryBook(container: HTMLElement, storage: MasteryStorage,
       }
     }
 
+    motion.refresh(modal.querySelector<HTMLElement>('.mastery-dialog'));
     modal.querySelector("[data-mastery-close]")?.addEventListener("click", () => close());
     for (const button of modal.querySelectorAll<HTMLButtonElement>("[data-mastery-detail]")) {
       button.onclick = () => {
@@ -455,4 +460,8 @@ export function appendMasteryResult(container: HTMLElement, items: readonly Mast
   section.innerHTML = `<h3>${escapeHtml(copy.result)}</h3>${items.slice(0, 3).map(item => `<p><strong>${item.medalId} ${escapeHtml(copy.names[item.medalId])}</strong><span>${item.after}/${item.threshold}${item.achieved ? ` · ${escapeHtml(copy.complete)}` : ""}</span></p>`).join("")}<button type="button" data-mastery-result-all>${escapeHtml(copy.viewAll)}</button>`;
   section.querySelector("button")?.addEventListener("click", openAll);
   container.append(section);
+  section.querySelectorAll<HTMLElement>('p').forEach((row, index) => {
+    const item = items[index];
+    notifyResultProgress(container, row, `mastery:${item.medalId}`, item.before, item.after);
+  });
 }
