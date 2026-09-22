@@ -186,6 +186,24 @@ try {
   assert.equal(hud.element.style.display, 'flex', 'HUD container restored in ready phase');
   assert.equal(timerTextEl.textContent, '9s', 'Case match-over update does not count: time in match-over phase did not count down');
 
+  // Settling must not advertise a live deadline or count down.
+  hud.reset();
+  hud.update(0, 16);
+  assert.equal(timerTextEl.textContent, '4s');
+  turnRuntime.phase = 'settling';
+  hud.update(0, 8);
+  assert.equal(timerTextEl.textContent, '4s');
+  assert.equal(timerTextEl.style.animation, 'none');
+  const timerWrap = findDescendantByClass(hud.element, 'turn-hud-timer-wrap');
+  assert.equal(timerWrap.style.display, 'none');
+  const side = findDescendantByClass(hud.element, 'turn-hud-side');
+  const { uiText } = await vite.ssrLoadModule('/src/ui-text.ts');
+  assert.equal(side.textContent, uiText('settling'));
+  turnRuntime.phase = 'ready';
+  turnRuntime.currentSide = 'black';
+  hud.update(0, 0);
+  assert.equal(timerWrap.style.display, 'flex');
+  assert.equal(timerTextEl.textContent, '20s');
   hud.destroy();
   console.log('PASS: turn-timer regression (initial20, elapse5=>15, reset same white=>20, timeout onlyonce, reset after timeout permits another timeout, black turn resets, menu hide/show preserves remaining time, match-over update does not count)');
 } finally {

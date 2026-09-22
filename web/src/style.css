@@ -539,6 +539,9 @@ body {
 }
 
 .match-result-panel {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   width: min(24rem, calc(100% - 1.5rem));
   padding: 1.5rem;
   border: 1px solid rgb(255 255 255 / 18%);
@@ -602,6 +605,7 @@ body {
 
 .match-result-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 0.65rem;
 }
@@ -617,7 +621,7 @@ body {
   display: grid;
   width: 100%;
   margin-bottom: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
   gap: 0.75rem;
 }
 
@@ -1768,4 +1772,15 @@ body {
 /* Give the turn label its own row on narrow phones. */
 @media (max-width:380px) and (orientation:portrait) {
   .turn-hud-container { top:50px; }
+}
+
+/* Result controls and motion accessibility. */
+.match-result-panel button { min-height: 44px; overflow-wrap: anywhere; }
+.match-result-panel button:focus-visible { outline: 2px solid #fff0bc; outline-offset: 3px; }
+.match-result-panel button:active:not(:disabled) { transform: translateY(1px); filter: brightness(.9); }
+.match-result-panel .match-action-status { color: #ffd7a3; margin: .75rem 0; line-height: 1.5; }
+.match-action-status[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .turn-hud-timer-text { animation: none !important; }
+  .turn-hud-progress-track > * { transition: none !important; }
 }

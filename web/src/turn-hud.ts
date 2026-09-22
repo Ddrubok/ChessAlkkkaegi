@@ -183,9 +183,9 @@ export function createTurnHud(
         sideIndicator.innerHTML = `<span style="color:#22c55e;">${I18nManager.t("ingame.time_limited")}</span>`;
         mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
       }
-    } else if (isOnline) {
+    } else if (isOnline || gameMode === "stage" || gameMode === "weekly") {
       timerWrapper.style.display = "flex";
-      if (isMyTurn) {
+      if (isOnline ? isMyTurn : currentSide === "white") {
         sideIndicator.innerHTML = `<span style="color:#22c55e;">${I18nManager.t("ingame.my_turn")}</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "W" : "B"})</span>`;
         mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
       } else {
@@ -197,6 +197,12 @@ export function createTurnHud(
       const sideName = currentSide === "white" ? I18nManager.t("ingame.turn_white") : I18nManager.t("ingame.turn_black");
       sideIndicator.innerHTML = `<span style="color:${currentSide === "white" ? "#f8fafc" : "#94a3b8"};">${sideName}</span>`;
       mainBadge.style.borderColor = currentSide === "white" ? "rgba(248, 250, 252, 0.3)" : "rgba(148, 163, 184, 0.3)";
+    }
+
+    if (turnRuntime.phase === "settling") {
+      sideIndicator.textContent = uiText("settling");
+      timerWrapper.style.display = "none";
+      mainBadge.style.borderColor = "rgba(148, 163, 184, 0.3)";
     }
 
     // 타이머 카운트다운 (ready 상태에서만 진행, 튜토리얼 1~4단계에서는 멈춤)
@@ -224,7 +230,7 @@ export function createTurnHud(
     if (remainingSeconds <= 5.0) {
       timerText.style.color = "#ef4444";
       progressBarFill.style.backgroundColor = "#ef4444";
-      timerText.style.animation = "pulse 0.8s infinite";
+      timerText.style.animation = turnRuntime.phase === "ready" ? "pulse 0.8s infinite" : "none";
     } else if (remainingSeconds <= 10.0) {
       timerText.style.color = "#eab308";
       progressBarFill.style.backgroundColor = "#eab308";

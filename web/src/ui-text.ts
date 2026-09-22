@@ -1,6 +1,7 @@
 ﻿import { I18nManager, type LanguageCode } from "./i18n";
 const languages: LanguageCode[] = ["ko", "en", "ja", "zh-CN", "de", "fr", "es", "ru", "pt-BR"];
 export const UI_COPY = {
+ settling: ["기물이 멈추는 중", "Pieces in motion", "駒が移動中", "棋子移动中", "Figuren in Bewegung", "Pièces en mouvement", "Piezas en movimiento", "Фигуры движутся", "Peças em movimento"],
  spin: ["스핀 굴절","Spin ricochet","スピン反射","旋转反弹","Drall-Abprall","Ricochet avec effet","Rebote con giro","Рикошет с вращением","Ricochete com efeito"],
  overdrive: ["오버드라이브","Overdrive","オーバードライブ","超强发射","Überantrieb","Surpuissance","Potencia extra","Усиленный удар","Potência extra"],
  board: ["ChessAlkkagi 3D 체스판","ChessAlkkagi 3D chessboard","ChessAlkkagi 3Dチェス盤","ChessAlkkagi 3D棋盘","ChessAlkkagi 3D-Schachbrett","Échiquier 3D ChessAlkkagi","Tablero 3D ChessAlkkagi","Шахматная доска 3D ChessAlkkagi","Tabuleiro 3D ChessAlkkagi"],

@@ -22,6 +22,7 @@ export interface MatchRuntime {
   winnerHeading: HTMLHeadingElement;
   // 런 정산액 또는 완주 감사 문구를 제목과 버튼 사이에 표시하는 영역이다.
   resultDetails: HTMLElement;
+  actionStatus: HTMLElement;
   // 새 판 준비를 한 번만 요청하는 다시 시작 버튼이다.
   restartButton: HTMLButtonElement;
   // 스테이지 패배 뒤 영구 메타를 보존하고 메인 메뉴로 돌아가는 보조 버튼이다.
@@ -86,6 +87,7 @@ export function createMatchRuntime(
       <h1 id="match-result-title"></h1>
       <div class="match-result-details" data-match-result-details hidden></div>
       <div class="match-card-choices" hidden></div>
+      <p class="match-action-status" role="status" aria-live="polite" hidden></p>
       <div class="match-result-actions">
         <button type="button" data-match-restart>${I18nManager.t("ingame.restart_btn")}</button>
         <button type="button" data-match-menu hidden>${I18nManager.t("ingame.menu_btn")}</button>
@@ -102,6 +104,7 @@ export function createMatchRuntime(
     overlay.querySelector<HTMLElement>(
       "[data-match-result-details]",
     );
+  const actionStatus = overlay.querySelector<HTMLElement>(".match-action-status");
   const restartButton =
     overlay.querySelector<HTMLButtonElement>("[data-match-restart]");
   const menuButton =
@@ -109,6 +112,7 @@ export function createMatchRuntime(
   const cardChoices =
     overlay.querySelector<HTMLElement>(".match-card-choices");
   if (
+    actionStatus === null ||
     resultKicker === null ||
     winnerHeading === null ||
     resultDetails === null ||
@@ -123,6 +127,7 @@ export function createMatchRuntime(
     resultKicker,
     winnerHeading,
     resultDetails,
+    actionStatus,
     restartButton,
     menuButton,
     cardChoices,
@@ -139,11 +144,14 @@ export function createMatchRuntime(
     runtime.restarting = true;
     restartButton.disabled = true;
     restartButton.textContent = uiText("preparing");
-    void runtime.onRestart().then(
+    actionStatus.hidden = true;
+    menuButton.disabled = true;
+    void Promise.resolve().then(() => runtime.onRestart()).then(
       () => {
         runtime.winner = null;
         runtime.restarting = false;
         restartButton.disabled = false;
+        menuButton.disabled = false;
         restartButton.textContent = I18nManager.t("ingame.restart_btn");
         overlay.hidden = true;
       },
@@ -155,8 +163,10 @@ export function createMatchRuntime(
         console.error(fullError);
         runtime.restarting = false;
         restartButton.disabled = false;
+        menuButton.disabled = false;
         restartButton.textContent = I18nManager.t("tier.retry");
-        winnerHeading.textContent = uiText("restartFailed");
+        actionStatus.hidden = false;
+        actionStatus.textContent = uiText("restartFailed");
       },
     );
   });
@@ -171,12 +181,15 @@ export function createMatchRuntime(
     restartButton.disabled = true;
     menuButton.disabled = true;
     menuButton.textContent = uiText("moving");
-    void runtime.onReturnToMenu().then(
+    actionStatus.hidden = true;
+    const returnToMenu = runtime.onReturnToMenu;
+    void Promise.resolve().then(returnToMenu).then(
       () => {
         runtime.winner = null;
         runtime.restarting = false;
         restartButton.disabled = false;
         menuButton.disabled = false;
+
         menuButton.textContent = I18nManager.t("ingame.menu_btn");
         overlay.hidden = true;
       },
@@ -189,8 +202,10 @@ export function createMatchRuntime(
         runtime.restarting = false;
         restartButton.disabled = false;
         menuButton.disabled = false;
+
         menuButton.textContent = I18nManager.t("tier.retry");
-        winnerHeading.textContent = uiText("menuFailed");
+        actionStatus.hidden = false;
+        actionStatus.textContent = uiText("menuFailed");
       },
     );
   });
@@ -199,12 +214,14 @@ export function createMatchRuntime(
       event.preventDefault();
       const firstCard =
         cardChoices.querySelector<HTMLButtonElement>("button");
-      (firstCard ?? restartButton).focus();
+      const target = firstCard ?? (restartButton.hidden ? menuButton : restartButton);
+      if (!target.disabled && !target.closest("[hidden]")) target.focus();
     } else if (event.code === "Tab") {
+      event.preventDefault();
       const focusableButtons = [
         ...overlay.querySelectorAll<HTMLButtonElement>("button"),
       ].filter(
-        (button) => !button.hidden && !button.disabled,
+        (button) => !button.closest("[hidden]") && !button.disabled && button.getClientRects().length > 0,
       );
       if (focusableButtons.length > 0) {
         event.preventDefault();
@@ -254,6 +271,7 @@ export function showMatchResult(
 ): void {
   runtime.overlay.classList.remove("weekly-result-open");
   runtime.winner = winner;
+  runtime.restarting = false;
   runtime.onRestart = onRestart;
   runtime.onCardSelected = onCardSelected;
   runtime.onReturnToMenu = onReturnToMenu;
@@ -316,7 +334,10 @@ export function showMatchResult(
         )) {
           cardButton.disabled = true;
         }
-        void runtime.onCardSelected(card.id).then(
+        runtime.actionStatus.hidden = false;
+        runtime.actionStatus.textContent = uiText("preparing");
+        const selectCard = runtime.onCardSelected;
+        void Promise.resolve().then(() => selectCard(card.id)).then(
           () => {
             runtime.winner = null;
             runtime.restarting = false;
@@ -334,13 +355,16 @@ export function showMatchResult(
             )) {
               cardButton.disabled = false;
             }
-            runtime.winnerHeading.textContent = uiText("upgradeFailed");
+            runtime.actionStatus.textContent = uiText("upgradeFailed");
+            button.focus();
           },
         );
       });
       runtime.cardChoices.append(button);
     }
   }
+  runtime.actionStatus.hidden = true;
+  runtime.actionStatus.textContent = "";
   runtime.overlay.hidden = false;
   const firstCard =
     runtime.cardChoices.querySelector<HTMLButtonElement>("button");
@@ -425,6 +449,8 @@ export function showStageRunResult(
   runtime.menuButton.hidden = false;
   runtime.menuButton.disabled = false;
   runtime.menuButton.textContent = copy.buttonLabel;
+  runtime.actionStatus.hidden = true;
+  runtime.actionStatus.textContent = "";
   runtime.overlay.hidden = false;
   runtime.menuButton.focus();
 }
@@ -453,6 +479,8 @@ export function showDisconnectedMatchEnd(
   runtime.menuButton.hidden = false;
   runtime.menuButton.disabled = false;
   runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
+  runtime.actionStatus.hidden = true;
+  runtime.actionStatus.textContent = "";
   runtime.overlay.hidden = false;
   runtime.menuButton.focus();
 }
