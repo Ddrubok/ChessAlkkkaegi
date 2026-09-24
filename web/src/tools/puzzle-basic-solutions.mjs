@@ -211,12 +211,13 @@ function outputEvidence(evidence) {
 }
 
 const ids = process.env.PUZZLE_ID?.split(",") ?? ["P01", "P02", "P04", "P06"];
+// P04 금은 약한 샷(방위 36.5~38°, 세기 3.75~4.5)에만 있어 그 사이 값을 격자에 포함한다.
 const speedValues = process.env.SPEED
   ? process.env.SPEED.split(",").map(Number)
-  : [3, 4, 4.5, 5, 6, 7, 8, 10];
+  : [3, 3.75, 4, 4.25, 4.5, 5, 6, 7, 8, 10];
 const angleValues = process.env.ANGLE_DEG
   ? process.env.ANGLE_DEG.split(",").map(Number)
-  : [30, 32, 34, 35, 36, 37, 38, 40];
+  : [30, 32, 34, 35, 36, 36.5, 37, 37.5, 38, 40];
 
 const results = [];
 for (const puzzleId of ids) {
