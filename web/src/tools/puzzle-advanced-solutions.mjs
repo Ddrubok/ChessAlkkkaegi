@@ -1,17 +1,27 @@
 import { readFile, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { Vector3 } from "three";
-import { FIXED_STEP, MAX_LAUNCH_SPEED } from "../config.ts";
-import { PUZZLE_CATALOG } from "../puzzle.ts";
-import { applyPuzzleSpawnDefinitions } from "../puzzle-spawn.ts";
-import { createPhysicsRuntime, preSettlePhysics } from "../physics.ts";
-import { PuzzlePhysicsTracker } from "../puzzle-physics.ts";
-import { appendPuzzlePhysicsEvidence } from "../puzzle-evidence.ts";
-import { evaluatePuzzleAttempt } from "../puzzle.ts";
-import { PIECE_INSTANCES } from "../layout.ts";
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const { FIXED_STEP, MAX_LAUNCH_SPEED } = await vite.ssrLoadModule("/src/config.ts");
+const { PUZZLE_CATALOG } = await vite.ssrLoadModule("/src/puzzle.ts");
+const { applyPuzzleSpawnDefinitions } = await vite.ssrLoadModule("/src/puzzle-spawn.ts");
+const { createPhysicsRuntime, preSettlePhysics } = await vite.ssrLoadModule("/src/physics.ts");
+const { PuzzlePhysicsTracker } = await vite.ssrLoadModule("/src/puzzle-physics.ts");
+const { appendPuzzlePhysicsEvidence } = await vite.ssrLoadModule("/src/puzzle-evidence.ts");
+const { evaluatePuzzleAttempt } = await vite.ssrLoadModule("/src/puzzle.ts");
+const { PIECE_INSTANCES } = await vite.ssrLoadModule("/src/layout.ts");
 
 globalThis.localStorage ??= { getItem: () => null, setItem: () => {} };
-globalThis.document ??= new Proxy({ documentElement: {}, body: {} }, {
+globalThis.document ??= new Proxy({ documentElement: {}, body: {}, addEventListener: () => {}, removeEventListener: () => {} }, {
   get: (target, key) => target[key] ?? noop,
 });
 const {
@@ -20,7 +30,7 @@ const {
   queueTurnLaunch,
   setTurnGameMode,
   updateTurnAfterStep,
-} = await import("../turn.ts");
+} = await vite.ssrLoadModule("/src/turn.ts");
 
 const noop = new Proxy({}, {
   get: (_target, key) => key === "visible" ? true : noop,
@@ -370,3 +380,4 @@ for (const [id, solution] of Object.entries(output.solutions)) {
 await writeFile(new URL("./puzzle-advanced-solutions-results.json", import.meta.url), JSON.stringify(output, null, 2), "utf8");
 await writeFile(new URL("./puzzle-advanced-repro.json", import.meta.url), JSON.stringify(output, null, 2), "utf8");
 console.log(JSON.stringify(output, null, 2));
+await vite.close();

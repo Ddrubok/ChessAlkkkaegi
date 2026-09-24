@@ -1,23 +1,33 @@
 import { readFile, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { Vector3 } from "three";
-import { FIXED_STEP, FALL_OUT_Y, MAX_LAUNCH_SPEED } from "../config.ts";
-import { PUZZLE_CATALOG, evaluatePuzzleAttempt } from "../puzzle.ts";
-import { appendPuzzlePhysicsEvidence } from "../puzzle-evidence.ts";
-import { PIECE_INSTANCES } from "../layout.ts";
-import { applyPuzzleSpawnDefinitions } from "../puzzle-spawn.ts";
-import {
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const { FIXED_STEP, FALL_OUT_Y, MAX_LAUNCH_SPEED } = await vite.ssrLoadModule("/src/config.ts");
+const { PUZZLE_CATALOG, evaluatePuzzleAttempt } = await vite.ssrLoadModule("/src/puzzle.ts");
+const { appendPuzzlePhysicsEvidence } = await vite.ssrLoadModule("/src/puzzle-evidence.ts");
+const { PIECE_INSTANCES } = await vite.ssrLoadModule("/src/layout.ts");
+const { applyPuzzleSpawnDefinitions } = await vite.ssrLoadModule("/src/puzzle-spawn.ts");
+const {
   createPhysicsRuntime,
   preSettlePhysics,
   rebuildPhysicsBoard,
   resetPhysicsBreakableWalls,
   resetPhysicsPieces,
-} from "../physics.ts";
-import { PuzzlePhysicsTracker } from "../puzzle-physics.ts";
-import { computeStageBoardHalfExtent } from "../stage.ts";
+} = await vite.ssrLoadModule("/src/physics.ts");
+const { PuzzlePhysicsTracker } = await vite.ssrLoadModule("/src/puzzle-physics.ts");
+const { computeStageBoardHalfExtent } = await vite.ssrLoadModule("/src/stage.ts");
 
 globalThis.localStorage ??= { getItem: () => null, setItem: () => {} };
-globalThis.document ??= new Proxy({ documentElement: {}, body: {} }, {
+globalThis.document ??= new Proxy({ documentElement: {}, body: {}, addEventListener: () => {}, removeEventListener: () => {} }, {
   get: (target, key) => target[key] ?? noop,
 });
 const noop = new Proxy({}, {
@@ -111,8 +121,8 @@ async function prepare(runtime, definition) {
   const below = [...runtime.pieces.entries()].filter(([, binding]) => binding.body.translation().y < FALL_OUT_Y).map(([id]) => id);
   assert.deepEqual(awake, [], `${definition.puzzleId}: awake after strict pre-settle ${awake.join(",")}`);
   assert.deepEqual(below, [], `${definition.puzzleId}: below FALL_OUT_Y after strict pre-settle ${below.join(",")}`);
-  const turn = (await import("../turn.ts")).createTurnRuntime(runtime, sceneRuntime, { maxLaunchSpeed: MAX_LAUNCH_SPEED }, meta.cellSize);
-  const turnModule = await import("../turn.ts");
+  const turn = (await vite.ssrLoadModule("/src/turn.ts")).createTurnRuntime(runtime, sceneRuntime, { maxLaunchSpeed: MAX_LAUNCH_SPEED }, meta.cellSize);
+  const turnModule = await vite.ssrLoadModule("/src/turn.ts");
   turnModule.setTurnGameMode(turn, "puzzle");
   return { sceneRuntime, turn };
 }
@@ -125,7 +135,7 @@ async function shoot(runtime, definition, angleDeg, power) {
   const tracker = new PuzzlePhysicsTracker(runtime);
   tracker.beginShot(shooterId, turn.physicsStepNumber, []);
   const angle = angleDeg * Math.PI / 180;
-  const turnModule = await import("../turn.ts");
+  const turnModule = await vite.ssrLoadModule("/src/turn.ts");
   const queued = turnModule.queueTurnLaunch(turn, {
     pieceId: shooterId,
     normalizedPower: power,
@@ -283,3 +293,4 @@ const output = {
 await writeFile(new URL("./puzzle-pocket-candidate-results.json", import.meta.url), JSON.stringify(output, null, 2), "utf8");
 console.log(JSON.stringify(output, null, 2));
 if (successes.length === 0) process.exitCode = 1;
+await vite.close();

@@ -1,19 +1,29 @@
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { Vector3 } from "three";
-import { FIXED_STEP, MAX_LAUNCH_SPEED } from "../config.ts";
-import { PUZZLE_CATALOG, evaluatePuzzleAttempt } from "../puzzle.ts";
-import { computePuzzleSpawnPose } from "../puzzle-spawn.ts";
-import { createPhysicsRuntime, preSettlePhysics } from "../physics.ts";
-import { PuzzlePhysicsTracker } from "../puzzle-physics.ts";
-import { appendPuzzlePhysicsEvidence } from "../puzzle-evidence.ts";
-import { PIECE_INSTANCES } from "../layout.ts";
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const { FIXED_STEP, MAX_LAUNCH_SPEED } = await vite.ssrLoadModule("/src/config.ts");
+const { PUZZLE_CATALOG, evaluatePuzzleAttempt } = await vite.ssrLoadModule("/src/puzzle.ts");
+const { computePuzzleSpawnPose } = await vite.ssrLoadModule("/src/puzzle-spawn.ts");
+const { createPhysicsRuntime, preSettlePhysics } = await vite.ssrLoadModule("/src/physics.ts");
+const { PuzzlePhysicsTracker } = await vite.ssrLoadModule("/src/puzzle-physics.ts");
+const { appendPuzzlePhysicsEvidence } = await vite.ssrLoadModule("/src/puzzle-evidence.ts");
+const { PIECE_INSTANCES } = await vite.ssrLoadModule("/src/layout.ts");
 
 globalThis.localStorage ??= { getItem: () => null, setItem: () => {} };
 const noop = new Proxy({}, { get: (_target, key) => key === "visible" ? true : noop, set: () => true });
 const noopMesh = new Proxy({ geometry: { dispose: () => {} }, material: { dispose: () => {} } }, { get: (target, key) => target[key] ?? noop, set: () => true });
-globalThis.document ??= new Proxy({ documentElement: {}, body: {} }, { get: (target, key) => target[key] ?? noop });
-const { applyPendingLaunchBeforeStep, createTurnRuntime, queueTurnLaunch, setTurnGameMode, updateTurnAfterStep } = await import("../turn.ts");
+globalThis.document ??= new Proxy({ documentElement: {}, body: {}, addEventListener: () => {}, removeEventListener: () => {} }, { get: (target, key) => target[key] ?? noop });
+const { applyPendingLaunchBeforeStep, createTurnRuntime, queueTurnLaunch, setTurnGameMode, updateTurnAfterStep } = await vite.ssrLoadModule("/src/turn.ts");
 
 const meta = JSON.parse(await readFile(new URL("../../public/assets/chess-set.meta.json", import.meta.url), "utf8"));
 const catalog = new Map(PUZZLE_CATALOG.map((puzzle) => [puzzle.puzzleId, puzzle]));
@@ -198,3 +208,4 @@ async function solveP09() {
 const result = { p05: await solveP05(), p09: await solveP09(), launchNote: "실제 queueTurnLaunch → applyPendingLaunchBeforeStep → world.step → updateTurnAfterStep. 중앙 타점은 worldCom(), Knight는 direction.y<0.2에서 게임의 자동 고도를 적용." };
 await writeFile(new URL("./puzzle-hole-solutions-results.json", import.meta.url), JSON.stringify(result, null, 2), "utf8");
 console.log(JSON.stringify(result, null, 2));
+await vite.close();
