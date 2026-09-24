@@ -1,6 +1,15 @@
-import "./node-headless-globals.mjs";
+import "./headless-browser-env.mjs";
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
 
-const { queueTurnLaunch } = await import("../turn.ts");
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const { queueTurnLaunch } = await vite.ssrLoadModule("/src/turn.ts");
 
 const PIECE_ID = "limits-check-piece";
 
@@ -103,3 +112,4 @@ console.log(
     ],
   }),
 );
+await vite.close();

@@ -1,15 +1,25 @@
 import { readFile, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
-import { PUZZLE_CATALOG } from "../puzzle.ts";
-import { PIECE_INSTANCES } from "../layout.ts";
-import { computeStageBoardHalfExtent } from "../stage.ts";
-import { applyPuzzleSpawnDefinitions } from "../puzzle-spawn.ts";
-import {
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const { PUZZLE_CATALOG } = await vite.ssrLoadModule("/src/puzzle.ts");
+const { PIECE_INSTANCES } = await vite.ssrLoadModule("/src/layout.ts");
+const { computeStageBoardHalfExtent } = await vite.ssrLoadModule("/src/stage.ts");
+const { applyPuzzleSpawnDefinitions } = await vite.ssrLoadModule("/src/puzzle-spawn.ts");
+const {
   createPhysicsRuntime,
   preSettlePhysics,
   rebuildPhysicsBoard,
   resetPhysicsPieces,
-} from "../physics.ts";
+} = await vite.ssrLoadModule("/src/physics.ts");
 
 globalThis.localStorage ??= { getItem: () => null, setItem: () => {} };
 globalThis.document ??= new Proxy({ documentElement: {}, body: {} }, {
@@ -119,3 +129,4 @@ if (failures.length > 0) {
 } else {
   console.log(JSON.stringify(report, null, 2));
 }
+await vite.close();
