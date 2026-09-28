@@ -1,27 +1,39 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { Vector3 } from "three";
-import { FIXED_STEP, MAX_LAUNCH_SPEED } from "../config.ts";
-import { PUZZLE_CATALOG, evaluatePuzzleAttempt } from "../puzzle.ts";
-import { applyPuzzleSpawnDefinitions } from "../puzzle-spawn.ts";
-import { appendPuzzlePhysicsEvidence } from "../puzzle-evidence.ts";
-import {
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const { FIXED_STEP, MAX_LAUNCH_SPEED } = await vite.ssrLoadModule("/src/config.ts");
+const { PUZZLE_CATALOG, evaluatePuzzleAttempt } = await vite.ssrLoadModule("/src/puzzle.ts");
+const { applyPuzzleSpawnDefinitions } = await vite.ssrLoadModule("/src/puzzle-spawn.ts");
+const { appendPuzzlePhysicsEvidence } = await vite.ssrLoadModule("/src/puzzle-evidence.ts");
+const {
   createPhysicsRuntime,
   preSettlePhysics,
   resetPhysicsPieces,
   resetPhysicsPinballObstacles,
-} from "../physics.ts";
-import { PuzzlePhysicsTracker } from "../puzzle-physics.ts";
-import { PIECE_INSTANCES } from "../layout.ts";
+} = await vite.ssrLoadModule("/src/physics.ts");
+const { PuzzlePhysicsTracker } = await vite.ssrLoadModule("/src/puzzle-physics.ts");
+const { PIECE_INSTANCES } = await vite.ssrLoadModule("/src/layout.ts");
 
 const uiNoop = new Proxy(() => {}, {
   get: (target, key) => key === "visible" ? true : target[key] ?? uiNoop,
   set: () => true,
 });
 globalThis.localStorage ??= { getItem: () => null, setItem: () => {} };
-globalThis.document ??= new Proxy({ documentElement: {}, body: {} }, {
+globalThis.document ??= new Proxy({ documentElement: {}, body: {}, addEventListener: () => {}, removeEventListener: () => {} }, {
   get: (target, key) => target[key] ?? uiNoop,
 });
 globalThis.window ??= globalThis;
+globalThis.addEventListener ??= () => {};
+globalThis.removeEventListener ??= () => {};
 const {
   applyPendingLaunchBeforeStep,
   createTurnRuntime,
@@ -29,7 +41,7 @@ const {
   resetTurnRuntime,
   setTurnGameMode,
   updateTurnAfterStep,
-} = await import("../turn.ts");
+} = await vite.ssrLoadModule("/src/turn.ts");
 
 const meta = JSON.parse(await readFile(
   new URL("../../public/assets/chess-set.meta.json", import.meta.url),
@@ -299,3 +311,4 @@ await writeFile(
 if (!firstOnly && results.every((result) => result.solutionCount < 1)) {
   throw new Error("P12 Gold 2-shot 해법을 찾지 못했습니다.");
 }
+await vite.close();

@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
-import {
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const {
   PUZZLE_CATALOG,
   getPuzzleDefinition,
   isPuzzleUnlocked,
@@ -8,7 +18,7 @@ import {
   mergePuzzleProgress,
   evaluatePuzzleAttempt,
   applyPuzzleEvaluation,
-} from "../puzzle.ts";
+} = await vite.ssrLoadModule("/src/puzzle.ts");
 
 const puzzle = (id) => {
   const value = getPuzzleDefinition(id);
@@ -224,3 +234,4 @@ memory.delete("ca_puzzle_progress_v1");
 assert.equal(loadPuzzleProgress(storage).records["P01@1"].bestMedal, 3, "legacy medal keys migrate into playable puzzle progress");
 
 console.log("puzzle-headless-check: PASS");
+await vite.close();

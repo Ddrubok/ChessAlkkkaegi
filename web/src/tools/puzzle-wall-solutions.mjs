@@ -1,13 +1,23 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { PUZZLE_CATALOG } from "../puzzle.ts";
-import { computePuzzleSpawnPose } from "../puzzle-spawn.ts";
-import {
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const { PUZZLE_CATALOG } = await vite.ssrLoadModule("/src/puzzle.ts");
+const { computePuzzleSpawnPose } = await vite.ssrLoadModule("/src/puzzle-spawn.ts");
+const {
   applyPendingBreakableWallDestructions,
   createPhysicsRuntime,
   scanBreakableWallContacts,
-} from "../physics.ts";
-import { PuzzlePhysicsTracker } from "../puzzle-physics.ts";
-import { PIECE_INSTANCES } from "../layout.ts";
+} = await vite.ssrLoadModule("/src/physics.ts");
+const { PuzzlePhysicsTracker } = await vite.ssrLoadModule("/src/puzzle-physics.ts");
+const { PIECE_INSTANCES } = await vite.ssrLoadModule("/src/layout.ts");
 
 const meta = JSON.parse(await readFile(
   new URL("../../public/assets/chess-set.meta.json", import.meta.url),
@@ -267,3 +277,4 @@ await writeFile(
   "utf8",
 );
 console.log(JSON.stringify(result, null, 2));
+await vite.close();

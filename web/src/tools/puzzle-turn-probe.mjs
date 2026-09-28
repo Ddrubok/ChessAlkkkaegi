@@ -1,21 +1,31 @@
 import { readFile, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { Vector3 } from "three";
-import { FIXED_STEP, MAX_LAUNCH_SPEED } from "../config.ts";
-import { PUZZLE_CATALOG, evaluatePuzzleAttempt } from "../puzzle.ts";
-import { computePuzzleSpawnPose } from "../puzzle-spawn.ts";
-import {
+import { fileURLToPath } from "node:url";
+import { createServer } from "vite";
+
+// 앱 모듈은 확장자 없는 import를 쓰므로 Node로 직접 불러오지 않고 Vite로 불러온다.
+const vite = await createServer({
+  root: fileURLToPath(new URL("../..", import.meta.url)),
+  configFile: false,
+  logLevel: "error",
+  server: { middlewareMode: true, hmr: false },
+});
+const { FIXED_STEP, MAX_LAUNCH_SPEED } = await vite.ssrLoadModule("/src/config.ts");
+const { PUZZLE_CATALOG, evaluatePuzzleAttempt } = await vite.ssrLoadModule("/src/puzzle.ts");
+const { computePuzzleSpawnPose } = await vite.ssrLoadModule("/src/puzzle-spawn.ts");
+const {
   createPhysicsRuntime,
   preSettlePhysics,
   scanBreakableWallContacts,
   applyPendingBreakableWallDestructions,
-} from "../physics.ts";
-import { PuzzlePhysicsTracker } from "../puzzle-physics.ts";
-import { appendPuzzlePhysicsEvidence } from "../puzzle-evidence.ts";
-import { PIECE_INSTANCES } from "../layout.ts";
+} = await vite.ssrLoadModule("/src/physics.ts");
+const { PuzzlePhysicsTracker } = await vite.ssrLoadModule("/src/puzzle-physics.ts");
+const { appendPuzzlePhysicsEvidence } = await vite.ssrLoadModule("/src/puzzle-evidence.ts");
+const { PIECE_INSTANCES } = await vite.ssrLoadModule("/src/layout.ts");
 
 globalThis.localStorage ??= { getItem: () => null, setItem: () => {} };
-globalThis.document ??= new Proxy({ documentElement: {}, body: {} }, {
+globalThis.document ??= new Proxy({ documentElement: {}, body: {}, addEventListener: () => {}, removeEventListener: () => {} }, {
   get: (target, key) => target[key] ?? noop,
 });
 const {
@@ -24,7 +34,7 @@ const {
   queueTurnLaunch,
   setTurnGameMode,
   updateTurnAfterStep,
-} = await import("../turn.ts");
+} = await vite.ssrLoadModule("/src/turn.ts");
 
 const meta = JSON.parse(await readFile(
   new URL("../../public/assets/chess-set.meta.json", import.meta.url),
@@ -403,3 +413,4 @@ const result = {
 };
 await writeFile(new URL("./puzzle-turn-solutions-results.json", import.meta.url), JSON.stringify(result, null, 2), "utf8");
 console.log(JSON.stringify(result, null, 2));
+await vite.close();
