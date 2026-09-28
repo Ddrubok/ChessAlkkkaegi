@@ -7,6 +7,7 @@ import type {
 } from "./assets";
 import {
   FIXED_STEP,
+  getPieceFriction,
   GRAVITY_Y,
   PIECE_ANGULAR_DAMPING,
   PIECE_DENSITY,
@@ -17,6 +18,7 @@ import {
   WORLD_LENGTH_UNIT,
   type PieceType,
 } from "./config";
+import type { GameMode } from "./game-mode";
 import type { PieceInstance } from "./layout";
 import {
   computeBoardFloorRectangles,
@@ -146,6 +148,8 @@ export interface PhysicsRuntime {
   boardHalfExtent: number;
   // 체스 판 셀 크기
   cellSize: number;
+  // 현재 물리 월드가 목표로 하는 대전 모드다.
+  gameMode?: GameMode;
   pieces: Map<string, PieceBodyBinding>;
   // 스테이지 3~8의 파괴·불파괴 변형을 같은 바디 생성 경로로 관리하는 외곽 벽 조각표다.
   breakableWalls: Map<string, BreakableWallPhysicsBinding>;
@@ -223,6 +227,7 @@ function createPhysicsBoard(
     boardHalfExtent,
     holeRectangles,
   );
+  const boardFriction = getPieceFriction(stageOptions.gameMode);
   const colliders = floorRectangles.map((rectangle) => {
     const halfWidth = (rectangle.maxX - rectangle.minX) / 2;
     const halfDepth = (rectangle.maxZ - rectangle.minZ) / 2;
@@ -237,7 +242,7 @@ function createPhysicsBoard(
           0,
           (rectangle.minZ + rectangle.maxZ) / 2,
         )
-        .setFriction(PIECE_FRICTION)
+        .setFriction(boardFriction)
         .setRestitution(PIECE_RESTITUTION),
       body,
     );
@@ -649,6 +654,7 @@ function createPieceColliderDescriptor(
   colliderPoints: readonly ColliderPoint[],
   density: number,
   uniformScale: number,
+  friction = PIECE_FRICTION,
 ): RAPIER.ColliderDesc {
   if (!Number.isFinite(density) || density <= 0) {
     throw new Error(`${type} 콜라이더 밀도 ${density}가 유한한 양수가 아닙니다.`);
@@ -677,7 +683,7 @@ function createPieceColliderDescriptor(
   }
   return descriptor
     .setDensity(density)
-    .setFriction(PIECE_FRICTION)
+    .setFriction(friction)
     .setRestitution(PIECE_RESTITUTION);
 }
 
@@ -785,11 +791,14 @@ export function createPieceBody(
     linearVelocity: { x: 0, y: 0, z: 0 },
     angularVelocity: { x: 0, y: 0, z: 0 },
   };
+  const effectiveMode = stageOptions.gameMode ?? runtime.gameMode;
+  const friction = getPieceFriction(effectiveMode);
   const colliderDescriptor = createPieceColliderDescriptor(
     instance.type,
     pieceMeta.colliderPoints,
     PIECE_DENSITY,
     uniformScale,
+    friction,
   );
   return createPieceBodyFromState(
     runtime,
@@ -823,6 +832,7 @@ export function replacePieceBody(
     colliderPoints,
     density,
     existing.uniformScale,
+    existing.collider.friction(),
   );
   const translation = existing.body.translation();
   const rotation = existing.body.rotation();
@@ -901,6 +911,7 @@ export function promotePieceBody(
     pieceMeta.colliderPoints,
     PIECE_DENSITY,
     existing.uniformScale,
+    existing.collider.friction(),
   );
 
   const translation = existing.body.translation();
@@ -994,6 +1005,7 @@ export async function createPhysicsRuntime(
     boardTop: board.top,
     boardHalfExtent,
     cellSize: meta.cellSize,
+    gameMode: stageOptions.gameMode,
     pieces: new Map(),
     breakableWalls: new Map(),
     destroyedBreakableWallIds: new Set(),
@@ -1037,6 +1049,12 @@ export function rebuildPhysicsBoard(
     nextFloorRectangles,
   );
   if (runtime.boardFloorLayoutKey === nextLayoutKey) {
+    if (runtime.gameMode !== stageOptions.gameMode) {
+      for (const collider of runtime.boardColliders) {
+        collider.setFriction(getPieceFriction(stageOptions.gameMode));
+      }
+      runtime.gameMode = stageOptions.gameMode;
+    }
     return;
   }
   const piecePoses = new Map(
@@ -1076,6 +1094,7 @@ export function rebuildPhysicsBoard(
   runtime.boardFloorLayoutKey = board.layoutKey;
   runtime.boardTop = board.top;
   runtime.boardHalfExtent = boardHalfExtent;
+  runtime.gameMode = stageOptions.gameMode;
   for (const [pieceId, pose] of piecePoses) {
     const binding = runtime.pieces.get(pieceId);
     if (binding === undefined) {
@@ -1160,6 +1179,12 @@ export function resetPhysicsPieces(
   instances: readonly PieceInstance[],
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): void {
+  if (stageOptions.gameMode === "online" || runtime.gameMode !== stageOptions.gameMode) {
+    for (const collider of runtime.boardColliders) {
+      collider.setFriction(getPieceFriction(stageOptions.gameMode));
+    }
+  }
+  runtime.gameMode = stageOptions.gameMode;
   for (const binding of [...runtime.pieces.values()]) {
     runtime.world.removeRigidBody(binding.body);
   }

@@ -331,7 +331,7 @@ try {
   tuningModule.setTuningGameMode(tuningModeRuntime, "online");
   const onlineUsesDefaults =
     JSON.stringify(tuningModeRuntime.settings) ===
-    JSON.stringify(tuningDefaults);
+    JSON.stringify(tuningModule.createDefaultRuntimeTuningSettings("online"));
   tuningModule.setTuningGameMode(tuningModeRuntime, "stage");
   const localValuesRestored =
     JSON.stringify(tuningModeRuntime.settings) ===

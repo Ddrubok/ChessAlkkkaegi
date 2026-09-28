@@ -7,7 +7,7 @@ import {
   Spherical,
   Vector3,
 } from "three";
-import { computePieceWorldAabb } from "./aim";
+import { computePieceWorldAabb, getAimMaxPower } from "./aim";
 import { CAM_PITCH_MAX, CAM_PITCH_MIN } from "./config";
 import type { PieceBodyBinding } from "./physics";
 import type { SceneRuntime } from "./scene";
@@ -157,7 +157,11 @@ export function computeStrikeSolution(
     runtime.strikePointOverride,
   );
   const initialSpeed =
-    MathUtils.clamp(normalizedPower, 0, 1) *
+    MathUtils.clamp(normalizedPower, 0, getAimMaxPower({
+      isRook: binding.instance.type === "Rook" || binding.instance.type === "Queen",
+      isBishop: binding.instance.type === "Bishop" || binding.instance.type === "Queen",
+      hasCustomSpin: runtime.strikePointOverride !== null,
+    })) *
     runtime.tuningRuntime.settings.maxLaunchSpeed;
   const initialDeltaVelocity = direction
     .clone()
@@ -342,15 +346,16 @@ export function isRedDotHit(
   return Math.hypot(clientX - screenX, clientY - screenY) <= radiusPixels;
 }
 /**
- * 사용자가 직접 지정한 타점을 저장한다. 스핀 부여 시 1.0 초과 오버드라이브 파워는 1.0으로 클램프된다.
+ * 사용자가 직접 지정한 타점을 저장하고 해당 기물의 스핀 발사 상한을 적용한다.
  */
 export function setStrikePointOverride(
   runtime: AimParametersRuntime,
   point: Vector3,
+  maxPower = 1,
 ): void {
   runtime.strikePointOverride = point.clone();
-  if (runtime.normalizedPower > 1.0) {
-    runtime.normalizedPower = 1.0;
+  if (runtime.normalizedPower > maxPower) {
+    runtime.normalizedPower = maxPower;
   }
 }
 

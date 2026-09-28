@@ -82,8 +82,14 @@ export interface ActiveAim {
   isRook?: boolean;
   // 비숍 기물 고유 스핀 대각선 굴절(리코셰) 조준 여부다.
   isBishop?: boolean;
-  // 타점(스핀) 적용 여부다. 스핀이 있으면 최대 100%, 스핀이 없으면 최대 150%다.
+  // 타점(스핀) 적용 여부다. 룩은 스핀 시 100%, 퀸은 스핀과 무관하게 150%다.
   hasCustomSpin?: boolean;
+}
+
+export function getAimMaxPower(aim: Pick<ActiveAim, "isRook" | "isBishop" | "hasCustomSpin">): number {
+  return aim.isRook && (!aim.hasCustomSpin || aim.isBishop)
+    ? ROOK_MAX_OVERDRIVE_POWER
+    : ROOK_SPIN_MAX_POWER;
 }
 
 /**
@@ -492,10 +498,11 @@ export function computeKnightTrajectoryPoints(
   direction: Vector3,
   normalizedPower: number,
   pointCount: number,
+  maxLaunchSpeed = MAX_LAUNCH_SPEED,
 ): GuideCurvePoint[] {
   assertFiniteGuideVector("나이트 탄도 시작점", start);
   const power = computeKnightEffectivePower(normalizedPower);
-  const launchSpeed = power * MAX_LAUNCH_SPEED;
+  const launchSpeed = power * maxLaunchSpeed;
   const initialVelocity = direction
     .clone()
     .normalize()
@@ -1440,10 +1447,7 @@ export function updateDirectedAim(
   } else {
     activeAim.direction.copy(direction).normalize();
   }
-  const maxPower =
-    activeAim.isRook && !activeAim.hasCustomSpin
-      ? ROOK_MAX_OVERDRIVE_POWER
-      : ROOK_SPIN_MAX_POWER;
+  const maxPower = getAimMaxPower(activeAim);
   activeAim.normalizedPower = Math.min(
     Math.max(normalizedPower, 0),
     maxPower,
@@ -1478,10 +1482,7 @@ export function updateAimPointer(
   if (activeAim === null) {
     return;
   }
-  const maxPower =
-    activeAim.isRook && !activeAim.hasCustomSpin
-      ? ROOK_MAX_OVERDRIVE_POWER
-      : ROOK_SPIN_MAX_POWER;
+  const maxPower = getAimMaxPower(activeAim);
   const deltaX = clientX - activeAim.startX;
   const deltaY = clientY - activeAim.startY;
   const dragLength = Math.hypot(deltaX, deltaY);
@@ -1646,6 +1647,7 @@ export function updateAimVisuals(
   runtime: AimRuntime,
   bindings: ReadonlyMap<string, PieceBodyBinding>,
   now: number,
+  knightMaxLaunchSpeed = MAX_LAUNCH_SPEED,
 ): void {
   const selectedId = runtime.selectedPieceId;
   if (selectedId !== null) {
@@ -1694,6 +1696,7 @@ export function updateAimVisuals(
             activeAim.direction,
             activeAim.normalizedPower,
             GUIDE_CURVE_POINT_COUNT,
+            knightMaxLaunchSpeed,
           );
           setElevationRibbonGeometry(
             runtime.elevationRibbon.geometry,

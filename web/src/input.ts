@@ -25,6 +25,7 @@ import {
   handleAimPieceRemoved,
   isKnightPiece,
   isRookPiece,
+  getAimMaxPower,
   isBishopPiece,
   selectAimPiece,
   setAimApplicationPoint,
@@ -55,7 +56,6 @@ import {
   CAM_PITCH_MIN,
   KNIGHT_LAUNCH_ANGLE,
   MAX_DRAG_PIXELS,
-  ROOK_MAX_OVERDRIVE_POWER,
   TOUCH_MAX_DRAG_MIN_PIXELS,
   TOUCH_MAX_DRAG_VIEWPORT_RATIO,
   TOUCH_PIECE_HIT_RADIUS_PIXELS,
@@ -1830,8 +1830,11 @@ function handleCanvasPointerMove(
       isRookPiece(selectedPieceId, runtime.physicsRuntime.pieces);
     const hasCustomSpin =
       runtime.aimParametersRuntime.strikePointOverride !== null;
-    const maxPower =
-      isRook && !hasCustomSpin ? ROOK_MAX_OVERDRIVE_POWER : 1.0;
+    const maxPower = getAimMaxPower({
+      isRook,
+      isBishop: selectedPieceId !== null && isBishopPiece(selectedPieceId, runtime.physicsRuntime.pieces),
+      hasCustomSpin,
+    });
     setAimPower(
       runtime.aimParametersRuntime,
       computeRedDotPullPower(
@@ -1965,11 +1968,17 @@ function handleCanvasPointerUp(
   ) {
     const point = raycastSelectedPieceSurface(runtime, event);
     if (point !== null) {
-      setStrikePointOverride(runtime.aimParametersRuntime, point);
+      const selectedId = runtime.aimRuntime.selectedPieceId;
+      setStrikePointOverride(runtime.aimParametersRuntime, point, getAimMaxPower({
+        isRook: selectedId !== null && isRookPiece(selectedId, runtime.physicsRuntime.pieces),
+        isBishop: selectedId !== null && isBishopPiece(selectedId, runtime.physicsRuntime.pieces),
+        hasCustomSpin: true,
+      }));
       if (runtime.aimRuntime.activeAim !== null) {
         runtime.aimRuntime.activeAim.hasCustomSpin = true;
         if (
           runtime.aimRuntime.activeAim.isRook &&
+          !runtime.aimRuntime.activeAim.isBishop &&
           runtime.aimRuntime.activeAim.normalizedPower > 1.0
         ) {
           runtime.aimRuntime.activeAim.normalizedPower = 1.0;
@@ -2283,11 +2292,17 @@ export function createInputRuntime(
       setStrikePointOverride(
         runtime.aimParametersRuntime,
         point,
+        getAimMaxPower({
+          isRook: runtime.aimRuntime.selectedPieceId !== null && isRookPiece(runtime.aimRuntime.selectedPieceId, runtime.physicsRuntime.pieces),
+          isBishop: runtime.aimRuntime.selectedPieceId !== null && isBishopPiece(runtime.aimRuntime.selectedPieceId, runtime.physicsRuntime.pieces),
+          hasCustomSpin: true,
+        }),
       );
       if (runtime.aimRuntime.activeAim !== null) {
         runtime.aimRuntime.activeAim.hasCustomSpin = true;
         if (
           runtime.aimRuntime.activeAim.isRook &&
+          !runtime.aimRuntime.activeAim.isBishop &&
           runtime.aimRuntime.activeAim.normalizedPower > 1.0
         ) {
           runtime.aimRuntime.activeAim.normalizedPower = 1.0;

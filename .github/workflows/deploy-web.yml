@@ -50,6 +50,9 @@ jobs:
           VITE_AD_TEST_MODE: 'false'
 
       - run: npm run check:regressions
+      - run: node src/tools/queen-overdrive-check.mjs
+      - run: node src/tools/classic-balance-check.mjs
+      - run: node src/tools/classic-friction-check.mjs
       - run: npm run check:auth-interaction
       - run: npm run check:cosmetics
       - run: npm run check:lobby

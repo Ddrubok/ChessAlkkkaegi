@@ -6,6 +6,7 @@ import {
 import { updateAimVisuals, type AimRuntime } from "./aim";
 import {
   FIXED_STEP,
+  getMaxLaunchSpeed,
   MAX_FRAME_DELTA,
   MAX_STEPS_PER_FRAME,
   PIECE_TYPES,
@@ -345,7 +346,10 @@ export function startGameLoop(
       ) {
         sceneRuntime.controls.update();
       }
-      updateAimVisuals(aimRuntime, physicsRuntime.pieces, now);
+      updateAimVisuals(
+        aimRuntime, physicsRuntime.pieces, now,
+        getMaxLaunchSpeed(turnRuntime.gameMode, "Knight", tuningRuntime.settings.maxLaunchSpeed),
+      );
       collectMetrics(
         sceneRuntime,
         physicsRuntime,
@@ -451,7 +455,10 @@ export function startGameLoop(
     ) {
       sceneRuntime.controls.update();
     }
-    updateAimVisuals(aimRuntime, physicsRuntime.pieces, now);
+    updateAimVisuals(
+      aimRuntime, physicsRuntime.pieces, now,
+      getMaxLaunchSpeed(turnRuntime.gameMode, "Knight", tuningRuntime.settings.maxLaunchSpeed),
+    );
     const metrics = collectMetrics(
       sceneRuntime,
       physicsRuntime,

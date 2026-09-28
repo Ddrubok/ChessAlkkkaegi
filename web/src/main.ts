@@ -1,3 +1,4 @@
+import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED } from "./config";
 import { createWeeklyChallengeHud } from "./weekly-challenge-hud";
 import { updateQuestSummaries } from "./quest-ui";
 import { createBannerMatch, settleBannerMatch, finishBannerMatch, type BannerMatch } from "./banner-match";
@@ -243,6 +244,9 @@ function assertBoardAgreement(
  * 최종 에셋을 읽고 씬과 물리를 구성한 뒤 고정 스텝 루프를 시작한다.
  */
 async function bootstrap(): Promise<void> {
+  const localBalancePreview = import.meta.env.DEV &&
+    ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname) &&
+    new URLSearchParams(window.location.search).get("balance") === "local";
   const inlineLoadingPanel =
     document.querySelector<HTMLElement>("#boot-loading");
   const loadingPanel =
@@ -687,6 +691,7 @@ async function bootstrap(): Promise<void> {
   };
 
   const handleTurnTimeout = (): void => {
+    if (localBalancePreview && onlineRuntime === null) return;
     if (gameModeRuntime?.mode === "puzzle") return;
     if (turnRuntime.phase !== "ready") return;
 
@@ -721,7 +726,7 @@ async function bootstrap(): Promise<void> {
 
   const playerBanners = createPlayerBanners(app, {
     getState: () => ({
-      visible: !isMenuBlocking(menuRuntime) && gameModeRuntime !== null && !gameModeRuntime.switching && turnRuntime.phase !== "match-over",
+      visible: !localBalancePreview && !isMenuBlocking(menuRuntime) && gameModeRuntime !== null && !gameModeRuntime.switching && turnRuntime.phase !== "match-over",
       mode: gameModeRuntime?.mode ?? "hotseat", stage: gameModeRuntime?.stageNumber ?? 1,
       currentSide: turnRuntime.currentSide, mySide: onlineRuntime?.mySide ?? null,
       profile: menuRuntime.userProfile, opponent: activeMatchOpponent,
@@ -741,7 +746,7 @@ async function bootstrap(): Promise<void> {
     },
   });
   const turnHud = createTurnHud(app, turnRuntime, {
-    getGameMode: () => gameModeRuntime?.mode ?? "hotseat",
+    getGameMode: () => localBalancePreview && onlineRuntime === null ? "hotseat" : gameModeRuntime?.mode ?? "hotseat",
     getMySide: () => onlineRuntime?.mySide ?? null,
     isMenuVisible: () => !menuRuntime.overlay.hidden,
     onTimeoutLaunch: handleTurnTimeout,
@@ -871,7 +876,9 @@ async function bootstrap(): Promise<void> {
         onlineRuntime?.isRemoteTelegraphActive() === true,
       canSelectPiece: (pieceId) =>
         gameModeRuntime?.mode === "online"
-          ? onlineRuntime?.canSelectLocalPiece(pieceId) === true
+          ? localBalancePreview && onlineRuntime === null
+            ? canSelectTurnPiece(turnRuntime, pieceId)
+            : onlineRuntime?.canSelectLocalPiece(pieceId) === true
           : ((gameModeRuntime?.mode !== "stage" && gameModeRuntime?.mode !== "weekly") ||
               turnRuntime.currentSide === "white") &&
             canSelectTurnPiece(turnRuntime, pieceId),
@@ -2741,6 +2748,23 @@ async function bootstrap(): Promise<void> {
     }
   };
   setMainMenuReady(menuRuntime, true);
+  if (localBalancePreview) {
+    await switchGameMode(gameModeRuntime, "online", true);
+    switchInputMode(inputRuntime, "classic");
+    hideMainMenuAfterModeStart(menuRuntime);
+    ensureGameLoopStarted();
+    const previewStyle = document.createElement("style");
+    previewStyle.textContent = ".turn-hud-timer-wrap{display:none!important}";
+    app.append(previewStyle);
+    const previewBar = document.createElement("div");
+    previewBar.style.cssText = "position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:10000;padding:8px 12px;background:#202020;color:white;border-radius:6px;font-size:13px;white-space:nowrap";
+    previewBar.append(`밸런스 체험 · 백/흑 번갈아 조작 · 일반 ${CLASSIC_MAX_LAUNCH_SPEED} / 나이트 ${CLASSIC_KNIGHT_MAX_LAUNCH_SPEED} · 마찰 ${physicsRuntime.boardCollider.friction().toFixed(2)} `);
+    const restart = document.createElement("button");
+    restart.textContent = "새 경기";
+    restart.onclick = () => window.location.reload();
+    previewBar.append(restart);
+    app.append(previewBar);
+  }
   tutorialManager.init(
     metaRuntime,
     async (nextStep) => {

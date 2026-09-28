@@ -717,6 +717,10 @@ try {
           recoveryDiagnostics.sourceSnapshot,
           recoveryDiagnostics.hostBeforeDelivery,
         ),
+        canonicalHostPoseDelta: compareSnapshotBodies(
+          recoveryDiagnostics.canonicalSnapshot,
+          recoveryDiagnostics.hostBeforeDelivery,
+        ),
         guestPoseDelta: compareSnapshotBodies(
           recoveryDiagnostics.canonicalSnapshot,
           guestAfterApply,
@@ -757,9 +761,10 @@ try {
       recoveryMeasurement.movingAfter.length === 0 &&
       recoveryMeasurement.postHostHash ===
         recoveryMeasurement.postGuestHash &&
-      recoveryMeasurement.authoritativeHostHash !==
-        recoveryMeasurement.postHostHash &&
-      recoveryMeasurement.hostPoseDelta.movedPieces === 1 &&
+      // 이미 정규화된 자세라면 호스트가 추가로 움직일 필요는 없다.
+      // 양측이 전송된 정규화 스냅샷과 일치하고 의도한 발산을 복구했는지 검사한다.
+      recoveryMeasurement.preGuestHash !== recoveryMeasurement.postGuestHash &&
+      recoveryMeasurement.canonicalHostPoseDelta.movedPieces === 0 &&
       recoveryMeasurement.guestPoseDelta.movedPieces === 0 &&
       recoveryMeasurement.turnStepsBetweenApplyAndCapture === 0,
     `스냅샷 정규화 진단이 예상과 다릅니다: ${JSON.stringify(recoveryMeasurement)}`,
@@ -800,7 +805,7 @@ try {
     `[통과 a] 두 실제 월드 10턴 최종 해시 일치: ${finalHost.sha256}, settleSteps=${settleSteps.join(",")}`,
   );
   console.log(
-    `[통과 b] 의도적 발산→스냅샷 복구: recoveryTurn=${recoveryTurn}, host/guest desync=1/1, living=${recoveryMeasurement.hostCount}/${recoveryMeasurement.guestCount}, idDiff=${recoveryMeasurement.hostOnly.length + recoveryMeasurement.guestOnly.length}, sleeping=${guest.physicsRuntime.pieces.size}/${guest.physicsRuntime.pieces.size}, awake=${recoveryMeasurement.awakeAfter.length}, moving=${recoveryMeasurement.movingAfter.length}, poseMovesAfterApply=${recoveryMeasurement.guestPoseDelta.movedPieces}, stepsAfterApply=${recoveryMeasurement.turnStepsBetweenApplyAndCapture}, normalized=${recoveryMeasurement.hostPoseDelta.changed[0].id}:Δq=${recoveryMeasurement.hostPoseDelta.maxRotationDelta}, hashes=${recoveryMeasurement.preGuestHash}/${recoveryMeasurement.authoritativeHostHash}/${recoveryMeasurement.postGuestHash}`,
+    `[통과 b] 의도적 발산→스냅샷 복구: recoveryTurn=${recoveryTurn}, host/guest desync=1/1, living=${recoveryMeasurement.hostCount}/${recoveryMeasurement.guestCount}, idDiff=${recoveryMeasurement.hostOnly.length + recoveryMeasurement.guestOnly.length}, sleeping=${guest.physicsRuntime.pieces.size}/${guest.physicsRuntime.pieces.size}, awake=${recoveryMeasurement.awakeAfter.length}, moving=${recoveryMeasurement.movingAfter.length}, poseMovesAfterApply=${recoveryMeasurement.guestPoseDelta.movedPieces}, stepsAfterApply=${recoveryMeasurement.turnStepsBetweenApplyAndCapture}, normalized=${recoveryMeasurement.hostPoseDelta.changed[0]?.id ?? "unchanged"}:Δq=${recoveryMeasurement.hostPoseDelta.maxRotationDelta}, hashes=${recoveryMeasurement.preGuestHash}/${recoveryMeasurement.authoritativeHostHash}/${recoveryMeasurement.postGuestHash}`,
   );
   console.log(
     `[프로토콜] ready=${measureMessageBytes(firstReady)} bytes ${JSON.stringify(firstReady)}`,

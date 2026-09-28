@@ -1,3 +1,5 @@
+import type { GameMode } from "./game-mode";
+
 // Rapier가 안정적으로 수면 상태에 도달한 실측 중력값을 고정한다.
 export const GRAVITY_Y = -9.81;
 
@@ -15,6 +17,9 @@ export const PIECE_DENSITY = 1.2;
 
 // 말끼리와 말·보드 사이의 미끄러짐을 동일하게 맞추는 마찰값이다. 2026-07-27 기획자 요청값.
 export const PIECE_FRICTION = 0.05;
+
+// 2026-09-28 B안 QA: 발사 속도를 유지하며 초반 연쇄 탈락을 줄이는 대전 전용 마찰.
+export const CLASSIC_FRICTION = 0.2;
 
 // 충돌 감각을 남기면서도 모든 말이 수면 상태에 도달하게 하는 반발값이다. 2026-07-27 기획자 요청값.
 export const PIECE_RESTITUTION = 0.6;
@@ -109,6 +114,29 @@ export const TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER = 1;
 
 // 최대 세기에서 질량과 무관하게 목표로 하는 발사 직후 속도다.
 export const MAX_LAUNCH_SPEED = 11;
+
+// 2026-09-27 체감 피드백: 일반 2.5→7, 나이트 4.5 유지. 대전 전용 수치다.
+export const CLASSIC_MAX_LAUNCH_SPEED = 7;
+export const CLASSIC_KNIGHT_MAX_LAUNCH_SPEED = 4.5;
+
+export function getMaxLaunchSpeed(
+  gameMode: GameMode,
+  pieceType: PieceType,
+  localMaxLaunchSpeed = MAX_LAUNCH_SPEED,
+): number {
+  return gameMode === "online"
+    ? pieceType === "Knight"
+      ? CLASSIC_KNIGHT_MAX_LAUNCH_SPEED
+      : CLASSIC_MAX_LAUNCH_SPEED
+    : localMaxLaunchSpeed;
+}
+
+export function getPieceFriction(
+  gameMode?: GameMode,
+  localFriction = PIECE_FRICTION,
+): number {
+  return gameMode === "online" ? CLASSIC_FRICTION : localFriction;
+}
 
 // 흑 준비 턴이 된 뒤 실제 조준 고리를 보여 주기 전까지 기다리는 실시간 초다.
 export const AI_AIM_PREVIEW_DELAY = 0.25;

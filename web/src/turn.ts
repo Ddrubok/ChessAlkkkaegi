@@ -6,6 +6,7 @@ import {
   BISHOP_SPIN_TORQUE_MULTIPLIER,
   CAMERA_PITCH_DEG,
   computeKnightEffectivePower,
+  getMaxLaunchSpeed,
   FALL_OUT_Y,
   isPieceInOpponentEndZone,
   KNIGHT_LAUNCH_ANGLE,
@@ -673,7 +674,7 @@ export function queueTurnLaunch(
       request.applicationPoint.y - center.y,
       request.applicationPoint.z - center.z,
     ) <= 0.04;
-    const maxPower = binding?.instance.type === "Rook" && centerStrike
+    const maxPower = binding?.instance.type === "Queen" || (binding?.instance.type === "Rook" && centerStrike)
       ? ROOK_MAX_OVERDRIVE_POWER : 1;
     if (!Number.isFinite(request.normalizedPower) || request.normalizedPower < 0 || request.normalizedPower > maxPower) {
       return { accepted: false, reason: uiText("powerRange", {max: maxPower * 100}) };
@@ -754,7 +755,11 @@ export function applyPendingLaunchBeforeStep(
       : request.normalizedPower;
   const targetSpeed =
     effectivePower *
-    runtime.tuningSettings.maxLaunchSpeed *
+    getMaxLaunchSpeed(
+      runtime.gameMode,
+      binding.instance.type,
+      runtime.tuningSettings.maxLaunchSpeed,
+    ) *
     speedMultiplier;
 
   let launchDirection = request.direction.clone();
@@ -1425,5 +1430,4 @@ export function executeKingDefense(
   kingBinding.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
   return true;
 }
-
 

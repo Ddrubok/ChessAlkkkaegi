@@ -6,6 +6,7 @@ import {
   CAM_INITIAL_AIM_PITCH_DEG,
   CAM_KEY_DEG_PER_SEC,
   CARD_EFFECT_SCALE,
+  CLASSIC_FRICTION,
   ENEMY_STAGE_BUFF_SCALE,
   MAX_LAUNCH_SPEED,
   PIECE_ANGULAR_DAMPING,
@@ -132,6 +133,8 @@ export interface TuningRuntime {
   storageWarningShown: boolean;
   // 현재 활성 설정이 저장값이 아니라 온라인 config 기본값인지 나타낸다.
   onlineDefaultsActive: boolean;
+  // 온라인 또는 주간 도전 등 고정 기본값을 사용하는 현재 대전 모드다.
+  activeFixedGameMode?: "online" | "weekly";
   // Rapier가 다음 step에서 setter를 반영한 뒤 한 번 검증하도록 예약한다.
   pendingPhysicsVerification: boolean;
   // 조절판이 턴 상태를 직접 알지 않고 기존 전체 깨우기 동작을 호출한다.
@@ -154,11 +157,21 @@ const DEFAULT_SETTINGS: RuntimeTuningSettings = {
   cardEffectScale: CARD_EFFECT_SCALE,
 };
 
+// 온라인 대전 전용 기본 튜닝값 (마찰만 CLASSIC_FRICTION=0.2로 상향)
+const ONLINE_DEFAULT_SETTINGS: RuntimeTuningSettings = {
+  ...DEFAULT_SETTINGS,
+  friction: CLASSIC_FRICTION,
+};
+
 /**
  * 게임과 헤드리스 도구가 같은 기본 조절값을 값 복사로 받도록 공개한다.
  */
-export function createDefaultRuntimeTuningSettings(): RuntimeTuningSettings {
-  return { ...DEFAULT_SETTINGS };
+export function createDefaultRuntimeTuningSettings(
+  gameMode?: GameMode,
+): RuntimeTuningSettings {
+  return gameMode === "online"
+    ? { ...ONLINE_DEFAULT_SETTINGS }
+    : { ...DEFAULT_SETTINGS };
 }
 
 /**
@@ -441,11 +454,16 @@ function applyPhysicsSetting(
 ): void {
   const { physicsRuntime, settings } = runtime;
   if (key === "friction") {
+    // 설정 전환은 보드 재생성보다 먼저 실행되므로 이전 물리 모드나 DOM 표시를 읽지 않는다.
+    if (runtime.activeFixedGameMode === "online") {
+      settings.friction = CLASSIC_FRICTION;
+    }
+    const friction = settings.friction;
     for (const collider of physicsRuntime.boardColliders) {
-      collider.setFriction(settings.friction);
+      collider.setFriction(friction);
     }
     for (const binding of physicsRuntime.pieces.values()) {
-      binding.collider.setFriction(settings.friction);
+      binding.collider.setFriction(friction);
     }
   } else if (key === "restitution") {
     for (const collider of physicsRuntime.boardColliders) {
@@ -524,13 +542,18 @@ export function setTuningGameMode(
   gameMode: GameMode,
 ): void {
   const useFixedDefaults = gameMode === "online" || gameMode === "weekly";
-  if (runtime.onlineDefaultsActive === useFixedDefaults) {
+  if (
+    runtime.onlineDefaultsActive === useFixedDefaults &&
+    (!useFixedDefaults || runtime.activeFixedGameMode === gameMode)
+  ) {
     runtime.onlineNotice.hidden = gameMode !== "online";
     return;
   }
   runtime.onlineDefaultsActive = useFixedDefaults;
+  runtime.activeFixedGameMode = useFixedDefaults ? gameMode : undefined;
+  runtime.onlineNotice.hidden = gameMode !== "online";
   const targetSettings = useFixedDefaults
-    ? DEFAULT_SETTINGS
+    ? (gameMode === "online" ? ONLINE_DEFAULT_SETTINGS : DEFAULT_SETTINGS)
     : runtime.localSettings;
   for (const key of Object.keys(DEFAULT_SETTINGS) as TuningKey[]) {
     setTuningValue(runtime, key, targetSettings[key], false);
@@ -549,7 +572,6 @@ export function setTuningGameMode(
   if (resetButton !== null) {
     resetButton.disabled = useFixedDefaults;
   }
-  runtime.onlineNotice.hidden = gameMode !== "online";
 }
 
 /** 퍼즐에서는 기기별 조절값과 무관하게 config 기본 튜닝값을 사용한다. */
@@ -902,10 +924,14 @@ export function createTuningRuntime(
   onlineNotice.className = "tuning-note tuning-online-notice";
   onlineNotice.textContent =
     "온라인 대전에서는 기기 저장값을 잠시 멈추고 config 기본값을 사용합니다.";
-  onlineNotice.hidden = true;
+  const isOnline = physicsRuntime.gameMode === "online";
+  onlineNotice.hidden = !isOnline;
+  const initialSettings = isOnline
+    ? { ...ONLINE_DEFAULT_SETTINGS }
+    : loaded.settings;
   const runtime: TuningRuntime = {
     physicsRuntime,
-    settings: loaded.settings,
+    settings: initialSettings,
     panel,
     controls: new Map(),
     appliedValueElements: new Map(),
@@ -914,7 +940,8 @@ export function createTuningRuntime(
     storageNotice,
     onlineNotice,
     storageWarningShown: false,
-    onlineDefaultsActive: false,
+    onlineDefaultsActive: isOnline,
+    activeFixedGameMode: isOnline ? "online" : undefined,
     pendingPhysicsVerification: false,
     wakeAllHandler: null,
   };
@@ -992,6 +1019,16 @@ export function createTuningRuntime(
     onlineNotice,
     actions,
   );
+  if (isOnline) {
+    for (const elements of runtime.controls.values()) {
+      for (const element of elements) {
+        if (element instanceof HTMLInputElement) {
+          element.disabled = true;
+        }
+      }
+    }
+    resetButton.disabled = true;
+  }
   // 손맛 조절판은 ?tune=1 개발 세션에서만 열린다. 게임 화면 단축키로는 열 수 없다.
   return runtime;
 }
