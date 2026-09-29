@@ -8,6 +8,7 @@ import type {
 import {
   FIXED_STEP,
   getPieceFriction,
+  getPieceWeightMultiplier,
   GRAVITY_Y,
   PIECE_ANGULAR_DAMPING,
   PIECE_DENSITY,
@@ -682,7 +683,7 @@ function createPieceColliderDescriptor(
     throw new Error(`${type} convexHull 콜라이더 생성에 실패했습니다.`);
   }
   return descriptor
-    .setDensity(density)
+    .setDensity(density * getPieceWeightMultiplier(type))
     .setFriction(friction)
     .setRestitution(PIECE_RESTITUTION);
 }

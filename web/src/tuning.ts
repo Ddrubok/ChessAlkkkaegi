@@ -18,6 +18,7 @@ import {
 } from "./config";
 import type { GameMode } from "./game-mode";
 import type { PawnTier } from "./stage";
+import balanceCsv from "../balance.csv?raw";
 
 export interface RuntimeTuningSettings {
   timeScale: number;
@@ -39,9 +40,13 @@ export interface RuntimeTuningSettings {
 
 export type TuningKey = keyof RuntimeTuningSettings;
 
-// 전체 조절값 객체를 한 번에 저장하는 기기별 브라우저 계약 키다.
+// 새 CSV 배포 시 예전 개발용 조절값이 새 밸런스를 덮어쓰지 않게 구분한다.
+let balanceFingerprint = 2166136261;
+for (const character of balanceCsv) {
+  balanceFingerprint = Math.imul(balanceFingerprint ^ character.charCodeAt(0), 16777619);
+}
 export const TUNING_SETTINGS_STORAGE_KEY =
-  "chessAlkkagi.tuning.settings";
+  `chessAlkkagi.tuning.settings.${(balanceFingerprint >>> 0).toString(16)}`;
 
 export interface TuningStorage {
   // 저장된 전체 조절값 JSON 문자열을 읽는다.
@@ -208,16 +213,16 @@ const DEFINITIONS: Record<TuningKey, TuningDefinition> = {
   },
   maxLaunchSpeed: {
     label: "최대 발사 속도",
-    min: 2,
-    max: 25,
+    min: Math.min(2, MAX_LAUNCH_SPEED),
+    max: Math.max(25, MAX_LAUNCH_SPEED),
     step: 0.1,
     displayScale: 1,
     suffix: "",
   },
   friction: {
     label: "마찰",
-    min: 0.05,
-    max: 1.5,
+    min: Math.min(0.05, PIECE_FRICTION, CLASSIC_FRICTION),
+    max: Math.max(1.5, PIECE_FRICTION, CLASSIC_FRICTION),
     step: 0.01,
     displayScale: 1,
     suffix: "",
@@ -225,7 +230,7 @@ const DEFINITIONS: Record<TuningKey, TuningDefinition> = {
   restitution: {
     label: "반발",
     min: 0,
-    max: 0.6,
+    max: Math.max(0.6, PIECE_RESTITUTION),
     step: 0.01,
     displayScale: 1,
     suffix: "",
@@ -233,7 +238,7 @@ const DEFINITIONS: Record<TuningKey, TuningDefinition> = {
   linearDamping: {
     label: "선형 감쇠",
     min: 0,
-    max: 4,
+    max: Math.max(4, PIECE_LINEAR_DAMPING),
     step: 0.05,
     displayScale: 1,
     suffix: "",
@@ -241,7 +246,7 @@ const DEFINITIONS: Record<TuningKey, TuningDefinition> = {
   angularDamping: {
     label: "회전 감쇠",
     min: 0,
-    max: 8,
+    max: Math.max(8, PIECE_ANGULAR_DAMPING),
     step: 0.05,
     displayScale: 1,
     suffix: "",

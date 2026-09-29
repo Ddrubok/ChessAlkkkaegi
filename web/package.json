@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run check:balance",
     "build": "tsc --noEmit && vite build",
+    "prebuild:portable": "npm run check:balance",
     "build:portable": "tsc --noEmit && vite build --mode portable && node src/tools/finalize-portable-build.mjs",
     "preview": "vite preview",
+    "check:balance": "node src/tools/balance-csv-check.mjs",
     "check:piece-stats": "node src/tools/strategy-deck-headless-check.mjs && node src/tools/piece-stat-adapter-headless-check.mjs && node src/tools/piece-preview-contract-check.mjs",
     "check:lobby": "node src/tools/lobby-recommendation-check.mjs && node src/tools/lobby-profile-layout-check.mjs",
     "check:lobby-motion": "node src/tools/lobby-motion-check.mjs && node src/tools/ui-motion-check.mjs && node src/tools/result-motion-check.mjs",

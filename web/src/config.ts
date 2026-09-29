@@ -12,23 +12,34 @@ export const FIXED_STEP = 1 / 120;
 // 2026-07-30 개발자 지시로 기본 배속을 2배로 올린다. 스텝 순서는 그대로라 온라인 동기화에는 영향이 없다.
 export const TIME_SCALE = 2;
 
+import {
+  balanceConfig,
+  getPieceWeightMultiplier,
+  getPiecePowerMultiplier,
+} from "./balance";
+export {
+  balanceConfig,
+  getPieceWeightMultiplier,
+  getPiecePowerMultiplier,
+};
+
 // 종류별 볼록껍질 부피에서 현실적인 말 질량을 계산하기 위한 공통 밀도다.
-export const PIECE_DENSITY = 1.2;
+export const PIECE_DENSITY = balanceConfig.PIECE_DENSITY;
 
 // 말끼리와 말·보드 사이의 미끄러짐을 동일하게 맞추는 마찰값이다. 2026-07-27 기획자 요청값.
-export const PIECE_FRICTION = 0.05;
+export const PIECE_FRICTION = balanceConfig.PIECE_FRICTION;
 
 // 2026-09-28 B안 QA: 발사 속도를 유지하며 초반 연쇄 탈락을 줄이는 대전 전용 마찰.
-export const CLASSIC_FRICTION = 0.2;
+export const CLASSIC_FRICTION = balanceConfig.CLASSIC_FRICTION;
 
 // 충돌 감각을 남기면서도 모든 말이 수면 상태에 도달하게 하는 반발값이다. 2026-07-27 기획자 요청값.
-export const PIECE_RESTITUTION = 0.6;
+export const PIECE_RESTITUTION = balanceConfig.PIECE_RESTITUTION;
 
 // 접촉 후 남는 병진 흔들림을 줄이는 감쇠값이다. 2026-07-27 기획자 요청으로 감쇠를 끈다.
-export const PIECE_LINEAR_DAMPING = 0;
+export const PIECE_LINEAR_DAMPING = balanceConfig.PIECE_LINEAR_DAMPING;
 
 // 넘어질 수 있는 회전은 허용하면서 접지 지터를 가라앉히는 감쇠값이다. 2026-07-27 기획자 요청으로 감쇠를 끈다.
-export const PIECE_ANGULAR_DAMPING = 0;
+export const PIECE_ANGULAR_DAMPING = balanceConfig.PIECE_ANGULAR_DAMPING;
 
 // 평탄화된 콜라이더 바닥이 보드 상면에 정확히 닿은 상태로 시작하게 한다.
 export const SPAWN_GAP = 0;
@@ -113,22 +124,23 @@ export const TOUCH_PIECE_HIT_RADIUS_PIXELS = 44;
 export const TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER = 1;
 
 // 최대 세기에서 질량과 무관하게 목표로 하는 발사 직후 속도다.
-export const MAX_LAUNCH_SPEED = 11;
+export const MAX_LAUNCH_SPEED = balanceConfig.MAX_LAUNCH_SPEED;
 
 // 2026-09-27 체감 피드백: 일반 2.5→7, 나이트 4.5 유지. 대전 전용 수치다.
-export const CLASSIC_MAX_LAUNCH_SPEED = 7;
-export const CLASSIC_KNIGHT_MAX_LAUNCH_SPEED = 4.5;
+export const CLASSIC_MAX_LAUNCH_SPEED = balanceConfig.CLASSIC_MAX_LAUNCH_SPEED;
+export const CLASSIC_KNIGHT_MAX_LAUNCH_SPEED = balanceConfig.CLASSIC_KNIGHT_MAX_LAUNCH_SPEED;
 
 export function getMaxLaunchSpeed(
   gameMode: GameMode,
   pieceType: PieceType,
   localMaxLaunchSpeed = MAX_LAUNCH_SPEED,
 ): number {
-  return gameMode === "online"
+  const baseSpeed = gameMode === "online"
     ? pieceType === "Knight"
       ? CLASSIC_KNIGHT_MAX_LAUNCH_SPEED
       : CLASSIC_MAX_LAUNCH_SPEED
     : localMaxLaunchSpeed;
+  return baseSpeed * getPiecePowerMultiplier(pieceType);
 }
 
 export function getPieceFriction(
@@ -357,23 +369,23 @@ export function deriveBoardHalfExtent(cellSize: number): number {
 }
 
 // 나이트(Knight) 고유 기믹: 포물선 발사 고정 앙각 (65도 - 바로 앞 폰을 높이 뛰어넘는 궤적)
-export const KNIGHT_LAUNCH_ANGLE_DEG = 65;
+export const KNIGHT_LAUNCH_ANGLE_DEG = balanceConfig.KNIGHT_LAUNCH_ANGLE_DEG;
 export const KNIGHT_LAUNCH_ANGLE = (KNIGHT_LAUNCH_ANGLE_DEG * Math.PI) / 180;
 
 // 나이트 최소 발사 파워 보정 (약하게 쏴도 바로 앞 폰에 부딪히지 않고 폰 너머로 도약하도록 보장)
-export const KNIGHT_MIN_LAUNCH_POWER = 0.38;
+export const KNIGHT_MIN_LAUNCH_POWER = balanceConfig.KNIGHT_MIN_LAUNCH_POWER;
 export function computeKnightEffectivePower(normalizedPower: number): number {
   const clamped = Math.min(Math.max(normalizedPower, 0), 1);
   return KNIGHT_MIN_LAUNCH_POWER + (1 - KNIGHT_MIN_LAUNCH_POWER) * clamped;
 }
 
 // 룩(Rook) 고유 기믹: 기본 무회전(중앙 타점) 시 최대 150% 오버드라이브 파워, 스핀 부여 시 최대 100%
-export const ROOK_MAX_OVERDRIVE_POWER = 1.5;
-export const ROOK_SPIN_MAX_POWER = 1.0;
+export const ROOK_MAX_OVERDRIVE_POWER = balanceConfig.ROOK_MAX_OVERDRIVE_POWER;
+export const ROOK_SPIN_MAX_POWER = balanceConfig.ROOK_SPIN_MAX_POWER;
 
 // 비숍(Bishop) 고유 기믹: 기물 충돌 시 스핀 비례 대각선 굴절(Ricochet) 및 회전 토크 증폭
-export const BISHOP_SPIN_TORQUE_MULTIPLIER = 2.2;
-export const BISHOP_DEFLECTION_IMPULSE_FACTOR = 0.65;
+export const BISHOP_SPIN_TORQUE_MULTIPLIER = balanceConfig.BISHOP_SPIN_TORQUE_MULTIPLIER;
+export const BISHOP_DEFLECTION_IMPULSE_FACTOR = balanceConfig.BISHOP_DEFLECTION_IMPULSE_FACTOR;
 
 // 폰(Pawn) 고유 기믹: 상대 끝 진영(Rank 8 백 / Rank 1 흑) 생존 시 프로모션 판정 영역 비율
 // 8x8 보드에서 중심 기준 rank 8(백 도달)은 z >= 3.0 * cellSize, rank 1(흑 도달)은 z <= -3.0 * cellSize
