@@ -33,6 +33,7 @@ import {
   type BoardHoleRectangle,
 } from "./holes";
 import type { PhysicsRuntime } from "./physics";
+import { synchronizeHotseatMapMeshes } from "./maps/hotseat-map-runtime";
 import {
   getCellCenter,
   type PieceInstance,
@@ -179,6 +180,7 @@ export function synchronizePieceMeshes(
   runtime: SceneRuntime,
   physicsRuntime: PhysicsRuntime,
 ): number {
+  synchronizeHotseatMapMeshes(physicsRuntime);
   let maxSyncError = 0;
   for (const binding of physicsRuntime.pieces.values()) {
     const mesh = runtime.pieceMeshes.get(binding.instance.id);

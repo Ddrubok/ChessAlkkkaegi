@@ -19,6 +19,7 @@ import {
 import type { GameMode } from "./game-mode";
 import type { PawnTier } from "./stage";
 import balanceCsv from "../balance.csv?raw";
+import { applyBoardSurfaceFriction, getBoardSurfaceFriction } from "./maps/surface-materials";
 
 export interface RuntimeTuningSettings {
   timeScale: number;
@@ -464,9 +465,7 @@ function applyPhysicsSetting(
       settings.friction = CLASSIC_FRICTION;
     }
     const friction = settings.friction;
-    for (const collider of physicsRuntime.boardColliders) {
-      collider.setFriction(friction);
-    }
+    applyBoardSurfaceFriction(physicsRuntime.boardColliders, friction);
     for (const binding of physicsRuntime.pieces.values()) {
       binding.collider.setFriction(friction);
     }
@@ -695,7 +694,7 @@ export function verifyTuningAfterStep(runtime: TuningRuntime): void {
   ] of runtime.physicsRuntime.boardColliders.entries()) {
     checkClose(
       collider.friction(),
-      settings.friction,
+      getBoardSurfaceFriction(collider, settings.friction),
       `보드 ${index} 마찰`,
     );
     checkClose(

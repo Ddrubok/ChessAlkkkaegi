@@ -581,6 +581,26 @@ export function scanLivePieceHitSounds(
     }
   }
 
+  const mapObjects = [...physicsRuntime.hotseatMap?.dynamicObjects.values() ?? []];
+  for (const piece of pieces) {
+    for (const object of mapObjects) {
+      if (![object.collider, ...object.additionalColliders ?? []].some(collider => hasSolverContact(physicsRuntime, piece.collider, collider))) continue;
+      const first = piece.body.linvel();
+      const second = object.body.linvel();
+      considerContact(`piece:${piece.instance.id}|map:${object.definition.id}`,
+        Math.hypot(first.x - second.x, first.y - second.y, first.z - second.z), "wood");
+    }
+  }
+  for (let i = 0; i < mapObjects.length; i++) for (let j = i + 1; j < mapObjects.length; j++) {
+    const first = mapObjects[i];
+    const second = mapObjects[j];
+    if (![first.collider, ...first.additionalColliders ?? []].some(a =>
+      [second.collider, ...second.additionalColliders ?? []].some(b => hasSolverContact(physicsRuntime, a, b)))) continue;
+    const a = first.body.linvel();
+    const b = second.body.linvel();
+    considerContact(`map:${first.definition.id}|map:${second.definition.id}`,
+      Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z), "wood");
+  }
   runtime.pieceHits.touchingPairs = currentTouchingPairs;
   const strongestCandidate = candidateState.strongest;
   if (

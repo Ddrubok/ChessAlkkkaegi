@@ -40,6 +40,10 @@ import {
   type SceneRuntime,
 } from "./scene";
 import type { RuntimeTuningSettings } from "./tuning";
+import { areHotseatObjectsAtRest, collectHotseatGroundedIds, removeFallenHotseatObjects, settleHotseatObjects } from "./maps/hotseat-map-runtime";
+import { clearAppliedHotseatLaunch, commitSettledHotseatTerrain, noteAppliedHotseatLaunch, resetCollapsingFloorTurn } from "./maps/collapsing-floor";
+import { afterHotseatBridgeStep, beforeHotseatBridgeStep } from "./maps/breakable-bridge";
+import { beginControlZoneTurn, consumeControlZoneLaunch, expireControlZoneBonus, resetControlZoneTurn, validateControlZoneBonus } from "./maps/control-zone";
 
 export type TurnPhase =
   | "settling"
@@ -213,6 +217,7 @@ function hasSolverContact(
 export function collectGroundedPieceIds(
   runtime: TurnRuntime,
 ): Set<string> {
+  if (runtime.physicsRuntime.hotseatMap) return collectHotseatGroundedIds(runtime.physicsRuntime);
   const colliderOwners = new Map<number, string>();
   const neighbors = new Map<string, Set<string>>();
   const grounded = new Set<string>();
@@ -423,7 +428,7 @@ export function createTurnRuntime(
   tuningSettings: RuntimeTuningSettings,
   cellSize?: number,
 ): TurnRuntime {
-  return {
+  const runtime: TurnRuntime = {
     physicsRuntime,
     sceneRuntime,
     currentSide: "white",
@@ -466,6 +471,8 @@ export function createTurnRuntime(
     kingDefenseActive: { white: false, black: false },
     kingDefenseTurnsRemaining: { white: 0, black: 0 },
   };
+  beginControlZoneTurn(runtime);
+  return runtime;
 }
 
 /**
@@ -486,6 +493,7 @@ export function setTurnGameMode(
   mode: GameMode,
 ): void {
   runtime.gameMode = mode;
+  if (mode !== "hotseat") expireControlZoneBonus(runtime);
   if (mode === "online") {
     // Ponytail: Online king swap, defense, and promotion require synchronized events/state before enablement.
     runtime.promotionQueue.length = 0;
@@ -714,6 +722,12 @@ export function queueTurnLaunch(
 export function applyPendingLaunchBeforeStep(
   runtime: TurnRuntime,
 ): boolean {
+  const applied = applyPendingLaunchImpulse(runtime);
+  beforeHotseatBridgeStep(runtime);
+  return applied;
+}
+
+function applyPendingLaunchImpulse(runtime: TurnRuntime): boolean {
   applyPendingBreakableWallDestructions(
     runtime.physicsRuntime,
   );
@@ -753,6 +767,7 @@ export function applyPendingLaunchBeforeStep(
     binding.instance.type === "Knight"
       ? computeKnightEffectivePower(request.normalizedPower)
       : request.normalizedPower;
+  const controlMultiplier = consumeControlZoneLaunch(runtime, request.pieceId);
   const targetSpeed =
     effectivePower *
     getMaxLaunchSpeed(
@@ -760,7 +775,7 @@ export function applyPendingLaunchBeforeStep(
       binding.instance.type,
       runtime.tuningSettings.maxLaunchSpeed,
     ) *
-    speedMultiplier;
+    speedMultiplier * controlMultiplier;
 
   let launchDirection = request.direction.clone();
   if (binding.instance.type === "Knight" && launchDirection.y < 0.2) {
@@ -802,6 +817,7 @@ export function applyPendingLaunchBeforeStep(
   runtime.ccdPieceId = request.pieceId;
   runtime.bishopRicochetedPieceIds.clear();
   binding.body.applyImpulseAtPoint(impulse, applicationPoint, true);
+  noteAppliedHotseatLaunch(runtime);
   if (binding.instance.type === "Bishop" || binding.instance.type === "Queen") {
     // 편심 타점 시 회전 토크를 추가 인가하여 2.2배의 맹렬한 스핀 각속도를 형성
     const leverX = applicationPoint.x - preLaunchPosition.x;
@@ -890,7 +906,7 @@ function removeFallenPieces(runtime: TurnRuntime): void {
  */
 function settleEligibleBodies(runtime: TurnRuntime): boolean {
   const groundedPieceIds = collectGroundedPieceIds(runtime);
-  let everyBodyEligible = true;
+  let everyBodyEligible = settleHotseatObjects(runtime.physicsRuntime, groundedPieceIds);
   for (const binding of runtime.physicsRuntime.pieces.values()) {
     const slow = isBodySlow(binding);
     const grounded = groundedPieceIds.has(binding.instance.id);
@@ -909,6 +925,8 @@ function settleEligibleBodies(runtime: TurnRuntime): boolean {
  * 정착 완료 시 초기 준비를 끝내거나 상대 턴으로 넘기고 카메라 회전을 시작한다.
  */
 function completeSettlement(runtime: TurnRuntime): void {
+  if (commitSettledHotseatTerrain(runtime)) return;
+  clearAppliedHotseatLaunch(runtime);
   disableLaunchCcdAfterTurn(runtime);
   runtime.restHoldSeconds = 0;
   runtime.settleSeconds = 0;
@@ -958,6 +976,7 @@ function completeSettlement(runtime: TurnRuntime): void {
     return;
   }
   runtime.pendingTurnChange = false;
+  expireControlZoneBonus(runtime);
   if (runtime.onMasterySettlement !== null) {
     invokePassiveHook("숙련 기록 정착 후크", () => runtime.onMasterySettlement?.({
       launchingSide: justFinishedSide,
@@ -1036,6 +1055,7 @@ function completeSettlement(runtime: TurnRuntime): void {
   runtime.turnNumber += 1;
   runtime.currentSide =
     runtime.currentSide === "white" ? "black" : "white";
+  beginControlZoneTurn(runtime);
   // 스테이지 대전도 2인 대전과 같은 턴 카메라 회전을 쓴다 (07-26 개발자 결정으로 백 시점 고정 폐기).
   beginTurnCameraRotation(runtime);
 }
@@ -1150,6 +1170,7 @@ export function updateTurnAfterStep(
   fixedStep: number,
 ): void {
   runtime.physicsStepNumber += 1;
+  afterHotseatBridgeStep(runtime);
   scanBreakableWallContacts(runtime.physicsRuntime);
   synchronizeBreakableWallMeshes(
     runtime.sceneRuntime,
@@ -1166,11 +1187,13 @@ export function updateTurnAfterStep(
         hasSolverContact(runtime.physicsRuntime, first.collider, second.collider)));
   }
   removeFallenPieces(runtime);
+  removeFallenHotseatObjects(runtime.physicsRuntime, runtime.sceneRuntime);
+  validateControlZoneBonus(runtime);
   if (runtime.phase !== "settling") {
     return;
   }
   runtime.settleSeconds += fixedStep;
-  const allAtRest = [...runtime.physicsRuntime.pieces.values()].every(
+  const allAtRest = areHotseatObjectsAtRest(runtime.physicsRuntime) && [...runtime.physicsRuntime.pieces.values()].every(
     (binding) => binding.body.isSleeping() || isBodySlow(binding),
   );
   if (allAtRest) {
@@ -1215,6 +1238,7 @@ export function countRemainingPieces(
  * 새 물리·렌더 말이 준비된 뒤 콜백과 입력 모드는 보존하고 백 선공 상태만 초기화한다.
  */
 export function resetTurnRuntime(runtime: TurnRuntime): void {
+  resetCollapsingFloorTurn(runtime);
   runtime.currentSide = "white";
   runtime.phase = "ready";
   runtime.pendingLaunch = null;
@@ -1238,6 +1262,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.kingSwapUsed = { white: false, black: false };
   runtime.kingDefenseActive = { white: false, black: false };
   runtime.kingDefenseTurnsRemaining = { white: 0, black: 0 };
+  resetControlZoneTurn(runtime);
 }
 
 /**

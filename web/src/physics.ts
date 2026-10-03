@@ -21,6 +21,7 @@ import {
 } from "./config";
 import type { GameMode } from "./game-mode";
 import type { PieceInstance } from "./layout";
+import type { HotseatMapRuntime } from "./maps/hotseat-map-types";
 import {
   computeBoardFloorRectangles,
   computeBoardHoleRectangles,
@@ -132,6 +133,7 @@ export interface PinballObstaclePhysicsBinding {
 }
 
 export interface PhysicsRuntime {
+  hotseatMap?: HotseatMapRuntime;
   world: RAPIER.World;
   boardBody: RAPIER.RigidBody;
   // 기존 단일 바닥 API와 호환할 대표 바닥 콜라이더다.
@@ -606,7 +608,7 @@ function spawnAabbsOverlap(left: SpawnAabb, right: SpawnAabb): boolean {
 /**
  * 시작 상태의 모든 말 쌍을 한 번 검사하고 겹침이 있으면 잘못된 배치를 즉시 중단한다.
  */
-function validateSpawnOverlaps(
+export function validateSpawnOverlaps(
   runtime: PhysicsRuntime,
   meta: ChessSetMeta,
   allowStagePreSettle: boolean,
@@ -1149,9 +1151,8 @@ export function preSettlePhysics(
   let steps = 0;
   while (
     steps < PRE_SETTLE_MAX_STEPS &&
-    ![...runtime.pieces.values()].every((binding) =>
-      binding.body.isSleeping(),
-    )
+    (![...runtime.pieces.values()].every(binding => binding.body.isSleeping()) ||
+      [...runtime.hotseatMap?.dynamicObjects.values() ?? []].some(binding => !binding.body.isFixed() && !binding.body.isSleeping()))
   ) {
     runtime.world.step();
     steps += 1;
@@ -1167,6 +1168,9 @@ export function preSettlePhysics(
     throw new Error(
       `사전 정착이 ${PRE_SETTLE_MAX_STEPS} step 상한에서 실패했습니다: 수면 ${sleepingCount}/${runtime.pieces.size}`,
     );
+  }
+  if ([...runtime.hotseatMap?.dynamicObjects.values() ?? []].some(binding => !binding.body.isFixed() && !binding.body.isSleeping())) {
+    throw new Error("Hotseat map objects failed to settle before the match.");
   }
   return { steps, cpuMilliseconds };
 }

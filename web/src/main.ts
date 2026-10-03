@@ -8,6 +8,9 @@ import { createPlayerBanners } from "./player-banner";
 import { uiText } from "./ui-text";
 import "./style.css";
 import "./lobby.css";
+import "./hotseat-map-menu.css";
+import { DEFAULT_HOTSEAT_MAP_ID, getHotseatMap } from "./maps/map-catalog";
+import { disposeHotseatMap, getHotseatMapDefinition, installHotseatMap } from "./maps/hotseat-map-runtime";
 import "./progress.css";
 import "./mastery-ui.css";
 import "./quest-ui.css";
@@ -135,6 +138,7 @@ import {
   promotePieceBody,
   rebuildPhysicsBoard,
   resetPhysicsPieces,
+  validateSpawnOverlaps,
 } from "./physics";
 import {
   createSceneRuntime,
@@ -303,20 +307,21 @@ async function bootstrap(): Promise<void> {
   });
   const metaRuntime = createMetaRuntime();
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
+  let selectedHotseatMapId = DEFAULT_HOTSEAT_MAP_ID;
   let startModeAction:
-    | ((mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>)
+    | ((mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced", mapId?: string) => Promise<void>)
     | null = null;
   let returnToMenuAction: (() => Promise<void>) | null = null;
   let confirmAbandonAction: (() => Promise<void>) | null = null;
   const menuRuntime = createMainMenu(
     app,
     metaRuntime,
-    async (mode, selectedStage, tutorialType) => {
+    async (mode, selectedStage, tutorialType, mapId) => {
       if (!progressStorage.ready) throw new Error("계정 진행도를 먼저 불러와 주세요.");
       if (startModeAction === null) {
         throw new Error("게임 월드가 아직 준비되지 않았습니다.");
       }
-      await startModeAction(mode, selectedStage, tutorialType);
+      await startModeAction(mode, selectedStage, tutorialType, mapId);
     },
     async () => {
       if (returnToMenuAction === null) {
@@ -1165,6 +1170,16 @@ async function bootstrap(): Promise<void> {
       gameMode: gameModeRuntime?.mode ?? "hotseat",
       stageNumber: gameModeRuntime?.stageNumber ?? 1,
     };
+    // The selected ID survives resets; map state is rebuilt for every match.
+    if (baseOptions.gameMode === "hotseat" && !getHotseatMap(selectedHotseatMapId)) {
+      throw new Error(`Unknown hotseat map: ${selectedHotseatMapId}`);
+    }
+    const hotseatMap = baseOptions.gameMode === "hotseat" && selectedHotseatMapId !== DEFAULT_HOTSEAT_MAP_ID
+      ? getHotseatMapDefinition(selectedHotseatMapId, assets.meta) : undefined;
+    if (baseOptions.gameMode === "hotseat" && selectedHotseatMapId !== DEFAULT_HOTSEAT_MAP_ID && !hotseatMap) {
+      throw new Error(`Missing hotseat map definition: ${selectedHotseatMapId}`);
+    }
+    disposeHotseatMap(physicsRuntime, sceneRuntime);
     const stageOptions: StageSpawnOptions = {
       ...baseOptions,
       runCards:
@@ -1205,6 +1220,8 @@ async function bootstrap(): Promise<void> {
         }))
       : stageOptions.gameMode === "tutorial"
       ? tutorialManager.getStepPieces(stageOptions.stageNumber)
+      : hotseatMap
+      ? hotseatMap.spawns.map(spawn => spawn.instance)
       : PIECE_INSTANCES;
     const spawnInstances = selectStageSpawnInstances(
       targetInstances,
@@ -1213,7 +1230,9 @@ async function bootstrap(): Promise<void> {
     const expectedPieceCount = spawnInstances.length;
     resetAiMatch(aiRuntime);
     lockInputForMatchOver(inputRuntime);
-    const nextBoardHalfExtent = computeStageBoardHalfExtent(
+    const nextBoardHalfExtent = hotseatMap
+      ? computeStageBoardHalfExtent(assets.meta.cellSize, "hotseat", 1) * hotseatMap.boardScale
+      : computeStageBoardHalfExtent(
       assets.meta.cellSize,
       boardOptions.gameMode,
       boardOptions.stageNumber,
@@ -1249,6 +1268,10 @@ async function bootstrap(): Promise<void> {
       stageOptions,
     );
     reapplyTuningPhysicsSettings(tuningRuntime);
+    if (hotseatMap) {
+      installHotseatMap(physicsRuntime, sceneRuntime, hotseatMap, assets.meta);
+      validateSpawnOverlaps(physicsRuntime, assets.meta, false);
+    }
     if (boardPuzzle) {
       applyPuzzleSpawnDefinitions(boardPuzzle.pieces.map((piece) => ({
         pieceId: piece.id,
@@ -2051,9 +2074,14 @@ async function bootstrap(): Promise<void> {
     mode,
     selectedStage,
     tutorialType = "basic",
+    mapId,
   ): Promise<void> => {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
+    }
+    const nextHotseatMapId = mapId ?? selectedHotseatMapId;
+    if (mode === "hotseat" && !getHotseatMap(nextHotseatMapId)) {
+      throw new Error(`Unknown hotseat map: ${nextHotseatMapId}`);
     }
     void AdManager.hideBanner();
     if (mode === "online") {
@@ -2232,7 +2260,14 @@ async function bootstrap(): Promise<void> {
       tutorialManager.stop();
     }
     if (mode === "weekly" && !weeklyRun) throw new Error("Weekly challenge run is not prepared.");
-    await switchGameMode(gameModeRuntime, mode, true, mode === "stage" || mode === "tutorial" || mode === "weekly" ? selectedStage ?? 1 : 1);
+    const previousHotseatMapId = selectedHotseatMapId;
+    if (mode === "hotseat") selectedHotseatMapId = nextHotseatMapId;
+    try {
+      await switchGameMode(gameModeRuntime, mode, true, mode === "stage" || mode === "tutorial" || mode === "weekly" ? selectedStage ?? 1 : 1);
+    } catch (error) {
+      selectedHotseatMapId = previousHotseatMapId;
+      throw error;
+    }
     ensureGameLoopStarted();
   };
 

@@ -43,6 +43,8 @@ import { MASTERY_DEFINITIONS, type MasteryId } from "./mastery";
 import { openMasteryBook } from "./mastery-ui";
 import { questStorage } from "./quest-storage";
 import { openQuestBook, renderQuestLobbyEntry } from "./quest-ui";
+import { openHotseatMapMenu } from "./hotseat-map-menu";
+import { DEFAULT_HOTSEAT_MAP_ID } from "./maps/map-catalog";
 
 function openLogoutConfirm(runtime: MainMenuRuntime): void {
   if (runtime.overlay.querySelector(".lobby-logout-confirm")) return;
@@ -135,18 +137,41 @@ export interface MainMenuRuntime {
   metaRuntime: MetaRuntime;
   piecePreviewServices: PiecePreviewServices | null;
   closePveLobby?: () => void;
+  closeHotseatMapSelection?: () => void;
+  selectedHotseatMapId: string;
   ready: boolean;
   busy: boolean;
   visible: boolean;
   confirming: boolean;
   userProfile: UserProfile | null;
-  onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>;
+  onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced", mapId?: string) => Promise<void>;
   /** 퍼즐 목록을 여는 선택적 연결점입니다. 퍼즐 모듈이 없는 빌드에서는 버튼을 숨깁니다. */
   onOpenPuzzles?: () => void;
   onOpenWeeklyChallenge?: () => void;
   onReturnToMenu: () => Promise<void>;
   onConfirmAbandon: () => Promise<void>;
   onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
+}
+
+export function openHotseatMapSelection(runtime: MainMenuRuntime): void {
+  if (runtime.busy || !runtime.ready || !progressStorage.ready || runtime.closeHotseatMapSelection) return;
+  runtime.closeHotseatMapSelection = openHotseatMapMenu(runtime.overlay, {
+    selectedMapId: runtime.selectedHotseatMapId,
+    onSelect: mapId => { runtime.selectedHotseatMapId = mapId; },
+    onClose: () => { runtime.closeHotseatMapSelection = undefined; },
+    onStart: async mapId => {
+      if (runtime.busy || !runtime.ready || !progressStorage.ready) throw new Error("Hotseat world is not ready.");
+      runtime.busy = true;
+      renderMainMenu(runtime);
+      try {
+        await runtime.onStartMode("hotseat", undefined, undefined, mapId);
+        hideMainMenuAfterModeStart(runtime);
+      } finally {
+        runtime.busy = false;
+        if (runtime.visible) renderMainMenu(runtime);
+      }
+    },
+  });
 }
 
 /**
@@ -312,6 +337,7 @@ export function setMainMenuReady(
  * 인게임 UI를 가리고 영구 메타가 보존된 메인 메뉴를 표시한다.
  */
 export function showMainMenu(runtime: MainMenuRuntime): void {
+  runtime.closeHotseatMapSelection?.();
   runtime.busy = false;
   runtime.ready = true;
   runtime.visible = true;
@@ -333,6 +359,7 @@ export function hideMainMenuAfterModeStart(
   runtime: MainMenuRuntime,
 ): void {
   runtime.closePveLobby?.();
+  runtime.closeHotseatMapSelection?.();
   runtime.busy = false;
   runtime.visible = false;
   runtime.overlay.hidden = true;
@@ -716,7 +743,11 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
         void startLobbyMode(runtime, "puzzle");
         return;
       }
-      if (mode === "online" || mode === "hotseat") {
+      if (mode === "hotseat") {
+        openHotseatMapSelection(runtime);
+        return;
+      }
+      if (mode === "online") {
         void startLobbyMode(runtime, mode);
         return;
       }
@@ -732,7 +763,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
 export function createMainMenu(
   container: HTMLElement,
   metaRuntime: MetaRuntime,
-  onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced") => Promise<void>,
+  onStartMode: (mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced", mapId?: string) => Promise<void>,
   onReturnToMenu: () => Promise<void>,
   onConfirmAbandon: () => Promise<void>,
   onOpenPuzzles?: () => void,
@@ -823,6 +854,7 @@ export function createMainMenu(
     busy: false,
     visible: true,
     confirming: false,
+    selectedHotseatMapId: DEFAULT_HOTSEAT_MAP_ID,
     userProfile: initialProfile,
     onStartMode,
     onOpenPuzzles,
