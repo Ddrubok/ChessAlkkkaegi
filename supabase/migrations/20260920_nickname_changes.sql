@@ -4,6 +4,8 @@ BEGIN;
 CREATE OR REPLACE FUNCTION public.nickname_key_v1(p_name text)
 RETURNS text LANGUAGE sql IMMUTABLE STRICT SET search_path = ''
 AS $$ SELECT pg_catalog.lower(pg_catalog.btrim(pg_catalog.normalize(p_name, 'NFKC'))) $$;
+-- Profile INSERT evaluates the unique expression index as the signed-in user.
+GRANT EXECUTE ON FUNCTION public.nickname_key_v1(text) TO authenticated, service_role;
 
 -- Fail without modifying existing names if legacy normalized duplicates exist.
 DO $$ BEGIN

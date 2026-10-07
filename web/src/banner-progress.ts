@@ -76,7 +76,7 @@ export function ownsBanner(storage: MasteryStorage, id: BannerId): boolean {
     return owner !== undefined;
   }
 
-  // Achievement banners require grant record in rewards or verified progress.
+  // Local rewards/progress determine cosmetic unlocks; neither is proof of play.
   const snapshot = loadMasterySnapshot(storage);
   if (snapshot.malformed) return false;
 

@@ -23,6 +23,8 @@ concurrency:
 
 jobs:
   build:
+    # Manual runs from develop must not replace the live GitHub Pages site.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     defaults:
       run:

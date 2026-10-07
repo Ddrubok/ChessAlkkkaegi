@@ -7,6 +7,15 @@ const vite = await createServer({ root: fileURLToPath(new URL("../..", import.me
 try {
   const { SupabaseMatchmaker } = await vite.ssrLoadModule("/src/supabase-matchmaker.ts");
   const report = { matchId: "same-match", mode: "strategy", whitePlayerId: "white", blackPlayerId: "black", winnerId: null };
+  for (const status of ["pending", "ready"]) {
+    await SupabaseMatchmaker.registerRankedMatch({ rpc: async (name, params) => {
+      assert.equal(name, "register_ranked_match");
+      assert.deepEqual(params, { p_match_id: "same-match", p_mode: "strategy", p_white_id: "white", p_black_id: "black" });
+      return { data: { status }, error: null };
+    } }, report);
+  }
+  await assert.rejects(SupabaseMatchmaker.registerRankedMatch({ rpc: async () => ({ error: { message: "registration denied" } }) }, report), /registration denied/);
+  await assert.rejects(SupabaseMatchmaker.registerRankedMatch({ rpc: async () => ({ data: { status: "settled" } }) }, report), /등록 응답/);
   let calls = 0;
   const result = await SupabaseMatchmaker.recordMatchResult({ rpc: async (name, params) => {
     assert.equal(name, "finish_match_v2");

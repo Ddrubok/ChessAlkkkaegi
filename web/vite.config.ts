@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 
 const GITHUB_PAGES_BASE = "./";
 const PROJECT_ROOT = fileURLToPath(new URL(".", import.meta.url));
@@ -114,12 +114,25 @@ function createPortableAssetUrls(): Readonly<Record<string, string>> {
 }
 
 export default defineConfig(({ command, isPreview, mode }) => {
+  const staging = mode === "staging";
+  if (staging) {
+    const env = loadEnv(mode, PROJECT_ROOT, "VITE_");
+    // A staging build must never silently inherit the production .env backend.
+    if (env.VITE_SUPABASE_URL !== "https://eohasrpzjwtzexoogwdt.supabase.co"
+      || !env.VITE_SUPABASE_ANON_KEY?.startsWith("sb_publishable_")) {
+      throw new Error("Staging requires the chessalkkagi-dev URL and publishable key in environment variables or web/.env.staging.local.");
+    }
+  }
   const portableBuild = command === "build" && mode === "portable";
   const portableAssetUrls = portableBuild
     ? createPortableAssetUrls()
     : {};
 
   return {
+    ...(staging ? {
+      server: { host: "127.0.0.1", port: 5204, strictPort: true },
+      preview: { host: "127.0.0.1", port: 5204, strictPort: true },
+    } : {}),
     base:
       command === "build" || isPreview === true
         ? GITHUB_PAGES_BASE
@@ -132,6 +145,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
       ),
     },
     build: {
+      ...(staging ? { outDir: "dist-staging" } : {}),
       rollupOptions: {
         input: portableBuild ? "index.html" : ["index.html", "about.html", "guide.html", "tiers.html", "updates.html"],
         ...(portableBuild

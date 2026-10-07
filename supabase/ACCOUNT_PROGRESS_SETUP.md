@@ -53,3 +53,27 @@ SQL 적용 전에 새 클라이언트를 배포하면 계정 진행도 조회가
 - 코인이 0이던 기기에서도 온라인 매칭을 시작할 수 있는지 확인.
 
 RLS를 점검할 때 SQL Editor의 기본 관리자 역할로 조회하면 RLS를 우회합니다. 실제 로그인 계정의 클라이언트 또는 JWT와 역할을 지정한 격리 테스트를 사용하세요.
+
+## 숙련도 도감 추가 (mastery-v1)
+
+기존 `account_progress`가 설치되어 있다면 기본 SQL을 다시 실행할 필요가 없습니다.
+
+1. 같은 Supabase 프로젝트의 **SQL Editor → New query**를 엽니다.
+2. [20260916_mastery_account_progress.sql](migrations/20260916_mastery_account_progress.sql)의 **전체 내용**을 붙여 넣고 Run을 누릅니다. 이 파일은 BEGIN/COMMIT으로 묶여 있습니다.
+3. 결과 `mastery_account_progress_applied`와 실행 오류가 없는 것을 확인합니다.
+4. [verify_mastery_account_progress.sql](verify_mastery_account_progress.sql)을 실행해 `mastery_account_progress_ready`를 확인합니다. 필요하면 마지막 NOTIFY로 REST API의 스키마 캐시를 새로고침합니다.
+5. 게임에서 로그아웃 후 다시 로그인하고, 숙련도 추적/장착을 변경한 뒤 다른 브라우저에서 동일 계정으로 확인합니다.
+
+추가 항목은 `public.account_progress.data` 안에 기존 저장 형식대로 보관됩니다. Table Editor에 별도의 열 3개를 만들지 않습니다.
+
+| 키 | 내용 | 직렬화된 값 크기 제한 |
+|---|---|---|
+| `ca_mastery_progress_v1` | 메달 진척·달성 시각·조건 버전·중복 집계 방지 기록 | 24KB |
+| `ca_mastery_rewards_v1` | 보상 이력·보유 배지/칭호/프레임 | 8KB |
+| `ca_mastery_preferences_v1` | 추적 메달·장착 상태 | 4KB |
+
+클라이언트는 `get_account_progress_v2` / `save_account_progress_v2`에 `mastery-v1` 기능 식별자를 전달합니다. 서버가 준비되지 않았으면 기존 진행도 RPC를 사용하며 숙련도 계정 동기화는 활성화되지 않습니다. 기존 클라이언트의 저장 요청도 새 숙련도 항목을 지우지 않도록 SQL에 보존 처리가 포함되어 있습니다.
+
+이 SQL은 JSON 구조·크기·장착 소유 여부·계정 소유권·revision 충돌을 검사합니다. 실제 플레이로 메달을 달성했는지까지 서버가 판정하는 시스템은 아닙니다.
+
+2026-10-07 보안 재점검에서는 오프라인 플레이를 유지하기로 했습니다. 연구 포인트·스테이지·숙련도는 기기가 제출하는 동기화 기록이며, 획득 사실을 서버가 보증하지 않습니다. 이전 저장 RPC도 같은 한계가 있습니다. 임의 상한을 추가하거나 기존 기록을 삭제하지 않았습니다. 이 데이터를 온라인 MMR·유료 재화 지급의 근거로 사용하면 안 됩니다. 업적 꾸미기의 잠금 해제도 서버가 판정한 실력 증명으로 해석하지 않습니다.

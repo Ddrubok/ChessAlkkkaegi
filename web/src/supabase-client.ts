@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const STORAGE_KEY_URL = "ca_supabase_url";
 const STORAGE_KEY_ANON = "ca_supabase_anon_key";
+const IS_STAGING = import.meta.env?.MODE === "staging";
 
 export interface SupabaseConfig {
   url: string;
@@ -22,6 +23,9 @@ export function getSavedSupabaseConfig(): SupabaseConfig | null {
     ? String(import.meta.env.VITE_SUPABASE_ANON_KEY).trim()
     : "";
 
+  // Ignore previously saved production connections on the development site.
+  if (IS_STAGING) return envUrl && envKey ? { url: envUrl, anonKey: envKey } : null;
+
   const storageUrl = (localStorage.getItem(STORAGE_KEY_URL) || "").trim();
   const storageKey = (localStorage.getItem(STORAGE_KEY_ANON) || "").trim();
 
@@ -38,8 +42,15 @@ export function getSavedSupabaseConfig(): SupabaseConfig | null {
  * Supabase 설정을 LocalStorage에 저장하고 클라이언트를 재초기화한다.
  */
 export function saveSupabaseConfig(config: SupabaseConfig): SupabaseClient {
-  localStorage.setItem(STORAGE_KEY_URL, config.url.trim());
-  localStorage.setItem(STORAGE_KEY_ANON, config.anonKey.trim());
+  if (IS_STAGING) {
+    const expected = getSavedSupabaseConfig();
+    if (config.url.trim() !== expected?.url || config.anonKey.trim() !== expected?.anonKey) {
+      throw new Error("Staging Supabase configuration is fixed to chessalkkagi-dev.");
+    }
+  } else {
+    localStorage.setItem(STORAGE_KEY_URL, config.url.trim());
+    localStorage.setItem(STORAGE_KEY_ANON, config.anonKey.trim());
+  }
   currentConfig = { url: config.url.trim(), anonKey: config.anonKey.trim() };
   supabaseInstance = createClient(currentConfig.url, currentConfig.anonKey, {
     auth: {
@@ -60,8 +71,10 @@ export function saveSupabaseConfig(config: SupabaseConfig): SupabaseClient {
  * 저장된 설정을 지우고 클라이언트를 초기화 해제한다.
  */
 export function clearSupabaseConfig(): void {
-  localStorage.removeItem(STORAGE_KEY_URL);
-  localStorage.removeItem(STORAGE_KEY_ANON);
+  if (!IS_STAGING) {
+    localStorage.removeItem(STORAGE_KEY_URL);
+    localStorage.removeItem(STORAGE_KEY_ANON);
+  }
   supabaseInstance = null;
   currentConfig = null;
 }

@@ -274,7 +274,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Recheck Settlement",
     "online.settle_checking_opponent": "Checking opponent match result…",
-    "online.settle_waiting_opponent": "Waiting for opponent confirmation. Stats will update once verified.",
+    "online.settle_waiting_opponent": "Waiting for your opponent to report the same result before updating stats.",
     "online.settle_opponent_info": "Opponent: {name} · {tier} · {delta} pts · {progress}",
     "online.settle_failed": "Settlement could not be completed. Please check again.",
     "online.reconnect_overlay_title": "Online Match",
@@ -622,7 +622,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Wertung erneut prüfen",
     "online.settle_checking_opponent": "Prüfe Match-Ergebnis des Gegners …",
-    "online.settle_waiting_opponent": "Warte auf Bestätigung des Gegners. Die Statistik wird nach Verifizierung aktualisiert.",
+    "online.settle_waiting_opponent": "Warte, bis der Gegner dasselbe Ergebnis meldet. Dann wird die Statistik aktualisiert.",
     "online.settle_opponent_info": "Gegner: {name} · {tier} · {delta} Pkt. · {progress}",
     "online.settle_failed": "Wertung konnte nicht abgeschlossen werden. Bitte erneut prüfen.",
     "online.reconnect_overlay_title": "Online-Match",
@@ -738,7 +738,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Revérifier le décompte",
     "online.settle_checking_opponent": "Vérification du résultat de l'adversaire en cours…",
-    "online.settle_waiting_opponent": "En attente de confirmation de l'adversaire. Les stats seront mises à jour après validation.",
+    "online.settle_waiting_opponent": "Les stats seront mises à jour lorsque l'adversaire aura signalé le même résultat.",
     "online.settle_opponent_info": "Adversaire: {name} · {tier} · {delta} pts · {progress}",
     "online.settle_failed": "Impossible de terminer le décompte. Veuillez vérifier à nouveau.",
     "online.reconnect_overlay_title": "Partie en ligne",
@@ -854,7 +854,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Volver a verificar liquidación",
     "online.settle_checking_opponent": "Verificando el resultado del rival…",
-    "online.settle_waiting_opponent": "Esperando confirmación del rival. Las estadísticas no cambiarán hasta completar la verificación.",
+    "online.settle_waiting_opponent": "Las estadísticas se actualizarán cuando el rival comunique el mismo resultado.",
     "online.settle_opponent_info": "Rival: {name} · {tier} · {delta} pts · {progress}",
     "online.settle_failed": "No se pudo completar la liquidación. Vuelva a comprobarlo.",
     "online.reconnect_overlay_title": "Partida online",
@@ -1086,7 +1086,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Reverificar cálculo",
     "online.settle_checking_opponent": "Verificando resultado do oponente…",
-    "online.settle_waiting_opponent": "Aguardando confirmação do oponente. As estatísticas serão atualizadas após a verificação.",
+    "online.settle_waiting_opponent": "As estatísticas serão atualizadas quando o oponente informar o mesmo resultado.",
     "online.settle_opponent_info": "Oponente: {name} · {tier} · {delta} pts · {progress}",
     "online.settle_failed": "Não foi possível concluir o cálculo. Verifique novamente.",
     "online.reconnect_overlay_title": "Partida Online",

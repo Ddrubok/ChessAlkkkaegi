@@ -956,9 +956,24 @@ export class SupabaseMatchmaker {
     this.pendingIceCandidates = [];
   }
 
-  /**
-   * 양쪽의 동일한 결과 보고가 모이면 서버에서 한 번만 정산한다.
-   */
+  /** Bind this game's participants before ready exchange; this is not proof of play. */
+  public static async registerRankedMatch(
+    client: SupabaseClient,
+    match: Omit<MatchResultPayload, "winnerId">,
+  ): Promise<void> {
+    const { data, error } = await client.rpc("register_ranked_match", {
+      p_match_id: match.matchId,
+      p_mode: match.mode,
+      p_white_id: match.whitePlayerId,
+      p_black_id: match.blackPlayerId,
+    });
+    if (error) throw new Error(`대전 등록 실패: ${error.message}`);
+    if (data?.status !== "pending" && data?.status !== "ready") {
+      throw new Error("대전 등록 응답이 올바르지 않습니다.");
+    }
+  }
+
+  /** 양쪽의 동일한 결과 보고가 모이면 서버에서 한 번만 정산한다. */
   public static async recordMatchResult(
     client: SupabaseClient,
     result: MatchResultPayload,

@@ -1909,12 +1909,13 @@ async function bootstrap(): Promise<void> {
         );
         renderMainMenu(menuRuntime);
         menuRuntime.returnButton.hidden = true;
+        void AdManager.showBanner();
         showStageRunResult(
           matchRuntime,
           completedStage,
           payout,
           completedRun,
-          () => returnToMainMenu(menuRuntime),
+          () => returnToMainMenu(menuRuntime, true),
         );
         appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
         appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
@@ -1999,9 +2000,9 @@ async function bootstrap(): Promise<void> {
       upgradeCards,
       selectUpgradeCard,
       gameMode === "stage" && winner === "black"
-        ? () => returnToMainMenu(menuRuntime)
+        ? () => returnToMainMenu(menuRuntime, true)
         : gameMode === "online"
-          ? () => returnToMainMenu(menuRuntime)
+          ? () => returnToMainMenu(menuRuntime, true)
           : null,
       gameMode === "online"
         ? onlineRuntime?.mySide ?? null
@@ -2164,6 +2165,19 @@ async function bootstrap(): Promise<void> {
       activeMatchOpponent = session.opponent;
       activeMyProfile = session.myProfile;
 
+      const rankedMode = activeOnlineMatchMode;
+      const registerRankedMatch = async (matchId: string): Promise<void> => {
+        // Manual/friendly P2P sessions have no ranked participants or settlement.
+        if (!session.myProfile || !session.opponent) return;
+        const client = getSupabaseClient();
+        if (!client) throw new Error("대전 등록에 필요한 서버 연결이 없습니다.");
+        await SupabaseMatchmaker.registerRankedMatch(client, {
+          matchId, mode: rankedMode,
+          whitePlayerId: session.mySide === "white" ? session.myProfile.id : session.opponent.id,
+          blackPlayerId: session.mySide === "black" ? session.myProfile.id : session.opponent.id,
+        });
+      };
+
       onlineRuntime?.close();
       onlineRuntime = createOnlineRuntime(
         session.transport,
@@ -2175,7 +2189,8 @@ async function bootstrap(): Promise<void> {
           onStrategyDecksReady: (whiteDeck, blackDeck) => {
             applyStrategyDecksToPhysics(physicsRuntime, whiteDeck, blackDeck);
           },
-          prepareRematch: async () => {
+          prepareRematch: async (matchId) => {
+            await registerRankedMatch(matchId);
             await resetBoard({
               gameMode: "online",
               stageNumber: 1,
@@ -2203,7 +2218,7 @@ async function bootstrap(): Promise<void> {
               async () => {},
               [],
               null,
-              () => returnToMainMenu(menuRuntime),
+              () => returnToMainMenu(menuRuntime, true),
               onlineRuntime?.mySide ?? null,
             );
             appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
@@ -2231,6 +2246,7 @@ async function bootstrap(): Promise<void> {
       );
       onlineResignButton.hidden = false;
       try {
+        await registerRankedMatch(session.matchId);
         await switchGameMode(gameModeRuntime, "online", true);
         onlineRuntime.startMatch({ rejoining: session.rejoining });
         ensureGameLoopStarted();
@@ -2412,7 +2428,7 @@ async function bootstrap(): Promise<void> {
             async () => {},
             [],
             null,
-            () => returnToMainMenu(menuRuntime),
+            () => returnToMainMenu(menuRuntime, true),
             onlineRuntime?.mySide ?? null,
           );
           appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));

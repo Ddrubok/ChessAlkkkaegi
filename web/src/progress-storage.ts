@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { MASTERY_PROGRESS_KEY, MASTERY_REWARDS_KEY, MASTERY_PREFERENCES_KEY, MASTERY_KEYS, mergeMasteryValue, reconcileMasteryValues, validateMasteryValues } from "./mastery.ts";
 import { getRuntimeText, type RuntimeTextKey } from "./runtime-text.ts";
 
+// Offline/client-authored sync data: validated shape and account ownership do
+// not prove earned progress. Never use these values to authorize ranked scores.
 export const PROGRESS_KEYS = [
   "chessAlkkagi.meta.maxStage", "chessAlkkagi.meta.points", "chessAlkkagi.meta.upgrades",
   "has_completed_tutorial", "has_completed_adv_tutorial",

@@ -733,7 +733,7 @@ export const TIERS_TRANSLATIONS: Record<LanguageCode, TiersPageText> = {
     sec1P2: "From Pawn to Rook, tiers change every 50 points. For instance, 1,200 is Pawn 5 and 1,250 is Pawn 4. Queen has no sub-divisions.",
     sec2Title: "Promotions & Demotions",
     sec2P1: "After each online match is settled on the server, your tier updates based on your new MMR. Falling below a threshold leads to demotion. Score deltas vary depending on opponent ratings.",
-    sec2P2: "Local games and tutorials do not affect online MMR. If online match settlement fails, no unverified score changes are committed.",
+    sec2P2: "Local games and tutorials do not affect online MMR. Online scores update only when both players report the same result and settlement succeeds.",
     sec3Title: "King Points & Leaderboard",
     sec3P1: "King Points equal current MMR minus 2,300. For example, 2,300 MMR is King 0 pts, and 2,450 MMR is King 150 pts. Players with identical points share the same rank.",
     sec3P2: "If leaderboard retrieval fails, an error and retry prompt will appear. This does not indicate you are #1 or that the leaderboard is empty.",
@@ -959,7 +959,7 @@ export const UPDATES_TRANSLATIONS: Record<LanguageCode, UpdatesPageText> = {
       {
         dateTitle: "2026년 9월 14일 — 온라인 정산과 계정 처리",
         items: [
-          "온라인 경기 결과를 서버에서 검증하고 중복 정산을 막는 흐름을 적용했습니다.",
+          "두 참가자가 같은 경기 결과를 보고하면 전적을 반영하고, 같은 경기를 중복 반영하지 않도록 했습니다.",
           "계정 전환 시 이전 사용자의 정보가 섞이지 않도록 보완했습니다.",
           "닉네임을 화면에 표시할 때 HTML로 해석되지 않도록 처리했습니다.",
           "온라인 동기화가 준비되지 않은 승급과 킹 특수 행동을 제한했습니다.",
@@ -1005,7 +1005,7 @@ export const UPDATES_TRANSLATIONS: Record<LanguageCode, UpdatesPageText> = {
       {
         dateTitle: "September 14, 2026 — Online Settlement & Account Security",
         items: [
-          "Added server-side match result validation and duplicate settlement prevention.",
+          "Match stats update when both players report the same result, with each match counted once.",
           "Secured account switching to prevent residual session data overlap.",
           "Escaped player nicknames in UI to prevent HTML injection.",
           "Restricted un-synchronized promotions and special King actions in online play.",
@@ -1051,7 +1051,7 @@ export const UPDATES_TRANSLATIONS: Record<LanguageCode, UpdatesPageText> = {
       {
         dateTitle: "2026年9月14日 — オンライン精算とアカウント処理",
         items: [
-          "サーバー側での対戦結果検証と重複精算防止フローを適用。",
+          "両プレイヤーが同じ結果を報告した対局を戦績に反映し、同じ対局の重複反映を防止。",
           "アカウント切り替え時の前ユーザーデータ混入を防止。",
           "プレイヤー名のHTMLエスケープ処理を適用。",
           "オンライン同期未対応のプロモーションおよびキング特殊行動を制限。",
@@ -1097,7 +1097,7 @@ export const UPDATES_TRANSLATIONS: Record<LanguageCode, UpdatesPageText> = {
       {
         dateTitle: "2026年9月14日 — 在线结算与账号安全",
         items: [
-          "引入服务器端在线对战结果验签机制，防止重复结算。",
+          "双方玩家报告相同结果后更新战绩，每场对局仅结算一次。",
           "优化账号登出切换逻辑，杜绝上一用户缓存残留冲突。",
           "对玩家昵称渲染进行HTML转义，防范注入风险。",
           "在线对战中限制未完成网络同步的兵升变与国王特技。",

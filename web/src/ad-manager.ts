@@ -83,37 +83,139 @@ async function webFullscreen(onRewarded?: (amount: number) => void): Promise<boo
   });
 }
 
+const INTERSTITIAL_COOLDOWN_MS = 3 * 60 * 1000;
+const INTERSTITIAL_EXPIRY_MS = 55 * 60 * 1000;
+
+let interstitialReady = false;
+let interstitialLoadedAt = 0;
+let preloadPromise: Promise<void> | undefined;
+let lastInterstitialShowTime = 0;
+
+function isInterstitialExpired(): boolean {
+  return interstitialReady && (Date.now() - interstitialLoadedAt > INTERSTITIAL_EXPIRY_MS);
+}
+
+function isInterstitialReady(): boolean {
+  if (isInterstitialExpired()) {
+    interstitialReady = false;
+  }
+  return interstitialReady;
+}
+
+async function preloadInterstitial(): Promise<void> {
+  if (!Capacitor.isNativePlatform() || !nativeReady) return;
+  const id = nativeId("interstitial");
+  if (!id) return;
+  if (isInterstitialReady()) return;
+  if (preloadPromise) return preloadPromise;
+
+  preloadPromise = (async () => {
+    try {
+      const { AdMob } = await import("@capacitor-community/admob");
+      await AdMob.prepareInterstitial({ adId: id, isTesting: adTestMode });
+      interstitialReady = true;
+      interstitialLoadedAt = Date.now();
+    } catch (error) {
+      interstitialReady = false;
+      console.warn("전면 광고를 준비하지 못했습니다.", error);
+    } finally {
+      preloadPromise = undefined;
+    }
+  })();
+  return preloadPromise;
+}
+
+async function showNativeInterstitial(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  if (busy || gameplayActive || !nativeReady) return false;
+
+  if (Date.now() - lastInterstitialShowTime < INTERSTITIAL_COOLDOWN_MS) {
+    if (!isInterstitialReady()) {
+      void preloadInterstitial();
+    }
+    return false;
+  }
+
+  if (!isInterstitialReady()) {
+    void preloadInterstitial();
+    return false;
+  }
+
+  const id = nativeId("interstitial");
+  if (!id) return false;
+
+  interstitialReady = false;
+  busy = true;
+  pauseForAd();
+
+  const listeners: PluginListenerHandle[] = [];
+  let shown = false;
+  let finished = false;
+  let complete!: (value: boolean) => void;
+  const done = new Promise<boolean>((resolve) => { complete = resolve; });
+
+  const finish = (result?: boolean) => {
+    if (finished) return;
+    finished = true;
+    complete(result ?? shown);
+  };
+
+  const showed = () => {
+    if (finished) return;
+    shown = true;
+    lastInterstitialShowTime = Date.now();
+    pauseForAd();
+  };
+
+  try {
+    const { AdMob, InterstitialAdPluginEvents } = await import("@capacitor-community/admob");
+    listeners.push(await AdMob.addListener(InterstitialAdPluginEvents.Dismissed, () => finish(shown)));
+    listeners.push(await AdMob.addListener(InterstitialAdPluginEvents.FailedToShow, () => finish(false)));
+    listeners.push(await AdMob.addListener(InterstitialAdPluginEvents.Showed, showed));
+
+    if (gameplayActive) {
+      finish(false);
+      return false;
+    }
+
+    void AdMob.showInterstitial().catch(() => finish(false));
+    return await done;
+  } catch (error) {
+    console.warn("전면 광고를 표시하지 못했습니다.", error);
+    finish(false);
+    return false;
+  } finally {
+    finished = true;
+    await Promise.allSettled(listeners.map((listener) => listener.remove()));
+    resumeAfterAd();
+    busy = false;
+    void preloadInterstitial();
+  }
+}
+
 async function nativeFullscreen(onRewarded?: (amount: number) => void): Promise<boolean> {
-  const id = nativeId(onRewarded ? "rewarded" : "interstitial");
+  if (!onRewarded) return false;
+  const id = nativeId("rewarded");
   if (!nativeReady || !id) return false;
-  const { AdMob, RewardAdPluginEvents, InterstitialAdPluginEvents } = await import("@capacitor-community/admob");
+  const { AdMob, RewardAdPluginEvents } = await import("@capacitor-community/admob");
   const listeners: PluginListenerHandle[] = [];
   let earned = false;
-  let shown = false;
   let finished = false;
   let complete!: () => void;
   const done = new Promise<void>((resolve) => { complete = resolve; });
   const finish = () => { finished = true; complete(); };
-  const showed = () => { shown = true; pauseForAd(); };
+  const showed = () => { pauseForAd(); };
   try {
-    if (onRewarded) {
-      listeners.push(await AdMob.addListener(RewardAdPluginEvents.Dismissed, finish));
-      listeners.push(await AdMob.addListener(RewardAdPluginEvents.FailedToShow, finish));
-      listeners.push(await AdMob.addListener(RewardAdPluginEvents.Showed, showed));
-      listeners.push(await AdMob.addListener(RewardAdPluginEvents.Rewarded, () => {
-        if (!finished && !earned) { earned = true; onRewarded(2); }
-      }));
-      await AdMob.prepareRewardVideoAd({ adId: id, isTesting: adTestMode });
-      void AdMob.showRewardVideoAd().catch(finish);
-    } else {
-      listeners.push(await AdMob.addListener(InterstitialAdPluginEvents.Dismissed, finish));
-      listeners.push(await AdMob.addListener(InterstitialAdPluginEvents.FailedToShow, finish));
-      listeners.push(await AdMob.addListener(InterstitialAdPluginEvents.Showed, showed));
-      await AdMob.prepareInterstitial({ adId: id, isTesting: adTestMode });
-      void AdMob.showInterstitial().catch(finish);
-    }
+    listeners.push(await AdMob.addListener(RewardAdPluginEvents.Dismissed, finish));
+    listeners.push(await AdMob.addListener(RewardAdPluginEvents.FailedToShow, finish));
+    listeners.push(await AdMob.addListener(RewardAdPluginEvents.Showed, showed));
+    listeners.push(await AdMob.addListener(RewardAdPluginEvents.Rewarded, () => {
+      if (!finished && !earned) { earned = true; onRewarded(2); }
+    }));
+    await AdMob.prepareRewardVideoAd({ adId: id, isTesting: adTestMode });
+    void AdMob.showRewardVideoAd().catch(finish);
     await done;
-    return onRewarded ? earned : shown;
+    return earned;
   } catch {
     return earned;
   } finally {
@@ -152,6 +254,7 @@ export const AdManager = {
         if (!consent.canRequestAds) return;
         await AdMob.initialize({ initializeForTesting: adTestMode });
         nativeReady = true;
+        void preloadInterstitial();
       } catch (error) { console.warn("광고를 준비하지 못했습니다.", error); }
     })();
     return initializing;
@@ -169,6 +272,9 @@ export const AdManager = {
       if (gameplayActive) return;
       await AdMob.showBanner({ adId: nativeId("banner"), position: BannerAdPosition.BOTTOM_CENTER,
         adSize: BannerAdSize.ADAPTIVE_BANNER, isTesting: adTestMode });
+      // Existing Android banners remain GONE after showBanner reloads them.
+      if (gameplayActive) await AdMob.hideBanner();
+      else await AdMob.resumeBanner();
     } catch (error) { console.warn("배너를 표시하지 못했습니다.", error); }
   },
   hideBanner: async (): Promise<void> => {
@@ -185,10 +291,13 @@ export const AdManager = {
       await AdMob.hideBanner();
       await AdMob.showPrivacyOptionsForm();
       nativeReady = false;
+      interstitialReady = false;
+      preloadPromise = undefined;
       initializing = undefined;
       await AdManager.init();
     } catch (error) { console.warn("광고 개인정보 설정을 열지 못했습니다.", error); }
   },
-  showInterstitial: () => fullscreen(),
+  preloadInterstitial: () => preloadInterstitial(),
+  showInterstitial: () => showNativeInterstitial(),
   showRewardVideo: (onRewarded: (amount: number) => void) => fullscreen(onRewarded),
 };

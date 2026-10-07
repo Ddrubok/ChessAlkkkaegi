@@ -31,12 +31,12 @@ DB 변경 및 검증을 먼저 완료한 후 웹/앱 클라이언트를 배포�
 - **검증 규칙**:
   - `equipped` 6개 슬롯(`banner`, `frame`, `badge`, `badgeFrame`, `title`, `titleFrame`) 유효성 검사
   - 회원 기본 아이템(`frame:classic-gold`, `title:challenger`, `badgeFrame:gold|silver|violet`, `titleFrame:gold|silver|violet`, `banner:classic|slate|forest`)은 보상 획득 증빙 없이 기본 소유 인정
-  - 업적 아이템(`frame:mastery-complete`, `title:explorer`, `badge:mastery-m01~m08`, 업적 배너 3종)은 `ca_mastery_rewards_v1` 소유권 증빙 필수
+  - 업적 아이템(`frame:mastery-complete`, `title:explorer`, `badge:mastery-m01~m08`, 업적 배너 3종)은 `ca_mastery_rewards_v1`의 보유 기록과 일치해야 합니다. 해당 기록도 클라이언트가 제출하므로 실제 플레이의 증명은 아닙니다.
   - 알 수 없는 아이템 ID 및 슬롯은 `22023` 에러로 엄격 거부
 
 ### `get_player_cosmetics(p_user_id uuid)`
 - **권한**: `authenticated`
-- **목적**: 대전 상대 또는 특정 유저의 검증된 6-slot 공개 장착 꾸미기 정보를 단일 객체로 조회합니다.
+- **목적**: 대전 상대 또는 특정 유저의 6-slot 공개 장착 꾸미기 정보를 단일 객체로 조회합니다. 아이템 형식·슬롯·저장된 보유 기록과의 일치 여부를 검사하며, 정당한 플레이로 획득했는지는 판정하지 않습니다.
 - **반환값 형식**:
   ```json
   {

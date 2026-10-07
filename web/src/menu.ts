@@ -378,9 +378,14 @@ export function isMenuBlocking(runtime: MainMenuRuntime): boolean {
  */
 export async function returnToMainMenu(
   runtime: MainMenuRuntime,
+  afterCompletedMatch = false,
 ): Promise<void> {
   runtime.busy = true;
   try {
+    if (afterCompletedMatch) {
+      try { await AdManager.showInterstitial(); }
+      catch (error) { console.warn("전면 광고를 표시하지 못했습니다.", error); }
+    }
     await runtime.onReturnToMenu();
   } finally {
     runtime.busy = false;
