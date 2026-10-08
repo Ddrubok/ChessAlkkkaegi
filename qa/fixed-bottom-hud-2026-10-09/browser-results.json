@@ -1,0 +1,787 @@
+{
+  "browser": "154.0.4258.62",
+  "results": [
+    {
+      "width": 360,
+      "height": 800,
+      "touch": true,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 31,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": true,
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "touch": true,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 12,
+            "y": 668,
+            "width": 366,
+            "height": 56,
+            "top": 668,
+            "right": 378,
+            "bottom": 724,
+            "left": 12
+          },
+          "visiblePieces": 31,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 12,
+            "y": 668,
+            "width": 366,
+            "height": 56,
+            "top": 668,
+            "right": 378,
+            "bottom": 724,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 12,
+            "y": 668,
+            "width": 366,
+            "height": 56,
+            "top": 668,
+            "right": 378,
+            "bottom": 724,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 12,
+            "y": 668,
+            "width": 366,
+            "height": 56,
+            "top": 668,
+            "right": 378,
+            "bottom": 724,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 12,
+            "y": 668,
+            "width": 366,
+            "height": 56,
+            "top": 668,
+            "right": 378,
+            "bottom": 724,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 12,
+            "y": 668,
+            "width": 366,
+            "height": 56,
+            "top": 668,
+            "right": 378,
+            "bottom": 724,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": true,
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 667,
+      "height": 375,
+      "touch": true,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": true,
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "touch": true,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 112,
+            "y": 306,
+            "width": 516,
+            "height": 72,
+            "top": 306,
+            "right": 628,
+            "bottom": 378,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 112,
+            "y": 306,
+            "width": 516,
+            "height": 72,
+            "top": 306,
+            "right": 628,
+            "bottom": 378,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 112,
+            "y": 306,
+            "width": 516,
+            "height": 72,
+            "top": 306,
+            "right": 628,
+            "bottom": 378,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 112,
+            "y": 306,
+            "width": 516,
+            "height": 72,
+            "top": 306,
+            "right": 628,
+            "bottom": 378,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 112,
+            "y": 306,
+            "width": 516,
+            "height": 72,
+            "top": 306,
+            "right": 628,
+            "bottom": 378,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 112,
+            "y": 306,
+            "width": 516,
+            "height": 72,
+            "top": 306,
+            "right": 628,
+            "bottom": 378,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": true,
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "touch": false,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 288,
+            "y": 716,
+            "width": 600,
+            "height": 72,
+            "top": 716,
+            "right": 888,
+            "bottom": 788,
+            "left": 288
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 288,
+            "y": 716,
+            "width": 600,
+            "height": 72,
+            "top": 716,
+            "right": 888,
+            "bottom": 788,
+            "left": 288
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 288,
+            "y": 716,
+            "width": 600,
+            "height": 72,
+            "top": 716,
+            "right": 888,
+            "bottom": 788,
+            "left": 288
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 288,
+            "y": 716,
+            "width": 600,
+            "height": 72,
+            "top": 716,
+            "right": 888,
+            "bottom": 788,
+            "left": 288
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 288,
+            "y": 716,
+            "width": 600,
+            "height": 72,
+            "top": 716,
+            "right": 888,
+            "bottom": 788,
+            "left": 288
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 288,
+            "y": 716,
+            "width": 600,
+            "height": 72,
+            "top": 716,
+            "right": 888,
+            "bottom": 788,
+            "left": 288
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": "not applicable",
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 360,
+      "height": 800,
+      "touch": true,
+      "language": "de",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 31,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 12,
+            "y": 624,
+            "width": 336,
+            "height": 56,
+            "top": 624,
+            "right": 348,
+            "bottom": 680,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "localizedLayout": true,
+      "errors": []
+    },
+    {
+      "width": 667,
+      "height": 375,
+      "touch": true,
+      "language": "de",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "localizedLayout": true,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "touch": true,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 12,
+            "y": 408,
+            "width": 296,
+            "height": 56,
+            "top": 408,
+            "right": 308,
+            "bottom": 464,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 12,
+            "y": 408,
+            "width": 296,
+            "height": 56,
+            "top": 408,
+            "right": 308,
+            "bottom": 464,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 12,
+            "y": 408,
+            "width": 296,
+            "height": 56,
+            "top": 408,
+            "right": 308,
+            "bottom": 464,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 12,
+            "y": 408,
+            "width": 296,
+            "height": 56,
+            "top": 408,
+            "right": 308,
+            "bottom": 464,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 12,
+            "y": 408,
+            "width": 296,
+            "height": 56,
+            "top": 408,
+            "right": 308,
+            "bottom": 464,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 12,
+            "y": 408,
+            "width": 296,
+            "height": 56,
+            "top": 408,
+            "right": 308,
+            "bottom": 464,
+            "left": 12
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": true,
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    }
+  ]
+}

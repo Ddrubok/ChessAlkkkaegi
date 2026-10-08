@@ -186,10 +186,6 @@
   }
 }
 
-#app:has(.player-banners:not([hidden])) .aim-parameters {
-  bottom: calc(134px + env(safe-area-inset-bottom, 0px));
-}
-
 /* 저높이 가로 화면 대응 */
 @media (orientation: landscape) and (max-height: 500px) {
   .player-banner {
@@ -210,9 +206,6 @@
   }
   .player-banner[data-owner="opponent"]:has(.player-banner-add:not([hidden])) .player-banner-text {
     right: 38px;
-  }
-  #app:has(.player-banners:not([hidden])) .aim-parameters {
-    bottom: 94px;
   }
 }
 

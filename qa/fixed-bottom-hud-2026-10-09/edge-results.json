@@ -1,0 +1,297 @@
+{
+  "browser": "154.0.4258.62",
+  "results": [
+    {
+      "languages": [
+        "ko",
+        "en",
+        "ja",
+        "zh-CN",
+        "de",
+        "fr",
+        "es",
+        "ru",
+        "pt-BR"
+      ],
+      "layouts": [
+        {
+          "name": "king-ko",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "king-en",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "king-ja",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "king-zh-CN",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "king-de",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "king-fr",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "king-es",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "king-ru",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "king-pt-BR",
+          "hud": {
+            "x": 112,
+            "y": 291,
+            "width": 339,
+            "height": 72,
+            "top": 291,
+            "right": 451,
+            "bottom": 363,
+            "left": 112
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-ko",
+          "hud": {
+            "x": 148,
+            "y": 270,
+            "width": 271,
+            "height": 72,
+            "top": 270,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-en",
+          "hud": {
+            "x": 148,
+            "y": 270,
+            "width": 271,
+            "height": 72,
+            "top": 270,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-ja",
+          "hud": {
+            "x": 148,
+            "y": 270,
+            "width": 271,
+            "height": 72,
+            "top": 270,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-zh-CN",
+          "hud": {
+            "x": 148,
+            "y": 270,
+            "width": 271,
+            "height": 72,
+            "top": 270,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-de",
+          "hud": {
+            "x": 148,
+            "y": 267.25,
+            "width": 271,
+            "height": 74.75,
+            "top": 267.25,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-fr",
+          "hud": {
+            "x": 148,
+            "y": 267.25,
+            "width": 271,
+            "height": 74.75,
+            "top": 267.25,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-es",
+          "hud": {
+            "x": 148,
+            "y": 267.25,
+            "width": 271,
+            "height": 74.75,
+            "top": 267.25,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-ru",
+          "hud": {
+            "x": 148,
+            "y": 267.25,
+            "width": 271,
+            "height": 74.75,
+            "top": 267.25,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "safe-king-pt-BR",
+          "hud": {
+            "x": 148,
+            "y": 267.25,
+            "width": 271,
+            "height": 74.75,
+            "top": 267.25,
+            "right": 419,
+            "bottom": 342,
+            "left": 148
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "syntheticSafeArea": {
+        "left": 44,
+        "right": 44,
+        "bottom": 21
+      },
+      "classicCancel": true,
+      "errors": []
+    }
+  ]
+}

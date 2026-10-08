@@ -740,7 +740,7 @@ export function createSceneRuntime(
 
   const camera = new PerspectiveCamera(
     42,
-    window.innerWidth / window.innerHeight,
+    1,
     0.05,
     100,
   );
@@ -752,15 +752,21 @@ export function createSceneRuntime(
 
   const renderer = new WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFSoftShadowMap;
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.domElement.className = "game-canvas";
   renderer.domElement.setAttribute("aria-label", uiText("board"));
   container.append(renderer.domElement);
+  // CSS reserves the header and bottom HUD; picking uses this same canvas rect.
+  const initialViewport = renderer.domElement.getBoundingClientRect();
+  camera.aspect = initialViewport.width / Math.max(initialViewport.height, 1);
+  camera.updateProjectionMatrix();
+  renderer.setSize(initialViewport.width, Math.max(initialViewport.height, 1), false);
 
   const controls = new OrbitControls(camera, renderer.domElement);
+  // Keep a drag's rotation sensitivity when the HUD reduces canvas height.
+  controls.rotateSpeed = initialViewport.height / Math.max(window.innerHeight, 1);
   controls.enableDamping = true;
   controls.enablePan = false;
   controls.target.set(0, 0, 0);
@@ -915,10 +921,12 @@ export function createSceneRuntime(
    * 리사이즈 때 투영 비율과 보드 맞춤 거리를 함께 갱신해 세로 화면 잘림을 막는다.
    */
   const handleResize = (): void => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const viewport = renderer.domElement.getBoundingClientRect();
+    controls.rotateSpeed = viewport.height / Math.max(window.innerHeight, 1);
+    camera.aspect = viewport.width / Math.max(viewport.height, 1);
     camera.updateProjectionMatrix();
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(viewport.width, Math.max(viewport.height, 1), false);
     fitCameraToBoard(runtime);
   };
   window.addEventListener("resize", handleResize);
