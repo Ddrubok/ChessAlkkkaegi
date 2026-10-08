@@ -1,0 +1,503 @@
+{
+  "browser": "154.0.4258.62",
+  "results": [
+    {
+      "width": 360,
+      "height": 800,
+      "touch": true,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 57.625,
+            "y": 348.953125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 348.953125,
+            "right": 145.328125,
+            "bottom": 450.953125,
+            "left": 57.625
+          },
+          "visiblePieces": 31,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 66.28125,
+            "y": 348.96875,
+            "width": 87.703125,
+            "height": 102,
+            "top": 348.96875,
+            "right": 153.984375,
+            "bottom": 450.96875,
+            "left": 66.28125
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 205.984375,
+            "y": 348.96875,
+            "width": 87.703125,
+            "height": 102,
+            "top": 348.96875,
+            "right": 293.6875,
+            "bottom": 450.96875,
+            "left": 205.984375
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 163.1875,
+            "y": 448.453125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 448.453125,
+            "right": 250.890625,
+            "bottom": 550.453125,
+            "left": 163.1875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 136.15625,
+            "y": 448.453125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 448.453125,
+            "right": 223.859375,
+            "bottom": 550.453125,
+            "left": 136.15625
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 163.1875,
+            "y": 445.96875,
+            "width": 87.703125,
+            "height": 102,
+            "top": 445.96875,
+            "right": 250.890625,
+            "bottom": 547.96875,
+            "left": 163.1875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": true,
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "touch": true,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 69.890625,
+            "y": 370.953125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 370.953125,
+            "right": 157.59375,
+            "bottom": 472.953125,
+            "left": 69.890625
+          },
+          "visiblePieces": 31,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 81.28125,
+            "y": 370.953125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 370.953125,
+            "right": 168.984375,
+            "bottom": 472.953125,
+            "left": 81.28125
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 220.984375,
+            "y": 370.953125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 370.953125,
+            "right": 308.6875,
+            "bottom": 472.953125,
+            "left": 220.984375
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 175.796875,
+            "y": 474.3125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 474.3125,
+            "right": 263.5,
+            "bottom": 576.3125,
+            "left": 175.796875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 151.15625,
+            "y": 474.3125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 474.3125,
+            "right": 238.859375,
+            "bottom": 576.3125,
+            "left": 151.15625
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 175.796875,
+            "y": 471.609375,
+            "width": 87.703125,
+            "height": 102,
+            "top": 471.609375,
+            "right": 263.5,
+            "bottom": 573.609375,
+            "left": 175.796875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": true,
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "touch": true,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 308.265625,
+            "y": 143.6875,
+            "width": 87.703125,
+            "height": 102,
+            "top": 143.6875,
+            "right": 395.96875,
+            "bottom": 245.6875,
+            "left": 308.265625
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 308.265625,
+            "y": 143.6875,
+            "width": 87.703125,
+            "height": 102,
+            "top": 143.6875,
+            "right": 395.96875,
+            "bottom": 245.6875,
+            "left": 308.265625
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 447.96875,
+            "y": 139.03125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 139.03125,
+            "right": 535.671875,
+            "bottom": 241.03125,
+            "left": 447.96875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 638.390625,
+            "y": 50.90625,
+            "width": 87.703125,
+            "height": 102,
+            "top": 50.90625,
+            "right": 726.09375,
+            "bottom": 152.90625,
+            "left": 638.390625
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 638.390625,
+            "y": 50.90625,
+            "width": 87.703125,
+            "height": 102,
+            "top": 50.90625,
+            "right": 726.09375,
+            "bottom": 152.90625,
+            "left": 638.390625
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 294.0625,
+            "y": 144.125,
+            "width": 87.703125,
+            "height": 102,
+            "top": 144.125,
+            "right": 381.765625,
+            "bottom": 246.125,
+            "left": 294.0625
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": true,
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 1280,
+      "height": 800,
+      "touch": false,
+      "language": "ko",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 519.09375,
+            "y": 358.265625,
+            "width": 87.703125,
+            "height": 82.75,
+            "top": 358.265625,
+            "right": 606.796875,
+            "bottom": 441.015625,
+            "left": 519.09375
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 519.09375,
+            "y": 358.265625,
+            "width": 87.703125,
+            "height": 82.75,
+            "top": 358.265625,
+            "right": 606.796875,
+            "bottom": 441.015625,
+            "left": 519.09375
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 673.234375,
+            "y": 358.265625,
+            "width": 87.703125,
+            "height": 82.75,
+            "top": 358.265625,
+            "right": 760.9375,
+            "bottom": 441.015625,
+            "left": 673.234375
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 527.046875,
+            "y": 242.78125,
+            "width": 87.703125,
+            "height": 82.75,
+            "top": 242.78125,
+            "right": 614.75,
+            "bottom": 325.53125,
+            "left": 527.046875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "applied",
+          "hud": {
+            "x": 527.046875,
+            "y": 242.78125,
+            "width": 87.703125,
+            "height": 82.75,
+            "top": 242.78125,
+            "right": 614.75,
+            "bottom": 325.53125,
+            "left": 527.046875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "rotated",
+          "hud": {
+            "x": 513.875,
+            "y": 303.3125,
+            "width": 87.703125,
+            "height": 82.75,
+            "top": 303.3125,
+            "right": 601.578125,
+            "bottom": 386.0625,
+            "left": 513.875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "outsideApplied": true,
+      "retainedStrike": true,
+      "reset": true,
+      "otherPiece": true,
+      "cameraDrag": true,
+      "multiTouchAndCancel": "not applicable",
+      "launch": true,
+      "reentry": true,
+      "errors": []
+    },
+    {
+      "width": 360,
+      "height": 800,
+      "touch": true,
+      "language": "de",
+      "layouts": [
+        {
+          "name": "selected",
+          "hud": {
+            "x": 51.671875,
+            "y": 348.953125,
+            "width": 93.65625,
+            "height": 102,
+            "top": 348.953125,
+            "right": 145.328125,
+            "bottom": 450.953125,
+            "left": 51.671875
+          },
+          "visiblePieces": 31,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-a2",
+          "hud": {
+            "x": 60.328125,
+            "y": 348.96875,
+            "width": 93.65625,
+            "height": 102,
+            "top": 348.96875,
+            "right": 153.984375,
+            "bottom": 450.96875,
+            "left": 60.328125
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "white-pawn-h2",
+          "hud": {
+            "x": 205.984375,
+            "y": 348.96875,
+            "width": 93.65625,
+            "height": 102,
+            "top": 348.96875,
+            "right": 299.640625,
+            "bottom": 450.96875,
+            "left": 205.984375
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        },
+        {
+          "name": "strike",
+          "hud": {
+            "x": 163.1875,
+            "y": 448.453125,
+            "width": 93.65625,
+            "height": 102,
+            "top": 448.453125,
+            "right": 256.84375,
+            "bottom": 550.453125,
+            "left": 163.1875
+          },
+          "visiblePieces": 32,
+          "covered": 0
+        }
+      ],
+      "localizedLayout": true,
+      "errors": []
+    }
+  ]
+}

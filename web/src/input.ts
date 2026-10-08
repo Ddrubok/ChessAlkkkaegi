@@ -1280,18 +1280,7 @@ function updateActionBar(runtime: InputRuntime): void {
   if (!selected) {
     return;
   }
-  const target = getSelectedTarget(runtime);
-  const rect =
-    runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
-  const ndc = target.project(runtime.sceneRuntime.camera);
-  const x = (ndc.x * 0.5 + 0.5) * rect.width;
-  const y = (1 - (ndc.y * 0.5 + 0.5)) * rect.height;
-  const barWidth = runtime.actionBar.offsetWidth;
-  const barHeight = runtime.actionBar.offsetHeight;
-  const top = Math.min(Math.max(y - barHeight / 2, 4), rect.height - barHeight - 4);
-  const left = Math.min(Math.max(x + rect.width * 0.04 + 8, 4), rect.width - barWidth - 4);
-  runtime.actionBar.style.left = `${left}px`;
-  runtime.actionBar.style.top = `${top}px`;
+  updateActionBarPosition(runtime, performance.now());
 }
 
 /**
@@ -1312,6 +1301,10 @@ function projectActionBarAnchor(
   mesh.updateWorldMatrix(true, false);
   const camera = runtime.sceneRuntime.camera;
   const projected = new Vector3();
+  mesh.getWorldPosition(projected).project(camera);
+  if (projected.z < -1 || projected.z > 1) {
+    return null;
+  }
   let left = Number.POSITIVE_INFINITY;
   let top = Number.POSITIVE_INFINITY;
   let right = Number.NEGATIVE_INFINITY;
@@ -1349,7 +1342,7 @@ function projectActionBarAnchor(
 }
 
 /**
- * 선택·카메라·패널 변화만 100ms 간격으로 반영해 액션 바를 말 옆에 고정한다.
+ * 선택·카메라·패널 변화를 100ms 간격으로 반영하며 모든 보이는 말과 HUD를 피한다.
  */
 function updateActionBarPosition(
   runtime: InputRuntime,
@@ -1406,11 +1399,59 @@ function updateActionBarPosition(
           right: panelClientRect.right,
           bottom: panelClientRect.bottom,
         };
+  const occupiedRects: ActionBarRect[] = [];
+  const reserveRect = (rect: ActionBarRect): void => {
+    // CSS 좌표 반올림과 위치 갱신 사이의 작은 이동이 기물·HUD 테두리를 침범하지 않게 한다.
+    occupiedRects.push({
+      left: rect.left - 2, top: rect.top - 2,
+      right: rect.right + 2, bottom: rect.bottom + 2,
+    });
+  };
+  for (const [otherId, otherMesh] of runtime.sceneRuntime.pieceMeshes) {
+    if (otherId === pieceId || !otherMesh.visible) {
+      continue;
+    }
+    const otherAnchor = projectActionBarAnchor(runtime, otherMesh, viewport);
+    if (otherAnchor !== null) {
+      reserveRect(otherAnchor.pieceRect);
+    }
+  }
+  for (const chevron of runtime.aimRuntime.groundChevrons) {
+    if (!chevron.visible) {
+      continue;
+    }
+    const projected = projectActionBarAnchor(runtime, chevron, viewport);
+    if (projected !== null) {
+      reserveRect(projected.pieceRect);
+    }
+  }
+  const redDot = runtime.aimParametersRuntime.redDot;
+  if (redDot.visible) {
+    const projected = projectActionBarAnchor(runtime, redDot, viewport);
+    if (projected !== null) {
+      reserveRect({
+        left: projected.x - RED_DOT_HIT_RADIUS_PIXELS,
+        top: projected.y - RED_DOT_HIT_RADIUS_PIXELS,
+        right: projected.x + RED_DOT_HIT_RADIUS_PIXELS,
+        bottom: projected.y + RED_DOT_HIT_RADIUS_PIXELS,
+      });
+    }
+  }
+  const overlayContainer = runtime.sceneRuntime.renderer.domElement.parentElement;
+  for (const element of overlayContainer?.querySelectorAll<HTMLElement>(
+    '.input-mode-toggle, .return-menu-button, .turn-hud-container, .player-banner, .aim-parameters, .aim-elevation, .aim-power, .classic-cancel-control, .king-swap-banner',
+  ) ?? []) {
+    const rect = element.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0 && getComputedStyle(element).visibility !== 'hidden') {
+      reserveRect(rect);
+    }
+  }
   const placement = computeActionBarPlacement(
     viewport,
     anchor,
     { width: popupRect.width, height: popupRect.height },
     panelRect,
+    occupiedRects,
   );
   const offsetParentRect =
     runtime.actionBar.offsetParent instanceof HTMLElement
@@ -1435,6 +1476,26 @@ function updateActionBarPosition(
   runtime.actionBarSelectedPieceId = pieceId;
   runtime.actionBarPanelWasVisible = panelVisible;
   runtime.actionBarLastPositionedAt = now;
+}
+
+/**
+ * 타점 편집을 끝내되 말과 지정 타점을 유지한다. 조준 복귀 자체는 발사하지 않는다.
+ */
+function finishStrikePointEditing(runtime: InputRuntime): void {
+  cancelInteraction(runtime, false);
+  runtime.strikeMode = false;
+  if (runtime.aimRuntime.selectedPieceId !== null) {
+    beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+    try {
+      refreshBilliardsPreview(runtime);
+    } catch (error: unknown) {
+      const reason = formatInteractionError(error);
+      cancelInteraction(runtime, true);
+      runtime.failureReason = reason;
+      showAimError(runtime.aimParametersRuntime, reason);
+    }
+  }
+  updateActionBar(runtime);
 }
 
 /**
@@ -1678,28 +1739,6 @@ function handleCanvasPointerDown(
       ),
     };
     setAimPower(runtime.aimParametersRuntime, 0);
-    canvas.setPointerCapture(event.pointerId);
-    return;
-  }
-
-  if (
-    runtime.mode === "billiards" &&
-    runtime.strikeMode &&
-    selectedId !== null &&
-    !isBilliardsTouch
-  ) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    runtime.activePointerId = event.pointerId;
-    runtime.activeCaptureElement = canvas;
-    runtime.gesture = {
-      source: "billiards-canvas",
-      startX: event.clientX,
-      startY: event.clientY,
-      maximumDistance: 0,
-      candidatePieceId: selectedId,
-      maxDragPixels: MAX_DRAG_PIXELS,
-    };
     canvas.setPointerCapture(event.pointerId);
     return;
   }
@@ -1956,6 +1995,16 @@ function handleCanvasPointerUp(
       cancelInteraction(runtime, false);
       return;
     }
+  }
+
+  if (
+    tapped &&
+    runtime.strikeMode &&
+    candidatePieceId !== runtime.aimRuntime.selectedPieceId
+  ) {
+    // 편집 중 다른 말도 첫 탭은 적용만 한다. 다음 입력부터 선택·발사가 가능하다.
+    finishStrikePointEditing(runtime);
+    return;
   }
 
   if (tapped && candidatePieceId !== null) {
@@ -2377,20 +2426,8 @@ export function createInputRuntime(
           beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
         }
       } else if (action === "launch") {
-        runtime.strikeMode = false;
-        if (runtime.aimRuntime.selectedPieceId !== null) {
-          beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
-        }
-        if (runtime.aimRuntime.selectedPieceId !== null) {
-          try {
-            refreshBilliardsPreview(runtime);
-          } catch (error: unknown) {
-            const reason = formatInteractionError(error);
-            cancelInteraction(runtime, true);
-            runtime.failureReason = reason;
-            showAimError(runtime.aimParametersRuntime, reason);
-          }
-        }
+        finishStrikePointEditing(runtime);
+        return;
       }
       updateActionBar(runtime);
     });
