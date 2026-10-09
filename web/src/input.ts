@@ -150,7 +150,8 @@ interface PointerGesture {
   source:
     | "classic-canvas"
     | "billiards-canvas"
-    | "red-dot";
+    | "red-dot"
+    | "strike-surface";
   startX: number;
   startY: number;
   maximumDistance: number;
@@ -209,6 +210,8 @@ export interface InputRuntime {
   activePointerId: number | null;
   activeCaptureElement: HTMLElement | null;
   gesture: PointerGesture | null;
+  // 표면 드래그에서 다음 프레임에 적용할 마지막 좌표다.
+  strikeSurfacePending: { clientX: number; clientY: number } | null;
   // OrbitControls가 소유한 터치 집합을 추적해 추가 손가락이 조준으로 전환되지 않게 한다.
   orbitTouchPointerIds: Set<number>;
   cameraTransition: CameraTransition | null;
@@ -230,6 +233,10 @@ export interface InputRuntime {
   strikeMode: boolean;
   // 3D 직접 클릭과 같은 override를 편집하는 확대 정면 패널 런타임이다.
   strikePointPanel: StrikePointPanelRuntime;
+  // 패널 드래그의 포인터·시작 기물·프레임별 마지막 좌표다.
+  strikePanelPointerId: number | null;
+  strikePanelPieceId: string | null;
+  strikePanelPending: { clientX: number; clientY: number } | null;
   // 킹 위치 변경 대상 기물 선택 모드 활성화 여부
   kingSwapMode: boolean;
   // 킹 위치 변경 안내 배너 엘리먼트
@@ -403,7 +410,7 @@ function formatInteractionError(error: unknown): string {
  */
 function raycastNearestPiece(
   runtime: InputRuntime,
-  event: PointerEvent,
+  event: Pick<PointerEvent, "clientX" | "clientY">,
 ): string | null {
   const rect = runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
   runtime.pointerNdc.set(
@@ -724,6 +731,110 @@ export function getBilliardsHorizontalDirection(
 }
 
 /**
+ * 사용자 타점과 기물별 스핀 세기 제한을 함께 반영한다.
+ */
+function applyStrikePointOverrideState(runtime: InputRuntime, point: Vector3): void {
+  const selectedId = runtime.aimRuntime.selectedPieceId;
+  setStrikePointOverride(runtime.aimParametersRuntime, point, getAimMaxPower({
+    isRook: selectedId !== null && isRookPiece(selectedId, runtime.physicsRuntime.pieces),
+    isBishop: selectedId !== null && isBishopPiece(selectedId, runtime.physicsRuntime.pieces),
+    hasCustomSpin: true,
+  }));
+  const aim = runtime.aimRuntime.activeAim;
+  if (aim !== null) {
+    aim.hasCustomSpin = true;
+    if (aim.isRook && !aim.isBishop && aim.normalizedPower > 1.0) {
+      aim.normalizedPower = 1.0;
+    }
+  }
+}
+
+function refreshStrikePreviewOrFail(runtime: InputRuntime): boolean {
+  try {
+    refreshBilliardsPreview(runtime);
+    return true;
+  } catch (error: unknown) {
+    const reason = formatInteractionError(error);
+    cancelInteraction(runtime, true);
+    runtime.failureReason = reason;
+    showAimError(runtime.aimParametersRuntime, reason);
+    return false;
+  }
+}
+
+function isStrikePanelDragValid(runtime: InputRuntime): boolean {
+  return runtime.mode === "billiards" && runtime.strikeMode &&
+    !runtime.policy.isInputBlocked() && !runtime.policy.isExternalAimActive() &&
+    runtime.strikePanelPieceId !== null &&
+    runtime.aimRuntime.selectedPieceId === runtime.strikePanelPieceId;
+}
+
+/**
+ * 캡처 해제 이벤트가 다시 들어와도 종료된 드래그를 재사용하지 않는다.
+ */
+function endStrikePanelDrag(runtime: InputRuntime): void {
+  const pointerId = runtime.strikePanelPointerId;
+  runtime.strikePanelPointerId = null;
+  runtime.strikePanelPieceId = null;
+  runtime.strikePanelPending = null;
+  if (pointerId !== null && pointerId !== undefined &&
+      runtime.strikePointPanel.canvas.hasPointerCapture(pointerId)) {
+    runtime.strikePointPanel.canvas.releasePointerCapture(pointerId);
+  }
+}
+
+function isStrikeSurfaceDragValid(runtime: InputRuntime): boolean {
+  return runtime.gesture?.source === "strike-surface" &&
+    runtime.mode === "billiards" && runtime.strikeMode &&
+    !runtime.policy.isInputBlocked() && !runtime.policy.isExternalAimActive() &&
+    runtime.gesture.candidatePieceId !== null &&
+    runtime.aimRuntime.selectedPieceId === runtime.gesture.candidatePieceId;
+}
+
+// 외부 조준이 공유 상태를 소유할 수 있으므로 로컬 입력만 정리한다.
+function endStrikeSurfaceDragLocal(runtime: InputRuntime): void {
+  if (runtime.gesture?.source !== "strike-surface") return;
+  const pointerId = runtime.activePointerId;
+  const canvas = runtime.activeCaptureElement;
+  runtime.activePointerId = null;
+  runtime.activeCaptureElement = null;
+  runtime.gesture = null;
+  runtime.strikeSurfacePending = null;
+  runtime.heldCameraKeys.clear();
+  if (pointerId !== null && canvas?.hasPointerCapture(pointerId)) {
+    canvas.releasePointerCapture(pointerId);
+  }
+  runtime.state = runtime.aimRuntime.selectedPieceId === null ? "idle" : "selected-preview";
+  runtime.sceneRuntime.controls.enableDamping = runtime.policy.isExternalAimActive();
+  runtime.sceneRuntime.controls.enabled = runtime.cameraTransition === null &&
+    !runtime.policy.isCameraRotating() && !runtime.policy.isInputBlocked();
+}
+
+function applyStrikeSurfacePoint(
+  runtime: InputRuntime,
+  point: Pick<PointerEvent, "clientX" | "clientY">,
+): void {
+  if (raycastNearestPiece(runtime, point) !== runtime.aimRuntime.selectedPieceId) return;
+  const hit = raycastSelectedPieceSurface(runtime, point);
+  if (hit !== null) applyStrikePointOverrideState(runtime, hit);
+}
+
+function applyStrikePanelPoint(
+  runtime: InputRuntime,
+  clientX: number,
+  clientY: number,
+  snapTolerance?: number,
+): boolean {
+  const mesh = runtime.strikePanelPieceId === null
+    ? undefined : runtime.sceneRuntime.pieceMeshes.get(runtime.strikePanelPieceId);
+  if (mesh === undefined) return false;
+  const point = pickStrikePointFromPanel(runtime.strikePointPanel, mesh, clientX, clientY, snapTolerance);
+  if (point === null) return false;
+  applyStrikePointOverrideState(runtime, point);
+  return true;
+}
+
+/**
  * 현재 선택과 카메라에서 당구식 해법을 한 번 계산해 점·화살표·발사 캐시에 함께 반영한다.
  */
 function refreshBilliardsPreview(
@@ -923,6 +1034,7 @@ function cancelInteraction(
   runtime: InputRuntime,
   clearSelection: boolean,
 ): void {
+  endStrikePanelDrag(runtime);
   const captureElement = runtime.activeCaptureElement;
   const pointerId = runtime.activePointerId;
   runtime.state = "cancel";
@@ -951,6 +1063,7 @@ function cancelInteraction(
   runtime.activePointerId = null;
   runtime.activeCaptureElement = null;
   runtime.gesture = null;
+  runtime.strikeSurfacePending = null;
   runtime.heldCameraKeys.clear();
   if (
     captureElement !== null &&
@@ -1286,7 +1399,7 @@ function finishStrikePointEditing(runtime: InputRuntime): void {
  */
 function raycastSelectedPieceSurface(
   runtime: InputRuntime,
-  event: PointerEvent,
+  event: Pick<PointerEvent, "clientX" | "clientY">,
 ): Vector3 | null {
   const pieceId = runtime.aimRuntime.selectedPieceId;
   if (pieceId === null) {
@@ -1381,6 +1494,11 @@ function handleCanvasPointerDown(
   runtime: InputRuntime,
   event: PointerEvent,
 ): void {
+  if (runtime.strikePanelPointerId !== null && runtime.strikePanelPointerId !== undefined) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
   if (runtime.policy.isInputBlocked()) {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -1419,6 +1537,37 @@ function handleCanvasPointerDown(
   const selectedCanAim =
     selectedId !== null &&
     runtime.policy.canSelectPiece(selectedId);
+  if (
+    runtime.mode === "billiards" && runtime.strikeMode && selectedCanAim &&
+    (event.pointerType !== "mouse" || event.button === 0) &&
+    runtime.state !== "aiming" && runtime.state !== "charging" &&
+    runtime.activePointerId === null && runtime.orbitTouchPointerIds.size === 0 &&
+    runtime.cameraTransition === null && !runtime.policy.isCameraRotating() &&
+    raycastNearestPiece(runtime, event) === selectedId
+  ) {
+    const point = raycastSelectedPieceSurface(runtime, event);
+    if (point !== null) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      runtime.activePointerId = event.pointerId;
+      runtime.activeCaptureElement = canvas;
+      runtime.gesture = {
+        source: "strike-surface",
+        startX: event.clientX,
+        startY: event.clientY,
+        maximumDistance: 0,
+        candidatePieceId: selectedId,
+        maxDragPixels: MAX_DRAG_PIXELS,
+      };
+      runtime.strikeSurfacePending = null;
+      runtime.sceneRuntime.controls.enabled = false;
+      canvas.setPointerCapture(event.pointerId);
+      applyStrikePointOverrideState(runtime, point);
+      if (!refreshStrikePreviewOrFail(runtime)) return;
+      playPieceClickSound();
+      return;
+    }
+  }
   const touchRoute = isBilliardsTouch
     ? decideBilliardsTouchPointerRoute({
         hasSelectedPiece: selectedCanAim,
@@ -1607,6 +1756,11 @@ function handleCanvasPointerMove(
   ) {
     return;
   }
+  if (gesture.source === "strike-surface") {
+    event.preventDefault();
+    runtime.strikeSurfacePending = { clientX: event.clientX, clientY: event.clientY };
+    return;
+  }
   const distance = Math.hypot(
     event.clientX - gesture.startX,
     event.clientY - gesture.startY,
@@ -1691,6 +1845,22 @@ function handleCanvasPointerUp(
     event.pointerId !== runtime.activePointerId
   ) {
     // 보조 카메라 손가락은 OrbitControls만 마무리하고 입력 탭 판정에는 참여하지 않는다.
+    return;
+  }
+  if (runtime.gesture?.source === "strike-surface" &&
+      event.pointerId === runtime.activePointerId) {
+    event.preventDefault();
+    if (!isStrikeSurfaceDragValid(runtime)) {
+      endStrikeSurfaceDragLocal(runtime);
+      return;
+    }
+    if (containsClientPoint(runtime.sceneRuntime.renderer.domElement, event)) {
+      applyStrikeSurfacePoint(runtime, event);
+    }
+    beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+    if (!refreshStrikePreviewOrFail(runtime)) return;
+    cancelInteraction(runtime, false);
+    refreshBilliardsPreview(runtime);
     return;
   }
   if (runtime.policy.isInputBlocked()) {
@@ -1800,32 +1970,9 @@ function handleCanvasPointerUp(
   ) {
     const point = raycastSelectedPieceSurface(runtime, event);
     if (point !== null) {
-      const selectedId = runtime.aimRuntime.selectedPieceId;
-      setStrikePointOverride(runtime.aimParametersRuntime, point, getAimMaxPower({
-        isRook: selectedId !== null && isRookPiece(selectedId, runtime.physicsRuntime.pieces),
-        isBishop: selectedId !== null && isBishopPiece(selectedId, runtime.physicsRuntime.pieces),
-        hasCustomSpin: true,
-      }));
-      if (runtime.aimRuntime.activeAim !== null) {
-        runtime.aimRuntime.activeAim.hasCustomSpin = true;
-        if (
-          runtime.aimRuntime.activeAim.isRook &&
-          !runtime.aimRuntime.activeAim.isBishop &&
-          runtime.aimRuntime.activeAim.normalizedPower > 1.0
-        ) {
-          runtime.aimRuntime.activeAim.normalizedPower = 1.0;
-        }
-      }
+      applyStrikePointOverrideState(runtime, point);
       beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
-      try {
-        refreshBilliardsPreview(runtime);
-      } catch (error: unknown) {
-        const reason = formatInteractionError(error);
-        cancelInteraction(runtime, true);
-        runtime.failureReason = reason;
-        showAimError(runtime.aimParametersRuntime, reason);
-        return;
-      }
+      if (!refreshStrikePreviewOrFail(runtime)) return;
     }
     cancelInteraction(runtime, false);
     refreshBilliardsPreview(runtime);
@@ -2039,6 +2186,7 @@ export function createInputRuntime(
     activePointerId: null,
     activeCaptureElement: null,
     gesture: null,
+    strikeSurfacePending: null,
     orbitTouchPointerIds: new Set(),
     cameraTransition: null,
     preparedStrikeSolution: null,
@@ -2052,6 +2200,9 @@ export function createInputRuntime(
     actionBar,
     strikeMode: false,
     strikePointPanel,
+    strikePanelPointerId: null,
+    strikePanelPieceId: null,
+    strikePanelPending: null,
     kingSwapMode: false,
     kingSwapBanner,
     cancelControl,
@@ -2084,70 +2235,54 @@ export function createInputRuntime(
       event.stopPropagation();
     });
   }
-  strikePointPanel.canvas.addEventListener(
-    "pointerdown",
-    (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      let pieceId = runtime.aimRuntime.selectedPieceId;
-      if (pieceId === null) {
-        const firstWhite = [...runtime.physicsRuntime.pieces.values()].find(
-          (b) => b.instance.side === "white",
-        );
-        if (firstWhite !== undefined) {
-          pieceId = firstWhite.instance.id;
-          selectAimPiece(runtime.aimRuntime, pieceId);
-        }
-      }
-      const mesh =
-        pieceId === null
-          ? undefined
-          : runtime.sceneRuntime.pieceMeshes.get(pieceId);
-      if (mesh === undefined) {
-        return;
-      }
-      const point = pickStrikePointFromPanel(
-        runtime.strikePointPanel,
-        mesh,
-        event.clientX,
-        event.clientY,
+  strikePointPanel.canvas.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (runtime.strikePanelPointerId !== null || runtime.activePointerId !== null) return;
+    let pieceId = runtime.aimRuntime.selectedPieceId;
+    if (pieceId === null) {
+      const firstWhite = [...runtime.physicsRuntime.pieces.values()].find(
+        (binding) => binding.instance.side === "white",
       );
-      if (point === null) {
-        return;
+      if (firstWhite !== undefined) {
+        pieceId = firstWhite.instance.id;
+        selectAimPiece(runtime.aimRuntime, pieceId);
       }
-      playPieceClickSound();
-      setStrikePointOverride(
-        runtime.aimParametersRuntime,
-        point,
-        getAimMaxPower({
-          isRook: runtime.aimRuntime.selectedPieceId !== null && isRookPiece(runtime.aimRuntime.selectedPieceId, runtime.physicsRuntime.pieces),
-          isBishop: runtime.aimRuntime.selectedPieceId !== null && isBishopPiece(runtime.aimRuntime.selectedPieceId, runtime.physicsRuntime.pieces),
-          hasCustomSpin: true,
-        }),
-      );
-      if (runtime.aimRuntime.activeAim !== null) {
-        runtime.aimRuntime.activeAim.hasCustomSpin = true;
-        if (
-          runtime.aimRuntime.activeAim.isRook &&
-          !runtime.aimRuntime.activeAim.isBishop &&
-          runtime.aimRuntime.activeAim.normalizedPower > 1.0
-        ) {
-          runtime.aimRuntime.activeAim.normalizedPower = 1.0;
-        }
-      }
-      try {
-        if (runtime.mode === "billiards") {
-          refreshBilliardsPreview(runtime);
-        }
-      } catch (error: unknown) {
-        const reason = formatInteractionError(error);
-        cancelInteraction(runtime, true);
-        runtime.failureReason = reason;
-        showAimError(runtime.aimParametersRuntime, reason);
-      }
-    },
-  );
+    }
+    runtime.strikePanelPieceId = pieceId;
+    if (!isStrikePanelDragValid(runtime)) {
+      endStrikePanelDrag(runtime);
+      return;
+    }
+    if (!applyStrikePanelPoint(runtime, event.clientX, event.clientY)) {
+      endStrikePanelDrag(runtime);
+      return;
+    }
+    strikePointPanel.canvas.setPointerCapture(event.pointerId);
+    runtime.strikePanelPointerId = event.pointerId;
+    if (runtime.mode === "billiards" && !refreshStrikePreviewOrFail(runtime)) return;
+    playPieceClickSound();
+  });
+  strikePointPanel.canvas.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== runtime.strikePanelPointerId) return;
+    runtime.strikePanelPending = { clientX: event.clientX, clientY: event.clientY };
+  });
+  strikePointPanel.canvas.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== runtime.strikePanelPointerId) return;
+    if (isStrikePanelDragValid(runtime) &&
+        applyStrikePanelPoint(runtime, event.clientX, event.clientY, 0)) {
+      refreshStrikePreviewOrFail(runtime);
+    }
+    endStrikePanelDrag(runtime);
+  });
+  for (const eventName of ["pointercancel", "lostpointercapture"] as const) {
+    strikePointPanel.canvas.addEventListener(eventName, (event) => {
+      if (event.pointerId === runtime.strikePanelPointerId) endStrikePanelDrag(runtime);
+    });
+  }
   strikePointPanel.resetButton.addEventListener("click", () => {
+    endStrikeSurfaceDragLocal(runtime);
+    endStrikePanelDrag(runtime);
     clearStrikePointOverride(runtime.aimParametersRuntime);
     if (runtime.aimRuntime.activeAim !== null) {
       runtime.aimRuntime.activeAim.hasCustomSpin = false;
@@ -2176,6 +2311,7 @@ export function createInputRuntime(
   updateActionBar(runtime);
   for (const button of actionBar.querySelectorAll("button")) {
     button.addEventListener("click", () => {
+      if (runtime.gesture?.source === "strike-surface") cancelInteraction(runtime, false);
       const action = button.dataset.action;
       if (action === "swap") {
         const selectedId = runtime.aimRuntime.selectedPieceId;
@@ -2320,6 +2456,9 @@ export function updateInputRuntime(
       : Math.max((now - runtime.lastUpdateTime) / 1000, 0);
   runtime.lastUpdateTime = now;
 
+  if (runtime.gesture?.source === "strike-surface" && !isStrikeSurfaceDragValid(runtime)) {
+    endStrikeSurfaceDragLocal(runtime);
+  }
   const transition = runtime.cameraTransition;
   if (transition !== null) {
     const progress = Math.min(
@@ -2388,7 +2527,9 @@ export function updateInputRuntime(
     }
   }
 
-  integrateKeyboardCamera(runtime, wallDeltaSeconds);
+  if (runtime.gesture?.source !== "strike-surface") {
+    integrateKeyboardCamera(runtime, wallDeltaSeconds);
+  }
   const controls = runtime.sceneRuntime.controls;
   const aimingWithCamera =
     runtime.mode === "billiards" &&
@@ -2396,15 +2537,42 @@ export function updateInputRuntime(
     !externalAimActive;
   controls.enableDamping = !aimingWithCamera;
   controls.enabled =
+    runtime.gesture?.source !== "strike-surface" &&
     runtime.cameraTransition === null &&
     runtime.state !== "charging" &&
     runtime.state !== "aiming" &&
     !runtime.policy.isCameraRotating() &&
     !runtime.policy.isInputBlocked();
+  if (runtime.strikePanelPointerId !== null) {
+    if (!isStrikePanelDragValid(runtime)) {
+      endStrikePanelDrag(runtime);
+    } else if (runtime.strikePanelPending !== null) {
+      const pending = runtime.strikePanelPending;
+      runtime.strikePanelPending = null;
+      try {
+        applyStrikePanelPoint(runtime, pending.clientX, pending.clientY, 0);
+      } catch (error: unknown) {
+        endStrikePanelDrag(runtime);
+        runtime.failureReason = formatInteractionError(error);
+        showAimError(runtime.aimParametersRuntime, runtime.failureReason);
+      }
+    }
+  }
+  if (runtime.gesture?.source === "strike-surface" && runtime.strikeSurfacePending !== null) {
+    const pending = runtime.strikeSurfacePending;
+    runtime.strikeSurfacePending = null;
+    try {
+      applyStrikeSurfacePoint(runtime, pending);
+    } catch (error: unknown) {
+      cancelInteraction(runtime, false);
+      runtime.failureReason = formatInteractionError(error);
+      showAimError(runtime.aimParametersRuntime, runtime.failureReason);
+    }
+  }
   if (aimingWithCamera) {
     try {
       refreshBilliardsPreview(runtime);
-      updateAdaptiveCloseDistance(runtime);
+      if (runtime.gesture?.source !== "strike-surface") updateAdaptiveCloseDistance(runtime);
       runtime.state =
         runtime.state === "charging"
           ? "charging"

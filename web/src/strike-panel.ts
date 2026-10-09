@@ -483,6 +483,7 @@ export function pickStrikePointFromPanel(
   mesh: Mesh,
   clientX: number,
   clientY: number,
+  snapTolerance = STRIKE_PANEL_SNAP_TOLERANCE,
 ): Vector3 | null {
   const projection = runtime.projection;
   if (projection === null) {
@@ -494,5 +495,5 @@ export function pickStrikePointFromPanel(
   }
   const u = ((clientX - rect.left) / rect.width) * 2 - 1;
   const v = 1 - ((clientY - rect.top) / rect.height) * 2;
-  return pickStrikePanelWorldPoint(mesh, projection, u, v);
+  return pickStrikePanelWorldPoint(mesh, projection, u, v, snapTolerance);
 }

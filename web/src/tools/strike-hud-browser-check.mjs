@@ -2,6 +2,8 @@
 // Run from web: node src/tools/strike-hud-browser-check.mjs
 // QA_EDGE=1 checks all locales, synthetic safe-area insets and classic cancellation.
 import assert from 'node:assert/strict';
+import { checkStrikePanelDrag } from './strike-panel-drag-check.mjs';
+import { checkStrikeSurfaceDrag } from './strike-surface-drag-check.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
@@ -49,8 +51,8 @@ try {
     await context.addInitScript(language => {
       localStorage.setItem('app_language', language);
       window.__strikeHudEvents = [];
-      for (const type of ['pointerdown', 'pointerup', 'click']) document.addEventListener(type, e => {
-        window.__strikeHudEvents.push({ type, target: e.target.className, id: e.pointerId });
+      for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture', 'click']) document.addEventListener(type, e => {
+        window.__strikeHudEvents.push({ type, target: e.target.className, id: e.pointerId, x: e.clientX, y: e.clientY });
         if (window.__strikeHudEvents.length > 30) window.__strikeHudEvents.shift();
       }, true);
     }, language);
@@ -346,6 +348,13 @@ try {
       assert.equal((await snapshot()).selected, id, `Edge pawn selection failed: ${id}`);
       layouts.push(await assertLayout(id));
     }
+    await selectPawn();
+    await openAndSet();
+    await checkStrikePanelDrag({ page, cdp, touch });
+    await restart();
+    await selectPawn();
+    await checkStrikeSurfaceDrag({ page, cdp, touch, width, height, output, caseName });
+    await restart();
     await selectPawn();
     const before = await openAndSet();
     layouts.push(await assertLayout('strike'));
