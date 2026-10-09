@@ -144,6 +144,40 @@ try {
       assert.ok(state.panel && state.override, 'Strike edit did not set a real override');
       return state;
     };
+    const checkCameraReturn = async (name, apply) => {
+      // Observe every rendered frame: an end-state check misses a brief zoom-in.
+      await page.evaluate(() => {
+        const r = window.__strikeHudQA.runtime;
+        window.__cameraReturnFrames = [];
+        window.__cameraReturnRecording = true;
+        const sample = () => {
+          if (!window.__cameraReturnRecording) return;
+          const camera = r.sceneRuntime.camera;
+          window.__cameraReturnFrames.push({
+            time: performance.now(),
+            radius: camera.position.distanceTo(r.sceneRuntime.controls.target),
+            destination: r.cameraTransition?.toSpherical.radius ?? null,
+          });
+          requestAnimationFrame(sample);
+        };
+        sample();
+      });
+      await apply();
+      await page.waitForTimeout(450);
+      const frames = await page.evaluate(() => {
+        window.__cameraReturnRecording = false;
+        return window.__cameraReturnFrames;
+      });
+      await writeFile(`${output}/${caseName}-${name}-camera.json`, JSON.stringify(frames, null, 2));
+      assert.ok(frames.length >= 8, `${name}: insufficient camera samples`);
+      const tolerance = .02;
+      assert.ok(Math.min(...frames.map(f => f.radius)) >= frames[0].radius - tolerance,
+        `${name}: camera moves closer than its starting distance`);
+      for (let i = 1; i < frames.length; i++) {
+        assert.ok(frames[i].radius >= frames[i - 1].radius - tolerance,
+          `${name}: camera zooms in before returning (${frames[i - 1].radius} -> ${frames[i].radius})`);
+      }
+    };
     const assertHudSeparation = async () => {
       const hud = await page.evaluate(() => {
         const selectors = '.strike-action-bar,.classic-cancel-control,.player-banner,.aim-parameters,.aim-elevation,.aim-power,.strike-point-panel';
@@ -323,9 +357,16 @@ try {
       await context.close();
       continue;
     }
+    await checkCameraReturn('button-apply', () => control('[data-action="launch"]'));
+    const buttonApplied = await snapshot();
+    assert.equal(buttonApplied.panel, false, 'Aim button leaves strike panel open');
+    assert.equal(buttonApplied.selected, before.selected, 'Aim button changes selection');
+    assert.deepEqual(buttonApplied.override, before.override, 'Aim button changes strike');
+    assert.equal(buttonApplied.turn, before.turn, 'Aim button launches');
+    await control('[data-action="strike"]');
+    await page.waitForTimeout(400);
     const empty = await emptyPoint();
-    await tap(empty.x, empty.y);
-    await page.waitForTimeout(450);
+    await checkCameraReturn('outside-apply', () => tap(empty.x, empty.y));
     const applied = await snapshot();
     assert.equal(applied.panel, false, 'Outside tap leaves strike panel open');
     assert.equal(applied.selected, before.selected, 'Outside tap changes selection');
@@ -347,7 +388,7 @@ try {
     await page.waitForTimeout(400);
     await control('.strike-point-panel button');
     assert.equal((await snapshot()).override, null, 'Reset leaves custom strike');
-    await control('[data-action="launch"]');
+    await checkCameraReturn('reset-aim', () => control('[data-action="launch"]'));
     assert.equal((await snapshot()).panel, false, 'Aim button leaves edit open');
 
     // A tap on another piece first applies, then a separate tap changes selection.

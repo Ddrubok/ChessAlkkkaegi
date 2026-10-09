@@ -1267,7 +1267,6 @@ function finishStrikePointEditing(runtime: InputRuntime): void {
   cancelInteraction(runtime, false);
   runtime.strikeMode = false;
   if (runtime.aimRuntime.selectedPieceId !== null) {
-    beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
     try {
       refreshBilliardsPreview(runtime);
     } catch (error: unknown) {
@@ -1276,6 +1275,8 @@ function finishStrikePointEditing(runtime: InputRuntime): void {
       runtime.failureReason = reason;
       showAimError(runtime.aimParametersRuntime, reason);
     }
+    // 타점 미리보기를 복원한 뒤 거리를 계산해 임시 최소 거리로 확대되는 것을 막는다.
+    beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
   }
   updateActionBar(runtime);
 }
