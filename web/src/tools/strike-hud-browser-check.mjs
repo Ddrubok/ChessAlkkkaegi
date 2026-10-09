@@ -204,7 +204,13 @@ try {
       await writeFile(`${output}/${caseName}-${name}.json`, JSON.stringify(state, null, 2));
       assert.ok(state.bar && state.hud.width > 0, `${name}: action bar missing`);
       assert.ok(state.hud.left >= 0 && state.hud.top >= 0 && state.hud.right <= width && state.hud.bottom <= height, `${name}: action bar outside viewport`);
-      const covered = state.pieces.filter(p => overlap(state.hud, p.pieceRect));
+      const canvas = await page.locator('.game-canvas').boundingBox();
+      // Zoomed pieces can project beyond the canvas, where no pixels are rendered.
+      const covered = state.pieces.filter(p => {
+        const visible = { left: Math.max(p.pieceRect.left, canvas.x), top: Math.max(p.pieceRect.top, canvas.y),
+          right: Math.min(p.pieceRect.right, canvas.x + canvas.width), bottom: Math.min(p.pieceRect.bottom, canvas.y + canvas.height) };
+        return visible.right > visible.left && visible.bottom > visible.top && overlap(state.hud, visible);
+      });
       assert.deepEqual(covered.map(p => p.id), [], `${name}: action bar covers pieces`);
       assert.ok(!state.arrows.some(r => overlap(state.hud, r)), `${name}: action bar covers aim arrows`);
       if (state.dotHit) assert.ok(!overlap(state.hud, state.dotHit), `${name}: action bar blocks red-dot input`);
@@ -353,7 +359,7 @@ try {
     await checkStrikePanelDrag({ page, cdp, touch });
     await restart();
     await selectPawn();
-    await checkStrikeSurfaceDrag({ page, cdp, touch, width, height, output, caseName });
+    await checkStrikeSurfaceDrag({ page, cdp, touch, width, height, output, caseName, restartMatch: restart });
     await restart();
     await selectPawn();
     const before = await openAndSet();

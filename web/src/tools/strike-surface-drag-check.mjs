@@ -1,6 +1,6 @@
 ﻿import assert from 'node:assert/strict';
 
-export async function checkStrikeSurfaceDrag({ page, cdp, touch, width, height, output, caseName }) {
+export async function checkStrikeSurfaceDrag({ page, cdp, touch, width, height, output, caseName, restartMatch }) {
   const sameVector = (actual, expected, message) => assert.ok(Math.hypot(...actual.map((v, i) => v - expected[i])) < 1e-9, message);
   const settle = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const state = () => page.evaluate(() => {
@@ -9,6 +9,8 @@ export async function checkStrikeSurfaceDrag({ page, cdp, touch, width, height, 
       panelId: r.strikePanelPointerId, selected: r.aimRuntime.selectedPieceId,
       override: r.aimParametersRuntime.strikePointOverride?.toArray() ?? null,
       camera: r.sceneRuntime.camera.position.toArray(), target: r.sceneRuntime.controls.target.toArray(),
+      radius: r.sceneRuntime.camera.position.distanceTo(r.sceneRuntime.controls.target),
+      pitch: Math.asin((r.sceneRuntime.camera.position.y-r.sceneRuntime.controls.target.y)/r.sceneRuntime.camera.position.distanceTo(r.sceneRuntime.controls.target)),
       enabled: r.sceneRuntime.controls.enabled, power: r.aimParametersRuntime.normalizedPower,
       aimPower: r.aimRuntime.activeAim?.normalizedPower, keys: [...r.heldCameraKeys], transition: r.cameraTransition !== null };
   });
@@ -75,6 +77,73 @@ export async function checkStrikeSurfaceDrag({ page, cdp, touch, width, height, 
     await prepare(); pts=await points();
   }
 
+  const clickAction = async action => {
+    await page.evaluate(action => window.__strikeHudQA.runtime.actionBar.querySelector(`[data-action="${action}"]`).click(), action);
+    await page.waitForTimeout(450);
+  };
+  await clickAction('launch');
+  const aimView=await state();
+  await clickAction('strike');
+  const strikeView=await state();
+  assert.ok(Math.abs(strikeView.radius/aimView.radius-.6)<.03,'Strike entry is not 0.6 of aim radius');
+  const panelPoint=await page.evaluate(async()=>{
+    const {pickStrikePointFromPanel}=await import('/src/strike-panel.ts');
+    const r=window.__strikeHudQA.runtime;
+    const rect=r.strikePointPanel.canvas.getBoundingClientRect();
+    const mesh=r.sceneRuntime.pieceMeshes.get(r.aimRuntime.selectedPieceId);
+    for(const fy of [.5,.6,.3,.7]) {
+      const p={x:rect.x+rect.width/2,y:rect.y+rect.height*fy};
+      if(pickStrikePointFromPanel(r.strikePointPanel,mesh,p.x,p.y,0)) return p;
+    }
+    return null;
+  });
+  assert.ok(panelPoint,'No panel point for zoom test');
+  await down(panelPoint);await up();await page.waitForTimeout(150);
+  const panelView=await state();
+  assert.ok(panelView.override,'Panel zoom test did not set override');
+  assert.ok(panelView.radius<strikeView.radius*1.15,'Panel pick widened strike zoom');
+  assert.ok(Math.abs(panelView.pitch-strikeView.pitch)<1e-9,'Panel pick reset pitch');
+  sameVector(panelView.target,strikeView.target,'Panel pick reset target');
+  await clickAction('launch');
+  const restoredAim=await state();
+  assert.ok(Math.abs(restoredAim.radius/aimView.radius-1)<.1,'Aim action did not restore aim distance');
+  const savedOverride=restoredAim.override;
+  await clickAction('strike');
+  const reentry=await state();
+  assert.deepEqual(reentry.override,savedOverride,'Strike re-entry cleared override');
+  assert.ok(Math.abs(reentry.radius/restoredAim.radius-.6)<.03,'Existing override prevents strike zoom');
+
+  if(touch) {
+    const pinch=await page.evaluate(()=>{
+      const {runtime:r,pick}=window.__strikeHudQA;
+      const rect=r.sceneRuntime.renderer.domElement.getBoundingClientRect();
+      for(let y=rect.top+10;y<rect.bottom-10;y+=12) for(let x=rect.left+45;x<rect.right-45;x+=12) {
+        if([-42,-20,20,42].every(dx=>document.elementFromPoint(x+dx,y)?.classList.contains('game-canvas')) && pick(x-20,y)===null && pick(x+20,y)===null) return{x,y};
+      }
+      return null;
+    });
+    assert.ok(pinch,'No empty space for pinch zoom');
+    const a={x:pinch.x-20,y:pinch.y,id:1},b={x:pinch.x+20,y:pinch.y,id:2};
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[a,b]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...a,x:pinch.x-42},{...b,x:pinch.x+42}]});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  } else {
+    pts=await points();await page.mouse.move(pts.outside.x,pts.outside.y);await page.mouse.wheel(0,-350);
+  }
+  await page.waitForTimeout(200);
+  const manual=await state();
+  assert.ok(manual.radius<reentry.radius*.95,'Manual pinch/wheel did not zoom closer');
+  pts=await points();assert.ok(pts,'No surface after manual zoom');
+  await down(pts.a);await up();await page.waitForTimeout(250);
+  const afterManualPick=await state();
+  assert.ok(Math.abs(afterManualPick.radius-manual.radius)<1e-6,'Surface pick discarded manual zoom');
+  assert.ok(Math.abs(afterManualPick.pitch-manual.pitch)<1e-9,'Manual zoom pick reset pitch');
+  sameVector(afterManualPick.target,manual.target,'Manual zoom pick reset target');
+  console.log(`PASS strike zoom ${caseName}: entryRatio=${(strikeView.radius/aimView.radius).toFixed(3)}, panel pick/re-entry, ${touch?'pinch':'wheel'} preserved (${manual.radius.toFixed(4)} -> ${afterManualPick.radius.toFixed(4)}), aim restore`);
+  await restartMatch();
+  await prepare();pts=await points();
+
   // A held camera key may move before down, but never during the captured gesture.
   await page.keyboard.down('a');
   await down(pts.a);
@@ -94,7 +163,11 @@ export async function checkStrikeSurfaceDrag({ page, cdp, touch, width, height, 
   assert.deepEqual((await state()).keys,[],'Held keys persist after release');
   await page.waitForTimeout(450);
   assert.equal((await state()).enabled,true,'Orbit did not recover after release');
-  assert.notDeepEqual((await state()).camera,start.camera,'Camera restore did not run after release');
+  const dragEnd=await state();
+  assert.ok(dragEnd.radius < start.radius*1.15,'Surface release widened strike zoom');
+  assert.ok(Math.abs(dragEnd.pitch-start.pitch)<1e-9,'Surface release reset pitch');
+  sameVector(dragEnd.target,start.target,'Surface release reset target');
+  assert.equal(dragEnd.transition,false,'Surface release started camera restore');
 
   await prepare(); pts=await points();
   await down(pts.a); const tapped=await state(); await up();
@@ -102,6 +175,9 @@ export async function checkStrikeSurfaceDrag({ page, cdp, touch, width, height, 
   sameVector(tapEnd.override,tapped.override,'No-move tap changed strike');
   assert.equal(tapEnd.selected,original,'No-move tap changed selection');
   assert.equal(tapEnd.power,0,'No-move tap differs from old cancellation power');
+  assert.ok(tapEnd.radius<tapped.radius*1.15,'Surface tap widened strike zoom');
+  assert.ok(Math.abs(tapEnd.pitch-tapped.pitch)<1e-9,'Surface tap reset pitch');
+  sameVector(tapEnd.target,tapped.target,'Surface tap reset target');
   await page.waitForTimeout(450);
 
   for(const kind of ['pointercancel','lostpointercapture','Escape','reset','blocked','selection','external','action','blocked-up']) {

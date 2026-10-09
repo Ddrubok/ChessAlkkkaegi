@@ -675,10 +675,9 @@ function beginCameraRestore(
           runtime.sceneRuntime.boardHalfExtent * 4,
         )
       : Math.max(wholeBoardDistance, adaptiveDistance ?? 0);
-  // ponytail: zoom closer in strike mode before a strike point is picked, both modes.
+  // ponytail: keep the closer view throughout strike mode, both modes.
   const strikeZoom =
-    runtime.strikeMode &&
-    runtime.aimParametersRuntime.strikePointOverride === null
+    runtime.strikeMode
       ? STRIKE_MODE_ZOOM_SCALE
       : 1;
   const minDistance =
@@ -928,8 +927,8 @@ function updateAdaptiveCloseDistance(runtime: InputRuntime): void {
     spherical.phi,
     spherical.theta,
   );
-  // ponytail: zoom closer in strike mode before a strike point is picked.
-  if (runtime.strikeMode && runtime.aimParametersRuntime.strikePointOverride === null) {
+  // ponytail: keep the closer view while editing any strike point.
+  if (runtime.strikeMode) {
     nextDistance *= STRIKE_MODE_ZOOM_SCALE;
   }
   const previousDistance = runtime.adaptiveCloseDistance;
@@ -1857,7 +1856,6 @@ function handleCanvasPointerUp(
     if (containsClientPoint(runtime.sceneRuntime.renderer.domElement, event)) {
       applyStrikeSurfacePoint(runtime, event);
     }
-    beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
     if (!refreshStrikePreviewOrFail(runtime)) return;
     cancelInteraction(runtime, false);
     refreshBilliardsPreview(runtime);
@@ -1971,7 +1969,6 @@ function handleCanvasPointerUp(
     const point = raycastSelectedPieceSurface(runtime, event);
     if (point !== null) {
       applyStrikePointOverrideState(runtime, point);
-      beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
       if (!refreshStrikePreviewOrFail(runtime)) return;
     }
     cancelInteraction(runtime, false);
