@@ -1,0 +1,3 @@
+• Amélioration des commandes de point d’impact : toucher en dehors ou utiliser le bouton Viser conserve le réglage et revient à la visée.
+• Fixation des commandes en bas de l'écran pour dégager la vue sur l'échiquier et améliorer le confort tactile sur petits écrans et en mode paysage.
+• Correction d'un problème de zoom brusque de la caméra lors du retour de l'édition du point d'impact vers la visée.
