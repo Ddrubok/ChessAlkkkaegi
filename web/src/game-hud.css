@@ -66,7 +66,8 @@
   transition: background-color .15s, border-color .15s;
 }
 
-#app .aim-parameters {
+#app .aim-parameters,
+#app .king-swap-banner {
   left: var(--game-dock-left);
   right: var(--game-dock-right);
   bottom: calc(var(--game-dock-bottom) + 80px);
@@ -76,6 +77,9 @@
   padding: 6px 10px;
   box-shadow: none;
 }
+
+/* Swap selection needs instructions, not the inactive shot preview values. */
+#app:has(.king-swap-banner:not([hidden])) .aim-parameters { visibility: hidden; }
 
 #app .aim-elevation {
   left: max(8px, env(safe-area-inset-left, 0px));
@@ -135,7 +139,7 @@
   #app .strike-action-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #app .strike-action-bar button { min-height: 44px; }
   #app .strike-action-bar { min-height: 56px; }
-  #app .aim-parameters { bottom: calc(240px + env(safe-area-inset-bottom, 0px)); }
+  #app .aim-parameters, #app .king-swap-banner { bottom: calc(240px + env(safe-area-inset-bottom, 0px)); }
   #app .player-banner[data-owner="self"] {
     width: calc(100% - max(8px, env(safe-area-inset-left, 0px)) - 104px - max(12px, env(safe-area-inset-right, 0px)));
     max-width: 270px;
@@ -150,7 +154,7 @@
   #app .strike-point-panel { width: min(140px, 38vw); }
 }
 
-@media (orientation: portrait) and (max-width: 380px) {
+@media (orientation: portrait) and (max-width: 520px) {
   #app { --game-board-top: calc(188px + env(safe-area-inset-top, 0px)); }
   #app .player-banner[data-owner="opponent"] { top: calc(92px + env(safe-area-inset-top, 0px)); }
 }
@@ -163,7 +167,7 @@
   }
   #app .player-banner { max-width: 192px; }
   #app .aim-elevation-dial { width: 48px; height: 48px; }
-  #app .aim-parameters { bottom: calc(224px + env(safe-area-inset-bottom, 0px)); }
+  #app .aim-parameters, #app .king-swap-banner { bottom: calc(224px + env(safe-area-inset-bottom, 0px)); }
 }
 
 @media (orientation: landscape) and (max-height: 500px) {

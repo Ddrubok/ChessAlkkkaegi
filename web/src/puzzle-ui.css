@@ -114,3 +114,22 @@
   .puzzle-ui-hud-bottom { min-height: 32px; }
   .puzzle-ui-hud-bottom button { min-height: 32px; padding: 6px 9px; font-size: 12px; }
 }
+
+/* Keep puzzle information outside the board already reserved by the game HUD. */
+@media (max-width: 780px) and (orientation: portrait) {
+  .puzzle-ui-playing { gap: 6px; }
+  .puzzle-ui-hud-bottom { align-self: stretch; max-width: none; margin-top: 40px; flex-wrap: nowrap; }
+  .puzzle-ui-hud-bottom button { flex: 1; min-width: 0; }
+  .puzzle-ui-hud-top { display: flex; flex-wrap: nowrap; gap: 6px; }
+  .puzzle-ui-hud-top > div:first-child { flex: 1; padding: 6px 8px; }
+  .puzzle-ui-hud-stats { flex-direction: column; flex-shrink: 0; margin-top: 0; gap: 4px; }
+  .puzzle-ui-hud-stats span { padding: 5px 6px; font-size: 11px; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .puzzle-ui-playing { gap: 6px; }
+  .puzzle-ui-hud-top { display: flex; flex-wrap: nowrap; }
+  .puzzle-ui-hud-top > div:first-child { max-width: min(240px, 32vw); }
+  .puzzle-ui-hud-top [data-target] { white-space: normal; }
+  .puzzle-ui-hud-stats { flex-direction: column; margin-top: 0; }
+}

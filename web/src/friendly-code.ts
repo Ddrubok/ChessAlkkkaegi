@@ -328,12 +328,14 @@ export function connectFriendlyCode(
         if (subscribed) return;
         subscribed = true;
         if (isHost) {
-          updateStatus("host_waiting", "waiting-guest", { code: formatFriendlyRoomCode(roomCode) });
-          callbacks?.onRoomCreated?.(roomCode);
+          updateStatus("guest_connecting", "generating");
 
           try {
             hostOfferSdp = await link.createHost();
             if (isCleanedUp || isConnected) return;
+
+            updateStatus("host_waiting", "waiting-guest", { code: formatFriendlyRoomCode(roomCode) });
+            callbacks?.onRoomCreated?.(roomCode);
 
             // 방 생성 직후 오퍼 브로드캐스트
             void sendBroadcast({
@@ -358,6 +360,7 @@ export function connectFriendlyCode(
               }
             }, retryIntervalMs);
           } catch (err) {
+            if (isCleanedUp) return;
             cleanup(false);
             link.close();
             const error = new Error(getFriendlyCopy("peer_error", lang));

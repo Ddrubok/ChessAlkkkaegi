@@ -1,4 +1,5 @@
 import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED } from "./config";
+import { backFromDialog, installAndroidBackHandler } from "./android-back";
 import { createWeeklyChallengeHud } from "./weekly-challenge-hud";
 import { updateQuestSummaries } from "./quest-ui";
 import { createBannerMatch, settleBannerMatch, finishBannerMatch, type BannerMatch } from "./banner-match";
@@ -336,6 +337,16 @@ async function bootstrap(): Promise<void> {
       await confirmAbandonAction();
     },
   );
+  await installAndroidBackHandler(() => {
+    if (backFromDialog(menuRuntime.overlay)) return true;
+    if (menuRuntime.visible) return false;
+    const puzzleLibrary = app.querySelector<HTMLButtonElement>(
+      '.puzzle-ui-overlay[data-screen="playing"] button[data-action="library"]',
+    );
+    if (puzzleLibrary) puzzleLibrary.click();
+    else if (!menuRuntime.returnButton.hidden) menuRuntime.returnButton.click();
+    return true;
+  });
   const weeklyNotReady = async (): Promise<void> => { throw new Error("Weekly challenge world is still loading."); };
   let weeklyUiActions: WeeklyChallengeUiActions = {
     practice: weeklyNotReady, start: weeklyNotReady, resume: weeklyNotReady,
@@ -847,6 +858,7 @@ async function bootstrap(): Promise<void> {
     throw new Error("온라인 재연결 화면 요소를 만들지 못했습니다.");
   }
   const showDisconnectOverlay = (): void => {
+    if (turnRuntime.phase === "match-over") return;
     disconnectOverlay.querySelector(".match-result-panel > p")!.textContent = getRuntimeText("online.reconnect_overlay_title");
     disconnectOverlay.querySelector("h1")!.textContent = getRuntimeText("online.reconnect_overlay_disconnected");
     reconnectStatus.textContent = getRuntimeText("online.reconnect_overlay_prompt");

@@ -30,9 +30,9 @@ export interface DecodedConnectionCode {
 export interface PeerLink {
   // 사용자에게는 끊김 하나로 보이되 디버그 화면이 원래 종료 원인을 읽게 한다.
   readonly disconnectCause: PeerDisconnectCause;
-  // 방장용 제안을 만들고 모든 ICE 후보가 포함된 초대 코드를 반환한다.
+  // 방장용 제안을 만들고 수집된 ICE 후보가 포함된 초대 코드를 반환한다.
   createHost(): Promise<string>;
-  // 참가자가 초대 코드를 적용하고 모든 ICE 후보가 포함된 응답 코드를 반환한다.
+  // 참가자가 초대 코드를 적용하고 수집된 ICE 후보가 포함된 응답 코드를 반환한다.
   joinWithInvite(code: string): Promise<string>;
   // 방장이 응답 코드를 적용해 최종 연결을 진행한다.
   acceptAnswer(code: string): Promise<void>;
@@ -206,7 +206,7 @@ async function readTransformedBytes(
     return output;
   };
   const outputPromise = readOutput();
-  await writer.write(input.buffer);
+  await writer.write(input);
   await writer.close();
   return await outputPromise;
 }
@@ -340,48 +340,113 @@ export async function decodeCode(
 }
 
 /**
- * 모든 로컬 ICE 후보가 localDescription에 합쳐질 때까지 기다린다.
+ * 로컬 ICE 후보를 수집한다.
+ * 수집 상태가 complete에 도달하거나, 제한 시간에 도달했더라도 이미 사용 가능한 후보가 있으면
+ * 그 후보들을 포함해 진행한다 (bounded candidate gathering fallback).
+ * 후보가 전혀 없는 상태에서 제한 시간이 만료되면 오류로 실패한다.
  */
-async function waitForIceGatheringComplete(
+export async function waitForIceGatheringComplete(
   peerConnection: RTCPeerConnection,
+  timeoutMs: number = NET_ICE_GATHER_TIMEOUT_MS,
+  signal?: AbortSignal,
 ): Promise<void> {
+  if (signal?.aborted) {
+    throw new DOMException(
+      "ICE candidate gathering was aborted",
+      "AbortError",
+    );
+  }
+  if (
+    peerConnection.connectionState === "closed" ||
+    peerConnection.signalingState === "closed"
+  ) {
+    throw new Error("피어 연결이 닫혀 있어 ICE 후보를 수집할 수 없습니다.");
+  }
   if (peerConnection.iceGatheringState === "complete") {
     return;
   }
+
+  // Only candidates actually present in the SDP can reach the remote peer.
+  const hasCandidates = (): boolean => /^a=candidate:.+/m.test(peerConnection.localDescription?.sdp ?? "");
+
   await new Promise<void>((resolve, reject) => {
     let completed = false;
-    const finish = (error: Error | null): void => {
-      if (completed) {
-        return;
-      }
-      completed = true;
+
+    const cleanup = (): void => {
       window.clearTimeout(timeout);
       peerConnection.removeEventListener(
         "icegatheringstatechange",
         handleStateChange,
       );
+      peerConnection.removeEventListener(
+        "connectionstatechange",
+        handleConnectionChange,
+      );
+      if (signal) {
+        signal.removeEventListener("abort", handleAbort);
+      }
+    };
+
+    const finish = (error: Error | null): void => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      cleanup();
       if (error === null) {
         resolve();
       } else {
         reject(error);
       }
     };
+
     const handleStateChange = (): void => {
       if (peerConnection.iceGatheringState === "complete") {
         finish(null);
       }
     };
-    const timeout = window.setTimeout(() => {
+
+    const handleConnectionChange = (): void => {
+      if (
+        peerConnection.connectionState === "closed" ||
+        peerConnection.signalingState === "closed"
+      ) {
+        finish(new Error("연결이 닫혀 ICE 후보 수집이 중단되었습니다."));
+      }
+    };
+
+    const handleAbort = (): void => {
       finish(
-        new Error(
-          `${NET_ICE_GATHER_TIMEOUT_MS}ms 안에 ICE 후보 수집이 끝나지 않았습니다. 현재 상태: ${peerConnection.iceGatheringState}`,
+        new DOMException(
+          "ICE candidate gathering was aborted",
+          "AbortError",
         ),
       );
-    }, NET_ICE_GATHER_TIMEOUT_MS);
+    };
+
+    const timeout = window.setTimeout(() => {
+      if (hasCandidates()) {
+        finish(null);
+      } else {
+        finish(
+          new Error(
+            `${timeoutMs}ms 안에 유효한 ICE 후보를 하나도 수집하지 못했습니다. 현재 상태: ${peerConnection.iceGatheringState}`,
+          ),
+        );
+      }
+    }, timeoutMs);
+
     peerConnection.addEventListener(
       "icegatheringstatechange",
       handleStateChange,
     );
+    peerConnection.addEventListener(
+      "connectionstatechange",
+      handleConnectionChange,
+    );
+    if (signal) {
+      signal.addEventListener("abort", handleAbort);
+    }
   });
 }
 
@@ -410,6 +475,7 @@ export function createPeerLink(
   let lastReceivedAt = 0;
   let connectionGeneration = 0;
   let disconnectCause: PeerDisconnectCause = null;
+  let gatherAbortController: AbortController | null = null;
   const messageHandlers = new Set<(payload: object) => void>();
   const stateHandlers = new Set<(nextState: PeerLinkState) => void>();
 
@@ -441,6 +507,10 @@ export function createPeerLink(
   // 하트비트와 연결 객체를 닫되 외부 상태는 호출자가 결정하게 한다.
   const disposeConnection = (): void => {
     connectionGeneration += 1;
+    if (gatherAbortController !== null) {
+      gatherAbortController.abort();
+      gatherAbortController = null;
+    }
     if (heartbeatTimer !== null) {
       window.clearInterval(heartbeatTimer);
       heartbeatTimer = null;
@@ -632,29 +702,46 @@ export function createPeerLink(
       disconnectCause = null;
       const connection = createConnection();
       role = "host";
+      const generation = connectionGeneration;
       bindDataChannel(
         connection.createDataChannel(DATA_CHANNEL_LABEL, {
           ordered: true,
         }),
       );
       setState("waiting-answer");
+      const abortController = new AbortController();
+      gatherAbortController = abortController;
       try {
         await connection.setLocalDescription(
           await connection.createOffer(),
         );
-        await waitForIceGatheringComplete(connection);
+        await waitForIceGatheringComplete(
+          connection,
+          NET_ICE_GATHER_TIMEOUT_MS,
+          abortController.signal,
+        );
         if (connection.localDescription === null) {
           throw new Error("ICE 수집 뒤 방장 localDescription이 없습니다.");
         }
-        return await encodeCode(connection.localDescription);
+        const code = await encodeCode(connection.localDescription);
+        abortController.signal.throwIfAborted();
+        return code;
       } catch (error: unknown) {
-        setState("failed");
+        if (generation === connectionGeneration) {
+          setState("failed");
+        }
         throw error;
+      } finally {
+        if (gatherAbortController === abortController) {
+          gatherAbortController = null;
+        }
       }
     },
 
     async joinWithInvite(code: string): Promise<string> {
+      const pendingGeneration = connectionGeneration;
       const invite = await decodeCode(code);
+      if (pendingGeneration !== connectionGeneration) throw new DOMException("Connection cancelled", "AbortError");
       if (invite.type !== "offer") {
         throw new Error("참가 입력에는 초대 offer 코드가 필요합니다.");
       }
@@ -669,19 +756,33 @@ export function createPeerLink(
         }
       });
       setState("connecting");
+      const abortController = new AbortController();
+      gatherAbortController = abortController;
       try {
         await connection.setRemoteDescription(invite);
         await connection.setLocalDescription(
           await connection.createAnswer(),
         );
-        await waitForIceGatheringComplete(connection);
+        await waitForIceGatheringComplete(
+          connection,
+          NET_ICE_GATHER_TIMEOUT_MS,
+          abortController.signal,
+        );
         if (connection.localDescription === null) {
           throw new Error("ICE 수집 뒤 참가자 localDescription이 없습니다.");
         }
-        return await encodeCode(connection.localDescription);
+        const code = await encodeCode(connection.localDescription);
+        abortController.signal.throwIfAborted();
+        return code;
       } catch (error: unknown) {
-        setState("failed");
+        if (generation === connectionGeneration) {
+          setState("failed");
+        }
         throw error;
+      } finally {
+        if (gatherAbortController === abortController) {
+          gatherAbortController = null;
+        }
       }
     },
 
@@ -693,15 +794,18 @@ export function createPeerLink(
       ) {
         throw new Error("먼저 방 만들기로 초대 코드를 생성해야 합니다.");
       }
+      const connection = peerConnection;
+      const generation = connectionGeneration;
       const answer = await decodeCode(code);
+      if (generation !== connectionGeneration) throw new DOMException("Connection cancelled", "AbortError");
       if (answer.type !== "answer") {
         throw new Error("방장 연결 입력에는 answer 코드가 필요합니다.");
       }
       setState("connecting");
       try {
-        await peerConnection.setRemoteDescription(answer);
+        await connection.setRemoteDescription(answer);
       } catch (error: unknown) {
-        setState("failed");
+        if (generation === connectionGeneration) setState("failed");
         throw error;
       }
     },
