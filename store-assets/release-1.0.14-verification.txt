@@ -1,0 +1,56 @@
+Version: 1.0.14 (versionCode 15)
+Package: com.chessalkkagi.app
+Date: 2026-10-11
+Source: develop / origin/develop at 27928d62ee12aea0e5e84a07ffc2102c8e194841 plus local Android version bump
+Pull: git pull --ff-only origin develop; updated e6e6e39 to 27928d6.
+Includes abd36b2 (panel/3D-piece strike-point dragging) and 27928d6 (preserve strike-editing zoom after selecting a point).
+Remote develop was checked again after building and still pointed to 27928d6.
+
+AAB: store-assets/ChessAlkkagi-1.0.14-vc15.aab
+Size: 13,669,777 bytes
+AAB SHA256: 801EC7FA02811C15F73AB75BE934F3F96DA6CE783666A76D702A752D367316B8
+Signing certificate SHA256: 27EAD35ED4895EFAFB71930AACF7244917880A511F0AFD4A1DF0ABD51B19243C
+
+Build and artifact checks:
+- npm run build: passed (balance CSV validation, TypeScript, Vite production build).
+- VITE_AD_TEST_MODE=false and NODE_ENV=production explicitly set for the build.
+- npx cap sync android: passed; current web/dist assets copied into Android.
+- Gradle bundleRelease: passed, including lintVitalRelease and signReleaseBundle.
+- Build-session JAVA_HOME: C:/Program Files/Android/Android Studio/jbr.
+- Packaged AAB protobuf manifest confirms com.chessalkkagi.app, versionName 1.0.14 and versionCode 15.
+- All non-META-INF payload entries have valid cryptographic signatures; certificate matches the previous 1.0.13 AAB.
+- jarsigner -verify: jar verified. Existing self-signed certificate/trust and missing-timestamp warnings remain.
+- All 109 non-hidden web/dist files match packaged AAB assets byte for byte. Android intentionally excludes hidden placeholders.
+- Packaged production backend URL/public key and all 3 AdMob unit IDs match local production configuration; secret/config values omitted here.
+- Ad test mode is false. Development backend URL and browser observation hook are absent.
+- Packaged allowBackup=false and register_ranked_match RPC retained.
+
+Checks run for this release:
+- node src/tools/touch-input-headless-check.mjs: passed.
+- node src/tools/classic-cancel-check.mjs: passed.
+- npm run check:regressions: passed, including authentication, gameplay, online/rematches, localization, selection, banners and turn timer.
+- npm run check:ads: passed, including simulated ad failures and cleanup.
+- node src/tools/strike-hud-browser-check.mjs: all 8 browser conditions passed with no browser runtime errors.
+  Korean touch emulation: 320x568, 360x800, 390x844, 667x375, 844x390.
+  Korean mouse: 1280x800. German touch emulation: 360x800, 667x375.
+  All 8 conditions invoke the panel-drag and 3D-surface-drag checks, including live marker updates, leaving/re-entering the surface, cancellation, lost capture, selection/reset guards, camera lock and zoom preservation.
+  Korean conditions additionally cover apply via Aim/outside tap, camera return, launch, turn change and re-entry. German conditions cover translated layout and touch targets.
+  Evidence: .orca/release-1.0.14-browser/browser-results.json and .orca/release-1.0.14-browser.log.
+- Direct execution of the exported drag-helper modules was only a module-load check; behavioral evidence comes from the browser suite above.
+
+Release notes (UTF-8 without BOM; each locale below 500 characters):
+- store-assets/release-notes-1.0.14-ko.txt: 236 characters after trimming.
+- store-assets/release-notes-1.0.14-ja.txt: 193 characters after trimming.
+- store-assets/release-notes-1.0.14-en.txt: 434 characters after trimming.
+- store-assets/release-notes-1.0.14-fr.txt: 478 characters after trimming.
+- store-assets/release-notes-1.0.14-multilingual.txt: identical text in ko-KR, ja-JP, en-US, fr-FR blocks.
+- Notes cover the full player-facing update since 1.0.12, including the additional develop drag/zoom changes.
+
+Logs: .orca/release-1.0.14-{web-build,capacitor-sync,android-build,regressions,ads,browser,artifact-verification,jarsigner}.log
+
+Scope and limits:
+- Current working branch: develop. No new commit/push, main promotion, web deployment, backend migration or Play upload/review/rollout performed in this build task.
+- Previous 1.0.13 AAB and notes preserved; unrelated local QA result preserved byte for byte.
+- Physical Android/WebView, real device gestures/safe areas, native ads and native sign-in were not smoke-tested.
+- Play Console highest uploaded versionCode was not checked; 15 is above the prior local version code 14.
+- Existing Vite chunk/static-dynamic import and Gradle deprecation warnings remain; required build checks passed.

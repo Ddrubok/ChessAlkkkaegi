@@ -2,6 +2,8 @@
 // Run from web: node src/tools/strike-hud-browser-check.mjs
 // QA_EDGE=1 checks all locales, synthetic safe-area insets and classic cancellation.
 import assert from 'node:assert/strict';
+import { checkStrikePanelDrag } from './strike-panel-drag-check.mjs';
+import { checkStrikeSurfaceDrag } from './strike-surface-drag-check.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
@@ -49,8 +51,8 @@ try {
     await context.addInitScript(language => {
       localStorage.setItem('app_language', language);
       window.__strikeHudEvents = [];
-      for (const type of ['pointerdown', 'pointerup', 'click']) document.addEventListener(type, e => {
-        window.__strikeHudEvents.push({ type, target: e.target.className, id: e.pointerId });
+      for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture', 'click']) document.addEventListener(type, e => {
+        window.__strikeHudEvents.push({ type, target: e.target.className, id: e.pointerId, x: e.clientX, y: e.clientY });
         if (window.__strikeHudEvents.length > 30) window.__strikeHudEvents.shift();
       }, true);
     }, language);
@@ -202,7 +204,13 @@ try {
       await writeFile(`${output}/${caseName}-${name}.json`, JSON.stringify(state, null, 2));
       assert.ok(state.bar && state.hud.width > 0, `${name}: action bar missing`);
       assert.ok(state.hud.left >= 0 && state.hud.top >= 0 && state.hud.right <= width && state.hud.bottom <= height, `${name}: action bar outside viewport`);
-      const covered = state.pieces.filter(p => overlap(state.hud, p.pieceRect));
+      const canvas = await page.locator('.game-canvas').boundingBox();
+      // Zoomed pieces can project beyond the canvas, where no pixels are rendered.
+      const covered = state.pieces.filter(p => {
+        const visible = { left: Math.max(p.pieceRect.left, canvas.x), top: Math.max(p.pieceRect.top, canvas.y),
+          right: Math.min(p.pieceRect.right, canvas.x + canvas.width), bottom: Math.min(p.pieceRect.bottom, canvas.y + canvas.height) };
+        return visible.right > visible.left && visible.bottom > visible.top && overlap(state.hud, visible);
+      });
       assert.deepEqual(covered.map(p => p.id), [], `${name}: action bar covers pieces`);
       assert.ok(!state.arrows.some(r => overlap(state.hud, r)), `${name}: action bar covers aim arrows`);
       if (state.dotHit) assert.ok(!overlap(state.hud, state.dotHit), `${name}: action bar blocks red-dot input`);
@@ -346,6 +354,13 @@ try {
       assert.equal((await snapshot()).selected, id, `Edge pawn selection failed: ${id}`);
       layouts.push(await assertLayout(id));
     }
+    await selectPawn();
+    await openAndSet();
+    await checkStrikePanelDrag({ page, cdp, touch });
+    await restart();
+    await selectPawn();
+    await checkStrikeSurfaceDrag({ page, cdp, touch, width, height, output, caseName, restartMatch: restart });
+    await restart();
     await selectPawn();
     const before = await openAndSet();
     layouts.push(await assertLayout('strike'));
