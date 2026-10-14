@@ -2459,9 +2459,9 @@ export function updateInputRuntime(
   const transition = runtime.cameraTransition;
   if (transition !== null) {
     const progress = Math.min(
-      (now - transition.startedAt) /
+      Math.max(0, (now - transition.startedAt) /
         1000 /
-        CAMERA_TARGET_TRANSITION_SECONDS,
+        CAMERA_TARGET_TRANSITION_SECONDS),
       1,
     );
     const eased = progress * progress * (3 - 2 * progress);
