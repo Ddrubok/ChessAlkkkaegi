@@ -1,3 +1,4 @@
+import { PLATFORM } from "./platform";
 import type {
   PhysicsRuntime,
   PieceBodyBinding,
@@ -907,132 +908,144 @@ export function createTuningRuntime(
   physicsRuntime: PhysicsRuntime,
   storage?: TuningStorage | null,
 ): TuningRuntime {
-  const resolvedStorage =
-    storage === undefined
-      ? resolveBrowserTuningStorage()
-      : { storage, warning: null };
-  const loaded = loadTuningSettings(resolvedStorage.storage);
-  const panel = document.createElement("aside");
-  panel.className = "tuning-panel";
-  panel.hidden =
-    new URLSearchParams(window.location.search).get("tune") !== "1";
-  panel.innerHTML = "<h2>손맛 조절판</h2>";
-  container.append(panel);
-  const storageNotice = document.createElement("p");
-  storageNotice.className = "tuning-note tuning-storage-notice";
-  storageNotice.textContent =
-    resolvedStorage.storage === null
-      ? "이 조절판은 기기 저장을 사용하지 않습니다."
-      : "변경한 조절값은 이 기기에 자동 저장됩니다.";
-  const onlineNotice = document.createElement("p");
-  onlineNotice.className = "tuning-note tuning-online-notice";
-  onlineNotice.textContent =
-    "온라인 대전에서는 기기 저장값을 잠시 멈추고 config 기본값을 사용합니다.";
-  const isOnline = physicsRuntime.gameMode === "online";
-  onlineNotice.hidden = !isOnline;
-  const initialSettings = isOnline
-    ? { ...ONLINE_DEFAULT_SETTINGS }
-    : loaded.settings;
-  const runtime: TuningRuntime = {
-    physicsRuntime,
-    settings: initialSettings,
-    panel,
-    controls: new Map(),
-    appliedValueElements: new Map(),
-    storage: resolvedStorage.storage,
-    localSettings: { ...loaded.settings },
-    storageNotice,
-    onlineNotice,
-    storageWarningShown: false,
-    onlineDefaultsActive: isOnline,
-    activeFixedGameMode: isOnline ? "online" : undefined,
-    pendingPhysicsVerification: false,
-    wakeAllHandler: null,
-  };
-  const initialWarning =
-    resolvedStorage.warning ?? loaded.warning;
-  if (initialWarning !== null) {
-    showTuningStorageWarning(runtime, initialWarning);
-  }
-  appendAppliedValuesGroup(runtime);
-  const groups: Array<{
-    title: string;
-    keys: TuningKey[];
-  }> = [
-    { title: "시간", keys: ["timeScale"] },
-    {
-      title: "발사",
-      keys: ["maxLaunchSpeed", "strikeHeightRatio"],
-    },
-    { title: "마찰", keys: ["friction"] },
-    { title: "반발", keys: ["restitution"] },
-    { title: "선형 감쇠", keys: ["linearDamping"] },
-    { title: "회전 감쇠", keys: ["angularDamping"] },
-    { title: "밑동 추", keys: ["baseWeightMultiplier"] },
-    {
-      title: "시점 조준",
-      keys: ["initialAimPitch", "cameraKeyDegreesPerSecond"],
-    },
-    {
-      title: "성장 배율 · 다음 보드 설정부터 적용",
-      keys: ["enemyStageBuffScale", "cardEffectScale"],
-    },
-  ];
-  for (const group of groups) {
-    const fieldset = document.createElement("fieldset");
-    const legend = document.createElement("legend");
-    legend.textContent = group.title;
-    fieldset.append(legend);
-    for (const key of group.keys) {
-      appendControl(runtime, fieldset, key);
+  if (!PLATFORM.features.debugTools) {
+    const settings = createDefaultRuntimeTuningSettings(physicsRuntime.gameMode);
+    return {
+      physicsRuntime, settings, localSettings: { ...settings },
+      panel: document.createElement("aside"), controls: new Map(), appliedValueElements: new Map(),
+      storage: null, storageNotice: document.createElement("p"), onlineNotice: document.createElement("p"),
+      storageWarningShown: false, onlineDefaultsActive: physicsRuntime.gameMode === "online",
+      activeFixedGameMode: physicsRuntime.gameMode === "online" ? "online" : undefined,
+      pendingPhysicsVerification: false, wakeAllHandler: null,
+    };
+  } else {
+    const resolvedStorage =
+      storage === undefined
+        ? resolveBrowserTuningStorage()
+        : { storage, warning: null };
+    const loaded = loadTuningSettings(resolvedStorage.storage);
+    const panel = document.createElement("aside");
+    panel.className = "tuning-panel";
+    panel.hidden =
+      new URLSearchParams(window.location.search).get("tune") !== "1";
+    panel.innerHTML = "<h2>손맛 조절판</h2>";
+    container.append(panel);
+    const storageNotice = document.createElement("p");
+    storageNotice.className = "tuning-note tuning-storage-notice";
+    storageNotice.textContent =
+      resolvedStorage.storage === null
+        ? "이 조절판은 기기 저장을 사용하지 않습니다."
+        : "변경한 조절값은 이 기기에 자동 저장됩니다.";
+    const onlineNotice = document.createElement("p");
+    onlineNotice.className = "tuning-note tuning-online-notice";
+    onlineNotice.textContent =
+      "온라인 대전에서는 기기 저장값을 잠시 멈추고 config 기본값을 사용합니다.";
+    const isOnline = physicsRuntime.gameMode === "online";
+    onlineNotice.hidden = !isOnline;
+    const initialSettings = isOnline
+      ? { ...ONLINE_DEFAULT_SETTINGS }
+      : loaded.settings;
+    const runtime: TuningRuntime = {
+      physicsRuntime,
+      settings: initialSettings,
+      panel,
+      controls: new Map(),
+      appliedValueElements: new Map(),
+      storage: resolvedStorage.storage,
+      localSettings: { ...loaded.settings },
+      storageNotice,
+      onlineNotice,
+      storageWarningShown: false,
+      onlineDefaultsActive: isOnline,
+      activeFixedGameMode: isOnline ? "online" : undefined,
+      pendingPhysicsVerification: false,
+      wakeAllHandler: null,
+    };
+    const initialWarning =
+      resolvedStorage.warning ?? loaded.warning;
+    if (initialWarning !== null) {
+      showTuningStorageWarning(runtime, initialWarning);
     }
-    panel.append(fieldset);
-  }
-  const note = document.createElement("p");
-  note.className = "tuning-note";
-  note.textContent =
-    "상대 강화·카드 효과 배율은 다음 스테이지, 다시 시작 또는 모드 전환 때 적용됩니다. 현재 적용값은 지금 보드의 값만 표시합니다. 그 밖의 질량과 물리 setter 값은 다음 fixed step에서 검증됩니다.";
-  const actions = document.createElement("div");
-  actions.className = "tuning-actions";
-  const wakeButton = document.createElement("button");
-  wakeButton.type = "button";
-  wakeButton.textContent = "값 적용 후 전체 깨우기";
-  wakeButton.addEventListener("click", () => runtime.wakeAllHandler?.());
-  const resetButton = document.createElement("button");
-  resetButton.type = "button";
-  resetButton.dataset.tuningReset = "";
-  resetButton.textContent = "기본값 복원 · 저장 삭제";
-  resetButton.addEventListener("click", () => {
-    for (const key of Object.keys(DEFAULT_SETTINGS) as TuningKey[]) {
-      setTuningValue(runtime, key, DEFAULT_SETTINGS[key], false);
-      runtime.localSettings[key] = DEFAULT_SETTINGS[key];
+    appendAppliedValuesGroup(runtime);
+    const groups: Array<{
+      title: string;
+      keys: TuningKey[];
+    }> = [
+      { title: "시간", keys: ["timeScale"] },
+      {
+        title: "발사",
+        keys: ["maxLaunchSpeed", "strikeHeightRatio"],
+      },
+      { title: "마찰", keys: ["friction"] },
+      { title: "반발", keys: ["restitution"] },
+      { title: "선형 감쇠", keys: ["linearDamping"] },
+      { title: "회전 감쇠", keys: ["angularDamping"] },
+      { title: "밑동 추", keys: ["baseWeightMultiplier"] },
+      {
+        title: "시점 조준",
+        keys: ["initialAimPitch", "cameraKeyDegreesPerSecond"],
+      },
+      {
+        title: "성장 배율 · 다음 보드 설정부터 적용",
+        keys: ["enemyStageBuffScale", "cardEffectScale"],
+      },
+    ];
+    for (const group of groups) {
+      const fieldset = document.createElement("fieldset");
+      const legend = document.createElement("legend");
+      legend.textContent = group.title;
+      fieldset.append(legend);
+      for (const key of group.keys) {
+        appendControl(runtime, fieldset, key);
+      }
+      panel.append(fieldset);
     }
-    const warning = clearTuningSettings(runtime.storage);
-    if (warning !== null) {
-      runtime.storage = null;
-      showTuningStorageWarning(runtime, warning);
-    } else if (!runtime.storageWarningShown) {
-      runtime.storageNotice.textContent =
-        "config 기본값으로 복원하고 기기 저장값을 삭제했습니다.";
-    }
-  });
-  actions.append(wakeButton, resetButton);
-  panel.append(
-    note,
-    storageNotice,
-    onlineNotice,
-    actions,
-  );
-  if (isOnline) {
-    for (const elements of runtime.controls.values()) {
-      for (const element of elements) {
-        if (element instanceof HTMLInputElement) {
-          element.disabled = true;
+    const note = document.createElement("p");
+    note.className = "tuning-note";
+    note.textContent =
+      "상대 강화·카드 효과 배율은 다음 스테이지, 다시 시작 또는 모드 전환 때 적용됩니다. 현재 적용값은 지금 보드의 값만 표시합니다. 그 밖의 질량과 물리 setter 값은 다음 fixed step에서 검증됩니다.";
+    const actions = document.createElement("div");
+    actions.className = "tuning-actions";
+    const wakeButton = document.createElement("button");
+    wakeButton.type = "button";
+    wakeButton.textContent = "값 적용 후 전체 깨우기";
+    wakeButton.addEventListener("click", () => runtime.wakeAllHandler?.());
+    const resetButton = document.createElement("button");
+    resetButton.type = "button";
+    resetButton.dataset.tuningReset = "";
+    resetButton.textContent = "기본값 복원 · 저장 삭제";
+    resetButton.addEventListener("click", () => {
+      for (const key of Object.keys(DEFAULT_SETTINGS) as TuningKey[]) {
+        setTuningValue(runtime, key, DEFAULT_SETTINGS[key], false);
+        runtime.localSettings[key] = DEFAULT_SETTINGS[key];
+      }
+      const warning = clearTuningSettings(runtime.storage);
+      if (warning !== null) {
+        runtime.storage = null;
+        showTuningStorageWarning(runtime, warning);
+      } else if (!runtime.storageWarningShown) {
+        runtime.storageNotice.textContent =
+          "config 기본값으로 복원하고 기기 저장값을 삭제했습니다.";
+      }
+    });
+    actions.append(wakeButton, resetButton);
+    panel.append(
+      note,
+      storageNotice,
+      onlineNotice,
+      actions,
+    );
+    if (isOnline) {
+      for (const elements of runtime.controls.values()) {
+        for (const element of elements) {
+          if (element instanceof HTMLInputElement) {
+            element.disabled = true;
+          }
         }
       }
+      resetButton.disabled = true;
     }
-    resetButton.disabled = true;
+    // 손맛 조절판은 ?tune=1 개발 세션에서만 열린다. 게임 화면 단축키로는 열 수 없다.
+    return runtime;
   }
-  // 손맛 조절판은 ?tune=1 개발 세션에서만 열린다. 게임 화면 단축키로는 열 수 없다.
-  return runtime;
 }

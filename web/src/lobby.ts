@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { PLATFORM } from "./platform";
 import type { MainMenuRuntime } from "./menu";
 import { getMaxClearedStage, type MetaRuntime } from "./meta";
 import { I18nManager } from "./i18n";
@@ -44,9 +45,9 @@ export function renderHeaderActions(options?: { showLogout?: boolean }): string;
 export function renderHeaderActions(name: HeaderActionIcon, iconSize?: number): string;
 export function renderHeaderActions(nameOrOptions?: HeaderActionIcon | { showLogout?: boolean }, iconSize = 16): string {
   if (typeof nameOrOptions !== "string") {
-    const showLogout = nameOrOptions?.showLogout === true;
+    const showLogout = PLATFORM.features.accounts && nameOrOptions?.showLogout === true;
     const logout = showLogout ? `<button id="btn-logout" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.logout"))}" title="${escapeHtml(I18nManager.t("common.logout"))}">${renderHeaderActions("logout", 20)}</button>` : "";
-    return `<div class="lobby-header-actions">${logout}<button id="menu-ranking-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.ranking_btn"))}" title="${escapeHtml(I18nManager.t("common.ranking_btn"))}">${renderHeaderActions("trophy", 20)}</button><button id="menu-friends-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.friends_btn"))}" title="${escapeHtml(I18nManager.t("common.friends_btn"))}">${renderHeaderActions("users", 20)}</button><button id="menu-sound-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.settings"))}" title="${escapeHtml(I18nManager.t("common.settings"))}">${renderHeaderActions("gear", 20)}</button></div>`;
+    return `<div class="lobby-header-actions">${logout}${PLATFORM.features.online ? `<button id="menu-ranking-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.ranking_btn"))}" title="${escapeHtml(I18nManager.t("common.ranking_btn"))}">${renderHeaderActions("trophy", 20)}</button><button id="menu-friends-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.friends_btn"))}" title="${escapeHtml(I18nManager.t("common.friends_btn"))}">${renderHeaderActions("users", 20)}</button>` : ""}<button id="menu-sound-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.settings"))}" title="${escapeHtml(I18nManager.t("common.settings"))}">${renderHeaderActions("gear", 20)}</button></div>`;
   }
   const name = nameOrOptions;
   const paths: Record<typeof name, string> = {
@@ -76,7 +77,9 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage),
     maxStage: PVE_MAX_STAGE,
   });
-  const recommendation = picked;
+  const recommendation = !PLATFORM.features.online && picked.kind === "online"
+    ? { kind: "stage" as const, stage: 1, maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage) }
+    : picked;
   if (recommendation.kind === "tutorial") {
     return {
       mode: "tutorial",
@@ -147,10 +150,11 @@ export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: numbe
     hotseat: I18nManager.t("lobby.card_2p_status"),
     tutorial: "",
   };
-  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${cards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
+  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${(PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online")).map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
 }
 
 export function renderCommunityLink(): string {
+  if (!PLATFORM.features.externalLinks) return "";
   if (I18nManager.getLanguage() !== "ko") return "";
   // Capacitor routes external HTTP links to Android's ACTION_VIEW handler.
   const target = Capacitor.isNativePlatform() ? "_self" : "_blank";
@@ -158,6 +162,7 @@ export function renderCommunityLink(): string {
 }
 
 export function renderFooterLinks(): string {
+  if (!PLATFORM.features.externalLinks) return "";
   return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>${renderCommunityLink()}`;
 }
 

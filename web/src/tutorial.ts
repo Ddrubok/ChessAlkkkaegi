@@ -1,4 +1,6 @@
 import { progressStorage } from "./progress-storage";
+import { PLATFORM } from "./platform";
+import { gameplay } from "./poki-sdk";
 /**
  * 5단계 마이크로 인터랙티브 튜토리얼 시스템 모듈 (TutorialManager)
  * 
@@ -503,6 +505,7 @@ export class TutorialManager {
    * 튜토리얼 최종 완료 축하 팝업 모달
    */
   private showCompletionModal(): void {
+    gameplay.leave("tutorial-complete");
     this.stop();
 
     const modal = document.createElement("div");
@@ -537,11 +540,13 @@ export class TutorialManager {
       document.body.appendChild(modal);
 
       modal.querySelector("#btn-tutorial-accept-adv")?.addEventListener("click", async () => {
+        if (PLATFORM.id === "poki") await gameplay.beforeNewMatch();
         modal.remove();
         this.start(1, "advanced");
         if (this.onStepCompletedCallback) {
           await this.onStepCompletedCallback(1);
         }
+        gameplay.enter("tutorial-advanced");
       });
 
       modal.querySelector("#btn-tutorial-decline-adv")?.addEventListener("click", async () => {
