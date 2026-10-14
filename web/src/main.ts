@@ -1777,8 +1777,9 @@ async function bootstrap(): Promise<void> {
         if (checkResult.hint) {
           tutorialManager.showFailureHint(checkResult.hint);
         }
+        const tutorialSession = tutorialManager.sessionToken;
         setTimeout(() => {
-          if (gameModeRuntime?.mode === "tutorial" && tutorialManager.isActive) {
+          if (gameModeRuntime?.mode === "tutorial" && tutorialManager.isActive && tutorialManager.sessionToken === tutorialSession) {
             void resetBoard({
               gameMode: "tutorial",
               stageNumber: tutorialManager.currentStep,

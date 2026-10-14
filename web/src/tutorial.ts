@@ -43,6 +43,8 @@ export class TutorialManager {
   public currentStep: number = 1;
   public tutorialType: TutorialType = "basic";
   public isActive: boolean = false;
+  private session = 0;
+  public get sessionToken(): number { return this.session; }
   private overlayElement: HTMLElement | null = null;
   private onStepCompletedCallback: ((nextStep: number) => Promise<void>) | null = null;
   private onTutorialFinishedCallback: (() => Promise<void>) | null = null;
@@ -69,6 +71,7 @@ export class TutorialManager {
     tutorialType: TutorialType = "basic",
   ): void {
     this.isActive = true;
+    this.session += 1;
     this.tutorialType = tutorialType;
     this.currentStep = startStep;
     this.renderCoachOverlay();
@@ -78,6 +81,7 @@ export class TutorialManager {
    * 튜토리얼 모드 종료 및 UI 제거
    */
   public stop(): void {
+    this.session += 1;
     this.isActive = false;
     if (this.overlayElement) {
       this.overlayElement.remove();
@@ -397,11 +401,13 @@ export class TutorialManager {
    */
   public async handleStepSuccess(): Promise<void> {
     if (!this.isActive) return;
+    const session = this.session;
     const stepInfo = getTutorialStepInfo(this.currentStep, this.tutorialType);
 
     this.updateCoachMessage(stepInfo.successMessage, true);
 
     await new Promise((r) => setTimeout(r, 1200));
+    if (!this.isActive || this.session !== session) return;
 
     if (this.currentStep < 5) {
       const nextStep = this.currentStep + 1;
