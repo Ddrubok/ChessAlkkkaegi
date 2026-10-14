@@ -903,28 +903,19 @@ export function createMainMenu(
       }
       return;
     }
-    const focusableButtons = [
-      ...overlay.querySelectorAll<HTMLButtonElement>(
-        "button:not(:disabled)",
-      ),
-    ];
-    if (focusableButtons.length === 0) {
+    const focusable = [...overlay.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+    )].filter(element => element.tabIndex >= 0 && !element.closest('[hidden], [inert]')
+      && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== "hidden");
+    if (focusable.length === 0) {
       event.preventDefault();
       return;
     }
-    event.preventDefault();
-    const currentIndex = focusableButtons.indexOf(
-      document.activeElement as HTMLButtonElement,
-    );
-    const direction = event.shiftKey ? -1 : 1;
-    const nextIndex =
-      currentIndex < 0
-        ? event.shiftKey
-          ? focusableButtons.length - 1
-          : 0
-        : (currentIndex + direction + focusableButtons.length) %
-          focusableButtons.length;
-    focusableButtons[nextIndex].focus();
+    const index = focusable.indexOf(document.activeElement as HTMLElement);
+    if (index < 0 || (event.shiftKey ? index === 0 : index === focusable.length - 1)) {
+      event.preventDefault();
+      focusable[event.shiftKey ? focusable.length - 1 : 0].focus();
+    }
   });
 
   returnButton.addEventListener("click", () => {

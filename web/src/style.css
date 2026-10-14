@@ -1719,9 +1719,7 @@ body {
 
 .king-swap-banner {
   position: absolute;
-  top: 72px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: auto;
   background: #1e293b;
   border: 1px solid #475569;
   border-radius: 9999px;
@@ -1732,18 +1730,24 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   z-index: 100;
   pointer-events: none;
-  white-space: nowrap;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.35;
   animation: kingSwapBannerIn 0.15s ease-out;
 }
 
 @keyframes kingSwapBannerIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -6px);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 
@@ -1770,7 +1774,7 @@ body {
 
 
 /* Give the turn label its own row on narrow phones. */
-@media (max-width:380px) and (orientation:portrait) {
+@media (max-width:520px) and (orientation:portrait) {
   .turn-hud-container { top:50px; }
 }
 

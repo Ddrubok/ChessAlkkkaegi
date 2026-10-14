@@ -54,10 +54,10 @@ export async function openRankingModal(
     background: #0f172a;
     border: 1px solid #334155;
     border-radius: 12px;
-    display: flex;
-    flex-direction: column;
+    display: block;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     color: #f8fafc;
     font-family: inherit;
   `;
