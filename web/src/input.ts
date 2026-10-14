@@ -1832,7 +1832,7 @@ function handleCanvasPointerMove(
 }
 
 /**
- * 빨간 점 release는 캔버스 안 어디서나 발사하고 나머지는 탭 선택 또는 클래식 발사로 끝낸다.
+ * 충전 release는 캔버스와 취소 버튼 위 조준 HUD에서 발사하고 나머지는 탭 선택으로 끝낸다.
  */
 function handleCanvasPointerUp(
   runtime: InputRuntime,
@@ -1885,7 +1885,18 @@ function handleCanvasPointerUp(
     return;
   }
   const canvas = runtime.sceneRuntime.renderer.domElement;
-  if (!containsClientPoint(canvas, event)) {
+  // 캔버스 아래에 배치된 세기·피치·고도와 그 여백도 진행 중인 발사의 release 영역이다.
+  // 취소 버튼은 위에서 먼저 처리하고, HUD 옆 배너나 화면 밖까지 영역을 넓히지 않는다.
+  const cancelRect = runtime.cancelControl?.hidden === false
+    ? runtime.cancelControl.getBoundingClientRect()
+    : undefined;
+  const overAimDock =
+    (gesture.source === "red-dot" || gesture.source === "classic-canvas") &&
+    cancelRect !== undefined && cancelRect.width > 0 && cancelRect.height > 0 &&
+    event.clientX >= cancelRect.left && event.clientX <= cancelRect.right &&
+    event.clientY >= canvas.getBoundingClientRect().bottom &&
+    event.clientY < cancelRect.top;
+  if (!containsClientPoint(canvas, event) && !overAimDock) {
     cancelInteraction(runtime, false);
     return;
   }
