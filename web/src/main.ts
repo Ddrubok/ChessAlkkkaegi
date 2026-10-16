@@ -1,3 +1,5 @@
+import { PLATFORM } from "./platform";
+import { gameplay, isAdActive, loadingFinished, setBeforeAd } from "./poki-sdk";
 import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED } from "./config";
 import { backFromDialog, installAndroidBackHandler } from "./android-back";
 import { createWeeklyChallengeHud } from "./weekly-challenge-hud";
@@ -275,7 +277,7 @@ async function bootstrap(): Promise<void> {
   app.replaceChildren(loadingPanel);
   initializeSound();
   const progressClient = getSupabaseClient();
-  await initializeGoogleAuth(progressClient);
+  if (PLATFORM.features.accounts) await initializeGoogleAuth(progressClient);
   const progressSession = progressClient ? await progressClient.auth.getSession() : null;
   if (progressSession?.error) throw new Error("로그인 상태를 확인하지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.");
   const sessionUser = progressSession?.data.session?.user;
@@ -377,7 +379,7 @@ async function bootstrap(): Promise<void> {
       getRuntimeText("startup.loading_models_bytes", { size: downloadedMegabytes.toFixed(1) });
   });
   if (
-    new URLSearchParams(window.location.search).get("probe") === "1"
+    PLATFORM.features.debugTools && new URLSearchParams(window.location.search).get("probe") === "1"
   ) {
     const { runDeterminismProbe } = await import(
       "./tools/determinism-probe"
@@ -579,10 +581,12 @@ async function bootstrap(): Promise<void> {
     return true;
   };
   const markMasteryDebugMutation = (): void => { if (masteryRun) masteryRun.eligible = false; if (questRun) questRun.eligible = false; };
-  tuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
-  tuningRuntime.panel.addEventListener("click", markMasteryDebugMutation);
-  cardTuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
-  cardTuningRuntime.panel.addEventListener("click", markMasteryDebugMutation);
+  if (PLATFORM.features.debugTools) {
+    tuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
+    tuningRuntime.panel.addEventListener("click", markMasteryDebugMutation);
+    cardTuningRuntime.panel.addEventListener("input", markMasteryDebugMutation);
+    cardTuningRuntime.panel.addEventListener("click", markMasteryDebugMutation);
+  }
   progressStorage.subscribe((reset) => {
     if (reset) {
       metaRuntime.storage = progressStorage;
@@ -633,6 +637,7 @@ async function bootstrap(): Promise<void> {
   let activeMyProfile: UserProfile | null = null;
 
   const recordOnlineMatchSettlement = async (matchWinner: MatchWinner): Promise<void> => {
+    if (!PLATFORM.features.online) return;
     const sb = getSupabaseClient();
     const matchId = onlineRuntime?.matchId;
     const me = activeMyProfile;
@@ -753,6 +758,7 @@ async function bootstrap(): Promise<void> {
       loggedIn: progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id,
     }),
     requestFriend: async (profileId, opponent) => {
+      if (!PLATFORM.features.online) return { success: false, error: "" };
       const client = getSupabaseClient();
       if (!client) return { success: false, error: "login_required" };
       const { data, error } = await client.auth.getSession();
@@ -791,7 +797,7 @@ async function bootstrap(): Promise<void> {
   let pendingCardTuningValues: CardTuningAppliedValues = {
     ...appliedCardTuningValues,
   };
-  updateCardTuningAppliedValues(
+  if (PLATFORM.features.debugTools) updateCardTuningAppliedValues(
     cardTuningRuntime,
     appliedCardTuningValues,
     pendingCardTuningValues,
@@ -882,6 +888,7 @@ async function bootstrap(): Promise<void> {
     aimParametersRuntime,
     {
       isInputBlocked: () =>
+        isAdActive() ||
         turnRuntime.phase === "match-over" ||
         (gameModeRuntime?.mode === "tutorial" && tutorialManager.isTransitioning) ||
         puzzleInputBlocked ||
@@ -1017,7 +1024,16 @@ async function bootstrap(): Promise<void> {
         setTurnCameraMode(turnRuntime, mode),
     },
   );
-  tuningRuntime.wakeAllHandler = () => {
+  const clearFinishedMatchWork = (): void => {
+    // Only discarded matches reach an ad boundary; do not freeze or shift the game clock.
+    cancelInputInteraction(inputRuntime, true);
+    resetAiMatch(aiRuntime);
+    turnRuntime.pendingLaunch = null;
+    turnRuntime.cameraRotation = null;
+    turnRuntime.phase = "match-over";
+  };
+  if (PLATFORM.id === "poki") setBeforeAd(clearFinishedMatchWork);
+  if (PLATFORM.features.debugTools) tuningRuntime.wakeAllHandler = () => {
     markMasteryDebugMutation();
     cancelInputInteraction(inputRuntime, true);
     wakeAllTurnPieces(turnRuntime);
@@ -1171,13 +1187,13 @@ async function bootstrap(): Promise<void> {
     };
     pendingCardTuningValues =
       computePendingCardTuningValues(gameMode, stageNumber);
-    updateCardTuningAppliedValues(
+    if (PLATFORM.features.debugTools) updateCardTuningAppliedValues(
       cardTuningRuntime,
       appliedCardTuningValues,
       pendingCardTuningValues,
     );
   };
-  cardTuningRuntime.settingsChangedHandler =
+  if (PLATFORM.features.debugTools) cardTuningRuntime.settingsChangedHandler =
     refreshCardTuningLiveValues;
   const resetBoard = async (
     requestedOptions?: StageSpawnOptions,
@@ -1423,7 +1439,7 @@ async function bootstrap(): Promise<void> {
         stageOptions.gameMode,
         stageOptions.stageNumber,
       );
-    updateCardTuningAppliedValues(
+    if (PLATFORM.features.debugTools) updateCardTuningAppliedValues(
       cardTuningRuntime,
       appliedCardTuningValues,
       pendingCardTuningValues,
@@ -1433,7 +1449,7 @@ async function bootstrap(): Promise<void> {
       stageOptions.stageNumber,
     );
     if (stageOptions.gameMode !== "stage" && stageOptions.gameMode !== "weekly") {
-      updateTuningAppliedValues(tuningRuntime, {
+      if (PLATFORM.features.debugTools) updateTuningAppliedValues(tuningRuntime, {
         gameMode: stageOptions.gameMode,
         stageNumber: stageOptions.stageNumber,
         enemyWeightFraction: 0,
@@ -1467,7 +1483,7 @@ async function bootstrap(): Promise<void> {
         assets.meta,
         stageOptions,
       );
-      updateTuningAppliedValues(tuningRuntime, {
+      if (PLATFORM.features.debugTools) updateTuningAppliedValues(tuningRuntime, {
         gameMode: stageOptions.gameMode,
         stageNumber: stageOptions.stageNumber,
         enemyWeightFraction:
@@ -1513,75 +1529,77 @@ async function bootstrap(): Promise<void> {
       `[대국] 다시 시작 완료: 백 선공, 물리 ${physicsRuntime.pieces.size}/${expectedPieceCount}, 렌더 ${sceneRuntime.pieceMeshes.size}/${expectedPieceCount}, 수면 ${sleepingCount}/${expectedPieceCount}`,
     );
   };
-  cardTuningRuntime.relayoutHandler = async (): Promise<void> => {
-    masteryNextBoardDebug = true;
-    markMasteryDebugMutation();
-    if (gameModeRuntime === null) {
-      throw new Error("현재 대전 모드가 준비되지 않았습니다.");
-    }
-    if (gameModeRuntime.switching) {
-      throw new Error(
-        "대전 모드 전환 중에는 현재 판을 다시 깔 수 없습니다.",
+  if (PLATFORM.features.debugTools) {
+    cardTuningRuntime.relayoutHandler = async (): Promise<void> => {
+      masteryNextBoardDebug = true;
+      markMasteryDebugMutation();
+      if (gameModeRuntime === null) {
+        throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+      }
+      if (gameModeRuntime.switching) {
+        throw new Error(
+          "대전 모드 전환 중에는 현재 판을 다시 깔 수 없습니다.",
+        );
+      }
+      await relayoutCurrentCardTuningBoard(
+        () => ({
+          gameMode: gameModeRuntime?.mode ?? "hotseat",
+          stageNumber: gameModeRuntime?.stageNumber ?? 1,
+          runCardsSignature: JSON.stringify(runCardState),
+          permanentUpgradesSignature: JSON.stringify(
+            metaRuntime.state.upgrades,
+          ),
+          points: metaRuntime.state.points,
+          stageRunPointsSignature: JSON.stringify(stageRunPoints),
+        }),
+        async (gameMode, stageNumber) => {
+          await resetBoard({ gameMode, stageNumber });
+        },
       );
-    }
-    await relayoutCurrentCardTuningBoard(
-      () => ({
-        gameMode: gameModeRuntime?.mode ?? "hotseat",
-        stageNumber: gameModeRuntime?.stageNumber ?? 1,
-        runCardsSignature: JSON.stringify(runCardState),
-        permanentUpgradesSignature: JSON.stringify(
-          metaRuntime.state.upgrades,
-        ),
-        points: metaRuntime.state.points,
-        stageRunPointsSignature: JSON.stringify(stageRunPoints),
-      }),
-      async (gameMode, stageNumber) => {
-        await resetBoard({ gameMode, stageNumber });
-      },
-    );
-  };
-  cardTuningRuntime.stageJumpHandler = async (
-    targetStageNumber: number,
-  ): Promise<void> => {
-    masteryNextBoardDebug = true;
-    markMasteryDebugMutation();
-    if (gameModeRuntime === null) {
-      throw new Error("현재 대전 모드가 준비되지 않았습니다.");
-    }
-    if (gameModeRuntime.switching) {
-      throw new Error(
-        "대전 모드 전환 중에는 스테이지를 이동할 수 없습니다.",
+    };
+    cardTuningRuntime.stageJumpHandler = async (
+      targetStageNumber: number,
+    ): Promise<void> => {
+      masteryNextBoardDebug = true;
+      markMasteryDebugMutation();
+      if (gameModeRuntime === null) {
+        throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+      }
+      if (gameModeRuntime.switching) {
+        throw new Error(
+          "대전 모드 전환 중에는 스테이지를 이동할 수 없습니다.",
+        );
+      }
+      await jumpCardTuningStage(
+        targetStageNumber,
+        () => ({
+          gameMode: gameModeRuntime?.mode ?? "hotseat",
+          stageNumber: gameModeRuntime?.stageNumber ?? 1,
+          runCardsSignature: JSON.stringify(runCardState),
+          permanentUpgradesSignature: JSON.stringify(
+            metaRuntime.state.upgrades,
+          ),
+          points: metaRuntime.state.points,
+          stageRunPointsSignature: JSON.stringify(stageRunPoints),
+        }),
+        (stageNumber) => {
+          if (gameModeRuntime === null) {
+            throw new Error("현재 대전 모드가 준비되지 않았습니다.");
+          }
+          setStageNumber(gameModeRuntime, stageNumber);
+        },
+        (lastClearedStage, startedAtStage) => {
+          // Y 패널 점프만 정상 승리 정산의 직전 단계 기준을 맞추며 일반 진행은 기존 기록 함수를 유지한다.
+          stageRunPoints.lastClearedStage = lastClearedStage;
+          delete stageRunPoints.startedAtStage;
+          if (startedAtStage !== undefined) stageRunPoints.startedAtStage = startedAtStage;
+        },
+        async (gameMode, stageNumber) => {
+          await resetBoard({ gameMode, stageNumber });
+        },
       );
-    }
-    await jumpCardTuningStage(
-      targetStageNumber,
-      () => ({
-        gameMode: gameModeRuntime?.mode ?? "hotseat",
-        stageNumber: gameModeRuntime?.stageNumber ?? 1,
-        runCardsSignature: JSON.stringify(runCardState),
-        permanentUpgradesSignature: JSON.stringify(
-          metaRuntime.state.upgrades,
-        ),
-        points: metaRuntime.state.points,
-        stageRunPointsSignature: JSON.stringify(stageRunPoints),
-      }),
-      (stageNumber) => {
-        if (gameModeRuntime === null) {
-          throw new Error("현재 대전 모드가 준비되지 않았습니다.");
-        }
-        setStageNumber(gameModeRuntime, stageNumber);
-      },
-      (lastClearedStage, startedAtStage) => {
-        // Y 패널 점프만 정상 승리 정산의 직전 단계 기준을 맞추며 일반 진행은 기존 기록 함수를 유지한다.
-        stageRunPoints.lastClearedStage = lastClearedStage;
-        delete stageRunPoints.startedAtStage;
-        if (startedAtStage !== undefined) stageRunPoints.startedAtStage = startedAtStage;
-      },
-      async (gameMode, stageNumber) => {
-        await resetBoard({ gameMode, stageNumber });
-      },
-    );
-  };
+    };
+  }
   gameModeRuntime = createGameModeRuntime(async (mode) => {
     const previousMode = gameModeRuntime?.mode ?? "hotseat";
     const previousCards = cloneRunCardState(runCardState);
@@ -1852,6 +1870,7 @@ async function bootstrap(): Promise<void> {
         const cards = offer ? offer.choices.map((id) => UPGRADE_CARDS.find((card) => card.id === id)).filter((card): card is (typeof UPGRADE_CARDS)[number] => card !== undefined) : [];
         let pendingCardPickEvent: WeeklyChallengeEvent | null = null;
         const choose = offer ? async (cardId: CardId): Promise<void> => {
+          if (PLATFORM.id === "poki") await gameplay.beforeNewMatch();
           if (weeklyAccountAttempt) {
             const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
             if (!attempt) throw new Error("Weekly attempt is unavailable.");
@@ -1871,10 +1890,14 @@ async function bootstrap(): Promise<void> {
           restoreRunCardState(runCardState, runAtResult.cards);
           setStageNumber(gameModeRuntime!, runAtResult.stage);
           await resetBoard({ gameMode: "weekly", stageNumber: runAtResult.stage });
+          gameplay.enter("weekly-card-next");
         } : null;
-        showMatchResult(matchRuntime, winner, "weekly", completedStage, async () => returnToMainMenu(menuRuntime), cards, choose, () => returnToMainMenu(menuRuntime));
-        appendWeeklyChallengeResult(matchRuntime.resultDetails, runAtResult.score, priorRecord, weeklyAccountAttempt ? "account" : "practice");
-        if (winner === "white" && completedStage < 10 && cards.length === 0) {
+        const automaticAdvance = winner === "white" && completedStage < 10 && cards.length === 0;
+        if (PLATFORM.id !== "poki" || !automaticAdvance) {
+          showMatchResult(matchRuntime, winner, "weekly", completedStage, async () => returnToMainMenu(menuRuntime), cards, choose, () => returnToMainMenu(menuRuntime));
+          appendWeeklyChallengeResult(matchRuntime.resultDetails, runAtResult.score, priorRecord, weeklyAccountAttempt ? "account" : "practice");
+        }
+        if (automaticAdvance) {
           if (!weeklyAccountAttempt) runAtResult.stage = completedStage + 1;
           runAtResult.stageOwnTurns = 0; runAtResult.status = "ready-for-stage";
           setStageNumber(gameModeRuntime!, runAtResult.stage);
@@ -1939,8 +1962,10 @@ async function bootstrap(): Promise<void> {
       if (gameMode === "online") {
         return;
       }
+      if (PLATFORM.id === "poki") await gameplay.beforeNewMatch();
       if (gameMode !== "stage") {
         await resetBoard();
+        gameplay.enter("match-restart");
         return;
       }
       const previousStage = gameModeRuntime?.stageNumber ?? 1;
@@ -1962,6 +1987,7 @@ async function bootstrap(): Promise<void> {
         }
         throw error;
       }
+      gameplay.enter("stage-restart");
     };
     const upgradeCards =
       gameMode === "stage" &&
@@ -1978,6 +2004,7 @@ async function bootstrap(): Promise<void> {
       winner === "white" &&
       shouldOfferStageClearCards(completedStage)
         ? async (cardId: CardId): Promise<void> => {
+            if (PLATFORM.id === "poki") await gameplay.beforeNewMatch();
             const previousStage =
               gameModeRuntime?.stageNumber ?? completedStage;
             const previousCards = cloneRunCardState(runCardState);
@@ -1995,6 +2022,7 @@ async function bootstrap(): Promise<void> {
                 gameMode: "stage",
                 stageNumber: nextStage,
               });
+              gameplay.enter("stage-card-next");
             } catch (error: unknown) {
               restoreRunCardState(runCardState, previousCards);
               if (gameModeRuntime !== null) {
@@ -2090,6 +2118,7 @@ async function bootstrap(): Promise<void> {
     tutorialType = "basic",
     mapId,
   ): Promise<void> => {
+    if (!PLATFORM.features.online && mode === "online") return;
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
@@ -2098,7 +2127,7 @@ async function bootstrap(): Promise<void> {
       throw new Error(`Unknown hotseat map: ${nextHotseatMapId}`);
     }
     void AdManager.hideBanner();
-    if (mode === "online") {
+    if (PLATFORM.features.online && mode === "online") {
       onlineSelfTestRuntime?.destroy();
       const { createOnlineRuntime } = await import("./online");
       const { openFriendlyLobby } = await import("./friendly-lobby");
@@ -2273,6 +2302,8 @@ async function bootstrap(): Promise<void> {
       }
       return;
     }
+    const awaitingWeeklyCard = mode === "weekly" && weeklyRun?.pendingOffer != null;
+    if (PLATFORM.id === "poki" && !awaitingWeeklyCard) await gameplay.beforeNewMatch();
     onlineSelfTestRuntime?.destroy();
     onlineRuntime?.close();
     onlineRuntime = null;
@@ -2300,6 +2331,7 @@ async function bootstrap(): Promise<void> {
       throw error;
     }
     ensureGameLoopStarted();
+    if (!awaitingWeeklyCard) gameplay.enter("mode-start");
   };
 
   const startPreparedWeeklyRun = async (run: WeeklyChallengePracticeRun, account: boolean): Promise<void> => {
@@ -2311,10 +2343,12 @@ async function bootstrap(): Promise<void> {
     if (!account) weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, run));
     hideMainMenuAfterModeStart(menuRuntime);
     if (run.pendingOffer) {
+      if (PLATFORM.id === "poki") clearFinishedMatchWork();
       const offer = run.pendingOffer;
       let pendingCardPickEvent: WeeklyChallengeEvent | null = null;
       const cards = offer.choices.map((id) => UPGRADE_CARDS.find((card) => card.id === id)).filter((card): card is (typeof UPGRADE_CARDS)[number] => card !== undefined);
       showMatchResult(matchRuntime, "white", "weekly", offer.completedStage, async () => returnToMainMenu(menuRuntime), cards, async (cardId) => {
+        if (PLATFORM.id === "poki") await gameplay.beforeNewMatch();
         if (account) {
           const attempt = weeklyChallengeStorage.view().snapshot?.activeAttempt;
           if (!attempt) throw new Error("Weekly attempt is unavailable.");
@@ -2330,6 +2364,7 @@ async function bootstrap(): Promise<void> {
           pickWeeklyCard(run, cardId); weeklyChallengeStorage.updatePractice((saved) => Object.assign(saved, run)); run.status = "playing";
         }
         restoreRunCardState(runCardState, run.cards); setStageNumber(gameModeRuntime!, run.stage); await resetBoard({ gameMode: "weekly", stageNumber: run.stage });
+        gameplay.enter("weekly-resumed-card");
       }, () => returnToMainMenu(menuRuntime));
     }
   };
@@ -2353,6 +2388,7 @@ async function bootstrap(): Promise<void> {
     isHost: boolean,
     opponent: { id: string; nickname: string; mmr: number },
   ): Promise<void> => {
+    if (!PLATFORM.features.online) return;
     const sb = getSupabaseClient();
     if (!sb || !menuRuntime.userProfile || !gameModeRuntime || menuRuntime.busy) return;
     const { getFriendlyCopy } = await import('./friendly-copy');
@@ -2375,7 +2411,7 @@ async function bootstrap(): Promise<void> {
 
     onlineSelfTestRuntime?.destroy();
     void AdManager.hideBanner();
-    void SocialService.updateMyStatus("in_game");
+    if (PLATFORM.features.online) void SocialService.updateMyStatus("in_game");
 
     const { createOnlineRuntime } = await import("./online");
 
@@ -2449,7 +2485,7 @@ async function bootstrap(): Promise<void> {
           appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
           renderRematchControls(onlineRuntime?.getRematchStatus() ?? null);
           await recordOnlineMatchSettlement(winner);
-          void SocialService.updateMyStatus("online");
+          if (PLATFORM.features.online) void SocialService.updateMyStatus("online");
           void AdManager.showBanner();
         },
       },
@@ -2476,7 +2512,7 @@ async function bootstrap(): Promise<void> {
     hideMainMenuAfterModeStart(menuRuntime);
     } catch (error) {
       matchmaker.cancel();
-      void SocialService.updateMyStatus('online');
+      if (PLATFORM.features.online) void SocialService.updateMyStatus('online');
       if (!(error instanceof Error && error.name === 'AbortError')) {
         const status = menuRuntime.overlay.querySelector<HTMLElement>('[data-menu-status]');
         if (status) status.textContent = getFriendlyCopy('peer_error');
@@ -2497,6 +2533,7 @@ async function bootstrap(): Promise<void> {
   };
 
   reconnectButton.addEventListener("click", () => {
+    if (!PLATFORM.features.online) return;
     if (onlineRuntime === null) {
       return;
     }
@@ -2552,7 +2589,7 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
-    void SocialService.updateMyStatus("online");
+    if (PLATFORM.features.online) void SocialService.updateMyStatus("online");
     if (gameModeRuntime.mode === "weekly") {
       weeklyRunGeneration += 1;
       if (!weeklyAccountAttempt && weeklyRun) {
@@ -2610,7 +2647,7 @@ async function bootstrap(): Promise<void> {
     });
   };
   if (
-    new URLSearchParams(window.location.search).get("replay") === "1"
+    PLATFORM.features.debugTools && new URLSearchParams(window.location.search).get("replay") === "1"
   ) {
     const { createReplayDevelopmentRuntime } = await import(
       "./replay"
@@ -2626,13 +2663,13 @@ async function bootstrap(): Promise<void> {
     );
   }
   if (
-    new URLSearchParams(window.location.search).get("net") === "1"
+    PLATFORM.features.debugTools && new URLSearchParams(window.location.search).get("net") === "1"
   ) {
     const { createNetDevelopmentRuntime } = await import("./net");
     createNetDevelopmentRuntime(app);
   }
   if (
-    new URLSearchParams(window.location.search).get("online") ===
+    PLATFORM.features.debugTools && new URLSearchParams(window.location.search).get("online") ===
     "selftest"
   ) {
     const { createOnlineSelfTestRuntime } = await import(
@@ -2677,6 +2714,7 @@ async function bootstrap(): Promise<void> {
     if (!progressStorage.ready) return;
     const puzzle = getPuzzleDefinition(id);
     if (!puzzle || !isPuzzleUnlocked(puzzleProgress, puzzle)) return;
+    gameplay.leave("puzzle-new-attempt");
     puzzleInputBlocked = true;
     puzzleTracker = null;
     activePuzzle = puzzle;
@@ -2813,6 +2851,10 @@ async function bootstrap(): Promise<void> {
       updatePuzzleHud();
     }
   };
+  if (PLATFORM.id === "poki") {
+    await AdManager.init();
+    loadingFinished();
+  }
   setMainMenuReady(menuRuntime, true);
   if (localBalancePreview) {
     await switchGameMode(gameModeRuntime, "online", true);
@@ -2850,10 +2892,10 @@ async function bootstrap(): Promise<void> {
       else await returnToMainMenu(menuRuntime);
     },
   );
-  await AdManager.init();
+  if (PLATFORM.id !== "poki") await AdManager.init();
   await AdManager.showBanner();
 
-  SocialService.setChallengeHandler((challenge) => {
+  if (PLATFORM.features.online) SocialService.setChallengeHandler((challenge) => {
       if (!menuRuntime.visible || menuRuntime.busy || progressStorage.owner !== menuRuntime.userProfile?.id) return;
       openChallengeReceivedModal(challenge, {
         onAccept: (req) => {
@@ -2866,7 +2908,7 @@ async function bootstrap(): Promise<void> {
         onReject: () => {},
       });
     });
-  if (menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
+  if (PLATFORM.features.online && menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
 }
 
 void bootstrap().catch((error: unknown) => {

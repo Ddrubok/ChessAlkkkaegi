@@ -1,4 +1,5 @@
 import { progressStorage } from "./progress-storage";
+import { gameplay } from "./poki-sdk";
 import { createPanelMotion } from './ui-motion';
 import { beginResultMotion, closeResultMotion } from './result-motion';
 import type { PieceType } from "./config";
@@ -162,6 +163,7 @@ export class PuzzleUI {
   openLibrary(): void { this.showLibrary(); }
 
   showLibrary(): void {
+    gameplay.leave("puzzle-library");
     this.screen = "library";
     this.currentPuzzle = null;
     this.playState = null;
@@ -216,6 +218,7 @@ export class PuzzleUI {
   }
 
   showResult(puzzle: PuzzleUiPuzzle | string, result: PuzzleResult): void {
+    gameplay.leave("puzzle-result");
     const resolved = typeof puzzle === "string" ? this.find(puzzle) : puzzle;
     if (!resolved) return;
     this.screen = "result";
@@ -582,6 +585,7 @@ export class PuzzleUI {
     }
     if (action === "hint" && this.currentPuzzle) {
       if (!this.hintOpen) {
+        gameplay.leave("puzzle-hint");
         this.activeHintLevel = 1;
         this.hintOpen = true;
         void Promise.resolve(this.options.onHint?.(this.currentPuzzle.id, this.activeHintLevel));
@@ -590,6 +594,7 @@ export class PuzzleUI {
         void Promise.resolve(this.options.onHint?.(this.currentPuzzle.id, 2));
       } else {
         this.hintOpen = false;
+        gameplay.enter("puzzle-hint-close");
       }
       this.render();
     }

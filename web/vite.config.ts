@@ -1,7 +1,8 @@
-import { readFileSync } from "node:fs";
+import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv } from "vite";
+import type { Rule } from "postcss";
 
 const GITHUB_PAGES_BASE = "./";
 const PROJECT_ROOT = fileURLToPath(new URL(".", import.meta.url));
@@ -115,6 +116,15 @@ function createPortableAssetUrls(): Readonly<Record<string, string>> {
 
 export default defineConfig(({ command, isPreview, mode }) => {
   const staging = mode === "staging";
+  const pokiBuild = mode === "poki";
+  const pokiEnv = pokiBuild ? Object.fromEntries(
+    [...new Set([
+      ...Object.keys(loadEnv(mode, PROJECT_ROOT, "VITE_")),
+      "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_METERED_APP_NAME",
+      "VITE_METERED_API_KEY", "VITE_WEB_ADS_MODE", "VITE_ADSENSE_CLIENT_ID", "VITE_ADSENSE_SLOT_ID",
+    ])].filter((key) => /^VITE_(?:SUPABASE|METERED|WEB_ADS|ADSENSE)/u.test(key))
+      .map((key) => [`import.meta.env.${key}`, JSON.stringify("")]),
+  ) : {};
   if (staging) {
     const env = loadEnv(mode, PROJECT_ROOT, "VITE_");
     // A staging build must never silently inherit the production .env backend.
@@ -129,6 +139,49 @@ export default defineConfig(({ command, isPreview, mode }) => {
     : {};
 
   return {
+    ...(pokiBuild ? {
+      resolve: { alias: [
+        { find: "@supabase/supabase-js", replacement: resolve(PROJECT_ROOT, "src/poki-stubs/backend.ts") },
+        { find: /^\.\/ad-manager$/u, replacement: resolve(PROJECT_ROOT, "src/poki-stubs/ads.ts") },
+        { find: /^\.\/web-ads$/u, replacement: resolve(PROJECT_ROOT, "src/poki-stubs/web-ads.ts") },
+      ] },
+      css: { postcss: { plugins: [{
+        postcssPlugin: "poki-no-debug-styles",
+        Rule(rule: Rule) {
+          const selectors = rule.selectors.filter((selector) => !/\.(?:tuning-|card-tuning-|debug-overlay)/u.test(selector));
+          if (selectors.length === 0) rule.remove();
+          else if (selectors.length !== rule.selectors.length) rule.selectors = selectors;
+        },
+      }] } },
+    } : {}),
+    plugins: [{
+      name: "platform-features",
+      enforce: "pre",
+      transform(code, id) {
+        if (!id.replaceAll("\\", "/").startsWith(`${resolve(PROJECT_ROOT, "src").replaceAll("\\", "/")}/`) || !id.endsWith(".ts")) return;
+        // Vite define does not replace properties of an imported binding.
+        // Resolve these known feature reads before bundling so disabled imports disappear.
+        return code.replace(/\bPLATFORM\.features\.(?:online|accounts|externalLinks|debugTools)\b/gu, String(!pokiBuild));
+      },
+    }, ...(pokiBuild ? [{
+      name: "poki-build",
+      transformIndexHtml: {
+        order: "pre" as const,
+        handler: (html: string) => html
+          .replace(/\s*<meta name="google-adsense-account"[^>]*>/u, "")
+          .replace(/\s*<nav aria-label="게임 안내">[\s\S]*?<\/nav>/u, "")
+          .replace(/\s*<link rel="preload"[^>]*href="\/assets\/banners\/classic\.webp"[^>]*>/u, "")
+          .replace('src="/src/main.ts"', 'src="/src/poki-entry.ts"'),
+      },
+      writeBundle(options: { dir?: string }) {
+        const output = resolve(PROJECT_ROOT, options.dir ?? "dist-poki");
+        cpSync(resolve(PROJECT_ROOT, "public/assets"), resolve(output, "assets"), { recursive: true });
+        // Poki removes the boot nav; keep the shared source and other builds unchanged.
+        const language = readFileSync(resolve(PROJECT_ROOT, "public/boot-language.js"), "utf8")
+          .replace("card.querySelector('nav').setAttribute", "card.querySelector('nav')?.setAttribute");
+        writeFileSync(resolve(output, "boot-language.js"), language);
+      },
+    }] : [])],
     ...(staging ? {
       server: { host: "127.0.0.1", port: 5204, strictPort: true },
       preview: { host: "127.0.0.1", port: 5204, strictPort: true },
@@ -138,6 +191,8 @@ export default defineConfig(({ command, isPreview, mode }) => {
         ? GITHUB_PAGES_BASE
         : "/",
     define: {
+      __POKI_BUILD__: JSON.stringify(pokiBuild),
+      ...pokiEnv,
       __PORTABLE_BUILD__: JSON.stringify(portableBuild),
       __PORTABLE_ASSET_URLS__: JSON.stringify(portableAssetUrls),
       __NORMAL_ASSET_PATHS__: JSON.stringify(
@@ -145,9 +200,11 @@ export default defineConfig(({ command, isPreview, mode }) => {
       ),
     },
     build: {
+      ...(pokiBuild ? { outDir: "dist-poki", copyPublicDir: false } : {}),
       ...(staging ? { outDir: "dist-staging" } : {}),
       rollupOptions: {
-        input: portableBuild ? "index.html" : ["index.html", "about.html", "guide.html", "tiers.html", "updates.html"],
+        ...(pokiBuild ? { treeshake: { manualPureFunctions: ["console.log", "console.info", "console.debug"] } } : {}),
+        input: portableBuild || pokiBuild ? "index.html" : ["index.html", "about.html", "guide.html", "tiers.html", "updates.html"],
         ...(portableBuild
           ? {
               output: {

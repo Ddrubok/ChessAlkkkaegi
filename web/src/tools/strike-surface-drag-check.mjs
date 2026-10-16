@@ -144,13 +144,15 @@ export async function checkStrikeSurfaceDrag({ page, cdp, touch, width, height, 
   await restartMatch();
   await prepare();pts=await points();
 
-  // A held camera key may move before down, but never during the captured gesture.
-  await page.keyboard.down('a');
+  // Capture before holding the key so camera orbit cannot stale the press point.
   await down(pts.a);
   const start=await state();
   assert.equal(start.source,'strike-surface','Surface press did not start drag');
   assert.equal(start.enabled,false,'Surface press did not disable orbit');
-  // The held key can rotate between sampling and pointerdown; use the captured view.
+  await page.keyboard.down('a');
+  await settle();
+  assert.deepEqual((await state()).keys,['KeyA'],'Camera key is not held during drag');
+  // Keep the key held across hit, miss and re-entry moves in the captured view.
   pts=await points();
   await move((await points()).b);
   const moved=await state();
@@ -304,12 +306,17 @@ export async function checkStrikeSurfaceDrag({ page, cdp, touch, width, height, 
       assert.equal((await state()).panelId,null,`${area}: concurrent panel drag`);
       assert.deepEqual((await state()).override,before.override,`${area}: second pointer changed point`);
       sameVector((await state()).camera,before.camera,`${area}: second pointer moved camera`);
-      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[{x:second.x+5,y:second.y+5,id:2}]});
+      // CDP lists active touches; retain the first finger when releasing the second.
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...pts.a,id:1}]});
+      await settle();
+      assert.equal((await state()).id,before.id,`${area}: second release ended first pointer`);
       await move((await points()).b);assert.notDeepEqual((await state()).override,before.override,`${area}: first pointer stopped following`);
       await up();
     }
   }
 
+  // Give the independent power-cap checks a fresh turn, away from the timeout launch.
+  await restartMatch();
   for(const [type,cap] of [['Rook',1],['Queen',1.5]]) {
     const id=await page.evaluate(type=>[...window.__strikeHudQA.runtime.physicsRuntime.pieces.values()].find(b=>b.instance.side==='white'&&b.instance.type===type).instance.id,type);
     await prepare(id);pts=await points(); assert.ok(pts,`No ${type} surface`);

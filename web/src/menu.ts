@@ -1,4 +1,6 @@
 import type { PieceType } from "./config";
+import { PLATFORM } from "./platform";
+import { gameplay } from "./poki-sdk";
 import { createPanelMotion, markMenuPressables } from './ui-motion';
 import type { GameMode } from "./game-mode";
 import { getMaxClearedStage, type MetaRuntime } from "./meta";
@@ -104,6 +106,7 @@ export async function startLobbyMode(
   tutorialType: "basic" | "advanced" = "basic",
 ): Promise<void> {
   if (runtime.busy || !runtime.ready || !progressStorage.ready) return;
+  if (!PLATFORM.features.online && mode === "online") return;
   if (mode === "puzzle") {
     runtime.onOpenPuzzles?.();
     return;
@@ -330,6 +333,7 @@ export function setMainMenuReady(
   ready: boolean,
 ): void {
   runtime.ready = ready;
+  if (PLATFORM.id === "poki") runtime.overlay.inert = !ready;
   renderMainMenu(runtime);
 }
 
@@ -337,6 +341,7 @@ export function setMainMenuReady(
  * 인게임 UI를 가리고 영구 메타가 보존된 메인 메뉴를 표시한다.
  */
 export function showMainMenu(runtime: MainMenuRuntime): void {
+  gameplay.leave("main-menu");
   runtime.closeHotseatMapSelection?.();
   runtime.busy = false;
   runtime.ready = true;
@@ -380,6 +385,7 @@ export async function returnToMainMenu(
   runtime: MainMenuRuntime,
   afterCompletedMatch = false,
 ): Promise<void> {
+  gameplay.leave("return-to-menu");
   runtime.busy = true;
   try {
     if (afterCompletedMatch) {
@@ -399,6 +405,11 @@ export async function returnToMainMenu(
 export function renderMainMenu(runtime: MainMenuRuntime): void {
   const panel = runtime.overlay.querySelector<HTMLElement>(".main-menu-panel");
   if (panel === null) return;
+
+  if (!PLATFORM.features.accounts && localStorage.getItem("ca_logged_in_user") !== "true") {
+    localStorage.setItem("ca_local_nickname", `Player_${Math.floor(1000 + Math.random() * 9000)}`);
+    localStorage.setItem("ca_logged_in_user", "true");
+  }
 
   if (localStorage.getItem("ca_logged_in_user") === "true") {
     const classicMmr = Number(localStorage.getItem("ca_local_classic_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
@@ -443,7 +454,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     return;
   }
 
-  if (user === null) {
+  if (PLATFORM.features.accounts && user === null) {
     // -------------------------------------------------------------
     // 1. 미로그인 상태: 로그인 / 회원가입 / 게스트 로그인 뷰
     // -------------------------------------------------------------
@@ -461,11 +472,11 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     `;
 
     panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
-      void openRankingModal(runtime.overlay, runtime.userProfile);
+      if (PLATFORM.features.online) void openRankingModal(runtime.overlay, runtime.userProfile);
     });
 
     panel.querySelector("#menu-friends-btn")?.addEventListener("click", () => {
-      void openFriendsModal(runtime.overlay, runtime.userProfile, {
+      if (PLATFORM.features.online) void openFriendsModal(runtime.overlay, runtime.userProfile, {
         onStartFriendlyMatch: (friend, roomId, isHost) => {
           void runtime.onStartFriendlyMatch?.(friend, roomId, isHost);
         },
@@ -660,7 +671,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${activities}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   markMenuPressables(panel);
-  if (progressStorage.owner === user.id) {
+  if (PLATFORM.features.accounts && progressStorage.owner === user.id) {
     const editName = document.createElement('button');
     editName.type = 'button';
     editName.dataset.editNickname = '';
@@ -679,11 +690,11 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     panel.querySelector('#menu-profile-panel')?.append(editName);
   }
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
-    void openRankingModal(runtime.overlay, runtime.userProfile);
+    if (PLATFORM.features.online) void openRankingModal(runtime.overlay, runtime.userProfile);
   });
 
   panel.querySelector("#menu-friends-btn")?.addEventListener("click", () => {
-    void openFriendsModal(runtime.overlay, runtime.userProfile, {
+    if (PLATFORM.features.online) void openFriendsModal(runtime.overlay, runtime.userProfile, {
       onStartFriendlyMatch: (friend, roomId, isHost) => {
         void runtime.onStartFriendlyMatch?.(friend, roomId, isHost);
       },
@@ -720,7 +731,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     renderMainMenu(runtime);
   });
   panel.querySelector("#btn-logout")?.addEventListener("click", () => {
-    openLogoutConfirm(runtime);
+    if (PLATFORM.features.accounts) openLogoutConfirm(runtime);
   });
   panel.querySelector("#menu-recommendation-btn")?.addEventListener("click", () => {
     if (recommendation.mode === "stage") {
@@ -779,8 +790,10 @@ export function createMainMenu(
   onConfirmAbandon: () => Promise<void>,
   onOpenPuzzles?: () => void,
 ): MainMenuRuntime {
+  let confirmResumeVersion: number | null = null;
   const overlay = document.createElement("section");
   overlay.className = "main-menu-overlay";
+  if (PLATFORM.id === "poki") overlay.inert = true;
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-labelledby", "main-menu-title");
@@ -930,6 +943,7 @@ export function createMainMenu(
       desc.textContent = I18nManager.t("ingame.abandon_desc");
     }
     runtime.confirming = true;
+    confirmResumeVersion = gameplay.leave("confirm-open");
     runtime.confirmOverlay.hidden = false;
     confirmButton.focus();
   });
@@ -937,6 +951,8 @@ export function createMainMenu(
     runtime.confirming = false;
     runtime.confirmOverlay.hidden = true;
     runtime.returnButton.focus();
+    if (confirmResumeVersion !== null) gameplay.enter("confirm-cancel", confirmResumeVersion);
+    confirmResumeVersion = null;
   });
   confirmButton.addEventListener("click", () => {
     if (runtime.busy) {

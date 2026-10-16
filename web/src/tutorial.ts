@@ -1,4 +1,6 @@
 import { progressStorage } from "./progress-storage";
+import { PLATFORM } from "./platform";
+import { gameplay } from "./poki-sdk";
 /**
  * 기초: 장외 → 방향 조절 → 미니 대전. 심화: 기존 5단계 기물 특성 연습.
  */
@@ -39,6 +41,7 @@ export class TutorialManager {
   public isActive: boolean = false;
   public isTransitioning = false;
   private generation = 0;
+  public get sessionToken(): number { return this.generation; }
   private completionModal: HTMLElement | null = null;
   private overlayElement: HTMLElement | null = null;
   private coachResizeObserver: ResizeObserver | null = null;
@@ -438,6 +441,7 @@ export class TutorialManager {
    * 튜토리얼 최종 완료 축하 팝업 모달
    */
   private showCompletionModal(): void {
+    gameplay.leave("tutorial-complete");
     this.stop();
 
     const modal = document.createElement("div");
@@ -473,11 +477,13 @@ export class TutorialManager {
       });
 
       modal.querySelector("#btn-tutorial-accept-adv")?.addEventListener("click", async () => {
+        if (PLATFORM.id === "poki") await gameplay.beforeNewMatch();
         modal.remove();
         this.start(1, "advanced");
         if (this.onStepCompletedCallback) {
           await this.onStepCompletedCallback(1);
         }
+        gameplay.enter("tutorial-advanced");
       });
 
       modal.querySelector("#btn-tutorial-decline-adv")?.addEventListener("click", async () => {

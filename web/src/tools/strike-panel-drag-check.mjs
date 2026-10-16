@@ -138,7 +138,8 @@ export async function checkStrikePanelDrag({ page, cdp, touch }) {
       });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...pts.a, id: 1 }, { ...second, id: 2 }] });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...pts.a, id: 1 }, { x: second.x + 10, y: second.y + 10, id: 2 }] });
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ x: second.x + 10, y: second.y + 10, id: 2 }] });
+      // CDP lists active touches; retain the first finger when releasing the second.
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...pts.a, id: 1 }] });
       await settle();
       const after = await state();
       assert.equal(after.id, before.id, `${area}: second pointer ended/took over drag`);

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { PLATFORM } from "./platform";
 
 const STORAGE_KEY_URL = "ca_supabase_url";
 const STORAGE_KEY_ANON = "ca_supabase_anon_key";
@@ -83,6 +84,7 @@ export function clearSupabaseConfig(): void {
  * Supabase 싱글톤 클라이언트를 가져오거나 새로 초기화한다.
  */
 export function getSupabaseClient(): SupabaseClient | null {
+  if (!PLATFORM.features.accounts) return null;
   if (supabaseInstance) {
     return supabaseInstance;
   }
