@@ -930,6 +930,8 @@ export function createSceneRuntime(
     fitCameraToBoard(runtime);
   };
   window.addEventListener("resize", handleResize);
+  // Tutorial copy and control visibility can resize the canvas without resizing the window.
+  new ResizeObserver(handleResize).observe(renderer.domElement);
   fitCameraToBoard(runtime);
   if (import.meta.env.DEV) {
     camera.updateMatrixWorld(true);

@@ -703,3 +703,13 @@
   background:#243750; color:#f8fafc; font:inherit; font-size:13px;
   font-weight:700; cursor:pointer; white-space:normal; overflow-wrap:anywhere;
 }
+.lobby-other-modes > summary {
+  min-height: 44px;
+  display: list-item;
+  padding: 12px;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 14px;
+}
+.lobby-other-modes > summary:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.lobby-other-modes > div { display: grid; gap: 10px; padding-top: 8px; }

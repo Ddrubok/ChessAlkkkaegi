@@ -120,6 +120,7 @@ import {
   renderMainMenu,
   returnToMainMenu,
   setMainMenuReady,
+  startLobbyMode,
 } from "./menu";
 import {
   computePermanentForceBonus,
@@ -882,6 +883,7 @@ async function bootstrap(): Promise<void> {
     {
       isInputBlocked: () =>
         turnRuntime.phase === "match-over" ||
+        (gameModeRuntime?.mode === "tutorial" && tutorialManager.isTransitioning) ||
         puzzleInputBlocked ||
         puzzleUI?.blocking === true ||
         weeklyActionPendingCount > 0 ||
@@ -896,7 +898,7 @@ async function bootstrap(): Promise<void> {
           ? localBalancePreview && onlineRuntime === null
             ? canSelectTurnPiece(turnRuntime, pieceId)
             : onlineRuntime?.canSelectLocalPiece(pieceId) === true
-          : ((gameModeRuntime?.mode !== "stage" && gameModeRuntime?.mode !== "weekly") ||
+          : ((gameModeRuntime?.mode !== "stage" && gameModeRuntime?.mode !== "weekly" && gameModeRuntime?.mode !== "tutorial") ||
               turnRuntime.currentSide === "white") &&
             canSelectTurnPiece(turnRuntime, pieceId),
       isCameraRotating: () =>
@@ -1041,8 +1043,10 @@ async function bootstrap(): Promise<void> {
     sceneRuntime,
     turnRuntime,
     assets.meta.cellSize,
-    () => gameModeRuntime?.mode ?? "hotseat",
-    () => gameModeRuntime?.stageNumber ?? 1,
+    () => gameModeRuntime?.mode === "tutorial" && tutorialManager.isMatchStep &&
+      !tutorialManager.isTransitioning && !isMenuBlocking(menuRuntime) && !gameModeRuntime.switching
+      ? "stage" : gameModeRuntime?.mode ?? "hotseat",
+    () => gameModeRuntime?.mode === "tutorial" ? 1 : gameModeRuntime?.stageNumber ?? 1,
     aimRuntime,
     () => undefined,
     () => appliedEnemyBuffStepScale,
@@ -1770,6 +1774,7 @@ async function bootstrap(): Promise<void> {
       }
     }
     if (gameModeRuntime?.mode === "tutorial") {
+      if (!tutorialManager.isActive || tutorialManager.isTransitioning) return;
       const remainingBlack = [...physicsRuntime.pieces.values()].filter(
         (p) => p.instance.side === "black",
       );
@@ -1783,20 +1788,16 @@ async function bootstrap(): Promise<void> {
         hasCustomStrikePoint,
       );
 
-      if (checkResult.cleared) {
+      const ownKingLost = tutorialManager.isMatchStep && ![...physicsRuntime.pieces.values()].some(p =>
+        p.instance.side === "white" && p.instance.type === "King");
+      if (checkResult.cleared && !ownKingLost) {
         void tutorialManager.handleStepSuccess();
-      } else {
+      } else if (!tutorialManager.isMatchStep || ownKingLost) {
         if (checkResult.hint) {
           tutorialManager.showFailureHint(checkResult.hint);
         }
-        setTimeout(() => {
-          if (gameModeRuntime?.mode === "tutorial" && tutorialManager.isActive) {
-            void resetBoard({
-              gameMode: "tutorial",
-              stageNumber: tutorialManager.currentStep,
-            });
-          }
-        }, 1200);
+        else tutorialManager.showFailureHint(I18nManager.t("common.retry"));
+        void tutorialManager.retryStep();
       }
     }
   };
@@ -2281,7 +2282,9 @@ async function bootstrap(): Promise<void> {
     if (mode === "tutorial") {
       const step = selectedStage ?? 1;
       tutorialManager.start(step, tutorialType);
-      if (step === 3) {
+      if (tutorialType === "basic") {
+        switchInputMode(inputRuntime, "classic");
+      } else if (step === 3) {
         switchInputMode(inputRuntime, "billiards");
       }
     } else {
@@ -2837,13 +2840,14 @@ async function bootstrap(): Promise<void> {
           gameMode: "tutorial",
           stageNumber: nextStep,
         });
-        if (nextStep === 3) {
+        if (tutorialManager.tutorialType === "advanced" && nextStep === 3) {
           switchInputMode(inputRuntime, "billiards");
         }
       }
     },
-    async () => {
-      await returnToMainMenu(menuRuntime);
+    async (destination) => {
+      if (destination === "stage") await startLobbyMode(menuRuntime, "stage");
+      else await returnToMainMenu(menuRuntime);
     },
   );
   await AdManager.init();

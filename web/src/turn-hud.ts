@@ -174,9 +174,11 @@ export function createTurnHud(
     const isMyTurn = isOnline ? mySide === currentSide : true;
 
     if (isTutorial) {
-      if (tutorialManager.currentStep < 5) {
+      if (tutorialManager.tutorialType === "basic" || !tutorialManager.isMatchStep) {
         timerWrapper.style.display = "none";
-        sideIndicator.innerHTML = `<span style="color:#38bdf8;">${I18nManager.t("ingame.unlimited_time")}</span>`;
+        sideIndicator.textContent = I18nManager.t(tutorialManager.isMatchStep
+          ? currentSide === "white" ? "ingame.my_turn" : "ingame.opponent_turn"
+          : "ingame.unlimited_time");
         mainBadge.style.borderColor = "rgba(56, 189, 248, 0.3)";
       } else {
         timerWrapper.style.display = "flex";
@@ -205,8 +207,8 @@ export function createTurnHud(
       mainBadge.style.borderColor = "rgba(148, 163, 184, 0.3)";
     }
 
-    // 타이머 카운트다운 (ready 상태에서만 진행, 튜토리얼 1~4단계에서는 멈춤)
-    if (turnRuntime.phase === "ready" && (!isTutorial || tutorialManager.currentStep === 5)) {
+    // 기초는 시간 압박 없이, 심화 마지막 대전에서 기존 제한 시간을 사용한다.
+    if (turnRuntime.phase === "ready" && (!isTutorial || (tutorialManager.tutorialType === "advanced" && tutorialManager.isMatchStep))) {
       remainingSeconds = Math.max(0, remainingSeconds - frameDelta);
 
       // 타임아웃 발생 처리

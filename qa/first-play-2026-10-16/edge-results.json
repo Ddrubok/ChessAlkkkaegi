@@ -1,0 +1,29 @@
+{
+  "results": [
+    {
+      "name": "Missed shot retries same step without credit",
+      "pass": true
+    },
+    {
+      "name": "Actual AI turn follows an unsuccessful practice shot",
+      "pass": true
+    },
+    {
+      "name": "Losing own King retries practice instead of granting victory",
+      "pass": true
+    },
+    {
+      "name": "Exit while success delay is pending cannot reset next mode",
+      "pass": true
+    },
+    {
+      "name": "Advanced keeps five steps and requires custom strike on step three",
+      "pass": true
+    },
+    {
+      "name": "Completion credits once, traps focus and Android Back returns to lobby",
+      "pass": true
+    }
+  ],
+  "errors": []
+}

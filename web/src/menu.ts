@@ -97,7 +97,7 @@ function openLogoutConfirm(runtime: MainMenuRuntime): void {
   cancelButton.focus();
 }
 
-async function startLobbyMode(
+export async function startLobbyMode(
   runtime: MainMenuRuntime,
   mode: LobbyMode,
   selectedStage = getInitialStage(runtime.metaRuntime.storage),
@@ -650,8 +650,14 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const maxClearedStage = getMaxClearedStage(runtime.metaRuntime.storage);
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
+  const firstPlay = maxClearedStage === 0 && !["true", "skipped"].includes(progressStorage.getItem("has_completed_tutorial") ?? "");
+  const otherModesOpen = panel.querySelector<HTMLDetailsElement>(".lobby-other-modes")?.open ?? false;
+  const otherActivities = `${renderQuestLobbyEntry(questStorage)}${renderWeeklyChallengeEntry()}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}`;
+  const activities = firstPlay
+    ? `<details class="lobby-other-modes"${otherModesOpen ? " open" : ""}><summary>${escapeHtml(I18nManager.t("lobby.other_modes"))}</summary><div>${otherActivities}</div></details>`
+    : otherActivities;
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${renderQuestLobbyEntry(questStorage)}${renderWeeklyChallengeEntry()}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${activities}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   markMenuPressables(panel);
   if (progressStorage.owner === user.id) {

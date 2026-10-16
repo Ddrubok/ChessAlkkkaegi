@@ -1,0 +1,440 @@
+[
+  {
+    "width": 390,
+    "height": 844,
+    "touch": true,
+    "errors": [],
+    "shots": [
+      {
+        "start": {
+          "x": 180.1811422658298,
+          "y": 397.70346446601974
+        },
+        "end": {
+          "x": 180.13225293476881,
+          "y": 497.7034525151856
+        },
+        "afterRelease": {
+          "step": 1,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-d6",
+            "black-pawn-d8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      },
+      {
+        "start": {
+          "x": 149.04038734962808,
+          "y": 428.08640778082804
+        },
+        "end": {
+          "x": 50.02573901432531,
+          "y": 527.0616542570876
+        },
+        "afterRelease": {
+          "step": 2,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-c5",
+            "black-pawn-f8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      },
+      {
+        "start": {
+          "x": 178.70931449975214,
+          "y": 465.95378992038087
+        },
+        "end": {
+          "x": 178.79293304447043,
+          "y": 565.9537549600697
+        },
+        "afterRelease": {
+          "step": 3,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-c2",
+            "white-rook-d3",
+            "white-king-e1",
+            "black-pawn-c7",
+            "black-pawn-f7",
+            "black-king-d8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      }
+    ],
+    "completed": {
+      "step": 3,
+      "active": false,
+      "transition": false,
+      "phase": "ready",
+      "side": "black",
+      "mode": "classic",
+      "pieces": [
+        "white-pawn-c2",
+        "white-rook-d3",
+        "white-king-e1",
+        "black-pawn-c7",
+        "black-pawn-f7"
+      ],
+      "aiShots": 0,
+      "points": 100
+    },
+    "final": {
+      "step": 3,
+      "active": false,
+      "transition": false,
+      "phase": "ready",
+      "side": "white",
+      "mode": "classic",
+      "pieces": [
+        "white-rook-a1",
+        "white-knight-b1",
+        "white-bishop-c1",
+        "white-queen-d1",
+        "white-king-e1",
+        "white-bishop-f1",
+        "white-knight-g1",
+        "white-rook-h1",
+        "white-pawn-a2",
+        "white-pawn-b2",
+        "white-pawn-c2",
+        "white-pawn-d2",
+        "white-pawn-e2",
+        "white-pawn-f2",
+        "white-pawn-g2",
+        "white-pawn-h2",
+        "black-rook-a8",
+        "black-knight-b8",
+        "black-bishop-c8",
+        "black-queen-d8",
+        "black-king-e8",
+        "black-bishop-f8",
+        "black-knight-g8",
+        "black-rook-h8",
+        "black-pawn-a7",
+        "black-pawn-b7",
+        "black-pawn-c7",
+        "black-pawn-d7",
+        "black-pawn-e7",
+        "black-pawn-f7",
+        "black-pawn-g7",
+        "black-pawn-h7"
+      ],
+      "aiShots": 0,
+      "points": 100
+    },
+    "pass": true
+  },
+  {
+    "width": 320,
+    "height": 568,
+    "touch": true,
+    "errors": [],
+    "shots": [
+      {
+        "start": {
+          "x": 151.96929516800606,
+          "y": 288.2573989097144
+        },
+        "end": {
+          "x": 151.92040583694506,
+          "y": 388.25738695888026
+        },
+        "afterRelease": {
+          "step": 1,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-d6",
+            "black-pawn-d8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      },
+      {
+        "start": {
+          "x": 134.86941241725506,
+          "y": 299.7415386427874
+        },
+        "end": {
+          "x": 35.8547640819523,
+          "y": 398.71678511904696
+        },
+        "afterRelease": {
+          "step": 2,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-c5",
+            "black-pawn-f8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      },
+      {
+        "start": {
+          "x": 150.90614200158416,
+          "y": 325.1023827878607
+        },
+        "end": {
+          "x": 150.98976054630245,
+          "y": 425.10234782754947
+        },
+        "afterRelease": {
+          "step": 3,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-c2",
+            "white-rook-d3",
+            "white-king-e1",
+            "black-pawn-c7",
+            "black-pawn-f7",
+            "black-king-d8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      }
+    ],
+    "completed": {
+      "step": 3,
+      "active": false,
+      "transition": false,
+      "phase": "ready",
+      "side": "black",
+      "mode": "classic",
+      "pieces": [
+        "white-pawn-c2",
+        "white-rook-d3",
+        "white-king-e1",
+        "black-pawn-c7",
+        "black-pawn-f7"
+      ],
+      "aiShots": 0,
+      "points": 100
+    },
+    "final": {
+      "step": 3,
+      "active": false,
+      "transition": false,
+      "phase": "ready",
+      "side": "white",
+      "mode": "classic",
+      "pieces": [
+        "white-rook-a1",
+        "white-knight-b1",
+        "white-bishop-c1",
+        "white-queen-d1",
+        "white-king-e1",
+        "white-bishop-f1",
+        "white-knight-g1",
+        "white-rook-h1",
+        "white-pawn-a2",
+        "white-pawn-b2",
+        "white-pawn-c2",
+        "white-pawn-d2",
+        "white-pawn-e2",
+        "white-pawn-f2",
+        "white-pawn-g2",
+        "white-pawn-h2",
+        "black-rook-a8",
+        "black-knight-b8",
+        "black-bishop-c8",
+        "black-queen-d8",
+        "black-king-e8",
+        "black-bishop-f8",
+        "black-knight-g8",
+        "black-rook-h8",
+        "black-pawn-a7",
+        "black-pawn-b7",
+        "black-pawn-c7",
+        "black-pawn-d7",
+        "black-pawn-e7",
+        "black-pawn-f7",
+        "black-pawn-g7",
+        "black-pawn-h7"
+      ],
+      "aiShots": 0,
+      "points": 100
+    },
+    "pass": true
+  },
+  {
+    "width": 1280,
+    "height": 800,
+    "touch": false,
+    "errors": [],
+    "shots": [
+      {
+        "start": {
+          "x": 622.5518752536186,
+          "y": 368.1296051949263
+        },
+        "end": {
+          "x": 622.5029859225576,
+          "y": 468.1295932440921
+        },
+        "afterRelease": {
+          "step": 1,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-d6",
+            "black-pawn-d8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      },
+      {
+        "start": {
+          "x": 585.3993595497735,
+          "y": 393.08092725936604
+        },
+        "end": {
+          "x": 486.38471121447077,
+          "y": 492.0561737356256
+        },
+        "afterRelease": {
+          "step": 2,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-c5",
+            "black-pawn-f8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      },
+      {
+        "start": {
+          "x": 619.5168246843069,
+          "y": 440.7752439047592
+        },
+        "end": {
+          "x": 619.6004432290252,
+          "y": 540.775208944448
+        },
+        "afterRelease": {
+          "step": 3,
+          "active": true,
+          "transition": false,
+          "phase": "settling",
+          "side": "white",
+          "mode": "classic",
+          "pieces": [
+            "white-pawn-c2",
+            "white-rook-d3",
+            "white-king-e1",
+            "black-pawn-c7",
+            "black-pawn-f7",
+            "black-king-d8"
+          ],
+          "aiShots": 0,
+          "points": 0
+        }
+      }
+    ],
+    "completed": {
+      "step": 3,
+      "active": false,
+      "transition": false,
+      "phase": "ready",
+      "side": "black",
+      "mode": "classic",
+      "pieces": [
+        "white-pawn-c2",
+        "white-rook-d3",
+        "white-king-e1",
+        "black-pawn-c7",
+        "black-pawn-f7"
+      ],
+      "aiShots": 0,
+      "points": 100
+    },
+    "final": {
+      "step": 3,
+      "active": false,
+      "transition": false,
+      "phase": "ready",
+      "side": "white",
+      "mode": "classic",
+      "pieces": [
+        "white-rook-a1",
+        "white-knight-b1",
+        "white-bishop-c1",
+        "white-queen-d1",
+        "white-king-e1",
+        "white-bishop-f1",
+        "white-knight-g1",
+        "white-rook-h1",
+        "white-pawn-a2",
+        "white-pawn-b2",
+        "white-pawn-c2",
+        "white-pawn-d2",
+        "white-pawn-e2",
+        "white-pawn-f2",
+        "white-pawn-g2",
+        "white-pawn-h2",
+        "black-rook-a8",
+        "black-knight-b8",
+        "black-bishop-c8",
+        "black-queen-d8",
+        "black-king-e8",
+        "black-bishop-f8",
+        "black-knight-g8",
+        "black-rook-h8",
+        "black-pawn-a7",
+        "black-pawn-b7",
+        "black-pawn-c7",
+        "black-pawn-d7",
+        "black-pawn-e7",
+        "black-pawn-f7",
+        "black-pawn-g7",
+        "black-pawn-h7"
+      ],
+      "aiShots": 0,
+      "points": 100
+    },
+    "pass": true
+  }
+]
