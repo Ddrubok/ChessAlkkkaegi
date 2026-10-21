@@ -100,6 +100,7 @@ import {
   resetInputAfterMatch,
   selectPiece,
   switchInputMode,
+  type InputMode,
 } from "./input";
 import {
   type PieceSide,
@@ -126,6 +127,7 @@ import {
 } from "./menu";
 import {
   computePermanentForceBonus,
+  computeStageRunPayout,
   createMetaRuntime,
   loadMetaState,
   createStageRunPointState,
@@ -459,6 +461,9 @@ async function bootstrap(): Promise<void> {
   let replayDevelopmentRuntime: ReplayDevelopmentRuntime | null =
     null;
   let gameModeRuntime: GameModeRuntime | null = null;
+  menuRuntime.getPendingStagePoints = () => gameModeRuntime?.mode === "stage"
+    ? computeStageRunPayout(stageRunPoints.lastClearedStage) - computeStageRunPayout((stageRunPoints.startedAtStage ?? 1) - 1)
+    : 0;
   let puzzleInputBlocked = false;
   let puzzleUI: PuzzleUI | null = null;
   let activePuzzle: PuzzleDefinition | null = null;
@@ -2710,7 +2715,7 @@ async function bootstrap(): Promise<void> {
       hintLevel: puzzleHintLevel,
     });
   };
-  const startPuzzle = async (id: string): Promise<void> => {
+  const startPuzzle = async (id: string, inputMode: InputMode = "billiards"): Promise<void> => {
     if (!progressStorage.ready) return;
     const puzzle = getPuzzleDefinition(id);
     if (!puzzle || !isPuzzleUnlocked(puzzleProgress, puzzle)) return;
@@ -2733,7 +2738,7 @@ async function bootstrap(): Promise<void> {
       menuRuntime.returnButton.hidden = true;
       menuRuntime.returnButton.style.display = "none";
       hideMatchResult(matchRuntime);
-      switchInputMode(inputRuntime, "billiards");
+      switchInputMode(inputRuntime, inputMode);
       const firstPlayer = puzzle.pieces.find((piece) => piece.side === "white");
       if (firstPlayer) selectPiece(inputRuntime, firstPlayer.id);
       puzzleTracker = new PuzzlePhysicsTracker(physicsRuntime);
@@ -2769,7 +2774,7 @@ async function bootstrap(): Promise<void> {
       medals: Object.fromEntries(PUZZLE_CATALOG.map((puzzle) => [puzzle.puzzleId, getPuzzleProgress(puzzleProgress, puzzle.puzzleId, puzzle.revision)?.bestMedal ?? 0])),
     }),
     onStart: startPuzzle,
-    onRetry: startPuzzle,
+    onRetry: (id) => startPuzzle(id, inputRuntime.mode),
     onHint: (_id, level) => { puzzleHintLevel = Math.max(puzzleHintLevel, level) as 1 | 2; updatePuzzleHud(); },
     onLibrary: () => { void showPuzzleLibrary().catch((error) => console.error("퍼즐 목록 복귀 실패", error)); },
     onExit: () => {
