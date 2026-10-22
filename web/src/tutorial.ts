@@ -499,9 +499,6 @@ export class TutorialManager {
           <p style="margin:0 0 16px 0; font-size:14px; color:#cbd5e1; line-height:1.5;">
             ${I18nManager.t("tutorial.adv_complete_desc")}
           </p>
-          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:20px; font-size:13px; color:#38bdf8; font-weight:700; text-align:center;">
-            ${I18nManager.t("tutorial.complete_reward")}
-          </div>
           <button id="btn-tutorial-finish" style="background:#16a34a; color:white; border:none; border-radius:8px; padding:14px 28px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">
             ${I18nManager.t("tutorial.adv_complete_btn")}
           </button>
