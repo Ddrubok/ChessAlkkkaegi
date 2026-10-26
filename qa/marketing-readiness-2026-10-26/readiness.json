@@ -1,0 +1,61 @@
+{
+  "checkedAtKst": "2026-10-26T14:36:42+09:00",
+  "plan": "C:/Users/DooBokWie/Downloads/체스 알까기 홍보와 광고 실행 기획서 (1).md",
+  "m01": {
+    "status": "incomplete",
+    "web": {
+      "dev": {
+        "url": "https://chessalkkagi-dev.pages.dev/",
+        "httpStatus": 200,
+        "entrySha256": "eec14a8cd7f1a41f2c286b08bf9c77f7ff946f9255f869a2413eb2673eb71db0",
+        "mainAsset": "assets/index-PxZ32SYf.js",
+        "mainAssetSha256": "fe341b704100702ea5293bdaa0b8f39d8ba339e83662ad32cea7454a3ca853a1",
+        "backendHost": "eohasrpzjwtzexoogwdt.supabase.co",
+        "guestLobby": "opened",
+        "practice": "opened_not_completed"
+      },
+      "public": {
+        "url": "https://ddrubok.github.io/ChessAlkkkaegi/",
+        "httpStatus": 200,
+        "entrySha256": "25b2dc1e4ee364eeef919469da6f7427988f30ef7b6d71afed6a7201bc5cabd6",
+        "entryHttpLastModified": "Mon, 12 Oct 2026 02:14:32 GMT",
+        "mainAsset": "assets/index-BbLoJ8gm.js",
+        "mainAssetSha256": "5b952a60cce941ef5c524e891d60543443029c07b14e0afa48e03aff2273b159",
+        "backendHost": "yoajmckkrpgvcljrffww.supabase.co",
+        "guestLobby": "opened",
+        "practice": "opened_not_completed"
+      }
+    },
+    "backendReachability": {
+      "bothUnauthenticatedAuthHealth": "http_401_api_key_required",
+      "bothBrowserAuthSettings": "http_200",
+      "bothBrowserProfileGet": "http_200",
+      "bothBrowserGuestSignup": "http_422",
+      "fullServiceHealth": "not_established"
+    },
+    "android": {
+      "serial": "10.8.4.105:41399",
+      "model": "TB373FU",
+      "foreground": "com.zui.launcher/.drawer.DrawerLauncher",
+      "productionPackage": "com.chessalkkagi.app",
+      "productionInstalled": false,
+      "qaPackageInstalled": false,
+      "installedVersion": null,
+      "lastUpdateTime": null,
+      "playConsoleTrack": null
+    },
+    "missing": ["verified_web_build_commit_and_deployment_time", "android_public_build_and_track", "credential_login", "complete_match", "save_persistence"]
+  },
+  "m04": {
+    "status": "not_passed",
+    "devWebHost": "waiting_for_opponent_after_20_seconds",
+    "publicWebHost": "p2p_network_connection_failed_after_20_seconds",
+    "bothRealtimeWebsocketObserved": true,
+    "webAndroidMatchesCompleted": 0,
+    "threeConsecutiveMatchesPassed": false,
+    "blockers": ["no_compatible_android_app_installed_on_TB373FU", "public_web_host_creation_failed_in_current_attempt"],
+    "presentationIssue": "public_failure_modal_reports_P2P_failure_with_cancel_only_no_inline_retry"
+  },
+  "evidence": ["probe.json", "browser-smoke.json", "friendly-entry.json", "android-observation.json", "screenshots/"],
+  "sensitiveValuesLogged": false
+}

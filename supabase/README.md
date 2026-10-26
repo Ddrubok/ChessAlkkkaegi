@@ -62,6 +62,8 @@ SQL 검사는 아래 기존 검사와 동일하게 `.orca/sql-check`의 PGlite�
 
 ## 개별 마이그레이션
 
+2026-10-26 홍보 측정용 마이그레이션과 활성화·보관·집계 절차는 [MARKETING_ANALYTICS.md](MARKETING_ANALYTICS.md)에 정리했다. 기본 빌드에서는 수집을 켜지 않는다.
+
 기존 `profiles`/`match_history` 스키마와 `20260901_referral_system.sql` 적용 후,
 관리자 권한으로 `migrations/20260914_secure_match_settlement.sql`을 적용한다.
 이후 새 web 빌드를 배포한다. 운영 DB 적용은 사용자가 `secure_settlement_applied` 결과로 확인했다.

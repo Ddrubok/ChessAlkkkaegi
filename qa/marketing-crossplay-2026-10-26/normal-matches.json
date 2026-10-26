@@ -1,0 +1,88 @@
+{
+  "startedAt": "2026-10-26T05:58:31.410Z",
+  "method": "rule-valid QA autoplay, self ring-out when needed; prior mouse/ADB manual-shot evidence is separate",
+  "matches": [
+    {
+      "matchNumber": 1,
+      "startedAt": "2026-10-26T05:59:09.384Z",
+      "acceptedShots": 31,
+      "rejectedShots": 0,
+      "timedOutTurns": 0,
+      "result": "completed",
+      "lastTurn": {
+        "web": 30,
+        "android": 30,
+        "side": "white"
+      },
+      "webState": {
+        "phase": "match-over",
+        "turnIndex": 30,
+        "pieces": 1
+      },
+      "androidState": {
+        "phase": "match-over",
+        "turnIndex": 30,
+        "pieces": 1
+      },
+      "webResultText": "대국 종료\n\n패배...\n재대결\n메뉴로",
+      "androidResultText": "대국 종료\n\n승리!\n재대결\n메뉴로",
+      "rematchAccepted": true,
+      "rematchNewMatchTurnZero": true
+    },
+    {
+      "matchNumber": 2,
+      "startedAt": "2026-10-26T06:00:10.976Z",
+      "acceptedShots": 31,
+      "rejectedShots": 0,
+      "timedOutTurns": 0,
+      "result": "completed",
+      "lastTurn": {
+        "web": 30,
+        "android": 30,
+        "side": "white"
+      },
+      "webState": {
+        "phase": "match-over",
+        "turnIndex": 30,
+        "pieces": 1
+      },
+      "androidState": {
+        "phase": "match-over",
+        "turnIndex": 30,
+        "pieces": 1
+      },
+      "webResultText": "대국 종료\n\n패배...\n재대결\n메뉴로",
+      "androidResultText": "대국 종료\n\n승리!\n재대결\n메뉴로",
+      "rematchAccepted": true,
+      "rematchNewMatchTurnZero": true
+    },
+    {
+      "matchNumber": 3,
+      "startedAt": "2026-10-26T06:01:15.734Z",
+      "acceptedShots": 31,
+      "rejectedShots": 0,
+      "timedOutTurns": 0,
+      "result": "completed",
+      "lastTurn": {
+        "web": 30,
+        "android": 30,
+        "side": "white"
+      },
+      "webState": {
+        "phase": "match-over",
+        "turnIndex": 30,
+        "pieces": 1
+      },
+      "androidState": {
+        "phase": "match-over",
+        "turnIndex": 30,
+        "pieces": 1
+      },
+      "webResultText": "대국 종료\n\n패배...\n재대결\n메뉴로",
+      "androidResultText": "대국 종료\n\n승리!\n재대결\n메뉴로"
+    }
+  ],
+  "errors": [],
+  "finishedAt": "2026-10-26T06:02:17.816Z",
+  "updatedAt": "2026-10-26T06:02:17.816Z"
+}

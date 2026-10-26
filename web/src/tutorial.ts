@@ -9,6 +9,7 @@ import type { PieceInstance } from "./layout";
 import type { MetaRuntime } from "./meta";
 import { saveMetaState } from "./meta";
 import { I18nManager } from "./i18n";
+import { marketingRuntime } from "./marketing-runtime";
 
 export type TutorialType = "basic" | "advanced";
 
@@ -369,6 +370,7 @@ export class TutorialManager {
    */
   public completeTutorial(): void {
     if (!this.isActive) return;
+    marketingRuntime.tutorialComplete(this.tutorialType);
     const storageKey =
       this.tutorialType === "advanced"
         ? "has_completed_adv_tutorial"

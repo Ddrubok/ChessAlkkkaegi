@@ -1,0 +1,50 @@
+{
+  "checkedAt": "2026-10-26T06:10:04.795Z",
+  "method": "Web mouse and ADB touchscreen on physical Android; observe real queue acceptance and physics speed",
+  "cases": [
+    {
+      "label": "web-host-host",
+      "event": {
+        "accepted": true,
+        "reason": null,
+        "power": 0.5555555555555556,
+        "side": "white",
+        "piece": "white-pawn-a2"
+      },
+      "actualInitialSpeed": 3.8888888359069824
+    },
+    {
+      "label": "web-host-guest",
+      "event": {
+        "accepted": true,
+        "reason": null,
+        "power": 0.5473217434353299,
+        "side": "black",
+        "piece": "black-pawn-e7"
+      },
+      "actualInitialSpeed": 3.831252336502075
+    },
+    {
+      "label": "android-host-host",
+      "event": {
+        "accepted": true,
+        "reason": null,
+        "power": 0.5632558186848958,
+        "side": "white",
+        "piece": "white-pawn-a2"
+      },
+      "actualInitialSpeed": 3.9427907466888428
+    },
+    {
+      "label": "android-host-guest",
+      "event": {
+        "accepted": true,
+        "reason": null,
+        "power": 0.5555555555555556,
+        "side": "black",
+        "piece": "black-pawn-e7"
+      },
+      "actualInitialSpeed": 3.8888888359069824
+    }
+  ]
+}

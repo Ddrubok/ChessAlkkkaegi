@@ -1,6 +1,7 @@
 import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { execFileSync } from "node:child_process";
 import { defineConfig, loadEnv } from "vite";
 import type { Rule } from "postcss";
 
@@ -115,6 +116,13 @@ function createPortableAssetUrls(): Readonly<Record<string, string>> {
 }
 
 export default defineConfig(({ command, isPreview, mode }) => {
+  let commit = "unknown", dirty = false;
+  try {
+    commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: PROJECT_ROOT, encoding: "utf8" }).trim();
+    dirty = Boolean(execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], { cwd: PROJECT_ROOT, encoding: "utf8" }).trim());
+  } catch { /* Source archives may not contain Git metadata. */ }
+  const builtAt = new Date().toISOString();
+  const buildInfo = { build: `${commit.slice(0, 12)}${dirty ? "-dirty" : ""}-${builtAt.replace(/\D/g, "").slice(0, 14)}`, commit, builtAt, dirty, mode };
   const staging = mode === "staging";
   const pokiBuild = mode === "poki";
   const pokiEnv = pokiBuild ? Object.fromEntries(
@@ -155,6 +163,11 @@ export default defineConfig(({ command, isPreview, mode }) => {
       }] } },
     } : {}),
     plugins: [{
+      name: "build-provenance",
+      generateBundle() {
+        this.emitFile({ type: "asset", fileName: "build-info.json", source: JSON.stringify(buildInfo, null, 2) });
+      },
+    }, {
       name: "platform-features",
       enforce: "pre",
       transform(code, id) {
@@ -191,6 +204,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
         ? GITHUB_PAGES_BASE
         : "/",
     define: {
+      __BUILD_INFO__: JSON.stringify(buildInfo),
       __POKI_BUILD__: JSON.stringify(pokiBuild),
       ...pokiEnv,
       __PORTABLE_BUILD__: JSON.stringify(portableBuild),

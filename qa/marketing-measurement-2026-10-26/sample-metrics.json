@@ -1,0 +1,372 @@
+{
+  "scope": {
+    "environment": "qa",
+    "platform": "all",
+    "campaign_source": "all",
+    "as_of": "2026-10-26T06:15:00Z"
+  },
+  "unit": "analytics IDs, not verified people or installs",
+  "limitations": {
+    "first_execution_unknown": 0,
+    "first_execution_unknown_excluded_from_cohorts_and_entry_rates": true,
+    "recorded_at_missing_assumed_occurred_at": false,
+    "cost": "unavailable: no verified install attribution and attributed spend in this export"
+  },
+  "events": 8,
+  "analytics_ids": 1,
+  "funnel": {
+    "session_start": {
+      "events": 1,
+      "analytics_ids": 1
+    },
+    "game_ready": {
+      "events": 1,
+      "analytics_ids": 1
+    },
+    "first_shot": {
+      "events": 1,
+      "analytics_ids": 1
+    },
+    "tutorial_complete": {
+      "events": 1,
+      "analytics_ids": 1
+    },
+    "match_start": {
+      "events": 2,
+      "analytics_ids": 1
+    },
+    "match_end": {
+      "events": 1,
+      "analytics_ids": 1
+    },
+    "match_abort": {
+      "events": 1,
+      "analytics_ids": 1
+    },
+    "invite_created": {
+      "events": 0,
+      "analytics_ids": 0
+    },
+    "invite_joined": {
+      "events": 0,
+      "analytics_ids": 0
+    },
+    "rematch_start": {
+      "events": 0,
+      "analytics_ids": 0
+    }
+  },
+  "rates": {
+    "ready": {
+      "numerator": 1,
+      "denominator": 1,
+      "rate": 1
+    },
+    "start": {
+      "numerator": 1,
+      "denominator": 1,
+      "rate": 1
+    },
+    "normal_first_completion": {
+      "numerator": 0,
+      "denominator": 1,
+      "rate": 0
+    },
+    "entry_completion": {
+      "numerator": 0,
+      "denominator": 1,
+      "rate": 0
+    },
+    "second_match_first_session": {
+      "numerator": 0,
+      "denominator": 0,
+      "rate": null
+    },
+    "friend_rematch": {
+      "numerator": 0,
+      "denominator": 0,
+      "rate": null
+    },
+    "first_shot": {
+      "numerator": 1,
+      "denominator": 1,
+      "rate": 1
+    },
+    "tutorial_complete": {
+      "numerator": 1,
+      "denominator": 1,
+      "rate": 1
+    },
+    "basic_tutorial_complete": {
+      "numerator": 1,
+      "denominator": 1,
+      "rate": 1
+    },
+    "advanced_tutorial_complete": {
+      "numerator": 0,
+      "denominator": 1,
+      "rate": 0
+    },
+    "invite_join": {
+      "numerator": 0,
+      "denominator": 0,
+      "rate": null
+    }
+  },
+  "regular": {
+    "matches_started": 2,
+    "matches_ended_reported": 1,
+    "participants_started": 2,
+    "participants_finished": 1,
+    "participant_outcomes": {
+      "win": 1,
+      "loss": 0,
+      "draw": 0,
+      "resigned": 0
+    },
+    "participants_aborted": 1,
+    "participants_unconfirmed_24h": 0,
+    "participants_pending_under_24h": 0,
+    "second_match_after_first_normal_finish_in_first_session": 0,
+    "kst_return_after_first_execution": {
+      "d1": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "d7": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      }
+    }
+  },
+  "by_build": {
+    "0a1cd04f0d32-dirty-20261026055419": {
+      "analytics_ids": 1,
+      "rates": {
+        "ready": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "start": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "normal_first_completion": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        },
+        "entry_completion": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        },
+        "second_match_first_session": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "friend_rematch": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "first_shot": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "tutorial_complete": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "basic_tutorial_complete": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "advanced_tutorial_complete": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        }
+      }
+    }
+  },
+  "by_platform": {
+    "web": {
+      "analytics_ids": 1,
+      "rates": {
+        "ready": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "start": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "normal_first_completion": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        },
+        "entry_completion": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        },
+        "second_match_first_session": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "friend_rematch": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "first_shot": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "tutorial_complete": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "basic_tutorial_complete": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "advanced_tutorial_complete": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        }
+      }
+    }
+  },
+  "by_mode": {
+    "hotseat": {
+      "analytics_ids": 1,
+      "rates": {
+        "ready": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "start": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "normal_first_completion": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        },
+        "entry_completion": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        },
+        "second_match_first_session": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "friend_rematch": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "first_shot": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "tutorial_complete": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "basic_tutorial_complete": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "advanced_tutorial_complete": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        }
+      }
+    }
+  },
+  "by_campaign_source": {
+    "qa": {
+      "analytics_ids": 1,
+      "rates": {
+        "ready": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "start": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "normal_first_completion": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        },
+        "entry_completion": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        },
+        "second_match_first_session": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "friend_rematch": {
+          "numerator": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "first_shot": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "tutorial_complete": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "basic_tutorial_complete": {
+          "numerator": 1,
+          "denominator": 1,
+          "rate": 1
+        },
+        "advanced_tutorial_complete": {
+          "numerator": 0,
+          "denominator": 1,
+          "rate": 0
+        }
+      }
+    }
+  }
+}

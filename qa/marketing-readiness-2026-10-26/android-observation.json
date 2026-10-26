@@ -1,0 +1,69 @@
+{
+  "checkedAt": "2026-10-26T05:36:41.930Z",
+  "serial": "10.8.4.105:41399",
+  "commands": {
+    "model": {
+      "at": "2026-10-26T05:36:41.930Z",
+      "args": [
+        "shell",
+        "getprop",
+        "ro.product.model"
+      ],
+      "result": "TB373FU"
+    },
+    "thirdPartyPackages": {
+      "at": "2026-10-26T05:36:42.068Z",
+      "args": [
+        "shell",
+        "pm",
+        "list",
+        "packages",
+        "-3"
+      ],
+      "result": []
+    },
+    "allRelevantPackages": {
+      "at": "2026-10-26T05:36:42.121Z",
+      "args": [
+        "shell",
+        "pm",
+        "list",
+        "packages",
+        "-u"
+      ],
+      "result": []
+    },
+    "productionPackage": {
+      "at": "2026-10-26T05:36:42.184Z",
+      "args": [
+        "shell",
+        "dumpsys",
+        "package",
+        "com.chessalkkagi.app"
+      ],
+      "result": "Unable to find package: com.chessalkkagi.app"
+    },
+    "qaPackage": {
+      "at": "2026-10-26T05:36:42.234Z",
+      "args": [
+        "shell",
+        "dumpsys",
+        "package",
+        "com.chessalkkagi.app.publicqa"
+      ],
+      "result": "Unable to find package: com.chessalkkagi.app.publicqa"
+    },
+    "foreground": {
+      "at": "2026-10-26T05:36:42.285Z",
+      "args": [
+        "shell",
+        "dumpsys",
+        "window"
+      ],
+      "result": [
+        "  mCurrentFocus=Window{e9f9e2d u0 com.zui.launcher/com.zui.launcher.drawer.DrawerLauncher}",
+        "  mFocusedApp=ActivityRecord{57b2bef u0 com.zui.launcher/.drawer.DrawerLauncher t10, isEmbedded=false}"
+      ]
+    }
+  }
+}

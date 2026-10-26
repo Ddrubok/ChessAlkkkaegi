@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "check:marketing": "node --experimental-strip-types src/tools/marketing-analytics-check.ts && node ../scripts/marketing-metrics-check.mjs && node ../supabase/tests/marketing-events-check.mjs",
     "dev": "vite",
     "dev:staging": "vite --mode staging",
     "prebuild:staging": "npm run check:balance && npm run check:staging",

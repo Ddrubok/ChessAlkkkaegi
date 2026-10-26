@@ -1,4 +1,5 @@
 import { PLATFORM } from "./platform";
+import { marketingRuntime } from "./marketing-runtime";
 import { gameplay, isAdActive, loadingFinished, setBeforeAd } from "./poki-sdk";
 import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED } from "./config";
 import { backFromDialog, installAndroidBackHandler } from "./android-back";
@@ -1022,6 +1023,8 @@ async function bootstrap(): Promise<void> {
             eventId: launchEventId, pieceType: binding.instance.type,
           }).items);
         }
+        // Online launch acceptance is confirmed by the synchronized runtime callback below.
+        if (accepted.accepted && gameMode !== "online") marketingRuntime.firstShot(gameMode);
         if (accepted.accepted && gameMode === "puzzle") onPuzzleLaunch?.(launchRequest);
         return accepted;
       },
@@ -1789,6 +1792,7 @@ async function bootstrap(): Promise<void> {
   };
 
   turnRuntime.onTurnSettled = (settled) => {
+    if (settled) marketingRuntime.activity();
     if (settled && gameModeRuntime?.mode === "weekly" && weeklyRun) {
       countWeeklySettledTurn(weeklyRun, settled.finishedSide);
       if (settled.finishedSide === "white" && weeklyPendingAction?.kind === "launch") {
@@ -1830,6 +1834,9 @@ async function bootstrap(): Promise<void> {
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
     if (gameMode === "tutorial") {
       return;
+    }
+    if (gameMode === "stage" || gameMode === "hotseat" || gameMode === "online") {
+      marketingRuntime.endMatch(winner, gameMode === "online" ? onlineRuntime?.mySide ?? "white" : "white");
     }
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
     if (gameMode === "weekly" && weeklyRun) {
@@ -1970,6 +1977,7 @@ async function bootstrap(): Promise<void> {
       if (PLATFORM.id === "poki") await gameplay.beforeNewMatch();
       if (gameMode !== "stage") {
         await resetBoard();
+        marketingRuntime.startLocalMatch(gameMode);
         gameplay.enter("match-restart");
         return;
       }
@@ -1993,6 +2001,7 @@ async function bootstrap(): Promise<void> {
         throw error;
       }
       gameplay.enter("stage-restart");
+      marketingRuntime.startLocalMatch("stage");
     };
     const upgradeCards =
       gameMode === "stage" &&
@@ -2028,6 +2037,7 @@ async function bootstrap(): Promise<void> {
                 stageNumber: nextStage,
               });
               gameplay.enter("stage-card-next");
+              marketingRuntime.startLocalMatch("stage");
             } catch (error: unknown) {
               restoreRunCardState(runCardState, previousCards);
               if (gameModeRuntime !== null) {
@@ -2244,13 +2254,15 @@ async function bootstrap(): Promise<void> {
             });
           },
           onRematchStateChange: renderRematchControls,
-          onRematchStarted: () => {
+          onRematchStarted: (matchId) => {
+            marketingRuntime.startOnlineMatch(matchId, !!session.myProfile && !!session.opponent, true);
             hideDisconnectOverlay();
             hideMatchResult(matchRuntime);
             renderRematchControls(null);
             onlineResignButton.hidden = false;
           },
           onResigned: async (resignedSide) => {
+            marketingRuntime.endMatch(resignedSide === "white" ? "black" : "white", session.mySide, true);
             hideDisconnectOverlay();
             onlineResignButton.hidden = true;
             turnRuntime.phase = "match-over";
@@ -2283,6 +2295,7 @@ async function bootstrap(): Promise<void> {
           getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
           resolveOpponentCosmetics: () => readOpponentCosmetics(activeMatchOpponent?.id, progressStorage.owner !== null),
           onLocalLaunchAccepted: (event) => {
+            marketingRuntime.firstShot("online");
             const type = physicsRuntime.pieces.get(event.pieceId)?.instance.type;
             if (event.side === session.mySide && isQuestPieceType(type) && tuningIsDefault()) {
               const context = questStorage.captureContext();
@@ -2298,6 +2311,7 @@ async function bootstrap(): Promise<void> {
         onlineRuntime.startMatch({ rejoining: session.rejoining });
         ensureGameLoopStarted();
         await onlineRuntime.waitUntilReady();
+        marketingRuntime.startOnlineMatch(session.matchId, !!session.myProfile && !!session.opponent);
         session.finishLobby();
       } catch (error: unknown) {
         session.finishLobby();
@@ -2336,6 +2350,7 @@ async function bootstrap(): Promise<void> {
       throw error;
     }
     ensureGameLoopStarted();
+    marketingRuntime.startLocalMatch(mode);
     if (!awaitingWeeklyCard) gameplay.enter("mode-start");
   };
 
@@ -2463,13 +2478,15 @@ async function bootstrap(): Promise<void> {
           });
         },
         onRematchStateChange: renderRematchControls,
-        onRematchStarted: () => {
+        onRematchStarted: (matchId) => {
+          marketingRuntime.startOnlineMatch(matchId, false, true);
           hideDisconnectOverlay();
           hideMatchResult(matchRuntime);
           renderRematchControls(null);
           onlineResignButton.hidden = false;
         },
         onResigned: async (resignedSide) => {
+          marketingRuntime.endMatch(resignedSide === "white" ? "black" : "white", session.mySide, true);
           hideDisconnectOverlay();
           onlineResignButton.hidden = true;
           turnRuntime.phase = "match-over";
@@ -2500,6 +2517,7 @@ async function bootstrap(): Promise<void> {
         getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
         resolveOpponentCosmetics: () => readOpponentCosmetics(activeMatchOpponent?.id, progressStorage.owner !== null),
         onLocalLaunchAccepted: (event) => {
+          marketingRuntime.firstShot("online");
           const type = physicsRuntime.pieces.get(event.pieceId)?.instance.type;
           if (event.side === session.mySide && isQuestPieceType(type) && tuningIsDefault()) {
             const context = questStorage.captureContext();
@@ -2514,6 +2532,8 @@ async function bootstrap(): Promise<void> {
     onlineRuntime.startMatch({ rejoining: false });
     ensureGameLoopStarted();
     await onlineRuntime.waitUntilReady();
+    marketingRuntime.startOnlineMatch(session.matchId);
+    if (!isHost) marketingRuntime.inviteJoined(session.matchId);
     hideMainMenuAfterModeStart(menuRuntime);
     } catch (error) {
       matchmaker.cancel();
@@ -2581,6 +2601,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
     hideDisconnectOverlay();
+    marketingRuntime.abortMatch("disconnected");
     onlineRuntime.terminate();
     onlineResignButton.hidden = true;
     lockInputForMatchOver(inputRuntime);
@@ -2590,6 +2611,7 @@ async function bootstrap(): Promise<void> {
     );
   });
   returnToMenuAction = async (): Promise<void> => {
+    marketingRuntime.abortMatch("menu_exit");
     weeklyHud.element.hidden = true;
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
@@ -2635,6 +2657,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
     const abandonedStage = gameModeRuntime.stageNumber;
+    marketingRuntime.endMatch("black", "white", true);
     discardStageRunPoints(stageRunPoints);
     turnRuntime.phase = "match-over";
     lockInputForMatchOver(inputRuntime);
@@ -2861,6 +2884,7 @@ async function bootstrap(): Promise<void> {
     loadingFinished();
   }
   setMainMenuReady(menuRuntime, true);
+  marketingRuntime.ready();
   if (localBalancePreview) {
     await switchGameMode(gameModeRuntime, "online", true);
     switchInputMode(inputRuntime, "classic");

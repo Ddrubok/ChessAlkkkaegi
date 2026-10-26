@@ -201,7 +201,7 @@ try {
       turn.setTurnGameMode(turnRuntime, "online");
       assert.equal(turnRuntime.gameMode, "online");
 
-      // Tutorial feedback must require a solver contact, not surviving pieces.
+      // Basic practice now requires an out; advanced contact practice still requires a solver hit.
       const { TutorialManager } = await vite.ssrLoadModule("/src/tutorial.ts");
       const tutorial = new TutorialManager();
       tutorial.isActive = true;
@@ -219,7 +219,10 @@ try {
         solverContacts = 1;
         turn.updateTurnAfterStep(turnRuntime, 1 / 120);
         assert.equal(turnRuntime.lastLaunchHitOpponent, true);
-        assert.equal(tutorial.checkStepClear(1, [{ type: "Pawn" }], turnRuntime.lastLaunchHitOpponent).cleared, true, "Hit counts without a knockout");
+        assert.equal(tutorial.checkStepClear(1, [{ type: "Pawn" }], turnRuntime.lastLaunchHitOpponent).cleared, false, "Basic step 1 needs an out, not only a hit");
+        assert.equal(tutorial.checkStepClear(0, [], turnRuntime.lastLaunchHitOpponent).cleared, true, "Basic out objective completed");
+        tutorial.tutorialType = "advanced";
+        assert.equal(tutorial.checkStepClear(1, [{ type: "Pawn" }], turnRuntime.lastLaunchHitOpponent).cleared, true, "Advanced contact objective counts a hit without a knockout");
         solverContacts = 0;
         turn.updateTurnAfterStep(turnRuntime, 1 / 120);
         assert.equal(turnRuntime.lastLaunchHitOpponent, true, "Remember contact after pieces separate");
