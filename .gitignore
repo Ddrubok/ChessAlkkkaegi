@@ -15,3 +15,11 @@ web/docs/
 *.keystore
 keystore.properties
 *.aab
+
+# Dedicated CrazyGames output and observation-only local QA bundle.
+/web/dist-crazygames/
+/qa/crazygames-basic-2026-10-28/observed-dist/
+/qa/crazygames-basic-2026-10-28/viewport-dist/
+/qa/polyhaven-model-2026-10-28/observed-dist/
+/qa/polyhaven-model-2026-10-28/small/observed-dist/
+/qa/polyhaven-model-2026-10-28/final-zip/

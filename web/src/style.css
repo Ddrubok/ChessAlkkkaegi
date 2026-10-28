@@ -1587,6 +1587,25 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
   .tutorial-guide-text { font-size: 11px; }
 }
 
+@media (orientation: landscape) and (max-height: 600px) {
+  #app:has(> .game-canvas-crazygames) {
+    --game-hud-height: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  body[data-tutorial="basic"] #app:has(> .game-canvas-crazygames) {
+    --game-hud-height: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Keep the explicit cancel target beside, rather than across, the pull-back path. */
+  #app:has(> .game-canvas-crazygames) .classic-cancel-control {
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: auto;
+    width: 156px;
+    margin: 0;
+  }
+  #app:has(> .game-canvas-crazygames) .aim-power {
+    left: calc(max(12px, env(safe-area-inset-left, 0px)) + 172px);
+  }
+}
+
 .settings-modal-overlay {
   animation: tutorialModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }

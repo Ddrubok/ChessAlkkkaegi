@@ -63,6 +63,7 @@ export type RuntimeTextKey =
   | "online.rematch_preparing"
   | "online.rematch_failed_start"
   | "online.rematch_failed_hash_mismatch"
+  | "online.physics_version_mismatch"
   | "online.rematch_requested"
   | "online.rematch_declined"
   // Manual P2P Online Lobby
@@ -176,6 +177,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "새 대국을 준비하는 중입니다",
     "online.rematch_failed_start": "재대결 시작 실패: {reason}",
     "online.rematch_failed_hash_mismatch": "재대결 시작 실패: 턴 0 상태가 서로 다릅니다.",
+    "online.physics_version_mismatch": "상대와 게임 물리 버전이 다릅니다. 두 사람 모두 게임을 업데이트하거나 새로고침한 뒤 다시 연결해 주세요.",
     "online.rematch_requested": "상대가 재대결을 요청했습니다",
     "online.rematch_declined": "상대가 재대결을 거절했습니다",
 
@@ -292,6 +294,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "Preparing new match…",
     "online.rematch_failed_start": "Failed to start rematch: {reason}",
     "online.rematch_failed_hash_mismatch": "Failed to start rematch: Turn 0 initial states mismatch.",
+    "online.physics_version_mismatch": "Your game physics versions differ. Both players should update or reload the game, then reconnect.",
     "online.rematch_requested": "Opponent requested a rematch",
     "online.rematch_declined": "Opponent declined the rematch",
 
@@ -408,6 +411,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "新しい対局を準備しています…",
     "online.rematch_failed_start": "再戦の開始に失敗しました: {reason}",
     "online.rematch_failed_hash_mismatch": "再戦の開始に失敗しました: ターン0の初期状態が一致しません。",
+    "online.physics_version_mismatch": "ゲームの物理バージョンが異なります。双方で更新または再読み込みしてから再接続してください。",
     "online.rematch_requested": "相手が再戦を希望しています",
     "online.rematch_declined": "相手が再戦を辞退しました",
 
@@ -524,6 +528,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "正在准备新对局…",
     "online.rematch_failed_start": "再战启动失败: {reason}",
     "online.rematch_failed_hash_mismatch": "再战启动失败: 回合 0 初始状态不一致。",
+    "online.physics_version_mismatch": "双方的游戏物理版本不同。请双方更新或刷新游戏后重新连接。",
     "online.rematch_requested": "对手请求了再战",
     "online.rematch_declined": "对手拒绝了再战",
 
@@ -640,6 +645,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "Neues Match wird vorbereitet …",
     "online.rematch_failed_start": "Revanche-Start fehlgeschlagen: {reason}",
     "online.rematch_failed_hash_mismatch": "Revanche-Start fehlgeschlagen: Startzustand von Runde 0 stimmt nicht überein.",
+    "online.physics_version_mismatch": "Die Physikversionen unterscheiden sich. Beide Spieler sollten das Spiel aktualisieren oder neu laden und sich erneut verbinden.",
     "online.rematch_requested": "Gegner hat eine Revanche angefragt",
     "online.rematch_declined": "Gegner hat die Revanche abgelehnt",
 
@@ -756,6 +762,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "Préparation de la nouvelle partie…",
     "online.rematch_failed_start": "Échec du démarrage de la revanche: {reason}",
     "online.rematch_failed_hash_mismatch": "Échec de la revanche: les états initiaux du tour 0 ne correspondent pas.",
+    "online.physics_version_mismatch": "Les versions de physique du jeu diffèrent. Mettez tous les deux le jeu à jour ou rechargez-le, puis reconnectez-vous.",
     "online.rematch_requested": "L'adversaire propose une revanche",
     "online.rematch_declined": "L'adversaire a refusé la revanche",
 
@@ -872,6 +879,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "Preparando nueva partida…",
     "online.rematch_failed_start": "Error al iniciar la revancha: {reason}",
     "online.rematch_failed_hash_mismatch": "Error al iniciar revancha: los estados iniciales del turno 0 no coinciden.",
+    "online.physics_version_mismatch": "Las versiones de física del juego son distintas. Ambos deben actualizar o recargar el juego y volver a conectarse.",
     "online.rematch_requested": "El rival ha solicitado una revancha",
     "online.rematch_declined": "El rival ha rechazado la revancha",
 
@@ -988,6 +996,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "Подготовка нового матча…",
     "online.rematch_failed_start": "Не удалось начать реванш: {reason}",
     "online.rematch_failed_hash_mismatch": "Не удалось начать реванш: несовпадение начального состояния хода 0.",
+    "online.physics_version_mismatch": "Версии игровой физики различаются. Оба игрока должны обновить или перезагрузить игру и подключиться снова.",
     "online.rematch_requested": "Соперник запросил реванш",
     "online.rematch_declined": "Соперник отклонил реванш",
 
@@ -1104,6 +1113,7 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "online.rematch_preparing": "Preparando nova partida…",
     "online.rematch_failed_start": "Falha ao iniciar revanche: {reason}",
     "online.rematch_failed_hash_mismatch": "Falha ao iniciar revanche: os estados iniciais do turno 0 não coincidem.",
+    "online.physics_version_mismatch": "As versões da física do jogo são diferentes. Ambos devem atualizar ou recarregar o jogo e reconectar.",
     "online.rematch_requested": "O oponente solicitou uma revanche",
     "online.rematch_declined": "O oponente recusou a revanche",
 

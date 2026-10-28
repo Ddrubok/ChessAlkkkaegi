@@ -5,7 +5,7 @@ import { createMarketingAnalytics, parseMarketingCampaign } from "./marketing-an
 import type { GameMode } from "./game-mode";
 
 // Enable only after the collector migration and privacy disclosures are deployed.
-const enabled = PLATFORM.id !== "poki" && import.meta.env?.VITE_MARKETING_ENABLED === "true";
+const enabled = PLATFORM.id !== "poki" && PLATFORM.id !== "crazygames" && import.meta.env?.VITE_MARKETING_ENABLED === "true";
 const native = Capacitor.getPlatform() === "android";
 const localWeb = !native && typeof location !== "undefined" && ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 const environment = (typeof navigator !== "undefined" && navigator.webdriver) || import.meta.env?.VITE_MARKETING_ENV === "qa" ? "qa"

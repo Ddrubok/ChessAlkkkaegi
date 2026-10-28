@@ -44,6 +44,7 @@ import {
 } from "./turn";
 
 export interface OnlineReadyMessage {
+  physicsRevision?: string;
   bannerTheme?: BannerAppearance;
   // 양쪽 표준 보드 재생성이 끝났음을 알리는 준비 메시지 종류다.
   kind: "ready";
@@ -98,6 +99,7 @@ export interface OnlineStateSnapshotMessage {
 }
 
 export interface OnlineResumeMessage {
+  physicsRevision?: string;
   bannerTheme?: BannerAppearance;
   // 새 WebRTC 링크에서 보유 턴과 상태를 대조하는 재개 인사다.
   kind: "resume";
@@ -369,6 +371,17 @@ export interface OnlineRuntime {
 // ready·resume이 초기 핸들러 설치보다 먼저 도착해도 다시 받을 수 있는 실제 시간 간격이다.
 const READY_RETRY_MILLISECONDS = 500;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
+const PHYSICS_REVISION = typeof __CHESS_PHYSICS_REVISION__ === "undefined"
+  ? "polyhaven-2026-10-28"
+  : __CHESS_PHYSICS_REVISION__;
+
+function parsePhysicsRevision(value: unknown): string | undefined {
+  if (value === undefined) return undefined; // Legacy peer: handled as a version mismatch.
+  if (typeof value !== "string" || value.length > 64 || !/^[a-zA-Z0-9-]+$/u.test(value)) {
+    throw new Error("Invalid online physics revision.");
+  }
+  return value;
+}
 const MATCH_ID_PATTERN = /^[a-zA-Z0-9-]{8,128}$/u;
 const REMATCH_OFFER_ID_PATTERN = /^(white|black)-[1-9][0-9]*$/u;
 const LOBBY_CODE_PREFIX = "ca-online-1";
@@ -433,6 +446,7 @@ export function parseOnlineMessage(
       }
       return {
         kind: "ready",
+        physicsRevision: parsePhysicsRevision(source.physicsRevision),
         matchId: parseMatchId(source.matchId, "온라인 ready"),
         bannerTheme: isValidBannerAppearance(source.bannerTheme) ? source.bannerTheme : "classic",
         side: source.side,
@@ -595,6 +609,7 @@ export function parseOnlineMessage(
       }
       return {
         kind: "resume",
+        physicsRevision: parsePhysicsRevision(source.physicsRevision),
         matchId: parseMatchId(source.matchId, "온라인 resume"),
         bannerTheme: isValidBannerAppearance(source.bannerTheme) ? source.bannerTheme : "classic",
         turnIndex: source.turnIndex,
@@ -858,6 +873,7 @@ export function createOnlineRuntime(
   let lastResumeSentAt = Number.NEGATIVE_INFINITY;
   let readyResolver: (() => void) | null = null;
   let readyRejecter: ((reason: Error) => void) | null = null;
+  let compatibilityFailure: Error | null = null;
   let pendingWork = Promise.resolve();
   let transportConnected = true;
   let sessionEnded = false;
@@ -1115,6 +1131,7 @@ export function createOnlineRuntime(
             turnRuntime.physicsRuntime,
           );
           localReadyHash = state.sha256;
+          if (compatibilityFailure !== null) return;
           runtime.localReady = true;
           sendReady(performance.now());
           updateActiveState();
@@ -1124,6 +1141,7 @@ export function createOnlineRuntime(
     },
 
     waitUntilReady(): Promise<void> {
+      if (compatibilityFailure !== null) return Promise.reject(compatibilityFailure);
       if (runtime.active) {
         return Promise.resolve();
       }
@@ -1269,6 +1287,7 @@ export function createOnlineRuntime(
     },
 
     async replaceTransport(nextTransport: OnlineTransport): Promise<void> {
+      if (compatibilityFailure !== null) throw compatibilityFailure;
       if (sessionEnded) {
         throw new Error("종료된 온라인 대국은 재연결할 수 없습니다.");
       }
@@ -1300,6 +1319,8 @@ export function createOnlineRuntime(
         const inspect = (): void => {
           if (runtime.active) {
             resolve();
+          } else if (compatibilityFailure !== null) {
+            reject(compatibilityFailure);
           } else if (performance.now() - startedAt >= 10_000) {
             reject(new Error("재연결 상태 동기화가 10초 안에 끝나지 않았습니다."));
           } else {
@@ -1543,6 +1564,7 @@ export function createOnlineRuntime(
 
   // 최초 ready 또는 재접속 동기화가 끝나면 입력과 메뉴 대기를 함께 해제한다.
   const activateRuntime = (event: string): void => {
+    if (compatibilityFailure !== null) return;
     const startedRematchId = rematchPreparationId;
     rejoiningSession = false;
     runtime.active = true;
@@ -1605,6 +1627,7 @@ export function createOnlineRuntime(
   const sendReady = (now: number): void => {
     const message: OnlineReadyMessage = {
       kind: "ready",
+      physicsRevision: PHYSICS_REVISION,
       bannerTheme: (options.getLocalBannerTheme ?? getBannerTheme)(),
       matchId,
       side: mySide,
@@ -1624,8 +1647,10 @@ export function createOnlineRuntime(
     const state = await capturePhysicsStateHash(
       turnRuntime.physicsRuntime,
     );
+    if (compatibilityFailure !== null) return;
     const resume: OnlineResumeMessage = {
       kind: "resume",
+      physicsRevision: PHYSICS_REVISION,
       bannerTheme: (options.getLocalBannerTheme ?? getBannerTheme)(),
       matchId,
       turnIndex: runtime.nextTurnIndex,
@@ -1777,6 +1802,19 @@ export function createOnlineRuntime(
     }
   };
 
+  const checkPhysicsRevision = (revision: string | undefined): boolean => {
+    if (revision === PHYSICS_REVISION) return true;
+    const failure = new Error(getRuntimeText("online.physics_version_mismatch"));
+    compatibilityFailure = failure;
+    handleProtocolError(failure);
+    sessionEnded = true;
+    turnRuntime.phase = "match-over";
+    turnRuntime.sceneRuntime.controls.enabled = false;
+    currentTransport.close();
+    runtime.lastEvent = failure.message;
+    return false;
+  };
+
   let bannerLookup = 0;
   let bannerLookupPending: string | null = null;
   const updateOpponentBanner = (reported: BannerAppearance): void => {
@@ -1799,6 +1837,7 @@ export function createOnlineRuntime(
   };
 
   const handleMessage = (payload: object): void => {
+    if (compatibilityFailure !== null) return;
     try {
       const message = parseOnlineMessage(payload);
       switch (message.kind) {
@@ -1819,6 +1858,7 @@ export function createOnlineRuntime(
           if (message.side === mySide) {
             throw new Error("상대 ready 진영이 내 진영과 같습니다.");
           }
+          if (!checkPhysicsRevision(message.physicsRevision)) return;
           if (!runtime.remoteReady) updateOpponentBanner(message.bannerTheme ?? "classic");
           runtime.remoteReady = true;
           remoteReadyHash = message.stateHash;
@@ -2029,6 +2069,7 @@ export function createOnlineRuntime(
           return;
         }
         case "resume": {
+          if (!checkPhysicsRevision(message.physicsRevision)) return;
           if (sessionEnded) {
             throw new Error("종료된 온라인 대국에 resume이 도착했습니다.");
           }

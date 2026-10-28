@@ -35,8 +35,11 @@ for (const file of files) {
   for (const marker of forbidden) {
     if (source.toLowerCase().includes(marker.toLowerCase())) failures.push(`${file.name}: forbidden ${marker}`);
   }
+  // Asset provenance is plain text, not a network dependency.
+  if (file.name === 'assets/chess-model-license.txt') continue;
   for (const match of source.matchAll(/https?:\/\/[^\s"'<>`\\)\]}]+/gu)) {
     const url = match[0].replace(/[.,;]+$/u, '');
+    if (file.name === 'assets/chess-set.meta.json' && url === 'https://polyhaven.com/a/chess_set') continue;
     if (!urls.has(url)) urls.set(url, new Set());
     urls.get(url).add(file.name);
   }

@@ -78,7 +78,7 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     maxStage: PVE_MAX_STAGE,
   });
   const recommendation = !PLATFORM.features.online && picked.kind === "online"
-    ? { kind: "stage" as const, stage: 1, maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage) }
+    ? { kind: "stage" as const, stage: PLATFORM.id === "crazygames" ? PVE_MAX_STAGE : 1, maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage) }
     : picked;
   if (recommendation.kind === "tutorial") {
     return {
@@ -150,7 +150,8 @@ export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: numbe
     hotseat: I18nManager.t("lobby.card_2p_status"),
     tutorial: "",
   };
-  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${(PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online")).map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
+  const visibleCards = PLATFORM.id === "crazygames" ? cards.filter(card => card.mode === "stage") : PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online");
+  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${visibleCards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
 }
 
 export function renderCommunityLink(): string {

@@ -106,6 +106,7 @@ export async function startLobbyMode(
   tutorialType: "basic" | "advanced" = "basic",
 ): Promise<void> {
   if (runtime.busy || !runtime.ready || !progressStorage.ready) return;
+  if (PLATFORM.id === "crazygames" && mode !== "tutorial" && mode !== "stage") return;
   if (!PLATFORM.features.online && mode === "online") return;
   if (mode === "puzzle") {
     runtime.onOpenPuzzles?.();
@@ -158,6 +159,7 @@ export interface MainMenuRuntime {
 }
 
 export function openHotseatMapSelection(runtime: MainMenuRuntime): void {
+  if (PLATFORM.id === "crazygames") return;
   if (runtime.busy || !runtime.ready || !progressStorage.ready || runtime.closeHotseatMapSelection) return;
   runtime.closeHotseatMapSelection = openHotseatMapMenu(runtime.overlay, {
     selectedMapId: runtime.selectedHotseatMapId,
@@ -334,7 +336,7 @@ export function setMainMenuReady(
   ready: boolean,
 ): void {
   runtime.ready = ready;
-  if (PLATFORM.id === "poki") runtime.overlay.inert = !ready;
+  if (PLATFORM.id === "poki" || PLATFORM.id === "crazygames") runtime.overlay.inert = !ready;
   renderMainMenu(runtime);
 }
 
@@ -352,7 +354,7 @@ export function showMainMenu(runtime: MainMenuRuntime): void {
   runtime.confirmOverlay.hidden = true;
   runtime.returnButton.hidden = true;
   renderMainMenu(runtime);
-  void AdManager.showBanner();
+  if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
   runtime.overlay
     .querySelector<HTMLButtonElement>(".lobby-modes [data-game-mode], [data-game-mode], #auth-tab-guest")
     ?.focus();
@@ -389,7 +391,7 @@ export async function returnToMainMenu(
   gameplay.leave("return-to-menu");
   runtime.busy = true;
   try {
-    if (afterCompletedMatch) {
+    if (afterCompletedMatch && PLATFORM.id !== "crazygames") {
       try { await AdManager.showInterstitial(); }
       catch (error) { console.warn("전면 광고를 표시하지 못했습니다.", error); }
     }
@@ -408,7 +410,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   if (panel === null) return;
 
   if (!PLATFORM.features.accounts && localStorage.getItem("ca_logged_in_user") !== "true") {
-    localStorage.setItem("ca_local_nickname", `Player_${Math.floor(1000 + Math.random() * 9000)}`);
+    localStorage.setItem("ca_local_nickname", PLATFORM.id === "crazygames" ? "Player" : `Player_${Math.floor(1000 + Math.random() * 9000)}`);
     localStorage.setItem("ca_logged_in_user", "true");
   }
 
@@ -664,12 +666,12 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
   const firstPlay = maxClearedStage === 0 && !["true", "skipped"].includes(progressStorage.getItem("has_completed_tutorial") ?? "");
   const otherModesOpen = panel.querySelector<HTMLDetailsElement>(".lobby-other-modes")?.open ?? false;
-  const otherActivities = `${renderQuestLobbyEntry(questStorage)}${renderWeeklyChallengeEntry()}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}`;
-  const activities = firstPlay
+  const otherActivities = `${PLATFORM.id === "crazygames" ? "" : `${renderQuestLobbyEntry(questStorage)}${renderWeeklyChallengeEntry()}`}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}`;
+  const activities = firstPlay && PLATFORM.id !== "crazygames"
     ? `<details class="lobby-other-modes"${otherModesOpen ? " open" : ""}><summary>${escapeHtml(I18nManager.t("lobby.other_modes"))}</summary><div>${otherActivities}</div></details>`
     : otherActivities;
 
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${activities}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${PLATFORM.id === "crazygames" ? "" : renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${activities}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   markMenuPressables(panel);
   if (PLATFORM.features.accounts && progressStorage.owner === user.id) {
@@ -794,7 +796,7 @@ export function createMainMenu(
   let confirmResumeVersion: number | null = null;
   const overlay = document.createElement("section");
   overlay.className = "main-menu-overlay";
-  if (PLATFORM.id === "poki") overlay.inert = true;
+  if (PLATFORM.id === "poki" || PLATFORM.id === "crazygames") overlay.inert = true;
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-labelledby", "main-menu-title");

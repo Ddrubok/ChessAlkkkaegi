@@ -1,0 +1,920 @@
+{
+  "testedAt": "2026-10-28T03:51:52.798Z",
+  "root": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\qa\\polyhaven-model-2026-10-28\\final-zip",
+  "locale": "ko-KR (fresh default English)",
+  "cases": [
+    {
+      "browser": "Edge",
+      "width": 821,
+      "height": 462,
+      "dpr": 1,
+      "externalRequests": [],
+      "consoleErrors": [],
+      "steps": [
+        {
+          "name": "home",
+          "screenshot": "portal-screenshots/edge-821x462-home.png",
+          "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nStage battle\n0/10 cleared · Piece research\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Settings",
+              "id": "menu-sound-btn",
+              "class": "lobby-icon-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Try a shot",
+              "aria": null,
+              "id": "menu-recommendation-btn",
+              "class": "lobby-cta ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Tutorial",
+              "aria": null,
+              "id": "menu-tutorial-btn",
+              "class": "lobby-tutorial-bar ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Basic tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Advanced tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage battle\n0/10 cleared · Piece research",
+              "aria": null,
+              "id": "",
+              "class": "lobby-mode ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "settings",
+          "screenshot": "portal-screenshots/edge-821x462-settings.png",
+          "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nStage battle\n0/10 cleared · Piece research\nSettings\n✕\nSound\nCosmetics\nLanguage\nMute All\nMutes all music and sound effects\nMusic (BGM)\n60%\nEffects (SFX)\n80%\nVisual effects\nReduce motion\n\nReduce menu, result and launch effects. Gameplay and controls stay the same. Your operating system’s reduced-motion preference always applies.\n\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Settings",
+              "id": "menu-sound-btn",
+              "class": "lobby-icon-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Try a shot",
+              "aria": null,
+              "id": "menu-recommendation-btn",
+              "class": "lobby-cta ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Tutorial",
+              "aria": null,
+              "id": "menu-tutorial-btn",
+              "class": "lobby-tutorial-bar ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Basic tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Advanced tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage battle\n0/10 cleared · Piece research",
+              "aria": null,
+              "id": "",
+              "class": "lobby-mode ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "✕",
+              "aria": "Close",
+              "id": "settings-modal-close",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Sound",
+              "aria": null,
+              "id": "tab-btn-sound",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Cosmetics",
+              "aria": null,
+              "id": "tab-btn-banner",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Language",
+              "aria": null,
+              "id": "tab-btn-language",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "settings-language",
+          "screenshot": "portal-screenshots/edge-821x462-settings-language.png",
+          "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nStage battle\n0/10 cleared · Piece research\nSettings\n✕\nSound\nCosmetics\nLanguage\n🇰🇷\n한국어\nKorean\n🇺🇸\nEnglish\nEnglish\n✓\n🇯🇵\n日本語\nJapanese\n🇨🇳\n简体中文\nChinese\n🇩🇪\nDeutsch\nGerman\n🇫🇷\nFrançais\nFrench\n🇪🇸\nEspañol\nSpanish\n🇷🇺\nРусский\nRussian\n🇧🇷\nPortuguês\nPortuguese\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Settings",
+              "id": "menu-sound-btn",
+              "class": "lobby-icon-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Try a shot",
+              "aria": null,
+              "id": "menu-recommendation-btn",
+              "class": "lobby-cta ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Tutorial",
+              "aria": null,
+              "id": "menu-tutorial-btn",
+              "class": "lobby-tutorial-bar ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Basic tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Advanced tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage battle\n0/10 cleared · Piece research",
+              "aria": null,
+              "id": "",
+              "class": "lobby-mode ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "✕",
+              "aria": "Close",
+              "id": "settings-modal-close",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Sound",
+              "aria": null,
+              "id": "tab-btn-sound",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Cosmetics",
+              "aria": null,
+              "id": "tab-btn-banner",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Language",
+              "aria": null,
+              "id": "tab-btn-language",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇰🇷\n한국어\nKorean",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇺🇸\nEnglish\nEnglish\n✓",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇯🇵\n日本語\nJapanese",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇨🇳\n简体中文\nChinese",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇩🇪\nDeutsch\nGerman",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇫🇷\nFrançais\nFrench",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇪🇸\nEspañol\nSpanish",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇷🇺\nРусский\nRussian",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "🇧🇷\nPortuguês\nPortuguese",
+              "aria": null,
+              "id": "",
+              "class": "lang-select-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "settings-close",
+          "screenshot": "portal-screenshots/edge-821x462-settings-close.png",
+          "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nStage battle\n0/10 cleared · Piece research\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Settings",
+              "id": "menu-sound-btn",
+              "class": "lobby-icon-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Try a shot",
+              "aria": null,
+              "id": "menu-recommendation-btn",
+              "class": "lobby-cta ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Tutorial",
+              "aria": null,
+              "id": "menu-tutorial-btn",
+              "class": "lobby-tutorial-bar ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Basic tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Advanced tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage battle\n0/10 cleared · Piece research",
+              "aria": null,
+              "id": "",
+              "class": "lobby-mode ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "tutorial-open",
+          "screenshot": "portal-screenshots/edge-821x462-tutorial-open.png",
+          "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nStage battle\n0/10 cleared · Piece research\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Settings",
+              "id": "menu-sound-btn",
+              "class": "lobby-icon-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Try a shot",
+              "aria": null,
+              "id": "menu-recommendation-btn",
+              "class": "lobby-cta ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Tutorial",
+              "aria": null,
+              "id": "menu-tutorial-btn",
+              "class": "lobby-tutorial-bar ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Basic tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Advanced tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage battle\n0/10 cleared · Piece research",
+              "aria": null,
+              "id": "",
+              "class": "lobby-mode ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "tutorial-start",
+          "screenshot": "portal-screenshots/edge-821x462-tutorial-start.png",
+          "text": "Menu\nPractice (No Time Limit)\nPull and launch your Pawn to knock the enemy Pawn off the board.\nTouch your piece, pull in the opposite direction, and release. A longer pull launches with more power.",
+          "buttons": [
+            {
+              "text": "Menu",
+              "aria": null,
+              "id": "",
+              "class": "return-menu-button",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "tutorial-board",
+          "screenshot": "portal-screenshots/edge-821x462-tutorial-board.png",
+          "text": "Menu\nPractice (No Time Limit)\nPull and launch your Pawn to knock the enemy Pawn off the board.\nTouch your piece, pull in the opposite direction, and release. A longer pull launches with more power.",
+          "buttons": [
+            {
+              "text": "Menu",
+              "aria": null,
+              "id": "",
+              "class": "return-menu-button",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "tutorial-menu",
+          "screenshot": "portal-screenshots/edge-821x462-tutorial-menu.png",
+          "text": "Menu\nForfeit Match\n\nDo you want to forfeit this match?\n\nContinue\nMenu\nPractice (No Time Limit)\nPull and launch your Pawn to knock the enemy Pawn off the board.\nTouch your piece, pull in the opposite direction, and release. A longer pull launches with more power.",
+          "buttons": [
+            {
+              "text": "Menu",
+              "aria": null,
+              "id": "",
+              "class": "return-menu-button",
+              "disabled": false
+            },
+            {
+              "text": "Continue",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Menu",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "tutorial-menu-confirm",
+          "screenshot": "portal-screenshots/edge-821x462-tutorial-menu-confirm.png",
+          "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nStage battle\n0/10 cleared · Piece research\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Settings",
+              "id": "menu-sound-btn",
+              "class": "lobby-icon-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Try a shot",
+              "aria": null,
+              "id": "menu-recommendation-btn",
+              "class": "lobby-cta ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Tutorial",
+              "aria": null,
+              "id": "menu-tutorial-btn",
+              "class": "lobby-tutorial-bar ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Basic tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Advanced tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage battle\n0/10 cleared · Piece research",
+              "aria": null,
+              "id": "",
+              "class": "lobby-mode ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "stage-open",
+          "screenshot": "portal-screenshots/edge-821x462-stage-open.png",
+          "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nStage battle\n0/10 cleared · Piece research\nStage Battles\nResearch Points: 0 P\nClose\nSelect Stage\nPiece Research\nSelect Stage\n\nChallenging Stage 1. (Max Cleared: Stage 0)\n\nStage 1\nAvailable\nStage 2\nLocked\nStage 3\nLocked\nStage 4\nLocked\nStage 5\nLocked\nStage 6\nLocked\nStage 7\nLocked\nStage 8\nLocked\nStage 9\nLocked\nStage 10\nLocked\nStart Stage 1\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Settings",
+              "id": "menu-sound-btn",
+              "class": "lobby-icon-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Try a shot",
+              "aria": null,
+              "id": "menu-recommendation-btn",
+              "class": "lobby-cta ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Tutorial",
+              "aria": null,
+              "id": "menu-tutorial-btn",
+              "class": "lobby-tutorial-bar ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Basic tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Advanced tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage battle\n0/10 cleared · Piece research",
+              "aria": null,
+              "id": "",
+              "class": "lobby-mode ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Close",
+              "aria": null,
+              "id": "pve-close-btn",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Select Stage",
+              "aria": null,
+              "id": "tab-stages",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Piece Research",
+              "aria": null,
+              "id": "tab-upgrades",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage 1\nAvailable",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage 2\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Stage 3\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Stage 4\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Stage 5\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Stage 6\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Stage 7\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Stage 8\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Stage 9\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Stage 10\nLocked",
+              "aria": null,
+              "id": "",
+              "class": "pve-stage-card ui-motion-pressable",
+              "disabled": true
+            },
+            {
+              "text": "Start Stage 1",
+              "aria": null,
+              "id": "pve-start-btn",
+              "class": "ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "stage-start",
+          "screenshot": "portal-screenshots/edge-821x462-stage-start.png",
+          "text": "Menu\nPlayer\nGuest Mode\nAI\nStage 1\nYour Turn\n(W)\n20s\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "Menu",
+              "aria": null,
+              "id": "",
+              "class": "return-menu-button",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "ai-board",
+          "screenshot": "portal-screenshots/edge-821x462-ai-board.png",
+          "text": "Menu\nPlayer\nGuest Mode\nAI\nStage 1\nYour Turn\n(W)\n17s\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "Menu",
+              "aria": null,
+              "id": "",
+              "class": "return-menu-button",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "ai-menu",
+          "screenshot": "portal-screenshots/edge-821x462-ai-menu.png",
+          "text": "Menu\nForfeit Match\n\nDo you want to forfeit this match?\n\nContinue\nMenu\nYour Turn\n(W)\n16s\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "Menu",
+              "aria": null,
+              "id": "",
+              "class": "return-menu-button",
+              "disabled": false
+            },
+            {
+              "text": "Continue",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Menu",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "ai-menu-confirm",
+          "screenshot": "portal-screenshots/edge-821x462-ai-menu-confirm.png",
+          "text": "Billiards\nClassic\n\nGame Over\n\nStage 1 Ended\n\nEarned Points: 0 P\n\nReturn to Main",
+          "buttons": [
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Return to Main",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        },
+        {
+          "name": "ai-return-main",
+          "screenshot": "portal-screenshots/edge-821x462-ai-return-main.png",
+          "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nStage battle\n0/10 cleared · Piece research\nBilliards\nClassic",
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Settings",
+              "id": "menu-sound-btn",
+              "class": "lobby-icon-btn ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Try a shot",
+              "aria": null,
+              "id": "menu-recommendation-btn",
+              "class": "lobby-cta ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Tutorial",
+              "aria": null,
+              "id": "menu-tutorial-btn",
+              "class": "lobby-tutorial-bar ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Basic tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Advanced tutorial",
+              "aria": null,
+              "id": "",
+              "class": "lobby-tutorial-choice ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Stage battle\n0/10 cleared · Piece research",
+              "aria": null,
+              "id": "",
+              "class": "lobby-mode ui-motion-pressable",
+              "disabled": false
+            },
+            {
+              "text": "Billiards",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            },
+            {
+              "text": "Classic",
+              "aria": null,
+              "id": "",
+              "class": "",
+              "disabled": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

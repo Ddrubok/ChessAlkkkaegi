@@ -1,0 +1,16 @@
+Chess Set — Riley Queen / Poly Haven
+Source: https://polyhaven.com/a/chess_set
+Asset license: CC0 1.0 Universal
+License: https://creativecommons.org/publicdomain/zero/1.0/
+Provider's license statement: https://polyhaven.com/license
+
+The game's six chess piece meshes are adapted from this CC0 asset.
+The game supplies its own materials and procedural board; Poly Haven's
+texture files and website preview renders are not distributed in the game.
+Adaptations: piece extraction, coordinate/scale normalization and newly
+generated collision hulls, Knight orientation and physical mass calibration.
+Source hashes and the reproducible conversion
+command are recorded in assets-source/polyhaven-chess in the project.
+
+CC0 permits copying, modification and distribution for commercial purposes
+without an attribution requirement. Credit is retained voluntarily.

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Alkkagi cover renderer</title>
+<style>
+  * { box-sizing: border-box }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #211812 }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block }
+  #shade { position: absolute; inset: 0; background: linear-gradient(180deg, #130e0a9c 0%, #130e0a00 36%, #130e0a00 65%, #130e0ae0 100%); pointer-events: none }
+  #title { position: absolute; color: #fff2d9; font-family: Bahnschrift, 'Arial Narrow', Arial, sans-serif; font-stretch: condensed; font-weight: 900; line-height: .82; letter-spacing: -.035em; text-transform: uppercase; text-shadow: 0 5px 2px #20140d, 0 13px 25px #100905; pointer-events: none }
+  #title span { display: block }
+  body.landscape #title { left: 5.2%; bottom: 10%; font-size: min(8.1vw, 147px) }
+  body.portrait #title { left: 7%; bottom: 7%; font-size: 15.6vw }
+  body.square #title { left: 6%; bottom: 8%; font-size: 15.5vw }
+  body.portrait #shade { background: linear-gradient(180deg, #130e0ade 0%, #130e0a00 35%, #130e0a00 73%, #130e0a9c 100%) }
+</style>
+<script type="importmap">{"imports":{"three":"../../web/node_modules/three/build/three.module.js","three/addons/":"../../web/node_modules/three/examples/jsm/"}}</script>
+<canvas id="scene"></canvas><div id="shade"></div><div id="title"><span>CHESS</span><span>ALKKAGI</span></div>
+<script type="module" src="cover.js"></script>
+</html>

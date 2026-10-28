@@ -1,3 +1,4 @@
+import "./headless-browser-env.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Mesh, Scene, Vector3 } from "three";
@@ -503,6 +504,31 @@ try {
       "utf8",
     ),
   );
+  const revision = "polyhaven-2026-10-28";
+  for (const kind of ["ready", "resume"]) {
+    const base = { kind, matchId: "version-check", side: "black", turnIndex: 0, stateHash: "a".repeat(64) };
+    for (const bad of [null, 42, {}, "x".repeat(65), "bad revision"]) {
+      let rejected = false;
+      try { online.parseOnlineMessage({ ...base, physicsRevision: bad }); }
+      catch { rejected = true; }
+      assertCondition(rejected, `${kind} accepted malformed physics revision`);
+    }
+    assertCondition(online.parseOnlineMessage(base).physicsRevision === undefined, `${kind} legacy revision was not retained as missing`);
+    assertCondition(online.parseOnlineMessage({ ...base, physicsRevision: revision }).physicsRevision === revision, `${kind} matching revision was not parsed`);
+    for (const remoteRevision of [undefined, "different-physics-revision"]) {
+      const pair = createFakeTransportPair();
+      const fakeTurn = { sceneRuntime: { controls: { enabled: true } }, phase: "ready" };
+      const peer = online.createOnlineRuntime(pair.host, fakeTurn, null, "white", {}, { matchId: "version-check" });
+      const waiting = peer.waitUntilReady().then(() => null, error => error);
+      pair.guest.send({ ...base, physicsRevision: remoteRevision });
+      const error = await waiting;
+      assertCondition(error instanceof Error && /update|reload|업데이트|새로고침/i.test(error.message), `${kind} mismatch lacked update/reload guidance`);
+      assertCondition(!peer.active && !pair.host.connected, `${kind} mismatch left connection active`);
+      peer.close();
+    }
+  }
+  console.log("[pass] ready/resume physics revision parser and legacy/mismatch rejection");
+  if (!process.argv.includes("--compat-only")) {
   const host = await createMatchRuntime(modules, meta);
   const guest = await createMatchRuntime(modules, meta);
   const transports = createFakeTransportPair();
@@ -530,7 +556,7 @@ try {
     { getLocalBannerTheme: () => guestBanner },
   );
   for (const kind of ["ready", "resume"]) {
-    const base = { kind, matchId: "banner-check", side: "white", turnIndex: 0, stateHash: "a".repeat(64) };
+    const base = { kind, matchId: "banner-check", side: "white", turnIndex: 0, stateHash: "a".repeat(64), physicsRevision: revision };
     for (const theme of ["classic", "slate", "forest", "plain", "banner_cosmic_knight", "banner_crimson_sun", "banner_hidden_myeongnyang"]) assertCondition(online.parseOnlineMessage({...base, bannerTheme: theme}).bannerTheme === theme, "배너 파싱 실패");
     for (const theme of [undefined, null, "unknown", {}, "<script>"]) assertCondition(online.parseOnlineMessage({...base, bannerTheme: theme}).bannerTheme === "classic", "누락/잘못된 배너 기본값 실패");
   }
@@ -1431,6 +1457,7 @@ try {
     `[통과 o] 연결 단절 종료 뒤 재대결 거절: reason="${disconnectReason}", newMatch=false`,
   );
   closeRematchPair(disconnectedRematch);
+  }
 } finally {
   await vite.close();
 }

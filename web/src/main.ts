@@ -279,7 +279,7 @@ async function bootstrap(): Promise<void> {
   // app을 비울 때 인라인 부트 노드를 함께 넘겨 같은 요소를 유지한다.
   app.replaceChildren(loadingPanel);
   initializeSound();
-  const progressClient = getSupabaseClient();
+  const progressClient = PLATFORM.id === "crazygames" ? null : getSupabaseClient();
   if (PLATFORM.features.accounts) await initializeGoogleAuth(progressClient);
   const progressSession = progressClient ? await progressClient.auth.getSession() : null;
   if (progressSession?.error) throw new Error("로그인 상태를 확인하지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.");
@@ -1957,7 +1957,7 @@ async function bootstrap(): Promise<void> {
         );
         renderMainMenu(menuRuntime);
         menuRuntime.returnButton.hidden = true;
-        void AdManager.showBanner();
+        if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
         showStageRunResult(
           matchRuntime,
           completedStage,
@@ -1965,8 +1965,10 @@ async function bootstrap(): Promise<void> {
           completedRun,
           () => returnToMainMenu(menuRuntime, true),
         );
-        appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
-        appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
+        if (PLATFORM.id !== "crazygames") {
+          appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
+          appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
+        }
         return;
       }
     }
@@ -2064,8 +2066,8 @@ async function bootstrap(): Promise<void> {
         ? onlineRuntime?.mySide ?? null
         : null,
     );
-    if (gameMode === "stage") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
-    if (gameMode === "stage") appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
+    if (gameMode === "stage" && PLATFORM.id !== "crazygames") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
+    if (gameMode === "stage" && PLATFORM.id !== "crazygames") appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
     if (gameMode === "online") {
       appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
       onlineResignButton.hidden = true;
@@ -2074,7 +2076,7 @@ async function bootstrap(): Promise<void> {
         onlineRuntime?.getRematchStatus() ?? null,
       );
     }
-    void AdManager.showBanner();
+    if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
   });
   let gameLoopStarted = false;
   const ensureGameLoopStarted = (): void => {
@@ -2133,6 +2135,7 @@ async function bootstrap(): Promise<void> {
     tutorialType = "basic",
     mapId,
   ): Promise<void> => {
+    if (PLATFORM.id === "crazygames" && mode !== "tutorial" && mode !== "stage") return;
     if (!PLATFORM.features.online && mode === "online") return;
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
@@ -2141,7 +2144,7 @@ async function bootstrap(): Promise<void> {
     if (mode === "hotseat" && !getHotseatMap(nextHotseatMapId)) {
       throw new Error(`Unknown hotseat map: ${nextHotseatMapId}`);
     }
-    void AdManager.hideBanner();
+    if (PLATFORM.id !== "crazygames") void AdManager.hideBanner();
     if (PLATFORM.features.online && mode === "online") {
       onlineSelfTestRuntime?.destroy();
       const { createOnlineRuntime } = await import("./online");
@@ -2286,7 +2289,7 @@ async function bootstrap(): Promise<void> {
             );
 
             await recordOnlineMatchSettlement(winner);
-            void AdManager.showBanner();
+            if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
           },
         },
         {
@@ -2430,7 +2433,7 @@ async function bootstrap(): Promise<void> {
     try {
 
     onlineSelfTestRuntime?.destroy();
-    void AdManager.hideBanner();
+    if (PLATFORM.id !== "crazygames") void AdManager.hideBanner();
     if (PLATFORM.features.online) void SocialService.updateMyStatus("in_game");
 
     const { createOnlineRuntime } = await import("./online");
@@ -2508,7 +2511,7 @@ async function bootstrap(): Promise<void> {
           renderRematchControls(onlineRuntime?.getRematchStatus() ?? null);
           await recordOnlineMatchSettlement(winner);
           if (PLATFORM.features.online) void SocialService.updateMyStatus("online");
-          void AdManager.showBanner();
+          if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
         },
       },
       {
@@ -2642,7 +2645,7 @@ async function bootstrap(): Promise<void> {
     restoreLocalTuningSettings(tuningRuntime);
     await switchGameMode(gameModeRuntime, "hotseat", true);
     hideMatchResult(matchRuntime);
-    void AdManager.showBanner();
+    if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
   };
   confirmAbandonAction = async (): Promise<void> => {
     if (gameModeRuntime === null) {
@@ -2662,7 +2665,7 @@ async function bootstrap(): Promise<void> {
     turnRuntime.phase = "match-over";
     lockInputForMatchOver(inputRuntime);
     menuRuntime.returnButton.hidden = true;
-    void AdManager.showBanner();
+    if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
     showStageRunResult(
       matchRuntime,
       abandonedStage,
@@ -2670,7 +2673,7 @@ async function bootstrap(): Promise<void> {
       false,
       () => returnToMainMenu(menuRuntime),
     );
-    appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, () => {
+    if (PLATFORM.id !== "crazygames") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, () => {
       openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });
     });
   };
@@ -2780,7 +2783,7 @@ async function bootstrap(): Promise<void> {
   const showPuzzleLibrary = async (): Promise<void> => {
     if (!progressStorage.ready) return;
     if (gameModeRuntime?.mode === "puzzle") await returnToMainMenu(menuRuntime);
-    await AdManager.hideBanner();
+    if (PLATFORM.id !== "crazygames") await AdManager.hideBanner();
     puzzleUI?.showLibrary();
   };
   puzzleUI = new PuzzleUI(app, {
@@ -2804,7 +2807,7 @@ async function bootstrap(): Promise<void> {
       if (gameModeRuntime?.mode === "puzzle") void returnToMainMenu(menuRuntime).catch((error) => console.error("퍼즐 종료 실패", error));
       else {
         puzzleUI?.hide();
-        void AdManager.showBanner();
+        if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
       }
     },
   });
@@ -2921,8 +2924,8 @@ async function bootstrap(): Promise<void> {
       else await returnToMainMenu(menuRuntime);
     },
   );
-  if (PLATFORM.id !== "poki") await AdManager.init();
-  await AdManager.showBanner();
+  if (PLATFORM.id !== "poki" && PLATFORM.id !== "crazygames") await AdManager.init();
+  if (PLATFORM.id !== "crazygames") await AdManager.showBanner();
 
   if (PLATFORM.features.online) SocialService.setChallengeHandler((challenge) => {
       if (!menuRuntime.visible || menuRuntime.busy || progressStorage.owner !== menuRuntime.userProfile?.id) return;

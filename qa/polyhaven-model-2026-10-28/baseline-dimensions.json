@@ -1,0 +1,64 @@
+{
+  "source": {
+    "file": "chess.fbx",
+    "sha256": "EC72D21CF6ACE76BFBC6F40DB7EF8DA6DB7C5B24D0098ADA4CD9438449870CF0"
+  },
+  "cellSize": 0.536003,
+  "boardThickness": 0.158766,
+  "pieces": {
+    "Pawn": {
+      "triangles": 3000,
+      "bounds": {
+        "x": 0.305761,
+        "y": 0.520376,
+        "z": 0.306106
+      },
+      "baseRadius": 0.133609
+    },
+    "Rook": {
+      "triangles": 1476,
+      "bounds": {
+        "x": 0.332771,
+        "y": 0.589391,
+        "z": 0.33277
+      },
+      "baseRadius": 0.149686
+    },
+    "Knight": {
+      "triangles": 6999,
+      "bounds": {
+        "x": 0.445781,
+        "y": 0.739591,
+        "z": 0.407968
+      },
+      "baseRadius": 0.175946
+    },
+    "Bishop": {
+      "triangles": 8000,
+      "bounds": {
+        "x": 0.371904,
+        "y": 0.784872,
+        "z": 0.372107
+      },
+      "baseRadius": 0.186174
+    },
+    "Queen": {
+      "triangles": 5996,
+      "bounds": {
+        "x": 0.403702,
+        "y": 0.823122,
+        "z": 0.409468
+      },
+      "baseRadius": 0.145615
+    },
+    "King": {
+      "triangles": 8000,
+      "bounds": {
+        "x": 0.448265,
+        "y": 1,
+        "z": 0.447736
+      },
+      "baseRadius": 0.164295
+    }
+  }
+}

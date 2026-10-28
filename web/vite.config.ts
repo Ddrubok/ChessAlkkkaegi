@@ -2,6 +2,7 @@ import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { defineConfig, loadEnv } from "vite";
 import type { Rule } from "postcss";
 
@@ -91,12 +92,15 @@ const PORTABLE_ASSET_DEFINITIONS: readonly PortableAssetDefinition[] = [
   },
 ];
 
-// 정상 빌드는 기존 public 상대 경로만 받으며 portable의 base64 본문과 완전히 분리된다.
+// 모델·충돌체·로비 이미지가 바뀌면 이전 캐시를 쓰지 않도록 내용 해시를 URL에 붙인다.
 const NORMAL_ASSET_PATHS = Object.fromEntries(
-  PORTABLE_ASSET_DEFINITIONS.map((definition) => [
-    definition.id,
-    definition.source.replace(/^public\//u, ""),
-  ]),
+  PORTABLE_ASSET_DEFINITIONS.map((definition) => {
+    const path = definition.source.replace(/^public\//u, "");
+    const revision = /^(?:chess|lobby)/u.test(definition.id)
+      ? `?v=${createHash("sha256").update(readFileSync(resolve(PROJECT_ROOT, definition.source))).digest("hex").slice(0, 12)}`
+      : "";
+    return [definition.id, `${path}${revision}`];
+  }),
 );
 
 /**
@@ -125,12 +129,14 @@ export default defineConfig(({ command, isPreview, mode }) => {
   const buildInfo = { build: `${commit.slice(0, 12)}${dirty ? "-dirty" : ""}-${builtAt.replace(/\D/g, "").slice(0, 14)}`, commit, builtAt, dirty, mode };
   const staging = mode === "staging";
   const pokiBuild = mode === "poki";
-  const pokiEnv = pokiBuild ? Object.fromEntries(
+  const crazygamesBuild = mode === "crazygames";
+  const portalBuild = pokiBuild || crazygamesBuild;
+  const portalEnv = portalBuild ? Object.fromEntries(
     [...new Set([
       ...Object.keys(loadEnv(mode, PROJECT_ROOT, "VITE_")),
       "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_METERED_APP_NAME",
       "VITE_METERED_API_KEY", "VITE_WEB_ADS_MODE", "VITE_ADSENSE_CLIENT_ID", "VITE_ADSENSE_SLOT_ID",
-    ])].filter((key) => /^VITE_(?:SUPABASE|METERED|WEB_ADS|ADSENSE)/u.test(key))
+    ])].filter((key) => crazygamesBuild || /^VITE_(?:SUPABASE|METERED|WEB_ADS|ADSENSE)/u.test(key))
       .map((key) => [`import.meta.env.${key}`, JSON.stringify("")]),
   ) : {};
   if (staging) {
@@ -147,14 +153,15 @@ export default defineConfig(({ command, isPreview, mode }) => {
     : {};
 
   return {
-    ...(pokiBuild ? {
+    ...(portalBuild ? {
       resolve: { alias: [
         { find: "@supabase/supabase-js", replacement: resolve(PROJECT_ROOT, "src/poki-stubs/backend.ts") },
-        { find: /^\.\/ad-manager$/u, replacement: resolve(PROJECT_ROOT, "src/poki-stubs/ads.ts") },
+        { find: /^\.\/ad-manager$/u, replacement: resolve(PROJECT_ROOT, crazygamesBuild ? "src/crazygames-stubs/ads.ts" : "src/poki-stubs/ads.ts") },
         { find: /^\.\/web-ads$/u, replacement: resolve(PROJECT_ROOT, "src/poki-stubs/web-ads.ts") },
+        ...(crazygamesBuild ? [{ find: /^\.\/poki-sdk$/u, replacement: resolve(PROJECT_ROOT, "src/crazygames-stubs/portal-lifecycle.ts") }] : []),
       ] },
       css: { postcss: { plugins: [{
-        postcssPlugin: "poki-no-debug-styles",
+        postcssPlugin: "portal-no-debug-styles",
         Rule(rule: Rule) {
           const selectors = rule.selectors.filter((selector) => !/\.(?:tuning-|card-tuning-|debug-overlay)/u.test(selector));
           if (selectors.length === 0) rule.remove();
@@ -174,7 +181,8 @@ export default defineConfig(({ command, isPreview, mode }) => {
         if (!id.replaceAll("\\", "/").startsWith(`${resolve(PROJECT_ROOT, "src").replaceAll("\\", "/")}/`) || !id.endsWith(".ts")) return;
         // Vite define does not replace properties of an imported binding.
         // Resolve these known feature reads before bundling so disabled imports disappear.
-        return code.replace(/\bPLATFORM\.features\.(?:online|accounts|externalLinks|debugTools)\b/gu, String(!pokiBuild));
+        const featuresResolved = code.replace(/\bPLATFORM\.features\.(?:online|accounts|externalLinks|debugTools)\b/gu, String(!portalBuild));
+        return crazygamesBuild ? featuresResolved.replace(/\bPLATFORM\.id\b/gu, '"crazygames"') : featuresResolved;
       },
     }, ...(pokiBuild ? [{
       name: "poki-build",
@@ -194,6 +202,38 @@ export default defineConfig(({ command, isPreview, mode }) => {
           .replace("card.querySelector('nav').setAttribute", "card.querySelector('nav')?.setAttribute");
         writeFileSync(resolve(output, "boot-language.js"), language);
       },
+    }] : []), ...(crazygamesBuild ? [{
+      name: "crazygames-build",
+      transformIndexHtml: {
+        order: "pre" as const,
+        handler: (html: string) => html
+          .replace(/<!--[^]*?-->/gu, "")
+          .replace(/<html lang="[^"]*">/u, '<html lang="en">')
+          .replace(/<meta name="description"[^>]*>/u, '<meta name="description" content="Aim and launch chess pieces to knock opponents off the board.">')
+          .replace(/\s*<meta name="google-adsense-account"[^>]*>/u, "")
+          .replace(/\s*<link rel="preload"[^>]*>/u, "")
+          .replace(/<div class="boot-loading-card">[^]*?<div class="boot-loading-track"[^>]*><\/div>\s*<\/div>/u, '<div class="boot-loading-card"><h1>Chess Alkkagi</h1><p>Aim and launch chess pieces to knock opponents off the board.</p><p id="boot-loading-phase">Loading…</p><div class="boot-loading-track" aria-hidden="true"></div></div>')
+          .replace(/\s*<script src="\.\/boot-language\.js"><\/script>/u, "")
+          .replace('src="/src/main.ts"', 'src="/src/crazygames-entry.ts"'),
+      },
+      writeBundle(options: { dir?: string }) {
+        const output = resolve(PROJECT_ROOT, options.dir ?? "dist-crazygames");
+        cpSync(resolve(PROJECT_ROOT, "public/assets"), resolve(output, "assets"), {
+          recursive: true,
+          filter: (path) => !/\.(?:md|gitkeep)$/iu.test(path),
+        });
+        const notices = [
+          ["Three.js", "node_modules/three/LICENSE"],
+          ["Capacitor Core", "node_modules/@capacitor/core/LICENSE"],
+          ["Capacitor App", "node_modules/@capacitor/app/LICENSE"],
+          ["Capacitor Browser", "node_modules/@capacitor/browser/LICENSE"],
+          ["meshoptimizer", "node_modules/meshoptimizer/LICENSE.md"],
+          ["Rapier / rapier.js (Apache-2.0)", "crazygames-licenses/RAPIER-LICENSE"],
+          ["Chess Set / Poly Haven (CC0)", "public/assets/chess-model-license.txt"],
+        ].map(([name, path]) => `${name}\n${"=".repeat(name!.length)}\n${readFileSync(resolve(PROJECT_ROOT, path!), "utf8")}`);
+        writeFileSync(resolve(output, "THIRD_PARTY_NOTICES.txt"),
+          `Runtime library and chess model notices. Other project artwork retains its own provenance.\n\n${notices.join("\n\n")}`, "utf8");
+      },
     }] : [])],
     ...(staging ? {
       server: { host: "127.0.0.1", port: 5204, strictPort: true },
@@ -204,9 +244,11 @@ export default defineConfig(({ command, isPreview, mode }) => {
         ? GITHUB_PAGES_BASE
         : "/",
     define: {
+      __CHESS_PHYSICS_REVISION__: JSON.stringify(createHash("sha256").update(readFileSync(resolve(PROJECT_ROOT, "public/assets/chess-set.meta.json"))).digest("hex")),
       __BUILD_INFO__: JSON.stringify(buildInfo),
       __POKI_BUILD__: JSON.stringify(pokiBuild),
-      ...pokiEnv,
+      __CRAZYGAMES_BUILD__: JSON.stringify(crazygamesBuild),
+      ...portalEnv,
       __PORTABLE_BUILD__: JSON.stringify(portableBuild),
       __PORTABLE_ASSET_URLS__: JSON.stringify(portableAssetUrls),
       __NORMAL_ASSET_PATHS__: JSON.stringify(
@@ -215,10 +257,11 @@ export default defineConfig(({ command, isPreview, mode }) => {
     },
     build: {
       ...(pokiBuild ? { outDir: "dist-poki", copyPublicDir: false } : {}),
+      ...(crazygamesBuild ? { outDir: "dist-crazygames", copyPublicDir: false, sourcemap: false } : {}),
       ...(staging ? { outDir: "dist-staging" } : {}),
       rollupOptions: {
-        ...(pokiBuild ? { treeshake: { manualPureFunctions: ["console.log", "console.info", "console.debug"] } } : {}),
-        input: portableBuild || pokiBuild ? "index.html" : ["index.html", "about.html", "guide.html", "tiers.html", "updates.html"],
+        ...(portalBuild ? { treeshake: { manualPureFunctions: ["console.log", "console.info", "console.debug"] } } : {}),
+        input: portableBuild || portalBuild ? "index.html" : ["index.html", "about.html", "guide.html", "tiers.html", "updates.html"],
         ...(portableBuild
           ? {
               output: {
