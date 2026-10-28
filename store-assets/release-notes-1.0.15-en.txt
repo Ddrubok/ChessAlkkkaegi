@@ -1,0 +1,4 @@
+• Refreshed all six chess piece models, plus lobby and map previews.
+• Shortened the basic tutorial and simplified the first screen to make getting started easier.
+• Fixed shot release over the aiming controls and improved stage exit warnings, puzzle retries, small-screen layouts, and Android Back navigation.
+• For online matches, both players should update to the latest version.
