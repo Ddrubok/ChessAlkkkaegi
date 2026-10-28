@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import { loadConfigFromFile } from 'vite';
 const expected = 'https://eohasrpzjwtzexoogwdt.supabase.co';
 const code = stripTypeScriptTypes(await readFile(new URL('../supabase-client.ts',import.meta.url),'utf8'));
+const platformCode = stripTypeScriptTypes(await readFile(new URL('../platform.ts',import.meta.url),'utf8'));
 for (const mode of ['staging','production']) {
   const storage = new Map([['ca_supabase_url','https://stored.example.com'],['ca_supabase_anon_key','stored-key']]);
   const ctx = vm.createContext({ localStorage: {
@@ -13,8 +14,13 @@ for (const mode of ['staging','production']) {
   }});
   const env = { MODE:mode, VITE_SUPABASE_URL:expected, VITE_SUPABASE_ANON_KEY:'sb_publishable_test' };
   const dep = new vm.SyntheticModule(['createClient'],function(){this.setExport('createClient',(url,key)=>({url,key}));},{context:ctx});
+  const platform = new vm.SourceTextModule(platformCode,{context:ctx});
   const module = new vm.SourceTextModule(code,{context:ctx,initializeImportMeta:meta=>{meta.env=env;}});
-  await module.link(()=>dep); await module.evaluate();
+  await module.link(specifier=>{
+    if(specifier==='@supabase/supabase-js') return dep;
+    assert.equal(specifier,'./platform','Unexpected dependency in staging isolation check');
+    return platform;
+  }); await module.evaluate();
   const api = module.namespace;
   if(mode==='staging') {
     assert.equal(api.getSavedSupabaseConfig().url,expected);

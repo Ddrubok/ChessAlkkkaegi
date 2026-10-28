@@ -54,6 +54,13 @@ function convertModuleMetadataForInlineScript(source) {
 }
 
 let html = await readFile(sourceHtmlPath, "utf8");
+// This preload points outside the single-file package; the game embeds its images.
+html = html.replace(/\s*<link\b[^>]*\brel="preload"[^>]*>/gu, "");
+const bootLanguageTag = '<script src="./boot-language.js"></script>';
+const bootLanguage = html.includes(bootLanguageTag)
+  ? await readFile(resolve(projectRoot, "public/boot-language.js"), "utf8")
+  : "";
+html = html.replace(bootLanguageTag, "");
 const scriptMatch = html.match(
   /<script\b[^>]*\bsrc="([^"]+)"[^>]*><\/script>/u,
 );
@@ -73,7 +80,7 @@ const [javascript, stylesheet] = await Promise.all([
   readFile(stylesheetPath, "utf8"),
 ]);
 const inlineJavascript =
-  convertModuleMetadataForInlineScript(javascript);
+  `${bootLanguage}\n${convertModuleMetadataForInlineScript(javascript)}`;
 const inlineScriptTag =
   `<script>${escapeInlineClosingTag(inlineJavascript, "script")}</script>`;
 

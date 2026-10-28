@@ -1,3 +1,4 @@
+import { PLATFORM } from "./platform";
 import { Box3, MathUtils } from "three";
 import {
   updateAiRuntime,
@@ -232,17 +233,19 @@ export function startGameLoop(
   shouldStepPhysics: () => boolean = () => true,
   stepSecondaryOnlineRuntime: () => void = () => {},
 ): void {
-  const overlay = document.createElement("pre");
-  overlay.className = "debug-overlay";
-  overlay.setAttribute("aria-live", "polite");
-  overlay.setAttribute("role", "button");
-  overlay.setAttribute("aria-expanded", "false");
-  overlay.tabIndex = 0;
-  // 계측 표시는 ?tune=1 개발 세션에서만 화면에 붙인다. 일반 플레이 화면에는 나타나지 않는다.
-  if (new URLSearchParams(window.location.search).get("tune") === "1") {
-    sceneRuntime.renderer.domElement.parentElement?.append(overlay);
-  }
+  const overlay = PLATFORM.features.debugTools ? document.createElement("pre") : null;
+  if (overlay) {
+    overlay.className = "debug-overlay";
+    overlay.setAttribute("aria-live", "polite");
+    overlay.setAttribute("role", "button");
+    overlay.setAttribute("aria-expanded", "false");
+    overlay.tabIndex = 0;
+    // 계측 표시는 ?tune=1 개발 세션에서만 화면에 붙인다. 일반 플레이 화면에는 나타나지 않는다.
+    if (new URLSearchParams(window.location.search).get("tune") === "1") {
+      sceneRuntime.renderer.domElement.parentElement?.append(overlay);
+    }
 
+  }
   let lastFrameTime: number | null = null;
   let accumulator = 0;
   let elapsedSimulatedSeconds = 0;
@@ -260,12 +263,13 @@ export function startGameLoop(
   let overlayExpanded = false;
   let overlaySummaryText = "계측 준비 중 · 눌러서 상세 보기";
   let overlayFullText = overlaySummaryText;
-  const massText = formatMassProperties(physicsRuntime);
+  const massText = PLATFORM.features.debugTools ? formatMassProperties(physicsRuntime) : "";
 
   /**
    * 접힌 한 줄과 전체 계측을 같은 요소에서 전환해 모바일 판 영역을 보존한다.
    */
   const renderOverlay = (): void => {
+    if (!overlay) return;
     overlay.classList.toggle("is-expanded", overlayExpanded);
     overlay.setAttribute("aria-expanded", String(overlayExpanded));
     overlay.setAttribute(
@@ -281,14 +285,16 @@ export function startGameLoop(
     overlayExpanded = !overlayExpanded;
     renderOverlay();
   };
-  overlay.addEventListener("click", toggleOverlay);
-  overlay.addEventListener("keydown", (event) => {
-    if (event.code === "Enter" || event.code === "Space") {
-      event.preventDefault();
-      toggleOverlay();
-    }
-  });
-  renderOverlay();
+  if (overlay) {
+    overlay.addEventListener("click", toggleOverlay);
+    overlay.addEventListener("keydown", (event) => {
+      if (event.code === "Enter" || event.code === "Space") {
+        event.preventDefault();
+        toggleOverlay();
+      }
+    });
+    renderOverlay();
+  }
 
   /**
    * WASD 시점과 충돌하지 않도록 개발 중 R 키로 전원을 깨워 재수면 시간을 측정한다.
@@ -315,7 +321,7 @@ export function startGameLoop(
       "[물리] R 키로 살아 있는 말을 깨우고 재수면 측정을 시작했습니다.",
     );
   };
-  if (import.meta.env.DEV) {
+  if (PLATFORM.features.debugTools && import.meta.env.DEV) {
     window.addEventListener("keydown", handleForceWake);
   }
   document.addEventListener("visibilitychange", () => {
@@ -486,7 +492,7 @@ export function startGameLoop(
       );
     }
 
-    if (now - lastOverlayUpdate >= 100) {
+    if (PLATFORM.features.debugTools && now - lastOverlayUpdate >= 100) {
       const remaining = countRemainingPieces(turnRuntime);
       const selectedId = aimRuntime.selectedPieceId ?? "없음";
       const turnLabel =

@@ -1,0 +1,55 @@
+Android release: 1.0.15 (versionCode 16)
+Application ID: com.chessalkkagi.app
+Built: 2026-10-28
+Source: develop d0b5eea576e3381c85d9e22272eaa59a670b36b9 + local Android version update
+Existing unrelated store description changes were preserved. This build does not merge develop into main.
+
+AAB: store-assets/ChessAlkkagi-1.0.15-vc16.aab
+Bytes: 13470013
+SHA256: f5f2dba604697bfdb18344908eeee752cb79a5c4b3c5de785b67b9fe630e3b37
+
+Companion APK for installation testing: share/ChessAlkkagi-1.0.15-vc16.apk
+Bytes: 13822622
+SHA256: 010ea1793dce9fd4efdc63c86f3b0e352ba93c967b035c99b516e5537e8bff6f
+
+Signing certificate SHA256:
+27EAD35ED4895EFAFB71930AACF7244917880A511F0AFD4A1DF0ABD51B19243C
+Matches the previous ChessAlkkagi-1.0.14-vc15.aab signing certificate.
+
+Build and verification:
+- Production web build with VITE_AD_TEST_MODE=false and VITE_MARKETING_ENV=production: passed.
+- Existing marketing enablement and configured AdMob units preserved; no new feature enablement.
+- Capacitor sync android: passed (8.4.3; AdMob 8.1.0, App 8.1.1, Browser 8.0.4).
+- Gradle :app:bundleRelease :app:assembleRelease: passed.
+- JDK 21.0.8; Gradle 8.14.3; min SDK 24; target SDK 36.
+- bundletool 1.18.3 validate: passed. Tool downloaded from official google/bundletool GitHub release; GitHub asset SHA256 matched.
+- AAB manifest: com.chessalkkagi.app, 1.0.15/16, debuggable false, allowBackup false.
+- jarsigner verification: passed. Standard self-signed certificate/no timestamp warnings remain; certificate expires 2054-01-18.
+- APK apksigner verification: passed, v2 signature, same certificate.
+- All 108 non-dot web distribution files match both final artifacts byte for byte. Android intentionally omits .gitkeep files.
+- Both artifacts contain the current Poly Haven model and matching physics revision, production Supabase URL, no development Supabase URL and no __cgQA observation API.
+- Model SHA256: 2ee584b125a20ddcf388e4798f28a376f2b2a3a22e8590aec1f96fc71e6f6863
+- Physics revision: e386535e27f86a9f4114c566c8e9d3b47706d49e59a2b07544864cf2607d7ce8
+
+Release notes:
+- store-assets/release-notes-1.0.15-multilingual.txt (ko-KR/en-US/ja-JP/fr-FR tags)
+- Separate -ko.txt, -en.txt, -ja.txt, -fr.txt files in the same folder.
+- Characters excluding trailing newline: ko-KR 202, en-US 382, ja-JP 168, fr-FR 423.
+- Combined file text matches each separate locale file.
+
+Rebuild from repository root (PowerShell):
+  $env:VITE_AD_TEST_MODE = 'false'
+  $env:VITE_MARKETING_ENV = 'production'
+  cd web
+  npm run build
+  npx cap sync android
+  cd android
+  $env:JAVA_HOME = 'C:/Program Files/Android/Android Studio/jbr'
+  .\gradlew.bat :app:bundleRelease :app:assembleRelease --console=plain
+
+Evidence: qa/release-1.0.15-2026-10-28/artifact-verification.json and build/signature logs.
+bundletool source: https://github.com/google/bundletool/releases/tag/1.18.3
+
+Not performed: Play Console upload/review/rollout, checking the highest versionCode in Play Console, physical Android installation/play, live Android-web multiplayer, main merge/push.
+The highest confirmed existing local/main release was 1.0.14/versionCode 15.
+Online crossplay requires both clients to use the new physics revision. Coordinate the production web update with the Android rollout; the current old production web cannot match this new client.

@@ -89,6 +89,7 @@ export interface PieceBodyBinding {
   spawnRotation: SpawnRotation;
   // 밑동 추를 반복 조절해도 복리로 커지지 않도록 최초 hull 질량을 보존한다.
   originalHullMass: number;
+  densityScale: number;
   // 추가 점 질량과 합성된 목표 무게중심을 검증하기 위한 최초 로컬 무게중심이다.
   originalLocalCom: SpawnTranslation;
   // 밑동 추의 로컬 높이를 메시 자세와 무관하게 계산하는 원본 말 높이다.
@@ -658,9 +659,13 @@ function createPieceColliderDescriptor(
   density: number,
   uniformScale: number,
   friction = PIECE_FRICTION,
+  densityScale = 1,
 ): RAPIER.ColliderDesc {
   if (!Number.isFinite(density) || density <= 0) {
     throw new Error(`${type} 콜라이더 밀도 ${density}가 유한한 양수가 아닙니다.`);
+  }
+  if (!Number.isFinite(densityScale) || densityScale <= 0) {
+    throw new Error(`${type} densityScale must be finite and positive.`);
   }
   if (colliderPoints.length < 4) {
     throw new Error(`${type} 콜라이더 점은 최소 4개가 필요합니다.`);
@@ -685,7 +690,7 @@ function createPieceColliderDescriptor(
     throw new Error(`${type} convexHull 콜라이더 생성에 실패했습니다.`);
   }
   return descriptor
-    .setDensity(density * getPieceWeightMultiplier(type))
+    .setDensity(density * getPieceWeightMultiplier(type) * densityScale)
     .setFriction(friction)
     .setRestitution(PIECE_RESTITUTION);
 }
@@ -704,6 +709,7 @@ function createPieceBodyFromState(
   uniformScale: number,
   upgradeWeightFraction: number,
   forceMassLog: boolean,
+  densityScale: number,
 ): PieceBodyBinding {
   const bodyDescriptor = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(
@@ -745,6 +751,7 @@ function createPieceBodyFromState(
     spawnTranslation,
     spawnRotation,
     originalHullMass: properties.mass,
+    densityScale,
     originalLocalCom: { ...properties.localCom },
     localPieceHeight,
     uniformScale,
@@ -802,6 +809,7 @@ export function createPieceBody(
     PIECE_DENSITY,
     uniformScale,
     friction,
+    pieceMeta.densityScale ?? 1,
   );
   return createPieceBodyFromState(
     runtime,
@@ -814,6 +822,7 @@ export function createPieceBody(
     uniformScale,
     upgradeWeightFraction,
     false,
+    pieceMeta.densityScale ?? 1,
   );
 }
 
@@ -836,6 +845,7 @@ export function replacePieceBody(
     density,
     existing.uniformScale,
     existing.collider.friction(),
+    existing.densityScale,
   );
   const translation = existing.body.translation();
   const rotation = existing.body.rotation();
@@ -882,6 +892,7 @@ export function replacePieceBody(
     existing.uniformScale,
     existing.upgradeAdditionalMass / existing.originalHullMass,
     true,
+    existing.densityScale,
   );
 }
 
@@ -915,6 +926,7 @@ export function promotePieceBody(
     PIECE_DENSITY,
     existing.uniformScale,
     existing.collider.friction(),
+    pieceMeta.densityScale ?? 1,
   );
 
   const translation = existing.body.translation();
@@ -965,6 +977,7 @@ export function promotePieceBody(
     existing.uniformScale,
     0,
     true,
+    pieceMeta.densityScale ?? 1,
   );
 }
 

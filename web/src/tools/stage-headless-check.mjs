@@ -849,12 +849,17 @@ try {
   const stage12PawnScale = stage12Runtime.pieces.get(
     "black-pawn-a7",
   ).uniformScale;
-  const expectedStage12MovedPawnIds = [
+  // Zigzag depends on support clearance, so a narrower model can stay inline.
+  // The real settle/drift checks below still guard against overlapping spawns.
+  const stage12NeedsZigzag =
+    stageModule.computeScaledPawnSupportFlareDiameter(meta, stage12PawnScale) + 0.02 >
+    meta.cellSize;
+  const expectedStage12MovedPawnIds = stage12NeedsZigzag ? [
     "black-pawn-b7",
     "black-pawn-d7",
     "black-pawn-f7",
     "black-pawn-h7",
-  ];
+  ] : [];
   const stage12BlackPawns = [
     ...stage12Runtime.pieces.values(),
   ].filter(
@@ -890,7 +895,7 @@ try {
   assertCondition(
     JSON.stringify(stage12MovedPawnIds) ===
       JSON.stringify(expectedStage12MovedPawnIds) &&
-      stage12InlinePawnIds.length === 4,
+      stage12InlinePawnIds.length === (stage12NeedsZigzag ? 4 : 8),
     `스테이지 12 지그재그 배치가 b,d,f,h와 다릅니다: moved=${stage12MovedPawnIds.join(",")}, inline=${stage12InlinePawnIds.join(",")}`,
   );
   const stage12MovedPawnCount = stage12MovedPawnIds.length;

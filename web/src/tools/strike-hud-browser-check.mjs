@@ -453,7 +453,7 @@ try {
       const points = [{ x: pt.x, y: pt.y, id: 1 }, { ...second, id: 2 }];
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [points[0]] });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points });
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [points[1]] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [points[1]] });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       assert.ok((await snapshot()).panel, 'Two fingers apply strike');
       const cancel = await emptyPoint();

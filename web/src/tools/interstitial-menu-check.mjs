@@ -11,7 +11,11 @@ const fn = stripTypeScriptTypes(source.slice(start, source.indexOf('/**', start)
   .replace('export ', '');
 let adCalls = 0, exits = 0, menus = 0, releaseAd;
 let behavior = () => Promise.resolve(false);
+const platform = { id: 'web' };
+const leaves = [];
 const transition = runInNewContext(`${fn}; returnToMainMenu`, {
+  PLATFORM: platform,
+  gameplay: { leave: reason => leaves.push(reason) },
   AdManager: { showInterstitial: () => { adCalls++; return behavior(); } },
   showMainMenu: () => { menus++; },
   console: { warn() {} },
@@ -37,4 +41,11 @@ behavior = async () => false;
 await transition(runtime, true);
 assert.equal(exits, 4, 'no prepared ad proceeds directly to menu');
 assert.equal(runtime.busy, false);
+platform.id = 'crazygames';
+const callsBeforePortal = adCalls;
+await transition(runtime, true);
+assert.equal(adCalls, callsBeforePortal, 'CrazyGames Basic never requests a result-menu ad');
+assert.equal(exits, 5);
+assert.equal(menus, 5);
+assert.equal(leaves.length, 5, 'every menu transition leaves gameplay');
 console.log('PASS result-menu interstitial ordering, normal navigation exclusion, failure and no-fill fallback');

@@ -1,3 +1,4 @@
+import { PLATFORM } from "./platform";
 import {
   CARD_GRADE_SIZE_EFFECTS,
   CARD_GRADE_WEIGHT_FORCE_EFFECTS,
@@ -1024,290 +1025,302 @@ export function createCardTuningRuntime(
   giantPawnSizeMultiplier: number = GIANT_PAWN_SIZE_MULTIPLIER,
   storage?: CardTuningStorage | null,
 ): CardTuningRuntime {
-  const resolvedStorage =
-    storage === undefined
-      ? resolveBrowserCardTuningStorage()
-      : { storage, warning: null };
-  const defaultSettings = createDefaultCardTuningSettings(
-    giantPawnSizeMultiplier,
-  );
-  const loaded = loadCardTuningSettings(
-    resolvedStorage.storage,
-    giantPawnSizeMultiplier,
-  );
-  const panel = document.createElement("aside");
-  panel.className = "tuning-panel card-tuning-panel";
-  panel.hidden =
-    new URLSearchParams(window.location.search).get("cardTune") !==
-    "1";
-  panel.innerHTML = "<h2>카드 효과 조절판 · Y</h2>";
-  container.append(panel);
-  const storageNotice = document.createElement("p");
-  storageNotice.className = "tuning-note tuning-storage-notice";
-  storageNotice.textContent =
-    resolvedStorage.storage === null
-      ? "이 조절판은 기기 저장을 사용하지 않습니다."
-      : "변경한 카드 조절값은 이 기기에 자동 저장됩니다.";
-  const onlineNotice = document.createElement("p");
-  onlineNotice.className = "tuning-note tuning-online-notice";
-  onlineNotice.textContent =
-    "온라인 대전에서는 양쪽 물리 결정성을 위해 카드 조절값을 모두 무시합니다.";
-  onlineNotice.hidden = true;
-  const stageJumpInput = document.createElement("input");
-  stageJumpInput.type = "number";
-  stageJumpInput.min = "1";
-  stageJumpInput.step = "1";
-  stageJumpInput.value = "1";
-  stageJumpInput.disabled = true;
-  const stageJumpButton = document.createElement("button");
-  stageJumpButton.type = "button";
-  stageJumpButton.dataset.cardTuningStageJump = "";
-  stageJumpButton.textContent = "이 스테이지로 이동";
-  stageJumpButton.disabled = true;
-  const stageOnlyNotice = document.createElement("p");
-  stageOnlyNotice.className = "tuning-note";
-  stageOnlyNotice.textContent = "스테이지 모드 전용";
-  const runtime: CardTuningRuntime = {
-    settings: loaded.settings,
-    panel,
-    controls: new Map(),
-    currentValueElements: new Map(),
-    nextValueElements: new Map(),
-    storage: resolvedStorage.storage,
-    defaultSettings,
-    storageNotice,
-    onlineNotice,
-    storageWarningShown: false,
-    onlineDisabled: false,
-    gameMode: "hotseat",
-    stageJumpInput,
-    stageJumpButton,
-    stageOnlyNotice,
-    settingsChangedHandler: null,
-    relayoutHandler: null,
-    stageJumpHandler: null,
-  };
-  const initialWarning =
-    resolvedStorage.warning ?? loaded.warning;
-  if (initialWarning !== null) {
-    showCardTuningStorageWarning(runtime, initialWarning);
-  }
-  appendAppliedValuesGroup(
-    runtime,
-    "현재 보드 적용값 · 실제",
-    runtime.currentValueElements,
-  );
-  appendAppliedValuesGroup(
-    runtime,
-    "다음 보드 예상값 · 현재 조절값",
-    runtime.nextValueElements,
-  );
-  const groups: ReadonlyArray<{
-    title: string;
-    keys: readonly NumericCardTuningKey[];
-  }> = [
-    {
-      title: "현재 디버그 카드 등급 · 적용 시점은 항목별 표시",
-      keys: [
-        "debugWeightGrade",
-        "debugForceGrade",
-        "debugSizeGrade",
-      ],
-    },
-    {
-      title: "중량·힘 등급 효과 · 즉시·다음 보드",
-      keys: [
-        "weightForceGradeEffect1",
-        "weightForceGradeEffect2",
-        "weightForceGradeEffect3",
-        "weightForceGradeEffect4",
-        "weightForceGradeEffect5",
-      ],
-    },
-    {
-      title: "크기 등급 효과 · 다음 보드",
-      keys: [
-        "sizeGradeEffect1",
-        "sizeGradeEffect2",
-        "sizeGradeEffect3",
-        "sizeGradeEffect4",
-        "sizeGradeEffect5",
-      ],
-    },
-    {
-      title: "카드 종류별 최종 배수 · 적용 시점은 항목별 표시",
-      keys: [
-        "weightEffectMultiplier",
-        "forceEffectMultiplier",
-        "sizeEffectMultiplier",
-      ],
-    },
-  ];
-  for (const group of groups) {
-    const fieldset = document.createElement("fieldset");
-    const legend = document.createElement("legend");
-    legend.textContent = group.title;
-    fieldset.append(legend);
-    for (const key of group.keys) {
-      appendNumericControl(runtime, fieldset, key);
-    }
-    panel.append(fieldset);
-  }
-  const specialFieldset = document.createElement("fieldset");
-  const specialLegend = document.createElement("legend");
-  specialLegend.textContent = "특수 카드 · 다음 보드 설정부터 적용";
-  specialFieldset.append(specialLegend);
-  appendBooleanControl(
-    runtime,
-    specialFieldset,
-    "giantPawnEnabled",
-    "거대 폰 적용 · 다음 보드",
-  );
-  appendNumericControl(
-    runtime,
-    specialFieldset,
-    "giantPawnSizeMultiplier",
-  );
-  appendBooleanControl(
-    runtime,
-    specialFieldset,
-    "proneStartEnabled",
-    "포복 개시 적용 · 다음 보드",
-  );
-  panel.append(specialFieldset);
-  const stageJumpFieldset = document.createElement("fieldset");
-  const stageJumpLegend = document.createElement("legend");
-  stageJumpLegend.textContent = "스테이지 이동 · 디버그";
-  const stageJumpControl = document.createElement("label");
-  stageJumpControl.className = "tuning-control";
-  const stageJumpLabel = document.createElement("span");
-  stageJumpLabel.textContent = "이동할 스테이지";
-  stageJumpControl.append(stageJumpLabel, stageJumpInput);
-  const stageJumpActions = document.createElement("div");
-  stageJumpActions.className = "tuning-actions";
-  stageJumpActions.append(stageJumpButton);
-  stageJumpFieldset.append(
-    stageJumpLegend,
-    stageJumpControl,
-    stageJumpActions,
-    stageOnlyNotice,
-  );
-  panel.append(stageJumpFieldset);
-  const compositionNote = document.createElement("p");
-  compositionNote.className = "tuning-note";
-  compositionNote.textContent =
-    "핫시트와 스테이지의 백 말에 적용됩니다. 힘은 즉시, 중량·크기·특수 카드는 다음 보드 설정부터 적용됩니다. 스테이지에서는 실제 런 카드와 디버그 카드 중 높은 등급이 카드 종류별 곡선과 최종 배수를 사용합니다.";
-  const actions = document.createElement("div");
-  actions.className = "tuning-actions";
-  const relayoutButton = document.createElement("button");
-  relayoutButton.type = "button";
-  relayoutButton.dataset.cardTuningRelayout = "";
-  relayoutButton.textContent = "현재 판 다시 깔기 · 런 상태 유지";
-  const actionNotice = document.createElement("p");
-  actionNotice.className = "tuning-note";
-  actionNotice.setAttribute("aria-live", "polite");
-  actionNotice.hidden = true;
-  stageJumpButton.addEventListener("click", () => {
-    if (
-      runtime.gameMode !== "stage" ||
-      runtime.stageJumpHandler === null
-    ) {
-      return;
-    }
-    const targetStageNumber = Number(stageJumpInput.value);
+  if (!PLATFORM.features.debugTools) {
+    const defaultSettings = createDefaultCardTuningSettings(giantPawnSizeMultiplier);
+    return {
+      settings: { ...defaultSettings }, defaultSettings,
+      panel: document.createElement("aside"), controls: new Map(), currentValueElements: new Map(), nextValueElements: new Map(),
+      storage: null, storageNotice: document.createElement("p"), onlineNotice: document.createElement("p"),
+      storageWarningShown: false, onlineDisabled: false, gameMode: "hotseat",
+      stageJumpInput: document.createElement("input"), stageJumpButton: document.createElement("button"),
+      stageOnlyNotice: document.createElement("p"), settingsChangedHandler: null, relayoutHandler: null, stageJumpHandler: null,
+    };
+  } else {
+    const resolvedStorage =
+      storage === undefined
+        ? resolveBrowserCardTuningStorage()
+        : { storage, warning: null };
+    const defaultSettings = createDefaultCardTuningSettings(
+      giantPawnSizeMultiplier,
+    );
+    const loaded = loadCardTuningSettings(
+      resolvedStorage.storage,
+      giantPawnSizeMultiplier,
+    );
+    const panel = document.createElement("aside");
+    panel.className = "tuning-panel card-tuning-panel";
+    panel.hidden =
+      new URLSearchParams(window.location.search).get("cardTune") !==
+      "1";
+    panel.innerHTML = "<h2>카드 효과 조절판 · Y</h2>";
+    container.append(panel);
+    const storageNotice = document.createElement("p");
+    storageNotice.className = "tuning-note tuning-storage-notice";
+    storageNotice.textContent =
+      resolvedStorage.storage === null
+        ? "이 조절판은 기기 저장을 사용하지 않습니다."
+        : "변경한 카드 조절값은 이 기기에 자동 저장됩니다.";
+    const onlineNotice = document.createElement("p");
+    onlineNotice.className = "tuning-note tuning-online-notice";
+    onlineNotice.textContent =
+      "온라인 대전에서는 양쪽 물리 결정성을 위해 카드 조절값을 모두 무시합니다.";
+    onlineNotice.hidden = true;
+    const stageJumpInput = document.createElement("input");
+    stageJumpInput.type = "number";
+    stageJumpInput.min = "1";
+    stageJumpInput.step = "1";
+    stageJumpInput.value = "1";
+    stageJumpInput.disabled = true;
+    const stageJumpButton = document.createElement("button");
+    stageJumpButton.type = "button";
+    stageJumpButton.dataset.cardTuningStageJump = "";
+    stageJumpButton.textContent = "이 스테이지로 이동";
     stageJumpButton.disabled = true;
-    actionNotice.hidden = false;
-    actionNotice.textContent =
-      `${targetStageNumber}스테이지의 실제 맵과 버프로 이동하는 중입니다.`;
-    void runtime
-      .stageJumpHandler(targetStageNumber)
-      .then(() => {
-        actionNotice.textContent =
-          `${targetStageNumber}스테이지로 이동했습니다. 카드와 포인트는 유지됐습니다.`;
-      })
-      .catch((error: unknown) => {
-        const detail =
-          error instanceof Error ? error.message : String(error);
-        actionNotice.textContent =
-          `스테이지로 이동하지 못했습니다: ${detail}`;
-        console.error(error);
-      })
-      .finally(() => {
-        stageJumpButton.disabled =
-          runtime.gameMode !== "stage";
-      });
-  });
-  relayoutButton.addEventListener("click", () => {
-    if (
-      runtime.onlineDisabled ||
-      runtime.relayoutHandler === null
-    ) {
-      return;
+    const stageOnlyNotice = document.createElement("p");
+    stageOnlyNotice.className = "tuning-note";
+    stageOnlyNotice.textContent = "스테이지 모드 전용";
+    const runtime: CardTuningRuntime = {
+      settings: loaded.settings,
+      panel,
+      controls: new Map(),
+      currentValueElements: new Map(),
+      nextValueElements: new Map(),
+      storage: resolvedStorage.storage,
+      defaultSettings,
+      storageNotice,
+      onlineNotice,
+      storageWarningShown: false,
+      onlineDisabled: false,
+      gameMode: "hotseat",
+      stageJumpInput,
+      stageJumpButton,
+      stageOnlyNotice,
+      settingsChangedHandler: null,
+      relayoutHandler: null,
+      stageJumpHandler: null,
+    };
+    const initialWarning =
+      resolvedStorage.warning ?? loaded.warning;
+    if (initialWarning !== null) {
+      showCardTuningStorageWarning(runtime, initialWarning);
     }
-    relayoutButton.disabled = true;
-    actionNotice.hidden = false;
-    actionNotice.textContent =
-      "현재 모드와 런 상태를 유지한 채 보드를 다시 까는 중입니다.";
-    void runtime
-      .relayoutHandler()
-      .then(() => {
-        actionNotice.textContent =
-          "현재 조절값으로 보드를 다시 깔았습니다. 스테이지와 런 상태는 유지됐습니다.";
-      })
-      .catch((error: unknown) => {
-        const detail =
-          error instanceof Error ? error.message : String(error);
-        actionNotice.textContent =
-          `현재 판을 다시 깔지 못했습니다: ${detail}`;
-        console.error(error);
-      })
-      .finally(() => {
-        relayoutButton.disabled = runtime.onlineDisabled;
-      });
-  });
-  const resetButton = document.createElement("button");
-  resetButton.type = "button";
-  resetButton.dataset.cardTuningReset = "";
-  resetButton.textContent = "코드 기본값 복원 · 저장 삭제";
-  resetButton.addEventListener("click", () => {
-    for (const key of Object.keys(
-      runtime.defaultSettings,
-    ) as CardTuningKey[]) {
-      const value = runtime.defaultSettings[key];
-      if (typeof value === "boolean") {
-        setCardTuningBooleanValue(
-          runtime,
-          key as BooleanCardTuningKey,
-          value,
-          false,
-        );
-      } else {
-        setCardTuningNumericValue(
-          runtime,
-          key as NumericCardTuningKey,
-          value,
-          false,
-        );
+    appendAppliedValuesGroup(
+      runtime,
+      "현재 보드 적용값 · 실제",
+      runtime.currentValueElements,
+    );
+    appendAppliedValuesGroup(
+      runtime,
+      "다음 보드 예상값 · 현재 조절값",
+      runtime.nextValueElements,
+    );
+    const groups: ReadonlyArray<{
+      title: string;
+      keys: readonly NumericCardTuningKey[];
+    }> = [
+      {
+        title: "현재 디버그 카드 등급 · 적용 시점은 항목별 표시",
+        keys: [
+          "debugWeightGrade",
+          "debugForceGrade",
+          "debugSizeGrade",
+        ],
+      },
+      {
+        title: "중량·힘 등급 효과 · 즉시·다음 보드",
+        keys: [
+          "weightForceGradeEffect1",
+          "weightForceGradeEffect2",
+          "weightForceGradeEffect3",
+          "weightForceGradeEffect4",
+          "weightForceGradeEffect5",
+        ],
+      },
+      {
+        title: "크기 등급 효과 · 다음 보드",
+        keys: [
+          "sizeGradeEffect1",
+          "sizeGradeEffect2",
+          "sizeGradeEffect3",
+          "sizeGradeEffect4",
+          "sizeGradeEffect5",
+        ],
+      },
+      {
+        title: "카드 종류별 최종 배수 · 적용 시점은 항목별 표시",
+        keys: [
+          "weightEffectMultiplier",
+          "forceEffectMultiplier",
+          "sizeEffectMultiplier",
+        ],
+      },
+    ];
+    for (const group of groups) {
+      const fieldset = document.createElement("fieldset");
+      const legend = document.createElement("legend");
+      legend.textContent = group.title;
+      fieldset.append(legend);
+      for (const key of group.keys) {
+        appendNumericControl(runtime, fieldset, key);
       }
+      panel.append(fieldset);
     }
-    const warning = clearCardTuningSettings(runtime.storage);
-    if (warning !== null) {
-      runtime.storage = null;
-      showCardTuningStorageWarning(runtime, warning);
-    } else if (!runtime.storageWarningShown) {
-      runtime.storageNotice.textContent =
-        "코드 기본값으로 복원하고 카드 기기 저장값을 삭제했습니다.";
-    }
-    runtime.settingsChangedHandler?.();
-  });
-  actions.append(relayoutButton, resetButton);
-  panel.append(
-    compositionNote,
-    storageNotice,
-    onlineNotice,
-    actionNotice,
-    actions,
-  );
-  // 카드 조절판은 ?cardTune=1 개발 세션에서만 열린다. 게임 화면 단축키로는 열 수 없다.
-  return runtime;
+    const specialFieldset = document.createElement("fieldset");
+    const specialLegend = document.createElement("legend");
+    specialLegend.textContent = "특수 카드 · 다음 보드 설정부터 적용";
+    specialFieldset.append(specialLegend);
+    appendBooleanControl(
+      runtime,
+      specialFieldset,
+      "giantPawnEnabled",
+      "거대 폰 적용 · 다음 보드",
+    );
+    appendNumericControl(
+      runtime,
+      specialFieldset,
+      "giantPawnSizeMultiplier",
+    );
+    appendBooleanControl(
+      runtime,
+      specialFieldset,
+      "proneStartEnabled",
+      "포복 개시 적용 · 다음 보드",
+    );
+    panel.append(specialFieldset);
+    const stageJumpFieldset = document.createElement("fieldset");
+    const stageJumpLegend = document.createElement("legend");
+    stageJumpLegend.textContent = "스테이지 이동 · 디버그";
+    const stageJumpControl = document.createElement("label");
+    stageJumpControl.className = "tuning-control";
+    const stageJumpLabel = document.createElement("span");
+    stageJumpLabel.textContent = "이동할 스테이지";
+    stageJumpControl.append(stageJumpLabel, stageJumpInput);
+    const stageJumpActions = document.createElement("div");
+    stageJumpActions.className = "tuning-actions";
+    stageJumpActions.append(stageJumpButton);
+    stageJumpFieldset.append(
+      stageJumpLegend,
+      stageJumpControl,
+      stageJumpActions,
+      stageOnlyNotice,
+    );
+    panel.append(stageJumpFieldset);
+    const compositionNote = document.createElement("p");
+    compositionNote.className = "tuning-note";
+    compositionNote.textContent =
+      "핫시트와 스테이지의 백 말에 적용됩니다. 힘은 즉시, 중량·크기·특수 카드는 다음 보드 설정부터 적용됩니다. 스테이지에서는 실제 런 카드와 디버그 카드 중 높은 등급이 카드 종류별 곡선과 최종 배수를 사용합니다.";
+    const actions = document.createElement("div");
+    actions.className = "tuning-actions";
+    const relayoutButton = document.createElement("button");
+    relayoutButton.type = "button";
+    relayoutButton.dataset.cardTuningRelayout = "";
+    relayoutButton.textContent = "현재 판 다시 깔기 · 런 상태 유지";
+    const actionNotice = document.createElement("p");
+    actionNotice.className = "tuning-note";
+    actionNotice.setAttribute("aria-live", "polite");
+    actionNotice.hidden = true;
+    stageJumpButton.addEventListener("click", () => {
+      if (
+        runtime.gameMode !== "stage" ||
+        runtime.stageJumpHandler === null
+      ) {
+        return;
+      }
+      const targetStageNumber = Number(stageJumpInput.value);
+      stageJumpButton.disabled = true;
+      actionNotice.hidden = false;
+      actionNotice.textContent =
+        `${targetStageNumber}스테이지의 실제 맵과 버프로 이동하는 중입니다.`;
+      void runtime
+        .stageJumpHandler(targetStageNumber)
+        .then(() => {
+          actionNotice.textContent =
+            `${targetStageNumber}스테이지로 이동했습니다. 카드와 포인트는 유지됐습니다.`;
+        })
+        .catch((error: unknown) => {
+          const detail =
+            error instanceof Error ? error.message : String(error);
+          actionNotice.textContent =
+            `스테이지로 이동하지 못했습니다: ${detail}`;
+          console.error(error);
+        })
+        .finally(() => {
+          stageJumpButton.disabled =
+            runtime.gameMode !== "stage";
+        });
+    });
+    relayoutButton.addEventListener("click", () => {
+      if (
+        runtime.onlineDisabled ||
+        runtime.relayoutHandler === null
+      ) {
+        return;
+      }
+      relayoutButton.disabled = true;
+      actionNotice.hidden = false;
+      actionNotice.textContent =
+        "현재 모드와 런 상태를 유지한 채 보드를 다시 까는 중입니다.";
+      void runtime
+        .relayoutHandler()
+        .then(() => {
+          actionNotice.textContent =
+            "현재 조절값으로 보드를 다시 깔았습니다. 스테이지와 런 상태는 유지됐습니다.";
+        })
+        .catch((error: unknown) => {
+          const detail =
+            error instanceof Error ? error.message : String(error);
+          actionNotice.textContent =
+            `현재 판을 다시 깔지 못했습니다: ${detail}`;
+          console.error(error);
+        })
+        .finally(() => {
+          relayoutButton.disabled = runtime.onlineDisabled;
+        });
+    });
+    const resetButton = document.createElement("button");
+    resetButton.type = "button";
+    resetButton.dataset.cardTuningReset = "";
+    resetButton.textContent = "코드 기본값 복원 · 저장 삭제";
+    resetButton.addEventListener("click", () => {
+      for (const key of Object.keys(
+        runtime.defaultSettings,
+      ) as CardTuningKey[]) {
+        const value = runtime.defaultSettings[key];
+        if (typeof value === "boolean") {
+          setCardTuningBooleanValue(
+            runtime,
+            key as BooleanCardTuningKey,
+            value,
+            false,
+          );
+        } else {
+          setCardTuningNumericValue(
+            runtime,
+            key as NumericCardTuningKey,
+            value,
+            false,
+          );
+        }
+      }
+      const warning = clearCardTuningSettings(runtime.storage);
+      if (warning !== null) {
+        runtime.storage = null;
+        showCardTuningStorageWarning(runtime, warning);
+      } else if (!runtime.storageWarningShown) {
+        runtime.storageNotice.textContent =
+          "코드 기본값으로 복원하고 카드 기기 저장값을 삭제했습니다.";
+      }
+      runtime.settingsChangedHandler?.();
+    });
+    actions.append(relayoutButton, resetButton);
+    panel.append(
+      compositionNote,
+      storageNotice,
+      onlineNotice,
+      actionNotice,
+      actions,
+    );
+    // 카드 조절판은 ?cardTune=1 개발 세션에서만 열린다. 게임 화면 단축키로는 열 수 없다.
+    return runtime;
+  }
 }

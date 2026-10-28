@@ -1,0 +1,659 @@
+[
+  {
+    "name": "production: init/loading/menu, first match, confirm stop/start, menu/new-match ad",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "loadingFinished",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "production: SDK missing, playable without lifecycle (982 ms boot)",
+    "events": [],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "production: SDK reject, playable without lifecycle (1018 ms boot)",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "production: SDK late, playable without lifecycle (5931 ms boot)",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "ad/no-ad/delayed/rejections, board barrier, mute/input, active invariant",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "loadingFinished",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "ad-start",
+        "pending": true,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "ad-start",
+        "pending": true,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "ad-reject",
+        "pending": true,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 4
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 4
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 4
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 4
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 5
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 5
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 5
+      },
+      {
+        "type": "ad-start",
+        "pending": true,
+        "interactive": false,
+        "boards": 5
+      },
+      {
+        "type": "ad-reject",
+        "pending": true,
+        "interactive": false,
+        "boards": 5
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 6
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 6
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "stage card next and stage-run result",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "loadingFinished",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "weekly modal block/card next/restored offer/first match/automatic continuation",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "loadingFinished",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "puzzle hint/restart/result/retry/next/library",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "loadingFinished",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": true,
+        "boards": 1
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 4
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 4
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "tutorial complete/#btn-tutorial-start-stage",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "loadingFinished",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "tutorial complete/#btn-tutorial-accept-adv",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "loadingFinished",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "poki: continuous step, stale success/retry after exit/re-entry",
+    "events": [
+      {
+        "type": "init",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "loadingFinished",
+        "pending": false,
+        "interactive": false
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 1
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 2
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 3
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 4
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 4
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 5
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 5
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": true,
+        "boards": 6
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 6
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 7
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 7
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": false,
+        "boards": 8
+      },
+      {
+        "type": "stop",
+        "pending": false,
+        "interactive": false,
+        "boards": 8
+      },
+      {
+        "type": "break",
+        "pending": false,
+        "interactive": false,
+        "boards": 9
+      },
+      {
+        "type": "ad-end",
+        "pending": true,
+        "interactive": false,
+        "boards": 9
+      },
+      {
+        "type": "start",
+        "pending": false,
+        "interactive": true,
+        "boards": 10
+      }
+    ],
+    "errors": [],
+    "external": []
+  },
+  {
+    "name": "normal dev: continuous step, stale success/retry after exit/re-entry",
+    "events": [],
+    "errors": [],
+    "external": []
+  }
+]

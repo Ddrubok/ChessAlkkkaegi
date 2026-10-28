@@ -3,6 +3,7 @@ import { getSupabaseClient } from "./supabase-client";
 import type { UserProfile } from "./supabase-auth";
 import { KING_MMR } from "./tier";
 import { getFriendlyCopy } from "./friendly-copy";
+import { marketingRuntime } from "./marketing-runtime";
 
 export type UserStatus = "online" | "in_game" | "in_queue" | "offline";
 
@@ -514,6 +515,8 @@ export class SocialService {
       throw error;
     } finally { await sb.removeChannel(channel); }
 
+    // This is a delivered invitation, not a click or an unconfirmed room request.
+    marketingRuntime.inviteCreated(roomId);
     return { roomId, responsePromise };
   }
 

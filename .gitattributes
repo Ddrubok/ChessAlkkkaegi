@@ -1,0 +1,5 @@
+# Preserve byte hashes used by model provenance, reproducible builds and online compatibility.
+assets-source/polyhaven-chess/*.gltf text eol=lf
+assets-source/polyhaven-chess/*.bin binary
+web/public/assets/chess-pieces.glb binary
+web/public/assets/chess-set.meta.json text eol=lf

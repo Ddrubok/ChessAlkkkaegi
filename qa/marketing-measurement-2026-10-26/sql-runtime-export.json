@@ -1,0 +1,155 @@
+[
+  {
+    "event_id": "ccc985f9-5483-4725-b923-c4a47d1dbe14",
+    "name": "session_start",
+    "occurred_at": "2026-10-26T05:54:20.853Z",
+    "analytics_id": "8b91250c-b0b5-4604-82e9-03d825a9c276",
+    "session_id": "510f2ef6-edd4-4a61-a168-1e37425c922d",
+    "environment": "qa",
+    "platform": "web",
+    "build": "0a1cd04f0d32-dirty-20261026055419",
+    "mode": "menu",
+    "match_id": null,
+    "campaign": {
+      "source": "qa",
+      "campaign": "first_bundle"
+    },
+    "details": {
+      "first_session": true
+    },
+    "recorded_at": "2026-10-26T05:54:27.544Z"
+  },
+  {
+    "event_id": "f3206d88-d7f6-49b2-9f8e-614c8d7212fe",
+    "name": "game_ready",
+    "occurred_at": "2026-10-26T05:54:21.393Z",
+    "analytics_id": "8b91250c-b0b5-4604-82e9-03d825a9c276",
+    "session_id": "510f2ef6-edd4-4a61-a168-1e37425c922d",
+    "environment": "qa",
+    "platform": "web",
+    "build": "0a1cd04f0d32-dirty-20261026055419",
+    "mode": "menu",
+    "match_id": null,
+    "campaign": {
+      "source": "qa",
+      "campaign": "first_bundle"
+    },
+    "details": {},
+    "recorded_at": "2026-10-26T05:54:27.544Z"
+  },
+  {
+    "event_id": "e3a756fa-6f9b-4fbd-b542-4d72048e2712",
+    "name": "match_start",
+    "occurred_at": "2026-10-26T05:54:21.737Z",
+    "analytics_id": "8b91250c-b0b5-4604-82e9-03d825a9c276",
+    "session_id": "510f2ef6-edd4-4a61-a168-1e37425c922d",
+    "environment": "qa",
+    "platform": "web",
+    "build": "0a1cd04f0d32-dirty-20261026055419",
+    "mode": "hotseat",
+    "match_id": "0ecb6eac-a068-44bb-9103-2a8bee8349b1",
+    "campaign": {
+      "source": "qa",
+      "campaign": "first_bundle"
+    },
+    "details": {},
+    "recorded_at": "2026-10-26T05:54:27.544Z"
+  },
+  {
+    "event_id": "b1cdd6b3-2883-426f-b56f-e22747c59eda",
+    "name": "first_shot",
+    "occurred_at": "2026-10-26T05:54:23.041Z",
+    "analytics_id": "8b91250c-b0b5-4604-82e9-03d825a9c276",
+    "session_id": "510f2ef6-edd4-4a61-a168-1e37425c922d",
+    "environment": "qa",
+    "platform": "web",
+    "build": "0a1cd04f0d32-dirty-20261026055419",
+    "mode": "hotseat",
+    "match_id": "0ecb6eac-a068-44bb-9103-2a8bee8349b1",
+    "campaign": {
+      "source": "qa",
+      "campaign": "first_bundle"
+    },
+    "details": {},
+    "recorded_at": "2026-10-26T05:54:27.544Z"
+  },
+  {
+    "event_id": "e345bcf7-e6f6-4d04-b9c4-757f49de6bcf",
+    "name": "match_abort",
+    "occurred_at": "2026-10-26T05:54:24.720Z",
+    "analytics_id": "8b91250c-b0b5-4604-82e9-03d825a9c276",
+    "session_id": "510f2ef6-edd4-4a61-a168-1e37425c922d",
+    "environment": "qa",
+    "platform": "web",
+    "build": "0a1cd04f0d32-dirty-20261026055419",
+    "mode": "hotseat",
+    "match_id": "0ecb6eac-a068-44bb-9103-2a8bee8349b1",
+    "campaign": {
+      "source": "qa",
+      "campaign": "first_bundle"
+    },
+    "details": {
+      "reason": "menu_exit"
+    },
+    "recorded_at": "2026-10-26T05:54:27.544Z"
+  },
+  {
+    "event_id": "e99319d0-01ef-4b8b-8617-3092d0031384",
+    "name": "tutorial_complete",
+    "occurred_at": "2026-10-26T05:54:24.790Z",
+    "analytics_id": "8b91250c-b0b5-4604-82e9-03d825a9c276",
+    "session_id": "510f2ef6-edd4-4a61-a168-1e37425c922d",
+    "environment": "qa",
+    "platform": "web",
+    "build": "0a1cd04f0d32-dirty-20261026055419",
+    "mode": "tutorial",
+    "match_id": null,
+    "campaign": {
+      "source": "qa",
+      "campaign": "first_bundle"
+    },
+    "details": {
+      "tutorial": "basic"
+    },
+    "recorded_at": "2026-10-26T05:54:27.544Z"
+  },
+  {
+    "event_id": "2f08c7bf-5d6c-4869-98f4-aa8b7c30e80a",
+    "name": "match_start",
+    "occurred_at": "2026-10-26T05:54:25.009Z",
+    "analytics_id": "8b91250c-b0b5-4604-82e9-03d825a9c276",
+    "session_id": "510f2ef6-edd4-4a61-a168-1e37425c922d",
+    "environment": "qa",
+    "platform": "web",
+    "build": "0a1cd04f0d32-dirty-20261026055419",
+    "mode": "ai",
+    "match_id": "6aa6b00a-179d-4675-8ffb-a9494f4ce4e7",
+    "campaign": {
+      "source": "qa",
+      "campaign": "first_bundle"
+    },
+    "details": {},
+    "recorded_at": "2026-10-26T05:54:27.544Z"
+  },
+  {
+    "event_id": "4524c586-87bf-4618-be36-c24da4ce44db",
+    "name": "match_end",
+    "occurred_at": "2026-10-26T05:54:25.044Z",
+    "analytics_id": "8b91250c-b0b5-4604-82e9-03d825a9c276",
+    "session_id": "510f2ef6-edd4-4a61-a168-1e37425c922d",
+    "environment": "qa",
+    "platform": "web",
+    "build": "0a1cd04f0d32-dirty-20261026055419",
+    "mode": "ai",
+    "match_id": "6aa6b00a-179d-4675-8ffb-a9494f4ce4e7",
+    "campaign": {
+      "source": "qa",
+      "campaign": "first_bundle"
+    },
+    "details": {
+      "outcome": "win",
+      "resigned": false
+    },
+    "recorded_at": "2026-10-26T05:54:27.544Z"
+  }
+]

@@ -7,6 +7,7 @@ export type ColliderPoint = [number, number, number];
 
 export interface PieceMeta {
   triangles: number;
+  densityScale?: number;
   bounds: {
     x: number;
     y: number;
@@ -124,6 +125,10 @@ function validateMeta(value: unknown): ChessSetMeta {
       triangles: requirePositiveNumber(
         rawPiece.triangles,
         `${type} triangles`,
+      ),
+      densityScale: requirePositiveNumber(
+        rawPiece.densityScale === undefined ? 1 : rawPiece.densityScale,
+        `${type} densityScale`,
       ),
       bounds: {
         x: requirePositiveNumber(rawPiece.bounds.x, `${type} bounds.x`),

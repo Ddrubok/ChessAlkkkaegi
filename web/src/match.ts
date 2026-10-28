@@ -1,4 +1,5 @@
 import { uiText } from "./ui-text";
+import { gameplay } from "./poki-sdk";
 import type { PieceSide } from "./layout";
 import type { GameMode } from "./game-mode";
 import type { CardId, UpgradeCard } from "./cards";
@@ -272,6 +273,7 @@ export function showMatchResult(
   onReturnToMenu: (() => Promise<void>) | null = null,
   localSide: PieceSide | null = null,
 ): void {
+  gameplay.leave("match-result");
   runtime.overlay.classList.remove("weekly-result-open");
   runtime.winner = winner;
   runtime.restarting = false;
@@ -427,6 +429,7 @@ export function showStageRunResult(
   completed: boolean,
   onReturnToMenu: () => Promise<void>,
 ): void {
+  gameplay.leave("stage-run-result");
   const copy = createStageRunResultCopy(
     stageNumber,
     payout,

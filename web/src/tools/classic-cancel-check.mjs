@@ -421,6 +421,50 @@ try {
     console.log('  -> 일반 조준 후 정상 릴리스 시 1회 발사 커밋 정상 동작');
   }
 
+  // The fixed HUD sits below the canvas. Exercise real input handlers through
+  // queueLaunch, including the exact boundary where the cancel control begins.
+  console.log('[검증 9] 캔버스 아래 조준 HUD 발사 영역과 취소 경계');
+  const originalCancelRect = mockCancelControl.getBoundingClientRect;
+  mockCancelControl.getBoundingClientRect = () => ({
+    left: 100, right: 300, top: 480, bottom: 550, width: 200, height: 70,
+  });
+  try {
+    for (const pointerType of ['mouse', 'touch']) {
+      for (const [label, x, y, launches] of [
+        ['HUD center', 200, 440, true],
+        ['HUD left edge', 100, 440, true],
+        ['HUD right edge', 300, 440, true],
+        ['left banner', 99.99, 440, false],
+        ['right banner', 300.01, 440, false],
+        ['canvas bottom', 200, 400, true],
+        ['just above cancel', 200, 479.99, true],
+        ['cancel top edge', 200, 480, false],
+        ['cancel center', 200, 520, false],
+        ['below cancel', 200, 600, false],
+        ['outside screen', -1, 440, false],
+        ['above canvas', 200, -1, false],
+      ]) {
+        const runtime = createTestRuntime('classic');
+        const point = whitePieceMesh.position.clone().project(camera);
+        const event = (clientX, clientY) => ({
+          clientX, clientY, pointerId: 71, pointerType, button: 0,
+          preventDefault() {}, stopImmediatePropagation() {},
+        });
+        pointerDown(runtime, event((point.x + 1) * 200, (1 - point.y) * 200));
+        assert.equal(runtime.state, 'aiming');
+        pointerMove(runtime, event(x, y));
+        assert.ok(runtime.aimRuntime.activeAim.normalizedPower > 0);
+        pointerUp(runtime, event(x, y));
+        assert.equal(launchQueueCalls.length, launches ? 1 : 0, `${pointerType}: ${label}`);
+        assert.equal(runtime.cancelControl.hidden, true, `${label}: cancel feedback resets`);
+        assert.equal(capturedPointerIds.size, 0, `${label}: pointer capture released`);
+      }
+    }
+    console.log('  -> mouse/touch 24개 HUD·캔버스·취소·화면 밖 경계 통과');
+  } finally {
+    mockCancelControl.getBoundingClientRect = originalCancelRect;
+  }
+
   console.log('\n========================================');
   console.log('PASS: Classic Firing Cancel UX Headless Verification Completed Successfully!');
   console.log('========================================');

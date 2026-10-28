@@ -1,18 +1,15 @@
 import { progressStorage } from "./progress-storage";
+import { PLATFORM } from "./platform";
+import { gameplay } from "./poki-sdk";
 /**
- * 5단계 마이크로 인터랙티브 튜토리얼 시스템 모듈 (TutorialManager)
- * 
- * 1. 기물 이동과 직진 타격 (슬링샷 기초)
- * 2. 각도 조절과 대각선 조준 (방향 전환 훈련)
- * 3. 타점 선택과 스핀 회전력 (타점 변경 필수 검증)
- * 4. 장외 낙사 시스템 (보드 밖 밀어내기)
- * 5. 실전 연습 미니 대전 (실전 체득 및 최종 졸업)
+ * 기초: 장외 → 방향 조절 → 미니 대전. 심화: 기존 5단계 기물 특성 연습.
  */
 
 import type { PieceInstance } from "./layout";
 import type { MetaRuntime } from "./meta";
 import { saveMetaState } from "./meta";
 import { I18nManager } from "./i18n";
+import { marketingRuntime } from "./marketing-runtime";
 
 export type TutorialType = "basic" | "advanced";
 
@@ -29,7 +26,7 @@ export function getTutorialStepInfo(
   type: TutorialType = "basic",
 ): TutorialStepInfo {
   const prefix = type === "advanced" ? "tutorial.adv_step" : "tutorial.step";
-  const s = Math.max(1, Math.min(5, step));
+  const s = Math.max(1, Math.min(type === "basic" ? 3 : 5, step));
   return {
     step: s,
     title: I18nManager.t(`${prefix}${s}_title`),
@@ -43,9 +40,14 @@ export class TutorialManager {
   public currentStep: number = 1;
   public tutorialType: TutorialType = "basic";
   public isActive: boolean = false;
+  public isTransitioning = false;
+  private generation = 0;
+  public get sessionToken(): number { return this.generation; }
+  private completionModal: HTMLElement | null = null;
   private overlayElement: HTMLElement | null = null;
+  private coachResizeObserver: ResizeObserver | null = null;
   private onStepCompletedCallback: ((nextStep: number) => Promise<void>) | null = null;
-  private onTutorialFinishedCallback: (() => Promise<void>) | null = null;
+  private onTutorialFinishedCallback: ((destination?: "stage") => Promise<void>) | null = null;
   private metaRuntime: MetaRuntime | null = null;
 
   /**
@@ -54,7 +56,7 @@ export class TutorialManager {
   public init(
     metaRuntime: MetaRuntime,
     onStepCompleted: (nextStep: number) => Promise<void>,
-    onTutorialFinished: () => Promise<void>,
+    onTutorialFinished: (destination?: "stage") => Promise<void>,
   ): void {
     this.metaRuntime = metaRuntime;
     this.onStepCompletedCallback = onStepCompleted;
@@ -68,17 +70,30 @@ export class TutorialManager {
     startStep: number = 1,
     tutorialType: TutorialType = "basic",
   ): void {
+    this.stop();
     this.isActive = true;
     this.tutorialType = tutorialType;
-    this.currentStep = startStep;
+    this.currentStep = Math.max(1, Math.min(this.stepCount, startStep));
+    document.body.dataset.tutorial = tutorialType;
     this.renderCoachOverlay();
   }
+
+  public get stepCount(): number { return this.tutorialType === "basic" ? 3 : 5; }
+  public get isMatchStep(): boolean { return this.isActive && this.currentStep === this.stepCount; }
 
   /**
    * 튜토리얼 모드 종료 및 UI 제거
    */
   public stop(): void {
+    this.generation += 1;
+    this.isTransitioning = false;
     this.isActive = false;
+    delete document.body.dataset.tutorial;
+    this.coachResizeObserver?.disconnect();
+    this.coachResizeObserver = null;
+    document.body.style.removeProperty("--tutorial-coach-height");
+    this.completionModal?.remove();
+    this.completionModal = null;
     if (this.overlayElement) {
       this.overlayElement.remove();
       this.overlayElement = null;
@@ -93,123 +108,23 @@ export class TutorialManager {
     type: TutorialType = this.tutorialType,
   ): PieceInstance[] {
     if (type === "basic") {
-      switch (step) {
-        case 1:
-          // Step 1: 기물 이동과 직진 타격 (폰 vs 폰)
-          return [
-            {
-              id: "white-pawn-d2",
-              type: "Pawn",
-              side: "white",
-              startingSquare: { file: "d", rank: 2 },
-            },
-            {
-              id: "black-pawn-d5",
-              type: "Pawn",
-              side: "black",
-              startingSquare: { file: "d", rank: 5 },
-            },
-          ];
-
-        case 2:
-          // Step 2: 각도 조절과 대각선 조준
-          return [
-            {
-              id: "white-pawn-d2",
-              type: "Pawn",
-              side: "white",
-              startingSquare: { file: "d", rank: 2 },
-            },
-            {
-              id: "black-pawn-f5",
-              type: "Pawn",
-              side: "black",
-              startingSquare: { file: "f", rank: 5 },
-            },
-          ];
-
-        case 3:
-          // Step 3: 타점 선택과 스핀 회전력
-          return [
-            {
-              id: "white-pawn-d2",
-              type: "Pawn",
-              side: "white",
-              startingSquare: { file: "d", rank: 2 },
-            },
-            {
-              id: "black-pawn-d5",
-              type: "Pawn",
-              side: "black",
-              startingSquare: { file: "d", rank: 5 },
-            },
-          ];
-
-        case 4:
-          // Step 4: 장외 낙사 시스템
-          return [
-            {
-              id: "white-pawn-d3",
-              type: "Pawn",
-              side: "white",
-              startingSquare: { file: "d", rank: 3 },
-            },
-            {
-              id: "black-knight-d8",
-              type: "Knight",
-              side: "black",
-              startingSquare: { file: "d", rank: 8 },
-            },
-          ];
-
-        case 5:
-        default:
-          // Step 5: 실전 연습 미니 대전 (기초 3:3)
-          return [
-            {
-              id: "white-pawn-c2",
-              type: "Pawn",
-              side: "white",
-              startingSquare: { file: "c", rank: 2 },
-            },
-            {
-              id: "white-pawn-e2",
-              type: "Pawn",
-              side: "white",
-              startingSquare: { file: "e", rank: 2 },
-            },
-            {
-              id: "white-rook-d1",
-              type: "Rook",
-              side: "white",
-              startingSquare: { file: "d", rank: 1 },
-            },
-            {
-              id: "white-king-e1",
-              type: "King",
-              side: "white",
-              startingSquare: { file: "e", rank: 1 },
-            },
-            {
-              id: "black-pawn-c7",
-              type: "Pawn",
-              side: "black",
-              startingSquare: { file: "c", rank: 7 },
-            },
-            {
-              id: "black-pawn-e7",
-              type: "Pawn",
-              side: "black",
-              startingSquare: { file: "e", rank: 7 },
-            },
-            {
-              id: "black-king-e8",
-              type: "King",
-              side: "black",
-              startingSquare: { file: "e", rank: 8 },
-            },
-          ];
-      }
+      // Real starting-square spawns, with the first target close to the edge.
+      if (step === 1) return [
+        { id: "white-pawn-d6", type: "Pawn", side: "white", startingSquare: { file: "d", rank: 6 } },
+        { id: "black-pawn-d8", type: "Pawn", side: "black", startingSquare: { file: "d", rank: 8 } },
+      ];
+      if (step === 2) return [
+        { id: "white-pawn-c5", type: "Pawn", side: "white", startingSquare: { file: "c", rank: 5 } },
+        { id: "black-pawn-f8", type: "Pawn", side: "black", startingSquare: { file: "f", rank: 8 } },
+      ];
+      return [
+        { id: "white-pawn-c2", type: "Pawn", side: "white", startingSquare: { file: "c", rank: 2 } },
+        { id: "white-rook-d3", type: "Rook", side: "white", startingSquare: { file: "d", rank: 3 } },
+        { id: "white-king-e1", type: "King", side: "white", startingSquare: { file: "e", rank: 1 } },
+        { id: "black-pawn-c7", type: "Pawn", side: "black", startingSquare: { file: "c", rank: 7 } },
+        { id: "black-pawn-f7", type: "Pawn", side: "black", startingSquare: { file: "f", rank: 7 } },
+        { id: "black-king-d8", type: "King", side: "black", startingSquare: { file: "d", rank: 8 } },
+      ];
     }
 
     // type === "advanced"
@@ -361,6 +276,12 @@ export class TutorialManager {
   ): { cleared: boolean; hint?: string } {
     if (!this.isActive) return { cleared: false };
 
+    if (this.tutorialType === "basic") {
+      return { cleared: this.currentStep < 3
+        ? remainingBlackPieceCount === 0
+        : !remainingBlackPieces.some(p => p.type === "King") };
+    }
+
     switch (this.currentStep) {
       case 1:
         return { cleared: hadWhiteHitBlack || remainingBlackPieceCount === 0 };
@@ -396,22 +317,39 @@ export class TutorialManager {
    * 현재 단계 완료 처리 및 다음 단계 전환 / 최종 완료 연출
    */
   public async handleStepSuccess(): Promise<void> {
-    if (!this.isActive) return;
+    if (!this.isActive || this.isTransitioning) return;
+    this.isTransitioning = true;
+    const generation = this.generation;
     const stepInfo = getTutorialStepInfo(this.currentStep, this.tutorialType);
 
     this.updateCoachMessage(stepInfo.successMessage, true);
 
     await new Promise((r) => setTimeout(r, 1200));
+    if (!this.isActive || this.generation !== generation) return;
 
-    if (this.currentStep < 5) {
+    if (this.currentStep < this.stepCount) {
       const nextStep = this.currentStep + 1;
       this.currentStep = nextStep;
       this.renderCoachOverlay();
       if (this.onStepCompletedCallback) {
         await this.onStepCompletedCallback(nextStep);
       }
+      if (this.generation === generation) this.isTransitioning = false;
     } else {
       this.completeTutorial();
+    }
+  }
+
+  public async retryStep(): Promise<void> {
+    if (!this.isActive || this.isTransitioning) return;
+    this.isTransitioning = true;
+    const generation = this.generation;
+    await new Promise(r => setTimeout(r, 1200));
+    if (!this.isActive || this.generation !== generation) return;
+    await this.onStepCompletedCallback?.(this.currentStep);
+    if (this.generation === generation) {
+      this.isTransitioning = false;
+      this.renderCoachOverlay();
     }
   }
 
@@ -431,6 +369,8 @@ export class TutorialManager {
    * 튜토리얼 최종 완료 및 100P 보상 지급
    */
   public completeTutorial(): void {
+    if (!this.isActive) return;
+    marketingRuntime.tutorialComplete(this.tutorialType);
     const storageKey =
       this.tutorialType === "advanced"
         ? "has_completed_adv_tutorial"
@@ -454,6 +394,12 @@ export class TutorialManager {
       this.overlayElement = document.createElement("div");
       this.overlayElement.className = "tutorial-coach-overlay";
       document.body.appendChild(this.overlayElement);
+      this.coachResizeObserver = new ResizeObserver(() => {
+        if (this.overlayElement) document.body.style.setProperty(
+          "--tutorial-coach-height", `${this.overlayElement.offsetHeight}px`,
+        );
+      });
+      this.coachResizeObserver.observe(this.overlayElement);
     }
 
     const stepInfo = getTutorialStepInfo(this.currentStep, this.tutorialType);
@@ -466,7 +412,7 @@ export class TutorialManager {
     this.overlayElement.innerHTML = `
       <div class="tutorial-coach-card">
         <div class="tutorial-coach-header">
-          <span class="tutorial-step-badge">${badgePrefix} Step ${this.currentStep}/5</span>
+          <span class="tutorial-step-badge">${badgePrefix} ${this.currentStep}/${this.stepCount}</span>
           <strong class="tutorial-step-title">${stepInfo.title}</strong>
         </div>
         <div class="tutorial-mission-text">${stepInfo.mission}</div>
@@ -489,7 +435,7 @@ export class TutorialManager {
     }
     if (guideEl && isSuccess) {
       guideEl.style.color = "#93c5fd";
-      guideEl.textContent = "...";
+      guideEl.textContent = "";
     }
   }
 
@@ -497,10 +443,15 @@ export class TutorialManager {
    * 튜토리얼 최종 완료 축하 팝업 모달
    */
   private showCompletionModal(): void {
+    gameplay.leave("tutorial-complete");
     this.stop();
 
     const modal = document.createElement("div");
     modal.className = "tutorial-modal-overlay";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-label", I18nManager.t(this.tutorialType === "basic" ? "tutorial.basic_complete_title" : "tutorial.adv_complete_title"));
+    this.completionModal = modal;
 
     if (this.tutorialType === "basic") {
       modal.innerHTML = `
@@ -509,33 +460,32 @@ export class TutorialManager {
           <p style="margin:0 0 16px 0; font-size:14px; color:#cbd5e1; line-height:1.5;">
             ${I18nManager.t("tutorial.basic_complete_desc")}
           </p>
-          <div style="background:#0f172a; border:1px solid #0284c7; border-radius:8px; padding:12px; margin-bottom:20px; text-align:center;">
-            <div style="font-size:15px; font-weight:700; color:#38bdf8; margin-bottom:4px;">
-              ${I18nManager.t("tutorial.basic_complete_prompt")}
-            </div>
-            <div style="font-size:12px; color:#94a3b8;">
-              ${I18nManager.t("tutorial.basic_complete_prompt_sub")}
-            </div>
-          </div>
           <div style="display:flex; flex-direction:column; gap:10px;">
-            <button id="btn-tutorial-accept-adv" style="background:#0d9488; color:white; border:none; border-radius:8px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; width:100%; transition:background 0.2s;">
+            <button id="btn-tutorial-start-stage" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">
               ${I18nManager.t("tutorial.basic_complete_accept")}
             </button>
             <button id="btn-tutorial-decline-adv" style="background:#334155; color:#cbd5e1; border:none; border-radius:8px; padding:12px 20px; font-size:14px; font-weight:600; cursor:pointer; width:100%;">
               ${I18nManager.t("tutorial.basic_complete_decline")}
             </button>
           </div>
+          <button id="btn-tutorial-accept-adv" class="tutorial-more-button">${I18nManager.t("lobby.tutorial_advanced")}</button>
         </div>
       `;
 
       document.body.appendChild(modal);
+      modal.querySelector("#btn-tutorial-start-stage")?.addEventListener("click", async () => {
+        modal.remove();
+        await this.onTutorialFinishedCallback?.("stage");
+      });
 
       modal.querySelector("#btn-tutorial-accept-adv")?.addEventListener("click", async () => {
+        if (PLATFORM.id === "poki") await gameplay.beforeNewMatch();
         modal.remove();
         this.start(1, "advanced");
         if (this.onStepCompletedCallback) {
           await this.onStepCompletedCallback(1);
         }
+        gameplay.enter("tutorial-advanced");
       });
 
       modal.querySelector("#btn-tutorial-decline-adv")?.addEventListener("click", async () => {
@@ -551,9 +501,6 @@ export class TutorialManager {
           <p style="margin:0 0 16px 0; font-size:14px; color:#cbd5e1; line-height:1.5;">
             ${I18nManager.t("tutorial.adv_complete_desc")}
           </p>
-          <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:12px; margin-bottom:20px; font-size:13px; color:#38bdf8; font-weight:700; text-align:center;">
-            ${I18nManager.t("tutorial.complete_reward")}
-          </div>
           <button id="btn-tutorial-finish" style="background:#16a34a; color:white; border:none; border-radius:8px; padding:14px 28px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">
             ${I18nManager.t("tutorial.adv_complete_btn")}
           </button>
@@ -569,6 +516,25 @@ export class TutorialManager {
         }
       });
     }
+    modal.querySelector<HTMLButtonElement>("button")?.focus();
+    modal.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        modal.querySelector<HTMLButtonElement>("#btn-tutorial-decline-adv, #btn-tutorial-finish")?.click();
+      } else if (event.key === "Tab") {
+        const buttons = Array.from(modal.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    });
   }
 
   /**

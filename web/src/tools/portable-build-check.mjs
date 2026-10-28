@@ -118,7 +118,8 @@ assertCondition(
 );
 assertCondition(
   !/<(?:script|link|img|audio|source)\b[^>]*(?:src|href)=["'](?!data:|#)([^"']+)["']/iu.test(
-    portableHtml,
+    // Ignore JS template strings; only parsed HTML tags request assets here.
+    portableHtml.replace(/(<script\b[^>]*>)[\s\S]*?<\/script>/giu, "$1</script>"),
   ),
   "portable HTML에 외부 src 또는 href 참조가 남았습니다.",
 );

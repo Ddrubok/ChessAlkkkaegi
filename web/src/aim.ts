@@ -1624,8 +1624,8 @@ export function updateLaunchPulses(
 ): void {
   if (isMotionReduced()) { clearLaunchMotion(runtime); return; }
   for (const [pieceId, pulse] of runtime.pulses) {
-    const progress =
-      (now - pulse.startedAt) / 1000 / LAUNCH_PULSE_SECONDS;
+    const progress = Math.max(0,
+      (now - pulse.startedAt) / 1000 / LAUNCH_PULSE_SECONDS);
     if (progress >= 1) {
       pulse.mesh.scale.copy(pulse.baseScale);
       runtime.pulses.delete(pieceId);

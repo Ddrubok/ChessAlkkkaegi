@@ -372,9 +372,9 @@ export function updateTurnCamera(
     return;
   }
   const progress = Math.min(
-    (now - rotation.startedAt) /
+    Math.max(0, (now - rotation.startedAt) /
       1000 /
-      TURN_CAMERA_ROTATION_SECONDS,
+      TURN_CAMERA_ROTATION_SECONDS),
     1,
   );
   const eased = progress * progress * (3 - 2 * progress);

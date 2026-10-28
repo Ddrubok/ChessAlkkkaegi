@@ -1455,7 +1455,7 @@ body {
 
 .tutorial-coach-overlay {
   position: fixed;
-  top: 4.8rem;
+  top: var(--tutorial-coach-top, 4.8rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 25;
@@ -1480,7 +1480,7 @@ body {
   background: #0f172a;
   border: 1px solid #3b82f6;
   border-radius: 10px;
-  padding: 12px 16px;
+  padding: 10px 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
   text-align: center;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -1495,14 +1495,12 @@ body {
 }
 
 .tutorial-step-badge {
-  background: #d97706;
-  color: #ffffff;
+  color: #94a3b8;
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 2px 0;
   border-radius: 4px;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .tutorial-step-title {
@@ -1561,6 +1559,51 @@ body {
   text-align: center;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   box-sizing: border-box;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+body[data-tutorial="basic"] .input-mode-toggle { display: none; }
+body[data-tutorial] #app {
+  --game-board-top: calc(var(--tutorial-coach-top, 4.8rem) + var(--tutorial-coach-height, 140px) + 8px);
+}
+body[data-tutorial="basic"] #app {
+  --game-hud-height: calc(150px + env(safe-area-inset-bottom, 0px));
+  --game-dock-bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+}
+body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+.ui-motion-reduced .tutorial-coach-overlay,
+.ui-motion-reduced .tutorial-modal-overlay { animation: none; }
+.tutorial-more-button { background: transparent; color: #cbd5e1; border: 0; min-height: 44px; padding: 10px; font: inherit; cursor: pointer; }
+.tutorial-modal-card button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
+.tutorial-coach-header { flex-wrap: wrap; }
+.tutorial-guide-text:empty { display: none; }
+@media (max-height: 500px) {
+  body[data-tutorial] { --tutorial-coach-top: 48px; }
+  body[data-tutorial="basic"] #app { --game-hud-height: calc(104px + env(safe-area-inset-bottom, 0px)); --game-dock-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .tutorial-coach-overlay { width: min(94vw, 480px); }
+  .tutorial-coach-card { padding: 6px 10px; }
+  .tutorial-coach-header { display: none; }
+  .tutorial-guide-text { font-size: 11px; }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  #app:has(> .game-canvas-crazygames) {
+    --game-hud-height: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  body[data-tutorial="basic"] #app:has(> .game-canvas-crazygames) {
+    --game-hud-height: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Keep the explicit cancel target beside, rather than across, the pull-back path. */
+  #app:has(> .game-canvas-crazygames) .classic-cancel-control {
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: auto;
+    width: 156px;
+    margin: 0;
+  }
+  #app:has(> .game-canvas-crazygames) .aim-power {
+    left: calc(max(12px, env(safe-area-inset-left, 0px)) + 172px);
+  }
 }
 
 .settings-modal-overlay {
@@ -1719,9 +1762,7 @@ body {
 
 .king-swap-banner {
   position: absolute;
-  top: 72px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: auto;
   background: #1e293b;
   border: 1px solid #475569;
   border-radius: 9999px;
@@ -1732,18 +1773,24 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   z-index: 100;
   pointer-events: none;
-  white-space: nowrap;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.35;
   animation: kingSwapBannerIn 0.15s ease-out;
 }
 
 @keyframes kingSwapBannerIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -6px);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 
@@ -1770,7 +1817,7 @@ body {
 
 
 /* Give the turn label its own row on narrow phones. */
-@media (max-width:380px) and (orientation:portrait) {
+@media (max-width:520px) and (orientation:portrait) {
   .turn-hud-container { top:50px; }
 }
 

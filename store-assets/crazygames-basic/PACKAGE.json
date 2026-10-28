@@ -1,0 +1,19 @@
+{
+    "createdAt":  "2026-10-28T03:51:09.0768821Z",
+    "file":  "ChessAlkkagi-CrazyGames-Basic.zip",
+    "sha256":  "ef20e31868069e8610e2fedd719bde6da982ae52c91d0aeb9298caa7f2f1811a",
+    "compressedBytes":  3540817,
+    "unpackedBytes":  6573132,
+    "fileCount":  83,
+    "buildInfo":  {
+                      "build":  "df00d80946c6-dirty-20261028034440",
+                      "commit":  "df00d80946c671f93f7dde485f7bfa8679af895f",
+                      "builtAt":  "2026-10-28T03:44:40.279Z",
+                      "dirty":  true,
+                      "mode":  "crazygames"
+                  },
+    "releaseStatus":  "READY FOR PORTAL REVIEW: Poly Haven CC0 model; account and submission not completed",
+    "modelSource":  "https://polyhaven.com/a/chess_set",
+    "modelLicense":  "CC0-1.0",
+    "modelSha256":  "2ee584b125a20ddcf388e4798f28a376f2b2a3a22e8590aec1f96fc71e6f6863"
+}

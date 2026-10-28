@@ -29,7 +29,7 @@ export class PieceUpgradeEffects {
     const event = this.event;
     const decreasing = event.direction === "decrease";
     const duration = decreasing ? 350 : 650;
-    const t = Math.min(1, (now - this.start) / duration);
+    const t = Math.min(1, Math.max(0, (now - this.start) / duration));
     if (t >= 1) { this.clear(); return false; }
     const pulse = Math.sin(t * Math.PI);
     const direction = decreasing ? -1 : 1;

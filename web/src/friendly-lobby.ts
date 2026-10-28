@@ -6,6 +6,7 @@ import { connectFriendlyCode, formatFriendlyRoomCode, isValidFriendlyRoomCode, t
 import { getFriendlyCopy as copy } from './friendly-copy';
 import type { OnlinePeerSession } from './online';
 import { getUnifiedIceServers } from './metered-turn';
+import { marketingRuntime } from './marketing-runtime';
 
 /** A single shared code; SDP answers are exchanged through Realtime, not the clipboard. */
 export function openFriendlyLobby(parent: HTMLElement, onFriends?: () => void): Promise<OnlinePeerSession> {
@@ -72,6 +73,7 @@ export function openFriendlyLobby(parent: HTMLElement, onFriends?: () => void): 
       const link = createPeerLink({ iceServers });
       session = connectFriendlyCode(client, link, code, {
         onRoomCreated: room => {
+          marketingRuntime.inviteCreated(`friendly-${room}`);
           q('[data-friendly-output]').hidden = false;
           q<HTMLInputElement>('[data-friendly-room]').value = formatFriendlyRoomCode(room);
         },
@@ -84,6 +86,7 @@ export function openFriendlyLobby(parent: HTMLElement, onFriends?: () => void): 
         },
         onReady: (readyLink, role, roomCode) => {
           if (closed) { readyLink.close(); return; }
+          if (role === 'guest') marketingRuntime.inviteJoined(`friendly-${roomCode}`);
           connected = true;
           q<HTMLButtonElement>('[data-friendly-close]').disabled = true;
           resolve({ link: readyLink, mySide: role === 'host' ? 'white' : 'black', matchId: `friendly-${roomCode}`, rejoining: false, finishLobby: dispose });

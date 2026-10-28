@@ -26,6 +26,7 @@ import {
   createBoardFloorGeometry,
 } from "./board";
 import { CAMERA_PITCH_DEG, type PieceType } from "./config";
+import { PLATFORM } from "./platform";
 import {
   computeBoardHoleRectangles,
   createBoardFloorLayoutKey,
@@ -756,6 +757,9 @@ export function createSceneRuntime(
   renderer.shadowMap.type = PCFSoftShadowMap;
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.domElement.className = "game-canvas";
+  if (PLATFORM.id === "crazygames") {
+    renderer.domElement.classList.add("game-canvas-crazygames");
+  }
   renderer.domElement.setAttribute("aria-label", uiText("board"));
   container.append(renderer.domElement);
   // CSS reserves the header and bottom HUD; picking uses this same canvas rect.
@@ -930,6 +934,8 @@ export function createSceneRuntime(
     fitCameraToBoard(runtime);
   };
   window.addEventListener("resize", handleResize);
+  // Tutorial copy and control visibility can resize the canvas without resizing the window.
+  new ResizeObserver(handleResize).observe(renderer.domElement);
   fitCameraToBoard(runtime);
   if (import.meta.env.DEV) {
     camera.updateMatrixWorld(true);

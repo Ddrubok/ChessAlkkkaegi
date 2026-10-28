@@ -1,0 +1,27 @@
+<ko-KR>
+• 체스 기물 6종과 로비·맵 미리보기의 모습을 새롭게 바꿨습니다.
+• 더 짧아진 기초 연습과 간단해진 첫 화면으로 조작을 쉽게 익힐 수 있습니다.
+• 조준 조작판 위에서 손을 떼어도 발사되도록 수정하고, 스테이지 포기 안내·퍼즐 재시도·작은 화면 표시·Android 뒤로가기를 개선했습니다.
+• 온라인 대전은 두 플레이어 모두 최신 버전으로 업데이트해 주세요.
+</ko-KR>
+
+<en-US>
+• Refreshed all six chess piece models, plus lobby and map previews.
+• Shortened the basic tutorial and simplified the first screen to make getting started easier.
+• Fixed shot release over the aiming controls and improved stage exit warnings, puzzle retries, small-screen layouts, and Android Back navigation.
+• For online matches, both players should update to the latest version.
+</en-US>
+
+<ja-JP>
+• 6種類のチェスの駒とロビー・マップのプレビューを新しくしました。
+• 基本練習を短くし、最初の画面をわかりやすくしました。
+• 照準操作パネル上で指を離した際の発射、ステージ放棄時の案内、パズルの再挑戦、小さい画面での表示、Androidの戻る操作を改善しました。
+• オンライン対戦では、両プレイヤーとも最新版に更新してください。
+</ja-JP>
+
+<fr-FR>
+• Six nouveaux modèles de pièces, avec des aperçus du menu et des cartes actualisés.
+• Premiers pas facilités par un tutoriel plus court et un accueil simplifié.
+• Tir corrigé lorsque le doigt se relève sur les commandes de visée. Avertissement avant l'abandon d'un niveau, nouvelle tentative des puzzles, petits écrans et bouton Retour Android améliorés.
+• En ligne, les deux joueurs doivent installer la dernière version.
+</fr-FR>

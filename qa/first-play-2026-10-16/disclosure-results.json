@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "checks": [
+    "Open activities remain open after lobby refresh",
+    "Advanced tutorial reachable through nested activity controls"
+  ]
+}

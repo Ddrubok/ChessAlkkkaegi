@@ -1,0 +1,215 @@
+{
+  "checkedAt": "2026-10-26T05:30:54.866Z",
+  "targets": [
+    {
+      "name": "dev",
+      "url": "https://chessalkkagi-dev.pages.dev/",
+      "entry": {
+        "status": 200,
+        "finalUrl": "https://chessalkkagi-dev.pages.dev/",
+        "contentType": "text/html; charset=utf-8",
+        "etag": null,
+        "lastModified": null,
+        "sha256": "eec14a8cd7f1a41f2c286b08bf9c77f7ff946f9255f869a2413eb2673eb71db0",
+        "bytes": 5811
+      },
+      "assets": [
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/index-PxZ32SYf.js",
+          "status": 200,
+          "bytes": 690770,
+          "sha256": "fe341b704100702ea5293bdaa0b8f39d8ba339e83662ad32cea7454a3ca853a1",
+          "supabaseHosts": [
+            "eohasrpzjwtzexoogwdt.supabase.co",
+            "xxxx.supabase.co"
+          ]
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/i18n-BSAiXaqm.js",
+          "status": 200,
+          "bytes": 182326,
+          "sha256": "616d3600b9811ad9d055874b49bdebb6cdfde0f07421b734f8f590a75b5eee47",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/friendly-copy-DQEOdCIF.js",
+          "status": 200,
+          "bytes": 9117,
+          "sha256": "173722687cda4bf6b78f784a27a527b46aac215eabf644e249377ad3a724c650",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/dist-BDdlKBnh.js",
+          "status": 200,
+          "bytes": 7749,
+          "sha256": "2111e8798907796815762b9dad95ba8de77284ba4e9377751f552885513f05b7",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/web-ads-D4q6dsZs.js",
+          "status": 200,
+          "bytes": 2260,
+          "sha256": "1427c86301d7b8d9eb6567518956fa50a95661f97679079a2d4fae5084c431ce",
+          "supabaseHosts": [
+            "eohasrpzjwtzexoogwdt.supabase.co"
+          ]
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/config-tkXoiWKf.js",
+          "status": 200,
+          "bytes": 12004,
+          "sha256": "cb0731ed3c8b05caf5a27202d260185ef011648d1f8983953ffc389d5707aae7",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/runtime-text-Dv_FZ-C_.js",
+          "status": 200,
+          "bytes": 74584,
+          "sha256": "de59c36c9267e4ace46bf8bd26fb845cf73be80b05fa375191f6472e9c1c21ae",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/progress-storage-DbdsSf9t.js",
+          "status": 200,
+          "bytes": 45685,
+          "sha256": "70cf0b96438f6eca5b5b46c0b6098cbbd797fa8813cb2628a55124e28009f844",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/turn-BnnPd6R1.js",
+          "status": 200,
+          "bytes": 2970836,
+          "sha256": "917b389a4c7e41faaa01728f4bd2094a71b1c3f564d8e2cf88867a7980759f5b",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/preload-helper-HclGiUj8.js",
+          "status": 200,
+          "bytes": 1211,
+          "sha256": "bba5840eec0028b00854bcd58fba80694d02d41e98417656424c05b26db7120c",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/supabase-client-gwWJcmhQ.js",
+          "status": 200,
+          "bytes": 209080,
+          "sha256": "e63f22ed6c33098d58924c609e9e2ab24cded2c0202f58926dc55699285ee753",
+          "supabaseHosts": [
+            "eohasrpzjwtzexoogwdt.supabase.co"
+          ]
+        },
+        {
+          "url": "https://chessalkkagi-dev.pages.dev/assets/ai-BBrEWPBL.js",
+          "status": 200,
+          "bytes": 80917,
+          "sha256": "2130642dead02cc9fe486337d8ab999591796f23fb8b857350ed9e4d11d27c0f",
+          "supabaseHosts": []
+        }
+      ]
+    },
+    {
+      "name": "public",
+      "url": "https://ddrubok.github.io/ChessAlkkkaegi/",
+      "entry": {
+        "status": 200,
+        "finalUrl": "https://ddrubok.github.io/ChessAlkkkaegi/",
+        "contentType": "text/html; charset=utf-8",
+        "etag": "W/\"6acc4288-1385\"",
+        "lastModified": "Mon, 12 Oct 2026 02:14:32 GMT",
+        "sha256": "25b2dc1e4ee364eeef919469da6f7427988f30ef7b6d71afed6a7201bc5cabd6",
+        "bytes": 4997
+      },
+      "assets": [
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/assets/index-BbLoJ8gm.js",
+          "status": 200,
+          "bytes": 3990057,
+          "sha256": "5b952a60cce941ef5c524e891d60543443029c07b14e0afa48e03aff2273b159",
+          "supabaseHosts": [
+            "yoajmckkrpgvcljrffww.supabase.co",
+            "xxxx.supabase.co"
+          ]
+        },
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/assets/web-ads-DDEzVdgG.js",
+          "status": 200,
+          "bytes": 10034,
+          "sha256": "8bc7229fefd435330c4fd017779cc35b0ae19b6f94396d6a47b11179f77cb8ef",
+          "supabaseHosts": [
+            "yoajmckkrpgvcljrffww.supabase.co"
+          ]
+        },
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/assets/config-tkXoiWKf.js",
+          "status": 200,
+          "bytes": 12004,
+          "sha256": "cb0731ed3c8b05caf5a27202d260185ef011648d1f8983953ffc389d5707aae7",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/assets/i18n-CityxGtA.js",
+          "status": 200,
+          "bytes": 180666,
+          "sha256": "b7aaebd93b5efc99194b9a59e8b7e07d4e71ee52cc5e720abbbabcbbcd6c68a4",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/assets/runtime-text-DU0j36Ll.js",
+          "status": 200,
+          "bytes": 74584,
+          "sha256": "638e45c1ad75785ae5a65f1649eb13f80a2786d3de1063e7585b08c60047c164",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/assets/progress-storage-79SYj1h8.js",
+          "status": 200,
+          "bytes": 45685,
+          "sha256": "eee5e23b9bdfa0c04c6f3a709e61dc89b593159cea3c32d16382981e14216539",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/assets/progress-storage-Dwb7r8I8.css",
+          "status": 200,
+          "bytes": 1151,
+          "sha256": "7a5b9441b2714dde9a4c174ae3ce1b900c992f3fba7e76794d7945f2c55cd235",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/assets/index-Cr2m12aH.css",
+          "status": 200,
+          "bytes": 106061,
+          "sha256": "bedc22131f4c873e2c17ceabfd838364ee03f70e7c66f44a84746d064b9ede89",
+          "supabaseHosts": []
+        },
+        {
+          "url": "https://ddrubok.github.io/ChessAlkkkaegi/boot-language.js",
+          "status": 200,
+          "bytes": 2556,
+          "sha256": "c5bf4f404f08dd1dc76556edbd29b92f583b0398f6fc87eb92f17e06f5a4e68c",
+          "supabaseHosts": []
+        }
+      ]
+    }
+  ],
+  "backends": [
+    {
+      "host": "eohasrpzjwtzexoogwdt.supabase.co",
+      "url": "https://eohasrpzjwtzexoogwdt.supabase.co/auth/v1/health",
+      "status": 401,
+      "contentType": "application/json;charset=UTF-8",
+      "bodyExcerpt": "{\"message\":\"No API key found in request\",\"hint\":\"No `apikey` request header or url param was found.\"}"
+    },
+    {
+      "host": "xxxx.supabase.co",
+      "url": "https://xxxx.supabase.co/auth/v1/health",
+      "error": "TypeError: fetch failed"
+    },
+    {
+      "host": "yoajmckkrpgvcljrffww.supabase.co",
+      "url": "https://yoajmckkrpgvcljrffww.supabase.co/auth/v1/health",
+      "status": 401,
+      "contentType": "application/json;charset=UTF-8",
+      "bodyExcerpt": "{\"message\":\"No API key found in request\",\"hint\":\"No `apikey` request header or url param was found.\"}"
+    }
+  ]
+}

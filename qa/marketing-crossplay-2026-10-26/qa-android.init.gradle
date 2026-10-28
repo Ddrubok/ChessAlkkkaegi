@@ -1,0 +1,10 @@
+gradle.beforeProject { project ->
+    project.pluginManager.withPlugin('com.android.application') {
+        project.layout.buildDirectory.set(new File(project.rootDir, '../../qa/marketing-crossplay-2026-10-26/android-build'))
+        project.androidComponents.finalizeDsl { android ->
+            android.defaultConfig.applicationId = 'com.chessalkkagi.app.marketingqa'
+            android.sourceSets.main.manifest.srcFile(new File(project.rootDir, '../../qa/marketing-crossplay-2026-10-26/AndroidManifest.xml'))
+            android.sourceSets.main.assets.srcDirs = [new File(project.rootDir, '../../qa/marketing-crossplay-2026-10-26/assets')]
+        }
+    }
+}

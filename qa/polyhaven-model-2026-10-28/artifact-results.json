@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-10-28T03:52:19.013Z",
+  "expected": {
+    "chess-pieces.glb": "2ee584b125a20ddcf388e4798f28a376f2b2a3a22e8590aec1f96fc71e6f6863",
+    "chess-set.meta.json": "e386535e27f86a9f4114c566c8e9d3b47706d49e59a2b07544864cf2607d7ce8"
+  },
+  "builds": [
+    "web/dist",
+    "web/dist-staging",
+    "web/dist-poki",
+    "web/dist-crazygames",
+    "web/android/app/src/main/assets/public",
+    "qa/polyhaven-model-2026-10-28/final-zip"
+  ],
+  "zipFilesEqualToBuild": 83
+}

@@ -277,6 +277,30 @@ try {
     console.log('PASS: Timeout error handled properly');
   }
 
+  // Cancelling pending ICE gathering must not become a peer error when it rejects.
+  {
+    const client = createMockSupabaseClient();
+    const link = createMockPeerLink();
+    const phases = [], errors = [], codes = [];
+    let rejectOffer;
+    link.createHost = () => new Promise((resolve, reject) => { rejectOffer = reject; });
+    const close = link.close.bind(link);
+    link.close = () => { close(); rejectOffer?.(new DOMException('Cancelled', 'AbortError')); };
+    const session = connectFriendlyCode(client, link, null, {
+      onStatusChange(message, phase) { phases.push(phase); },
+      onError(error) { errors.push(error); },
+      onRoomCreated(code) { codes.push(code); },
+    }, { timeoutMs: 2000 });
+    await new Promise(r => setTimeout(r, 20));
+    assert.equal(typeof rejectOffer, 'function');
+    assert.deepEqual(codes, [], 'Room code must stay hidden while its offer is not ready');
+    session.cancel();
+    await new Promise(r => setTimeout(r, 20));
+    assert.equal(phases.at(-1), 'cancelled');
+    assert.deepEqual(errors, [], 'User cancellation must not report a peer error');
+    console.log('PASS: Pending gathering cancellation preserves cancelled status and hides unready code');
+  }
+
   console.log('=== ALL FRIENDLY MATCH & CODE TESTS PASSED! ===');
 } finally {
   await vite.close();
