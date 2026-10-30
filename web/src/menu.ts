@@ -157,6 +157,7 @@ export interface MainMenuRuntime {
   canForfeitRound?: () => boolean;
   onForfeitRound?: () => Promise<void>;
   verifiedPortalProfile?: UserProfile | null;
+  isStageMatch?: () => boolean;
   getPendingStagePoints?: () => number;
   onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
 }
@@ -832,7 +833,7 @@ export function createMainMenu(
       <div class="match-result-actions" style="display:flex; gap:10px; justify-content:center;">
         <button type="button" data-menu-cancel style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer;">${I18nManager.t("ingame.continue_btn")}</button>
         <button type="button" data-menu-forfeit hidden style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#b45309; color:white; border:none; cursor:pointer;">${I18nManager.t("ingame.friendly_forfeit_btn")}</button>
-        <button type="button" data-menu-confirm style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#ef4444; color:white; border:none; cursor:pointer;">${I18nManager.t("ingame.menu_btn")}</button>
+        <button type="button" data-menu-confirm style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#ef4444; color:white; border:none; cursor:pointer; word-break:keep-all;">${I18nManager.t("ingame.menu_btn")}</button>
       </div>
     </div>
   `;
@@ -902,6 +903,9 @@ export function createMainMenu(
       ? I18nManager.t("ingame.abandon_stage_points_desc", { points })
       : I18nManager.t("ingame.abandon_desc");
   };
+  const abandonConfirmKey = (): string => runtime.canForfeitRound?.()
+    ? "ingame.friendly_leave_btn"
+    : runtime.isStageMatch?.() ? "ingame.stage_end_btn" : "ingame.menu_btn";
   renderMainMenu(runtime);
   I18nManager.subscribe(() => {
     returnButton.textContent = I18nManager.t("ingame.menu_btn");
@@ -912,7 +916,7 @@ export function createMainMenu(
     const cancelBtn = confirmOverlay.querySelector("[data-menu-cancel]");
     if (cancelBtn) cancelBtn.textContent = I18nManager.t("ingame.continue_btn");
     const confirmBtn = confirmOverlay.querySelector("[data-menu-confirm]");
-    if (confirmBtn) confirmBtn.textContent = I18nManager.t(runtime.canForfeitRound?.() ? "ingame.friendly_leave_btn" : "ingame.menu_btn");
+    if (confirmBtn) confirmBtn.textContent = I18nManager.t(abandonConfirmKey());
     forfeitButton.textContent = I18nManager.t("ingame.friendly_forfeit_btn");
 
     if (runtime.visible) {
@@ -951,7 +955,7 @@ export function createMainMenu(
       );
     const canForfeit = runtime.canForfeitRound?.() === true;
     forfeitButton.hidden = !canForfeit;
-    confirmButton.textContent = I18nManager.t(canForfeit ? "ingame.friendly_leave_btn" : "ingame.menu_btn");
+    confirmButton.textContent = I18nManager.t(abandonConfirmKey());
     if (heading !== null) heading.textContent = I18nManager.t(canForfeit ? "ingame.friendly_confirm_title" : "ingame.abandon_title");
     const desc =
       confirmOverlay.querySelector<HTMLParagraphElement>(

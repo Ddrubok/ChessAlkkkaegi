@@ -473,6 +473,7 @@ async function bootstrap(): Promise<void> {
   let replayDevelopmentRuntime: ReplayDevelopmentRuntime | null =
     null;
   let gameModeRuntime: GameModeRuntime | null = null;
+  menuRuntime.isStageMatch = () => gameModeRuntime?.mode === "stage";
   menuRuntime.getPendingStagePoints = () => gameModeRuntime?.mode === "stage"
     ? computeStageRunPayout(stageRunPoints.lastClearedStage) - computeStageRunPayout((stageRunPoints.startedAtStage ?? 1) - 1)
     : 0;
