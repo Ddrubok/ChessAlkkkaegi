@@ -44,6 +44,9 @@ try {
   assert.equal(models.self.side, 'black');
   assert.equal(models.opponent.side, 'white');
   assert.equal(models.canAddFriend, true);
+  assert.equal(getPlayerBannerModels({ ...state, opponentDisplayName: 'PeerAlias' }).opponent.name, 'name_%');
+  assert.equal(getPlayerBannerModels({ ...state, opponent: null, opponentDisplayName: 'PeerAlias' }).opponent.name, 'PeerAlias');
+  assert.equal(getPlayerBannerModels({ ...state, opponent: null, opponentDisplayName: 'PeerAlias' }).canAddFriend, false);
 
   const classic = models.self.detail;
   models = getPlayerBannerModels({ ...state, rankedMode: 'strategy' });

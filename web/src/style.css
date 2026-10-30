@@ -1603,21 +1603,21 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
 }
 
 @media (orientation: landscape) and (max-height: 600px) {
-  #app:has(> .game-canvas-crazygames) {
+  #app:has(> .game-canvas-crazygames):not(:has(.player-banners:not([hidden]))) {
     --game-hud-height: calc(24px + env(safe-area-inset-bottom, 0px));
   }
   body[data-tutorial="basic"] #app {
     --game-hud-height: calc(8px + env(safe-area-inset-bottom, 0px));
   }
   /* Keep the explicit cancel target beside, rather than across, the pull-back path. */
-  #app:has(> .game-canvas-crazygames) .classic-cancel-control,
+  #app:has(> .game-canvas-crazygames):not(:has(.player-banners:not([hidden]))) .classic-cancel-control,
   body[data-tutorial="basic"] #app .classic-cancel-control {
     left: max(12px, env(safe-area-inset-left, 0px));
     right: auto;
     width: 156px;
     margin: 0;
   }
-  #app:has(> .game-canvas-crazygames) .aim-power,
+  #app:has(> .game-canvas-crazygames):not(:has(.player-banners:not([hidden]))) .aim-power,
   body[data-tutorial="basic"] #app .aim-power {
     left: calc(max(12px, env(safe-area-inset-left, 0px)) + 172px);
   }

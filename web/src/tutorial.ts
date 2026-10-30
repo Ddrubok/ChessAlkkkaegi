@@ -10,6 +10,7 @@ import type { MetaRuntime } from "./meta";
 import { saveMetaState } from "./meta";
 import { I18nManager } from "./i18n";
 import { marketingRuntime } from "./marketing-runtime";
+import { getRuntimeText } from "./runtime-text";
 
 export type TutorialType = "basic" | "advanced";
 
@@ -44,6 +45,7 @@ export class TutorialManager {
   private generation = 0;
   public get sessionToken(): number { return this.generation; }
   private completionModal: HTMLElement | null = null;
+  private rewardRequest = 0;
   private overlayElement: HTMLElement | null = null;
   private coachResizeObserver: ResizeObserver | null = null;
   private onStepCompletedCallback: ((nextStep: number) => Promise<void>) | null = null;
@@ -374,18 +376,50 @@ export class TutorialManager {
   public completeTutorial(): void {
     if (!this.isActive) return;
     marketingRuntime.tutorialComplete(this.tutorialType);
-    const storageKey =
-      this.tutorialType === "advanced"
-        ? "has_completed_adv_tutorial"
-        : "has_completed_tutorial";
-    progressStorage.setItem(storageKey, "true");
-
-    if (this.metaRuntime) {
-      this.metaRuntime.state.points += 100;
+    const type = this.tutorialType;
+    // A fresh profile has only in-memory defaults. Seed it once, never on a retry.
+    if (this.metaRuntime && progressStorage.getItem("chessAlkkagi.meta.points") === null &&
+      progressStorage.getItem("chessAlkkagi.meta.upgrades") === null) {
       saveMetaState(this.metaRuntime);
     }
-
     this.showCompletionModal();
+    void this.settleCompletionReward(type);
+  }
+
+  private async settleCompletionReward(type: TutorialType): Promise<void> {
+    const modal = this.completionModal;
+    const runtime = this.metaRuntime;
+    if (!modal || !runtime) return;
+    const request = ++this.rewardRequest;
+    const owner = progressStorage.owner;
+    let status = modal.querySelector<HTMLElement>(".tutorial-reward-status");
+    if (!status) {
+      status = document.createElement("p");
+      status.className = "tutorial-reward-status";
+      status.setAttribute("role", "status");
+      modal.querySelector(".tutorial-modal-card > p")?.after(status);
+    }
+    status.textContent = getRuntimeText("tutorial.reward_saving");
+    modal.querySelector(".tutorial-reward-retry")?.remove();
+    const result = owner
+      ? await progressStorage.claimTutorialReward(type)
+      : progressStorage.claimGuestTutorialReward(type);
+    if (owner === progressStorage.owner && runtime === this.metaRuntime) {
+      const points = progressStorage.getItem("chessAlkkagi.meta.points");
+      if (points !== null) runtime.state.points = Number(points);
+    }
+    if (modal !== this.completionModal || request !== this.rewardRequest || owner !== progressStorage.owner) return;
+    if (result !== "pending") {
+      status.textContent = getRuntimeText(result === "granted" ? "tutorial.reward_granted" : "tutorial.reward_repeat");
+      return;
+    }
+    status.textContent = getRuntimeText("tutorial.reward_pending");
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "tutorial-reward-retry";
+    retry.textContent = getRuntimeText("tutorial.reward_retry");
+    retry.addEventListener("click", () => { retry.disabled = true; void this.settleCompletionReward(type); });
+    status.after(retry);
   }
 
   /**
@@ -472,7 +506,7 @@ export class TutorialManager {
         <div class="tutorial-modal-card" style="max-width:380px;">
           <h2 style="margin:0 0 10px 0; font-size:22px; color:#38bdf8; font-weight:800;">${I18nManager.t("tutorial.basic_complete_title")}</h2>
           <p style="margin:0 0 16px 0; font-size:14px; color:#cbd5e1; line-height:1.5;">
-            ${I18nManager.t("tutorial.basic_complete_desc")}
+            ${I18nManager.t("tutorial.basic_complete_desc").split("<br>")[0]}
           </p>
           <div style="display:flex; flex-direction:column; gap:10px;">
             <button id="btn-tutorial-start-stage" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">
@@ -513,7 +547,7 @@ export class TutorialManager {
         <div class="tutorial-modal-card" style="max-width:380px;">
           <h2 style="margin:0 0 10px 0; font-size:22px; color:#38bdf8; font-weight:800;">${I18nManager.t("tutorial.adv_complete_title")}</h2>
           <p style="margin:0 0 16px 0; font-size:14px; color:#cbd5e1; line-height:1.5;">
-            ${I18nManager.t("tutorial.adv_complete_desc")}
+            ${I18nManager.t("tutorial.adv_complete_desc").split("<br>")[0]}
           </p>
           <button id="btn-tutorial-finish" style="background:#16a34a; color:white; border:none; border-radius:8px; padding:14px 28px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">
             ${I18nManager.t("tutorial.adv_complete_btn")}

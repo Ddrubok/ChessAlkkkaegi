@@ -285,6 +285,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "승리! 스테이지 {stage} 클리어",
       "abandon_title": "대국 포기",
       "abandon_desc": "진행 중인 대국을 포기하시겠습니까?",
+      "friendly_confirm_title": "친선 대국",
+      "friendly_forfeit_desc": "이번 대국만 포기하면 결과 화면에서 재대국할 수 있습니다. 방을 나가면 연결이 종료됩니다.",
+      "friendly_forfeit_btn": "대국 포기",
+      "friendly_leave_btn": "방 나가기",
       "abandon_stage_points_desc": "지금 나가면 이번 도전에서 쌓은 {points}포인트를 받지 못합니다.",
       "continue_btn": "계속하기",
       "billiards_mode": "당구식",
@@ -689,6 +693,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Victory! Stage {stage} Cleared",
       "abandon_title": "Forfeit Match",
       "abandon_desc": "Do you want to forfeit this match?",
+      "friendly_confirm_title": "Friendly match",
+      "friendly_forfeit_desc": "Forfeit this round to see the result and offer a rematch. Leaving the room ends the connection.",
+      "friendly_forfeit_btn": "Forfeit round",
+      "friendly_leave_btn": "Leave room",
       "abandon_stage_points_desc": "If you leave now, you will lose the reward earned in this challenge ({points} P).",
       "continue_btn": "Continue",
       "billiards_mode": "Billiards",
@@ -1093,6 +1101,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "勝利！ステージ {stage} クリア",
       "abandon_title": "対局の放棄",
       "abandon_desc": "この対局を放棄しますか？",
+      "friendly_confirm_title": "フレンド対局",
+      "friendly_forfeit_desc": "この対局だけ投了すると、結果画面から再戦できます。部屋を出ると接続が終了します。",
+      "friendly_forfeit_btn": "この対局を投了",
+      "friendly_leave_btn": "部屋を出る",
       "abandon_stage_points_desc": "今退出すると、今回の挑戦で獲得した{points}ポイントを受け取れません。",
       "continue_btn": "続ける",
       "billiards_mode": "ビリヤード",
@@ -1497,6 +1509,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "胜利！通关第 {stage} 关",
       "abandon_title": "放弃对局",
       "abandon_desc": "确定要放弃当前对局吗？",
+      "friendly_confirm_title": "好友对局",
+      "friendly_forfeit_desc": "认输本局后仍可在结果页面请求再战。离开房间将断开连接。",
+      "friendly_forfeit_btn": "认输本局",
+      "friendly_leave_btn": "离开房间",
       "abandon_stage_points_desc": "如果现在退出，将无法获得本次挑战中积累的 {points} 积分。",
       "continue_btn": "继续游戏",
       "billiards_mode": "台球模式",
@@ -1901,6 +1917,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Sieg! Etappe {stage} geschafft",
       "abandon_title": "Partie aufgeben",
       "abandon_desc": "Möchtest du diese Partie aufgeben?",
+      "friendly_confirm_title": "Freundschaftspartie",
+      "friendly_forfeit_desc": "Gib nur diese Partie auf, um im Ergebnis eine Revanche anzubieten. Beim Verlassen des Raums endet die Verbindung.",
+      "friendly_forfeit_btn": "Partie aufgeben",
+      "friendly_leave_btn": "Raum verlassen",
       "abandon_stage_points_desc": "Wenn du jetzt aufgibst, verfällt die Belohnung aus dieser Herausforderung ({points} P).",
       "continue_btn": "Weiter",
       "billiards_mode": "Billard",
@@ -2305,6 +2325,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Victoire ! Étape {stage} terminée",
       "abandon_title": "Abandonner la Partie",
       "abandon_desc": "Voulez-vous abandonner cette partie ?",
+      "friendly_confirm_title": "Partie amicale",
+      "friendly_forfeit_desc": "Abandonnez cette manche pour proposer une revanche depuis le résultat. Quitter la salle met fin à la connexion.",
+      "friendly_forfeit_btn": "Abandonner la manche",
+      "friendly_leave_btn": "Quitter la salle",
       "abandon_stage_points_desc": "Si vous quittez maintenant, la récompense de ce défi sera perdue ({points} P).",
       "continue_btn": "Continuer",
       "billiards_mode": "Billard",
@@ -2709,6 +2733,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "¡Victoria! Etapa {stage} Superada",
       "abandon_title": "Abandonar Partida",
       "abandon_desc": "¿Deseas abandonar esta partida?",
+      "friendly_confirm_title": "Partida amistosa",
+      "friendly_forfeit_desc": "Ríndete solo en esta partida para pedir una revancha desde el resultado. Salir de la sala corta la conexión.",
+      "friendly_forfeit_btn": "Rendirse en esta partida",
+      "friendly_leave_btn": "Salir de la sala",
       "abandon_stage_points_desc": "Si sales ahora, perderás la recompensa acumulada en este desafío ({points} P).",
       "continue_btn": "Continuar",
       "billiards_mode": "Villar",
@@ -3113,6 +3141,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Победа! Этап {stage} пройден",
       "abandon_title": "Сдаться",
       "abandon_desc": "Сдаться в этой партии?",
+      "friendly_confirm_title": "Товарищеская партия",
+      "friendly_forfeit_desc": "Сдайтесь в этом раунде, чтобы предложить реванш на экране результата. Выход из комнаты разрывает соединение.",
+      "friendly_forfeit_btn": "Сдаться в раунде",
+      "friendly_leave_btn": "Выйти из комнаты",
       "abandon_stage_points_desc": "Если вы выйдете сейчас, награда за это испытание будет потеряна ({points} P).",
       "continue_btn": "Продолжить",
       "billiards_mode": "Бильярд",
@@ -3517,6 +3549,10 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Vitória! Fase {stage} Concluída",
       "abandon_title": "Desistir da Partida",
       "abandon_desc": "Deseja desistir desta partida?",
+      "friendly_confirm_title": "Partida amistosa",
+      "friendly_forfeit_desc": "Desista apenas desta rodada para pedir revanche na tela de resultado. Sair da sala encerra a conexão.",
+      "friendly_forfeit_btn": "Desistir da rodada",
+      "friendly_leave_btn": "Sair da sala",
       "abandon_stage_points_desc": "Se você sair agora, perderá a recompensa acumulada neste desafio ({points} P).",
       "continue_btn": "Continuar",
       "billiards_mode": "Sinuca",
@@ -3673,6 +3709,19 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   }
 };
 
+export function normalizeLanguage(raw: unknown): LanguageCode | null {
+  if (typeof raw !== "string") return null;
+  const tag = raw.trim().replace(/_/g, "-").toLowerCase();
+  if (/^zh(?:-|$)/.test(tag)) {
+    if (/(?:^|-)(?:tw|hk|mo|hant)(?:-|$)/.test(tag)) return null;
+    return /^(?:zh-cn|zh-sg|zh-hans)(?:-|$)/.test(tag) ? "zh-CN" : null;
+  }
+  const base = tag.split("-")[0];
+  if (tag === "pt" || /^pt-br(?:-|$)/.test(tag)) return "pt-BR";
+  return ["ko", "en", "ja", "de", "fr", "es", "ru"].includes(base)
+    ? base as LanguageCode : null;
+}
+
 export class I18nManager {
   public static currentLang: LanguageCode = "en";
   private static listeners: Set<(lang: LanguageCode) => void> = new Set();
@@ -3683,12 +3732,19 @@ export class I18nManager {
    * - 없으면 사용자의 브라우저 언어(ko, ja, zh-CN, de, fr, es, ru, pt-BR) 감지
    * - 지원하지 않는 언어는 기본 영어(en)로 자동 폴백
    */
-  public static init(): void {
-    if (typeof localStorage === "undefined" || typeof document === "undefined") return;
-    const saved = localStorage.getItem("app_language") as LanguageCode | null;
-    if (saved && LOCALES[saved]) {
-      this.currentLang = saved;
+  public static init(initialLanguage?: LanguageCode): void {
+    if (typeof document === "undefined" || !document.documentElement) return;
+    let saved: string | null = null;
+    try { saved = localStorage.getItem("app_language"); } catch { /* Storage may be blocked. */ }
+    if (saved && Object.prototype.hasOwnProperty.call(LOCALES, saved)) {
+      this.currentLang = saved as LanguageCode;
       document.documentElement.lang = this.currentLang;
+      return;
+    }
+
+    if (initialLanguage) {
+      this.currentLang = initialLanguage;
+      document.documentElement.lang = initialLanguage;
       return;
     }
 
@@ -3697,44 +3753,11 @@ export class I18nManager {
         ? navigator.languages
         : [navigator.language || ""];
 
-    let detected: LanguageCode = "en";
-
-    for (const rawLang of browserLangs) {
-      if (!rawLang) continue;
-      const lower = rawLang.toLowerCase();
-      const code = lower.split("-")[0];
-
-      if (code === "ko") {
-        detected = "ko";
-        break;
-      } else if (code === "ja") {
-        detected = "ja";
-        break;
-      } else if (code === "zh" || lower.includes("zh")) {
-        detected = "zh-CN";
-        break;
-      } else if (code === "de") {
-        detected = "de";
-        break;
-      } else if (code === "fr") {
-        detected = "fr";
-        break;
-      } else if (code === "es") {
-        detected = "es";
-        break;
-      } else if (code === "ru") {
-        detected = "ru";
-        break;
-      } else if (code === "pt" || lower.includes("pt")) {
-        detected = "pt-BR";
-        break;
-      } else if (code === "en") {
-        detected = "en";
-        break;
-      }
-    }
-
-    this.currentLang = detected;
+    // Keep the existing web/Android language-family fallback; portal locales are stricter.
+    this.currentLang = browserLangs.map((raw) => {
+      const family = raw.toLowerCase().split("-")[0];
+      return family === "zh" ? "zh-CN" : family === "pt" ? "pt-BR" : normalizeLanguage(raw);
+    }).find((lang): lang is LanguageCode => !!lang) || "en";
     document.documentElement.lang = this.currentLang;
   }
 

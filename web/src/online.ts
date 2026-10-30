@@ -28,6 +28,7 @@ import { capturePhysicsStateHash } from "./state-hash";
 import { validateStrategyDeck } from "./strategy-deck";
 import { I18nManager } from "./i18n";
 import { getRuntimeText } from "./runtime-text";
+import { normalizeNickname } from "./nickname";
 import {
   alignTurnCameraToPerspective,
   applyPendingLaunchBeforeStep,
@@ -46,6 +47,7 @@ import {
 export interface OnlineReadyMessage {
   physicsRevision?: string;
   bannerTheme?: BannerAppearance;
+  displayName?: string;
   // 양쪽 표준 보드 재생성이 끝났음을 알리는 준비 메시지 종류다.
   kind: "ready";
   // 다른 대국의 준비 메시지를 섞지 않게 하는 매치 식별자다.
@@ -101,6 +103,7 @@ export interface OnlineStateSnapshotMessage {
 export interface OnlineResumeMessage {
   physicsRevision?: string;
   bannerTheme?: BannerAppearance;
+  displayName?: string;
   // 새 WebRTC 링크에서 보유 턴과 상태를 대조하는 재개 인사다.
   kind: "resume";
   // 초대·응답 코드에서 합의한 이어받을 매치 식별자다.
@@ -244,6 +247,7 @@ export interface OnlineLobbyOptions {
 
 export interface OnlineRuntimeOptions {
   getLocalBannerTheme?: () => BannerAppearance;
+  getLocalDisplayName?: () => string | null;
   resolveOpponentBanner?: () => Promise<BannerAppearance>;
   resolveOpponentCosmetics?: () => Promise<CosmeticLoadout>;
   // 두 피어가 ready와 resume에서 반드시 일치시킬 매치 식별자다.
@@ -307,6 +311,7 @@ export interface OnlineRuntime {
   // 상대의 ready 메시지를 받았는지 나타낸다.
   remoteReady: boolean;
   opponentBannerTheme: BannerAppearance;
+  opponentDisplayName?: string;
   opponentCosmetics?: CosmeticLoadout;
   // 양쪽 준비와 연결이 끝나 로컬 선택을 허용하는 상태다.
   active: boolean;
@@ -406,6 +411,15 @@ function parseMatchId(value: unknown, label: string, maxLength = 128): string {
   return value;
 }
 
+// Peer-supplied names are cosmetic text only. Invalid metadata must not break a match.
+export function normalizeFriendlyDisplayName(value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length > 80) return undefined;
+  const name = normalizeNickname(value);
+  if (Array.from(name).length < 2 || Array.from(name).length > 20 ||
+      /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(name)) return undefined;
+  return name;
+}
+
 /**
  * 프로토콜 숫자 벡터가 필요한 길이와 유한값을 갖는지 검사한다.
  */
@@ -449,6 +463,7 @@ export function parseOnlineMessage(
         physicsRevision: parsePhysicsRevision(source.physicsRevision),
         matchId: parseMatchId(source.matchId, "온라인 ready"),
         bannerTheme: isValidBannerAppearance(source.bannerTheme) ? source.bannerTheme : "classic",
+        displayName: normalizeFriendlyDisplayName(source.displayName),
         side: source.side,
         stateHash: source.stateHash,
         strategyDeck: source.strategyDeck as import("./strategy-deck").StrategyDeck | null | undefined,
@@ -612,6 +627,7 @@ export function parseOnlineMessage(
         physicsRevision: parsePhysicsRevision(source.physicsRevision),
         matchId: parseMatchId(source.matchId, "온라인 resume"),
         bannerTheme: isValidBannerAppearance(source.bannerTheme) ? source.bannerTheme : "classic",
+        displayName: normalizeFriendlyDisplayName(source.displayName),
         turnIndex: source.turnIndex,
         stateHash: source.stateHash,
       };
@@ -996,6 +1012,7 @@ export function createOnlineRuntime(
     localReady: false,
     remoteReady: false,
     opponentBannerTheme: "classic",
+    opponentDisplayName: undefined,
     active: false,
     nextTurnIndex: 0,
     activeTurn: null,
@@ -1629,6 +1646,7 @@ export function createOnlineRuntime(
       kind: "ready",
       physicsRevision: PHYSICS_REVISION,
       bannerTheme: (options.getLocalBannerTheme ?? getBannerTheme)(),
+      displayName: normalizeFriendlyDisplayName(options.getLocalDisplayName?.()),
       matchId,
       side: mySide,
       stateHash:
@@ -1652,6 +1670,7 @@ export function createOnlineRuntime(
       kind: "resume",
       physicsRevision: PHYSICS_REVISION,
       bannerTheme: (options.getLocalBannerTheme ?? getBannerTheme)(),
+      displayName: normalizeFriendlyDisplayName(options.getLocalDisplayName?.()),
       matchId,
       turnIndex: runtime.nextTurnIndex,
       stateHash: state.sha256,
@@ -1860,6 +1879,7 @@ export function createOnlineRuntime(
           }
           if (!checkPhysicsRevision(message.physicsRevision)) return;
           if (!runtime.remoteReady) updateOpponentBanner(message.bannerTheme ?? "classic");
+          runtime.opponentDisplayName = message.displayName;
           runtime.remoteReady = true;
           remoteReadyHash = message.stateHash;
           const remoteDeck = message.strategyDeck ?? null;
@@ -2083,6 +2103,7 @@ export function createOnlineRuntime(
             );
           }
           if (!runtime.active) updateOpponentBanner(message.bannerTheme ?? "classic");
+          runtime.opponentDisplayName = message.displayName;
           const localStatePromise = capturePhysicsStateHash(
             turnRuntime.physicsRuntime,
           );

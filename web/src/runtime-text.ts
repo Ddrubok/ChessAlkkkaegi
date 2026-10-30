@@ -10,6 +10,11 @@ export function getCurrentLanguage(): LanguageCode {
 }
 
 export type RuntimeTextKey =
+  | "tutorial.reward_saving"
+  | "tutorial.reward_granted"
+  | "tutorial.reward_repeat"
+  | "tutorial.reward_pending"
+  | "tutorial.reward_retry"
   // Progress
   | "progress.guest_device_stored"
   | "progress.local_cache_failed"
@@ -122,6 +127,11 @@ export type RuntimeTextKey =
 
 export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string>> = {
   ko: {
+    "tutorial.reward_saving": "첫 완료 보상을 확인하는 중입니다…",
+    "tutorial.reward_granted": "첫 완료 보상 +100P가 지급되었습니다.",
+    "tutorial.reward_repeat": "연습을 완료했습니다. 반복 완료 보상은 없습니다.",
+    "tutorial.reward_pending": "완료했지만 보상 저장을 확인하지 못했습니다. 다시 시도해 주세요.",
+    "tutorial.reward_retry": "보상 저장 다시 시도",
     // Progress
     "progress.guest_device_stored": "게스트 진행도는 이 기기에 저장됩니다.",
     "progress.local_cache_failed": "기기 임시 저장에 실패했습니다. 서버 저장 완료 전에는 창을 닫지 마세요.",
@@ -239,6 +249,11 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
   },
 
   en: {
+    "tutorial.reward_saving": "Checking your first completion reward…",
+    "tutorial.reward_granted": "First completion reward: +100P.",
+    "tutorial.reward_repeat": "Practice complete. Replays have no extra reward.",
+    "tutorial.reward_pending": "Completed, but reward saving could not be confirmed. Please retry.",
+    "tutorial.reward_retry": "Retry reward save",
     // Progress
     "progress.guest_device_stored": "Guest progress is saved on this device.",
     "progress.local_cache_failed": "Failed to save temporary local data. Do not close this window before server save completes.",
@@ -356,6 +371,11 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
   },
 
   ja: {
+    "tutorial.reward_saving": "初回クリア報酬を確認中…",
+    "tutorial.reward_granted": "初回クリア報酬 +100P を受け取りました。",
+    "tutorial.reward_repeat": "練習完了。再プレイの追加報酬はありません。",
+    "tutorial.reward_pending": "完了しましたが報酬の保存を確認できません。再試行してください。",
+    "tutorial.reward_retry": "報酬の保存を再試行",
     // Progress
     "progress.guest_device_stored": "ゲストの進行状況はこの端末に保存されます。",
     "progress.local_cache_failed": "端末への一時保存に失敗しました。サーバーへの保存が完了するまでウィンドウを閉じないでください。",
@@ -473,6 +493,11 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
   },
 
   "zh-CN": {
+    "tutorial.reward_saving": "正在确认首次完成奖励…",
+    "tutorial.reward_granted": "首次完成奖励已发放：+100P。",
+    "tutorial.reward_repeat": "练习完成。重复练习没有额外奖励。",
+    "tutorial.reward_pending": "已完成，但无法确认奖励已保存。请重试。",
+    "tutorial.reward_retry": "重试保存奖励",
     // Progress
     "progress.guest_device_stored": "游客进度将保存在此设备上。",
     "progress.local_cache_failed": "设备临时保存失败。在服务器保存完成前请勿关闭窗口。",
@@ -590,6 +615,11 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
   },
 
   de: {
+    "tutorial.reward_saving": "Belohnung für den ersten Abschluss wird geprüft…",
+    "tutorial.reward_granted": "Belohnung für den ersten Abschluss: +100P.",
+    "tutorial.reward_repeat": "Übung abgeschlossen. Wiederholungen geben keine weitere Belohnung.",
+    "tutorial.reward_pending": "Abgeschlossen, aber die Speicherung der Belohnung wurde nicht bestätigt. Bitte erneut versuchen.",
+    "tutorial.reward_retry": "Belohnung erneut speichern",
     // Progress
     "progress.guest_device_stored": "Gast-Spielfortschritt wird auf diesem Gerät gespeichert.",
     "progress.local_cache_failed": "Lokale Zwischenspeicherung fehlgeschlagen. Bitte schließen Sie das Fenster nicht vor Abschluss der Serverspeicherung.",
@@ -707,6 +737,11 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
   },
 
   fr: {
+    "tutorial.reward_saving": "Vérification de la récompense de première réussite…",
+    "tutorial.reward_granted": "Récompense de première réussite : +100P.",
+    "tutorial.reward_repeat": "Entraînement terminé. Les répétitions ne donnent pas de récompense supplémentaire.",
+    "tutorial.reward_pending": "Terminé, mais la sauvegarde de la récompense n'est pas confirmée. Réessayez.",
+    "tutorial.reward_retry": "Réessayer la sauvegarde",
     // Progress
     "progress.guest_device_stored": "La progression invité est enregistrée sur cet appareil.",
     "progress.local_cache_failed": "Échec de la sauvegarde locale temporaire. Ne fermez pas la fenêtre avant la fin de l'enregistrement sur le serveur.",
@@ -824,6 +859,11 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
   },
 
   es: {
+    "tutorial.reward_saving": "Comprobando la recompensa por completar por primera vez…",
+    "tutorial.reward_granted": "Recompensa por primera vez: +100P.",
+    "tutorial.reward_repeat": "Práctica completada. Repetirla no da otra recompensa.",
+    "tutorial.reward_pending": "Completado, pero no se pudo confirmar que se guardó la recompensa. Reinténtalo.",
+    "tutorial.reward_retry": "Reintentar guardar recompensa",
     // Progress
     "progress.guest_device_stored": "El progreso de invitado se guarda en este dispositivo.",
     "progress.local_cache_failed": "Error al guardar localmente de forma temporal. No cierre la ventana antes de que se complete el guardado en el servidor.",
@@ -941,6 +981,11 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
   },
 
   ru: {
+    "tutorial.reward_saving": "Проверяем награду за первое прохождение…",
+    "tutorial.reward_granted": "Награда за первое прохождение: +100P.",
+    "tutorial.reward_repeat": "Тренировка завершена. За повторное прохождение награда не выдаётся.",
+    "tutorial.reward_pending": "Пройдено, но сохранение награды не подтверждено. Повторите попытку.",
+    "tutorial.reward_retry": "Повторить сохранение награды",
     // Progress
     "progress.guest_device_stored": "Гостевой прогресс сохраняется на этом устройстве.",
     "progress.local_cache_failed": "Сбой локального сохранения. Не закрывайте окно до завершения сохранения на сервере.",
@@ -1058,6 +1103,11 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
   },
 
   "pt-BR": {
+    "tutorial.reward_saving": "Verificando a recompensa pela primeira conclusão…",
+    "tutorial.reward_granted": "Recompensa pela primeira conclusão: +100P.",
+    "tutorial.reward_repeat": "Treino concluído. Repetições não dão recompensa extra.",
+    "tutorial.reward_pending": "Concluído, mas não foi possível confirmar o salvamento da recompensa. Tente novamente.",
+    "tutorial.reward_retry": "Tentar salvar recompensa novamente",
     // Progress
     "progress.guest_device_stored": "O progresso de convidado é salvo neste dispositivo.",
     "progress.local_cache_failed": "Falha ao salvar cache local. Não feche a janela antes da conclusão do salvamento no servidor.",

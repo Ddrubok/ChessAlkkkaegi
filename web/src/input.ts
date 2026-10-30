@@ -1897,7 +1897,10 @@ function handleCanvasPointerUp(
     event.clientX >= cancelRect.left && event.clientX <= cancelRect.right &&
     event.clientY >= canvas.getBoundingClientRect().bottom &&
     event.clientY < cancelRect.top;
-  if (!containsClientPoint(canvas, event) && !overAimDock) {
+  // The classic power label is read-only even when it sits beside the cancel dock.
+  const overPowerReadout = gesture.source === "classic-canvas" &&
+    isPointerOverElement(runtime.aimRuntime.powerReadout, event.clientX, event.clientY);
+  if (!containsClientPoint(canvas, event) && !overAimDock && !overPowerReadout) {
     cancelInteraction(runtime, false);
     return;
   }

@@ -652,6 +652,13 @@ async function bootstrap(): Promise<void> {
   let activeMatchOpponent: { id: string; nickname: string; mmr: number } | null =
     null;
   let activeMyProfile: UserProfile | null = null;
+  menuRuntime.canForfeitRound = () =>
+    gameModeRuntime?.mode === "online" && onlineRuntime?.active === true &&
+    activeMyProfile === null && turnRuntime.phase !== "match-over";
+  menuRuntime.onForfeitRound = async () => {
+    if (!menuRuntime.canForfeitRound?.() || !onlineRuntime) return;
+    onlineRuntime.resign();
+  };
 
   const recordOnlineMatchSettlement = async (matchWinner: MatchWinner): Promise<void> => {
     if (!PLATFORM.features.online) return;
@@ -769,6 +776,7 @@ async function bootstrap(): Promise<void> {
       mode: gameModeRuntime?.mode ?? "hotseat", stage: gameModeRuntime?.stageNumber ?? 1,
       currentSide: turnRuntime.currentSide, mySide: onlineRuntime?.mySide ?? null,
       profile: menuRuntime.userProfile, opponent: activeMatchOpponent,
+      opponentDisplayName: activeMatchOpponent ? undefined : onlineRuntime?.opponentDisplayName,
       rankedMode: activeOnlineMatchMode,
       opponentBannerTheme: onlineRuntime?.opponentBannerTheme,
       opponentCosmetics: onlineRuntime?.opponentCosmetics,
@@ -2295,6 +2303,8 @@ async function bootstrap(): Promise<void> {
           matchId: session.matchId,
           localStrategyDeck: session.strategyDeck,
           getLocalBannerTheme: () => getPlayerBannerTheme(progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id),
+          getLocalDisplayName: () => session.opponent || (progressStorage.owner !== null && progressStorage.owner !== menuRuntime.userProfile?.id)
+            ? null : menuRuntime.userProfile?.nickname ?? null,
           resolveOpponentCosmetics: () => readOpponentCosmetics(activeMatchOpponent?.id, progressStorage.owner !== null),
           onLocalLaunchAccepted: (event) => {
             marketingRuntime.firstShot("online");

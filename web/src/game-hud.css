@@ -107,6 +107,7 @@
 #app .player-banner[data-owner="opponent"] {
   bottom: calc(76px + env(safe-area-inset-bottom, 0px));
 }
+.player-banner-compact { display: none; }
 
 #app .strike-point-panel {
   left: max(8px, env(safe-area-inset-left, 0px));
@@ -172,6 +173,64 @@
 
 @media (orientation: landscape) and (max-height: 500px) {
   #app .strike-point-panel { width: 140px; }
+}
+
+/* Keep player identity outside the board and reserve the same space throughout a shot. */
+@media (orientation: landscape) and (max-height: 640px) {
+  #app:has(.player-banners:not([hidden])) {
+    --game-board-top: calc(100px + env(safe-area-inset-top, 0px));
+    --game-hud-height: calc(112px + env(safe-area-inset-bottom, 0px));
+    --game-dock-right: max(12px, env(safe-area-inset-right, 0px));
+    --game-dock-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  #app .player-banner[data-owner] {
+    top: calc(50px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    width: calc((100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 32px) / 2);
+    height: 44px;
+    aspect-ratio: auto;
+    padding: 0 10px;
+    background: #273344;
+    color: #f1f5f9;
+    border-radius: 4px;
+    text-shadow: none;
+  }
+  #app .player-banner[data-owner="self"] {
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: auto;
+  }
+  #app .player-banner > [class^="pb-layer-"],
+  #app .player-banner .player-banner-text { display: none; }
+  #app .player-banner-compact {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    line-height: 1.3;
+  }
+  #app .player-banner:has(.player-banner-add:not([hidden])) { padding-right: 54px; }
+  #app .player-banner-add {
+    width: 44px;
+    height: 44px;
+    right: 0;
+    background: #273344;
+    color: #f1f5f9;
+    border-color: #64748b;
+    box-shadow: none;
+  }
+  #app .player-banner-add:hover:not(:disabled) { transform: translateY(-50%); }
+  #app:has(.player-banners:not([hidden])) .strike-action-bar,
+  #app:has(.player-banners:not([hidden])) .classic-cancel-control { min-height: 48px; }
+  #app:has(.player-banners:not([hidden])) .strike-action-bar { padding: 2px; }
+  #app:has(.player-banners:not([hidden])) .strike-action-bar button,
+  #app:has(.player-banners:not([hidden])) .classic-cancel-btn { min-height: 44px; }
+  #app:has(.player-banners:not([hidden])) .aim-parameters,
+  #app:has(.player-banners:not([hidden])) .king-swap-banner {
+    bottom: calc(var(--game-dock-bottom) + 58px);
+    padding: 4px 8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

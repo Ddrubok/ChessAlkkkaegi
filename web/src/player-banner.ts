@@ -43,6 +43,7 @@ export interface PlayerBannerState {
   mySide: PieceSide | null;
   profile: UserProfile | null;
   opponent: { id: string; nickname: string; mmr: number } | null;
+  opponentDisplayName?: string;
   rankedMode: 'classic' | 'strategy';
   loggedIn: boolean;
   opponentBannerTheme?: BannerAppearance;
@@ -63,7 +64,7 @@ export function getPlayerBannerModels(state: PlayerBannerState) {
   const opponent = state.mode === 'stage'
     ? { side: opposite, name: 'AI', detail: I18nManager.t('lobby.stage_label', { stage: state.stage }), bot: true }
     : state.mode === 'online'
-      ? { side: opposite, name: state.opponent?.nickname || getRuntimeText('matchmaking.default_opponent_name'),
+      ? { side: opposite, name: state.opponent?.nickname || state.opponentDisplayName || getRuntimeText('matchmaking.default_opponent_name'),
           detail: state.opponent ? formatTier(state.opponent.mmr) : I18nManager.t('p2p.subtitle'), bot: false }
       : { side: opposite, name: I18nManager.t('ingame.turn_black'), detail: I18nManager.t('lobby.mode_2p_short'), bot: false };
   return {
@@ -107,7 +108,11 @@ export function createPlayerBanners(parent: HTMLElement, options: {
     // 6슬롯 코스메틱 DOM 엘리먼트 바인딩
     const cosmeticView = createCosmeticCardElements(card);
 
-    return { card, emblem, name, detail, cosmeticView };
+    const compact = document.createElement('span');
+    compact.className = 'player-banner-compact';
+    card.append(compact);
+
+    return { card, emblem, name, detail, cosmeticView, compact };
   };
 
   const self = makeCard(true);
@@ -177,6 +182,12 @@ export function createPlayerBanners(parent: HTMLElement, options: {
     last = signature;
 
     const models = getPlayerBannerModels(state);
+    for (const [view, model] of [[self, models.self], [opponent, models.opponent]] as const) {
+      const side = I18nManager.t(model.side === 'white' ? 'ingame.turn_white' : 'ingame.turn_black');
+      const label = [model.name, side, ...(model.bot ? [model.detail] : [])].join(' · ');
+      view.compact.textContent = label;
+      view.compact.title = label;
+    }
 
     // 내 배너 렌더링
     self.name.textContent = models.self.name;
