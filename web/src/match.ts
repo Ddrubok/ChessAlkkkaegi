@@ -390,6 +390,7 @@ export function createStageRunResultCopy(
   stageNumber: number,
   payout: number,
   completed: boolean,
+  winner: MatchWinner = completed ? "white" : "black",
 ): StageRunResultCopy {
   if (!Number.isInteger(stageNumber) || stageNumber < 1) {
     throw new Error(
@@ -412,8 +413,12 @@ export function createStageRunResultCopy(
         buttonLabel: I18nManager.t("ingame.go_to_main"),
       }
     : {
-        kicker: I18nManager.t("ingame.game_over"),
-        heading: I18nManager.t("ingame.stage_ended", { stage: stageNumber }),
+        kicker: winner === "draw"
+          ? I18nManager.t("ingame.stage_ended", { stage: stageNumber })
+          : I18nManager.t("ingame.game_over"),
+        heading: winner === "draw"
+          ? I18nManager.t("ingame.draw")
+          : I18nManager.t("ingame.stage_ended", { stage: stageNumber }),
         detailLines: [I18nManager.t("ingame.points_earned", { points: payout })],
         buttonLabel: I18nManager.t("ingame.go_to_main"),
       };
@@ -428,14 +433,16 @@ export function showStageRunResult(
   payout: number,
   completed: boolean,
   onReturnToMenu: () => Promise<void>,
+  winner: MatchWinner = completed ? "white" : "black",
 ): void {
   gameplay.leave("stage-run-result");
   const copy = createStageRunResultCopy(
     stageNumber,
     payout,
     completed,
+    winner,
   );
-  runtime.winner = completed ? "white" : "black";
+  runtime.winner = winner;
   runtime.restarting = false;
   runtime.onCardSelected = null;
   runtime.onReturnToMenu = onReturnToMenu;
@@ -461,7 +468,7 @@ export function showStageRunResult(
   runtime.actionStatus.textContent = "";
   runtime.overlay.hidden = false;
   runtime.menuButton.focus();
-  beginResultMotion(runtime.overlay, `stage-end:${stageNumber}:${completed}`, runtime.winnerHeading);
+  beginResultMotion(runtime.overlay, `stage-end:${stageNumber}:${winner}`, runtime.winnerHeading);
 }
 
 /**

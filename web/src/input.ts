@@ -1427,6 +1427,7 @@ function raycastSelectedPieceSurface(
 export function switchInputMode(
   runtime: InputRuntime,
   mode: InputMode,
+  persist = true,
 ): void {
   if (runtime.mode === mode) {
     return;
@@ -1435,7 +1436,7 @@ export function switchInputMode(
   runtime.mode = mode;
   runtime.strategy = runtime.strategies[mode];
   runtime.failureReason = null;
-  window.localStorage.setItem(INPUT_MODE_STORAGE_KEY, mode);
+  if (persist) window.localStorage.setItem(INPUT_MODE_STORAGE_KEY, mode);
   runtime.policy.onModeChanged(mode);
   updateModeToggle(runtime);
   updateActionBar(runtime);
@@ -2442,8 +2443,30 @@ export function createInputRuntime(
     }
   });
   sceneRuntime.onCameraFitChanged = () => {
-    cancelInteraction(runtime, true);
-    beginCameraRestore(runtime, runtime.strategy.cameraPolicy);
+    // A canvas resize can happen while aiming. Keep that view and the user's
+    // orbit/zoom choice; only move a board view outward if it no longer fits.
+    if (runtime.aimRuntime.selectedPieceId !== null || runtime.state === "aiming" || runtime.state === "charging") return;
+    const minimum = sceneRuntime.minimumCameraDistance;
+    const controls = sceneRuntime.controls;
+    controls.minDistance = minimum;
+    controls.maxDistance = runtime.mode === "classic"
+      ? Math.max(minimum * 1.8, sceneRuntime.boardHalfExtent * 4)
+      : minimum;
+    if (runtime.cameraTransition !== null) {
+      runtime.cameraTransition.toSpherical.radius = Math.max(
+        runtime.cameraTransition.toSpherical.radius,
+        minimum,
+      );
+      runtime.cameraTransition.minDistance = minimum;
+      runtime.cameraTransition.maxDistance = controls.maxDistance;
+      return;
+    }
+    const offset = sceneRuntime.camera.position.clone().sub(controls.target);
+    if (offset.length() < minimum) {
+      sceneRuntime.camera.position.copy(controls.target).add(offset.setLength(minimum));
+      sceneRuntime.camera.lookAt(controls.target);
+      controls.update();
+    }
   };
   updateModeToggle(runtime);
   policy.onModeChanged(initialMode);

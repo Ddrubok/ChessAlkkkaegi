@@ -1577,13 +1577,28 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
 .tutorial-more-button { background: transparent; color: #cbd5e1; border: 0; min-height: 44px; padding: 10px; font: inherit; cursor: pointer; }
 .tutorial-modal-card button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
 .tutorial-coach-header { flex-wrap: wrap; }
+.tutorial-skip-button {
+  margin-left: auto;
+  padding: 5px 9px;
+  min-height: 32px;
+  border: 1px solid #64748b;
+  border-radius: 5px;
+  background: transparent;
+  color: #e2e8f0;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.tutorial-skip-button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+@media (pointer: coarse) { .tutorial-skip-button { min-height: 44px; } }
 .tutorial-guide-text:empty { display: none; }
 @media (max-height: 500px) {
   body[data-tutorial] { --tutorial-coach-top: 48px; }
   body[data-tutorial="basic"] #app { --game-hud-height: calc(104px + env(safe-area-inset-bottom, 0px)); --game-dock-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   .tutorial-coach-overlay { width: min(94vw, 480px); }
   .tutorial-coach-card { padding: 6px 10px; }
-  .tutorial-coach-header { display: none; }
+  .tutorial-step-title { display: none; }
   .tutorial-guide-text { font-size: 11px; }
 }
 
@@ -1591,17 +1606,19 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
   #app:has(> .game-canvas-crazygames) {
     --game-hud-height: calc(24px + env(safe-area-inset-bottom, 0px));
   }
-  body[data-tutorial="basic"] #app:has(> .game-canvas-crazygames) {
+  body[data-tutorial="basic"] #app {
     --game-hud-height: calc(8px + env(safe-area-inset-bottom, 0px));
   }
   /* Keep the explicit cancel target beside, rather than across, the pull-back path. */
-  #app:has(> .game-canvas-crazygames) .classic-cancel-control {
+  #app:has(> .game-canvas-crazygames) .classic-cancel-control,
+  body[data-tutorial="basic"] #app .classic-cancel-control {
     left: max(12px, env(safe-area-inset-left, 0px));
     right: auto;
     width: 156px;
     margin: 0;
   }
-  #app:has(> .game-canvas-crazygames) .aim-power {
+  #app:has(> .game-canvas-crazygames) .aim-power,
+  body[data-tutorial="basic"] #app .aim-power {
     left: calc(max(12px, env(safe-area-inset-left, 0px)) + 172px);
   }
 }
@@ -1819,6 +1836,8 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
 /* Give the turn label its own row on narrow phones. */
 @media (max-width:520px) and (orientation:portrait) {
   .turn-hud-container { top:50px; }
+  body[data-tutorial] { --tutorial-coach-top: 88px; }
+  body[data-tutorial] .turn-hud-side { white-space: nowrap; }
 }
 
 /* Result controls and motion accessibility. */

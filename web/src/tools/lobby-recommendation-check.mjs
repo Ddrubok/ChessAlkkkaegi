@@ -11,13 +11,19 @@ const vite = await createServer({
 });
 
 try {
-  const { isBasicTutorialCompleted, pickLobbyRecommendation } =
+  const { isBasicTutorialCompleted, pickLobbyRecommendation, shouldStartFirstTutorial } =
     await vite.ssrLoadModule("/src/lobby-recommendation.ts");
 
   for (const value of [null, "started", "skipped"]) {
     assert.equal(isBasicTutorialCompleted(value), false);
   }
   assert.equal(isBasicTutorialCompleted("true"), true);
+  const first = { tutorialHistory: null, maxClearedStage: 0, hasPlayerProfile: false, hasLaunchInvite: false };
+  assert.equal(shouldStartFirstTutorial(first), true);
+  for (const change of [{tutorialHistory:'started'}, {tutorialHistory:'skipped'}, {tutorialHistory:'true'},
+    {maxClearedStage:1}, {hasPlayerProfile:true}, {hasLaunchInvite:true}]) {
+    assert.equal(shouldStartFirstTutorial({...first,...change}), false);
+  }
 
   assert.deepEqual(
     pickLobbyRecommendation({ basicTutorialCompleted: false, maxClearedStage: 0, maxStage: 10 }),

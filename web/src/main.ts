@@ -36,6 +36,7 @@ import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
 import { tutorialManager } from "./tutorial";
+import { shouldStartFirstTutorial } from "./lobby-recommendation";
 import { PuzzlePhysicsTracker } from "./puzzle-physics";
 import { applyPuzzleSpawnDefinitions } from "./puzzle-spawn";
 import { PuzzleUI } from "./puzzle-ui";
@@ -130,6 +131,7 @@ import {
   computePermanentForceBonus,
   computeStageRunPayout,
   createMetaRuntime,
+  getMaxClearedStage,
   loadMetaState,
   createStageRunPointState,
   discardStageRunPoints,
@@ -255,6 +257,7 @@ function assertBoardAgreement(
  * 최종 에셋을 읽고 씬과 물리를 구성한 뒤 고정 스텝 루프를 시작한다.
  */
 async function bootstrap(): Promise<void> {
+  const hadPlayerProfileBeforeBoot = localStorage.getItem("ca_logged_in_user") === "true";
   const localBalancePreview = import.meta.env.DEV &&
     ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname) &&
     new URLSearchParams(window.location.search).get("balance") === "local";
@@ -313,6 +316,14 @@ async function bootstrap(): Promise<void> {
     else { void questStorage.retry(); void weeklyChallengeStorage.refresh(); }
   });
   const metaRuntime = createMetaRuntime();
+  // Capture before portal menus create their local guest profile.
+  const firstTutorialCandidate = shouldStartFirstTutorial({
+    tutorialHistory: progressStorage.getItem("has_completed_tutorial"),
+    maxClearedStage: getMaxClearedStage(metaRuntime.storage),
+    hasPlayerProfile: hadPlayerProfileBeforeBoot,
+    hasLaunchInvite: false,
+  });
+  let tutorialInputModeBeforeStart: InputMode | null = null;
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
   let selectedHotseatMapId = DEFAULT_HOTSEAT_MAP_ID;
   let startModeAction:
@@ -778,6 +789,7 @@ async function bootstrap(): Promise<void> {
     getGameMode: () => localBalancePreview && onlineRuntime === null ? "hotseat" : gameModeRuntime?.mode ?? "hotseat",
     getMySide: () => onlineRuntime?.mySide ?? null,
     isMenuVisible: () => !menuRuntime.overlay.hidden,
+    isOnlineReady: () => onlineRuntime?.active === true,
     onTimeoutLaunch: handleTurnTimeout,
     getTrackedObjective: () => trackedMasteryText(progressStorage),
   });
@@ -1830,8 +1842,10 @@ async function bootstrap(): Promise<void> {
   };
 
   setMatchOverHandler(turnRuntime, (winner) => {
-    lockInputForMatchOver(inputRuntime);
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
+    // A settled stage can be reported again by a delayed callback; credit it once.
+    if (gameMode === "stage" && matchRuntime.winner !== null) return;
+    lockInputForMatchOver(inputRuntime);
     if (gameMode === "tutorial") {
       return;
     }
@@ -1950,7 +1964,7 @@ async function bootstrap(): Promise<void> {
       const completedRun =
         winner === "white" &&
         completedStage === STAGE_RUN_LENGTH;
-      if (winner === "black" || completedRun) {
+      if (winner !== "white" || completedRun) {
         const payout = settleStageRunPoints(
           metaRuntime,
           stageRunPoints,
@@ -1964,6 +1978,7 @@ async function bootstrap(): Promise<void> {
           payout,
           completedRun,
           () => returnToMainMenu(menuRuntime, true),
+          winner,
         );
         if (PLATFORM.id !== "crazygames") {
           appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
@@ -1983,25 +1998,9 @@ async function bootstrap(): Promise<void> {
         gameplay.enter("match-restart");
         return;
       }
-      const previousStage = gameModeRuntime?.stageNumber ?? 1;
-      const previousCards = cloneRunCardState(runCardState);
-      resetRunCardState(runCardState);
-      const nextStage = 1;
-      if (gameModeRuntime !== null) {
-        setStageNumber(gameModeRuntime, nextStage);
-      }
-      try {
-        await resetBoard({
-          gameMode: "stage",
-          stageNumber: nextStage,
-        });
-      } catch (error: unknown) {
-        restoreRunCardState(runCardState, previousCards);
-        if (gameModeRuntime !== null) {
-          setStageNumber(gameModeRuntime, previousStage);
-        }
-        throw error;
-      }
+      // Reuse the new-run transaction, including points/cards and failure rollback.
+      if (gameModeRuntime === null) return;
+      await switchGameMode(gameModeRuntime, "stage", true, 1);
       gameplay.enter("stage-restart");
       marketingRuntime.startLocalMatch("stage");
     };
@@ -2334,14 +2333,19 @@ async function bootstrap(): Promise<void> {
     hideDisconnectOverlay();
     if (mode === "tutorial") {
       const step = selectedStage ?? 1;
+      tutorialInputModeBeforeStart ??= inputRuntime.mode;
       tutorialManager.start(step, tutorialType);
       if (tutorialType === "basic") {
-        switchInputMode(inputRuntime, "classic");
+        switchInputMode(inputRuntime, "classic", false);
       } else if (step === 3) {
-        switchInputMode(inputRuntime, "billiards");
+        switchInputMode(inputRuntime, "billiards", false);
       }
     } else {
       tutorialManager.stop();
+      if (tutorialInputModeBeforeStart !== null) {
+        switchInputMode(inputRuntime, tutorialInputModeBeforeStart);
+        tutorialInputModeBeforeStart = null;
+      }
     }
     if (mode === "weekly" && !weeklyRun) throw new Error("Weekly challenge run is not prepared.");
     const previousHotseatMapId = selectedHotseatMapId;
@@ -2636,6 +2640,10 @@ async function bootstrap(): Promise<void> {
     hideDisconnectOverlay();
     tutorialManager.stop();
     puzzleUI?.hide();
+    if (tutorialInputModeBeforeStart !== null) {
+      switchInputMode(inputRuntime, tutorialInputModeBeforeStart);
+      tutorialInputModeBeforeStart = null;
+    }
     puzzleTracker = null;
     puzzleAttempt = null;
     activePuzzle = null;
@@ -2915,7 +2923,7 @@ async function bootstrap(): Promise<void> {
           stageNumber: nextStep,
         });
         if (tutorialManager.tutorialType === "advanced" && nextStep === 3) {
-          switchInputMode(inputRuntime, "billiards");
+          switchInputMode(inputRuntime, "billiards", false);
         }
       }
     },
@@ -2941,6 +2949,12 @@ async function bootstrap(): Promise<void> {
       });
     });
   if (PLATFORM.features.online && menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
+  if (!localBalancePreview && firstTutorialCandidate) {
+    // Solo practice needs no server account or nickname form.
+    localStorage.setItem("ca_logged_in_user", "true");
+    if (!localStorage.getItem("ca_local_nickname")) localStorage.setItem("ca_local_nickname", "Player");
+    await startLobbyMode(menuRuntime, "tutorial", 1, "basic");
+  }
 }
 
 void bootstrap().catch((error: unknown) => {

@@ -74,6 +74,9 @@ export class TutorialManager {
     this.isActive = true;
     this.tutorialType = tutorialType;
     this.currentStep = Math.max(1, Math.min(this.stepCount, startStep));
+    if (tutorialType === "basic" && progressStorage.getItem("has_completed_tutorial") === null) {
+      progressStorage.setItem("has_completed_tutorial", "started");
+    }
     document.body.dataset.tutorial = tutorialType;
     this.renderCoachOverlay();
   }
@@ -414,11 +417,22 @@ export class TutorialManager {
         <div class="tutorial-coach-header">
           <span class="tutorial-step-badge">${badgePrefix} ${this.currentStep}/${this.stepCount}</span>
           <strong class="tutorial-step-title">${stepInfo.title}</strong>
+          <button type="button" class="tutorial-skip-button">${I18nManager.t("tutorial.skip_btn")}</button>
         </div>
         <div class="tutorial-mission-text">${stepInfo.mission}</div>
-        <div class="tutorial-guide-text">${stepInfo.guide}</div>
+        <div class="tutorial-guide-text">${this.tutorialType === "basic" && this.currentStep < 3 ? "" : stepInfo.guide}</div>
       </div>
     `;
+    this.overlayElement.querySelector<HTMLButtonElement>(".tutorial-skip-button")?.addEventListener("click", async (event) => {
+      if (!this.isActive) return;
+      const button = event.currentTarget as HTMLButtonElement;
+      button.disabled = true;
+      if (this.tutorialType === "basic" && progressStorage.getItem("has_completed_tutorial") !== "true") {
+        progressStorage.setItem("has_completed_tutorial", "skipped");
+      }
+      this.stop();
+      await this.onTutorialFinishedCallback?.();
+    });
   }
 
   /**

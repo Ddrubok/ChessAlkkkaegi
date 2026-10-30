@@ -736,7 +736,7 @@ export function recordStageRunClear(
 }
 
 /**
- * 패배 또는 10스테이지 완주 때만 임시 포인트를 영구 메타에 더하고 저장한다.
+ * 패배·무승부 또는 10스테이지 완주 때 임시 포인트를 영구 메타에 더하고 저장한다.
  */
 export function settleStageRunPoints(
   runtime: MetaRuntime,

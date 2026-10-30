@@ -95,12 +95,16 @@ try {
   };
 
   let menuVisible = false;
+  let gameMode = 'stage';
+  let mySide = 'white';
+  let onlineReady = true;
   let timeoutCount = 0;
 
   const options = {
-    getGameMode: () => 'stage',
-    getMySide: () => 'white',
+    getGameMode: () => gameMode,
+    getMySide: () => mySide,
     isMenuVisible: () => menuVisible,
+    isOnlineReady: () => onlineReady,
     onTimeoutLaunch: () => {
       timeoutCount += 1;
     },
@@ -204,6 +208,49 @@ try {
   hud.update(0, 0);
   assert.equal(timerWrap.style.display, 'flex');
   assert.equal(timerTextEl.textContent, '20s');
+
+  // A hidden iframe may return after a single long frame. Only the local side sends a shot.
+  const { createTurnClock } = await vite.ssrLoadModule('/src/turn-clock.ts');
+  const clock = createTurnClock();
+  gameMode = 'online';
+  turnRuntime.currentSide = 'white';
+  hud.reset();
+  hud.update(0, clock(0, 'game-1:white', true));
+  hud.update(1000, clock(1000, 'game-1:white', true));
+  assert.equal(timerTextEl.textContent, '19s');
+  hud.update(25000, clock(25000, 'game-1:white', true));
+  assert.equal(timerTextEl.textContent, '0s');
+  assert.equal(timeoutCount, 3, 'One late frame triggers one local timeout shot');
+  hud.update(26000, clock(26000, 'game-1:white', true));
+  assert.equal(timeoutCount, 3, 'Subsequent frames do not repeat timeout shot');
+
+  turnRuntime.currentSide = 'black';
+  hud.update(27000, clock(27000, 'game-1:black', true));
+  assert.equal(timerTextEl.textContent, '20s', 'New turn does not inherit elapsed time');
+  hud.update(50000, clock(50000, 'game-1:black', true));
+  assert.equal(timeoutCount, 3, 'Remote side cannot send a timeout shot');
+
+  mySide = 'black';
+  hud.reset();
+  hud.update(51000, clock(51000, 'game-2:black', true));
+  hud.update(72000, clock(72000, 'game-2:black', true));
+  assert.equal(timeoutCount, 4, 'Black local side can send its timeout shot');
+  hud.reset();
+  onlineReady = false;
+  hud.update(100000, 40);
+  assert.equal(timeoutCount, 4, 'Connection wait cannot consume the timeout');
+  onlineReady = true;
+  hud.update(110000, 10);
+  assert.equal(timerTextEl.textContent, '20s', 'Ready handshake begins with a full deadline');
+  hud.update(115000, 5);
+  assert.equal(timerTextEl.textContent, '15s');
+  onlineReady = false;
+  hud.update(140000, 25);
+  onlineReady = true;
+  hud.update(150000, 10);
+  assert.equal(timerTextEl.textContent, '15s', 'Reconnection preserves the remaining deadline');
+  hud.update(165000, 15);
+  assert.equal(timeoutCount, 5, 'Resumed local turn times out once when eligible');
   hud.destroy();
   console.log('PASS: turn-timer regression (initial20, elapse5=>15, reset same white=>20, timeout onlyonce, reset after timeout permits another timeout, black turn resets, menu hide/show preserves remaining time, match-over update does not count)');
 } finally {

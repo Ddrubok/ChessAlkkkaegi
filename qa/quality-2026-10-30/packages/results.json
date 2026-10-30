@@ -1,0 +1,63 @@
+[
+  {
+    "kind": "web",
+    "launch": "solo",
+    "errors": [],
+    "initialSdkCalls": [],
+    "sdkCalls": [],
+    "text": "Menu\nPractice (No Time Limit)\nTutorial 1/3\nSkip tutorial\nDrag the white pawn back, then release to knock the black pawn off the board.",
+    "fixture": "Unmodified production package. Local synthetic SDK, guest user, external requests blocked. No live online session."
+  },
+  {
+    "kind": "crossplay",
+    "launch": "solo",
+    "errors": [],
+    "initialSdkCalls": [
+      "init",
+      "loadingStart",
+      "loadingStop",
+      "gameplayStart"
+    ],
+    "sdkCalls": [
+      "init",
+      "loadingStart",
+      "loadingStop"
+    ],
+    "text": "Menu\nPractice (No Time Limit)\nTutorial 1/3\nSkip tutorial\nDrag the white pawn back, then release to knock the black pawn off the board.",
+    "fixture": "Unmodified production package. Local synthetic SDK, guest user, external requests blocked. No live online session."
+  },
+  {
+    "kind": "crossplay",
+    "launch": "invite",
+    "errors": [],
+    "initialSdkCalls": [
+      "init",
+      "loadingStart",
+      "loadingStop"
+    ],
+    "sdkCalls": [
+      "init",
+      "loadingStart",
+      "loadingStop"
+    ],
+    "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nOnline Ranked Battle\nMatchmaking · room-code matches\nStage battle\n0/10 cleared · Piece research\nOnline play uses your CrazyGames ID and saves match results and progress.\nPrivacy Policy\nFriendly Match (Room Code / Friend Invite)\nQuick Match via Invite Code\nCreate Room\nRoom Invite Code\nJoin Room\n\nInvalid 12-character invite code.\n\nCancel\nBilliards\nClassic",
+    "fixture": "Unmodified production package. Local synthetic SDK, guest user, external requests blocked. No live online session."
+  },
+  {
+    "kind": "crossplay",
+    "launch": "instant",
+    "errors": [],
+    "initialSdkCalls": [
+      "init",
+      "loadingStart",
+      "loadingStop"
+    ],
+    "sdkCalls": [
+      "init",
+      "loadingStart",
+      "loadingStop"
+    ],
+    "text": "Chess Alkkagi\nNEW HERE?\nFirst match\n\nPull and release to knock opponents off the board\n\nTry a shot\nTutorial\nBasic tutorial\nAdvanced tutorial\nOnline Ranked Battle\nMatchmaking · room-code matches\nStage battle\n0/10 cleared · Piece research\nOnline play uses your CrazyGames ID and saves match results and progress.\nPrivacy Policy\nFriendly Match (Room Code / Friend Invite)\nQuick Match via Invite Code\nCreate Room\nRoom Invite Code\nJoin Room\n\nConnecting to room…\n\nCancel\nBilliards\nClassic",
+    "fixture": "Unmodified production package. Local synthetic SDK, guest user, external requests blocked. No live online session."
+  }
+]

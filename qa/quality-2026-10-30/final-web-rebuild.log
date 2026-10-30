@@ -1,0 +1,119 @@
+
+> chess-alkkagi-web@0.0.0 prebuild
+> npm run check:chess && npm run check:balance
+
+
+> chess-alkkagi-web@0.0.0 check:chess
+> node src/tools/convert-polyhaven.mjs --check
+
+Pawn: piece_pawn_white_01, 1028 vertices, 1640 triangles, bounds {"x":0.266482,"y":0.520376,"z":0.267153}, baseRadius 0.133609, collider 173
+Rook: piece_rook_white_01, 2016 vertices, 2976 triangles, bounds {"x":0.31598,"y":0.589391,"z":0.317015}, baseRadius 0.149686, collider 222
+Knight: piece_knight_white_01, 1705 vertices, 2662 triangles, bounds {"x":0.447532,"y":0.739591,"z":0.328236}, baseRadius 0.175946, collider 342
+Bishop: piece_bishop_white_01, 1838 vertices, 2924 triangles, bounds {"x":0.370364,"y":0.784872,"z":0.370641}, baseRadius 0.186174, collider 251
+Queen: piece_queen_white, 1827 vertices, 2940 triangles, bounds {"x":0.307604,"y":0.823122,"z":0.308464}, baseRadius 0.145615, collider 249
+King: piece_king_white, 2643 vertices, 4172 triangles, bounds {"x":0.326371,"y":1,"z":0.327887}, baseRadius 0.164295, collider 267
+PASS: generated assets exactly match checked-in GLB and metadata
+Source glTF 3e21ecd0c2ffb703dfdb3f3ea7a379c1dbd4ec513ba2cb8e6cb1e5f276d7eb91, BIN c73476fd032a2cb4a9c256f70573eed260708132fdc42fec161c6216711560b3; output GLB 2ee584b125a20ddcf388e4798f28a376f2b2a3a22e8590aec1f96fc71e6f6863 (476800 bytes), metadata e386535e27f86a9f4114c566c8e9d3b47706d49e59a2b07544864cf2607d7ce8 (122768 bytes)
+
+> chess-alkkagi-web@0.0.0 check:balance
+> node src/tools/balance-csv-check.mjs
+
+PASS: 27 CSV values loaded; edited values, mode scaling, BOM/quoted CSV and invalid input checked.
+
+> chess-alkkagi-web@0.0.0 build
+> tsc --noEmit && vite build --outDir ../qa/quality-2026-10-30/web-candidate-dist
+
+vite v8.1.5 building client environment for production...
+[2Ktransforming...✓ 321 modules transformed.
+rendering chunks...
+computing gzip size...
+../qa/quality-2026-10-30/web-candidate-dist/build-info.json                                               0.18 kB │ gzip:     0.15 kB
+../qa/quality-2026-10-30/web-candidate-dist/tiers.html                                                    3.40 kB │ gzip:     1.73 kB
+../qa/quality-2026-10-30/web-candidate-dist/about.html                                                    3.47 kB │ gzip:     1.72 kB
+../qa/quality-2026-10-30/web-candidate-dist/updates.html                                                  3.69 kB │ gzip:     1.80 kB
+../qa/quality-2026-10-30/web-candidate-dist/guide.html                                                    4.19 kB │ gzip:     2.05 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/classic-plan-C4eZAvz-.webp                             4.53 kB
+../qa/quality-2026-10-30/web-candidate-dist/index.html                                                    4.74 kB │ gzip:     2.14 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-control-square-v1-thumb-DxzE_kn4.webp               6.85 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-push-blocks-v1-thumb-bSS_z07p.webp                  6.87 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-rotating-gate-v1-thumb-CnX926WW.webp                6.90 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-collapsing-center-v1-thumb-RNJQVjam.webp            7.02 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-breakable-bridge-v1-thumb-DfCaE1Kk.webp             7.05 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-lane-v1-thumb-D-a2TNi_.webp                     7.06 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-blocks-and-hole-v1-thumb-LSvI4HDf.webp              7.10 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-bounce-ramps-v1-thumb-DSyLAhPI.webp                 7.11 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-launch-ramps-v1-thumb-BQ8n7py3.webp                 7.14 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-bounce-corridor-v1-thumb-BBlj-h2s.webp              7.20 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-gate-v1-thumb-BOAOkkgU.webp                     7.25 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-collapsing-crown-v1-thumb-BtQ8sMGj.webp             7.38 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-collapsing-center-v1-plan-5tlBj1wa.webp             7.56 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-rotating-gate-v1-plan-pLZ3EDrF.webp                 7.64 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-pockets-v1-thumb-D34fzsd1.webp                  7.69 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-push-blocks-v1-plan-CeDMGjAS.webp                   7.87 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-control-square-v1-plan-lfqXA-v1.webp                7.87 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-bounce-corridor-v1-plan-WV-Ni2ul.webp               8.07 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/classic-thumb-CqRwG-bM.webp                            8.17 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-blocks-and-hole-v1-plan-Cbt4B-Hb.webp               8.18 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-lane-v1-plan-DvvOLDxH.webp                      8.22 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-breakable-bridge-v1-plan-Cwhce1rI.webp              8.31 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-gate-v1-plan-C6ADocrs.webp                      8.41 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-launch-ramps-v1-plan-DnqE7pww.webp                  8.46 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-bounce-ramps-v1-plan-Ceyp6xC8.webp                  8.63 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-collapsing-crown-v1-plan-DAxCvmli.webp              8.83 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-pockets-v1-plan-DPrL4LKe.webp                   9.50 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-push-blocks-v1-perspective-NZS4UgdA.webp           29.43 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-rotating-gate-v1-perspective-Phvt9mzR.webp         29.51 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-blocks-and-hole-v1-perspective-BMOyWK5w.webp       29.84 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-lane-v1-perspective-C1ZK001u.webp              30.00 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-control-square-v1-perspective-CLtw5cNP.webp        30.08 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-launch-ramps-v1-perspective-CDXT3QAn.webp          30.66 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-collapsing-center-v1-perspective-DcAiZzzW.webp     30.66 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-breakable-bridge-v1-perspective-DxdPuY15.webp      30.99 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-bounce-corridor-v1-perspective-BgHKK9gX.webp       31.07 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-bounce-ramps-v1-perspective-BxZoOx3c.webp          31.41 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-gate-v1-perspective-CzpUV6hl.webp              32.58 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-collapsing-crown-v1-perspective-DeC8SPqv.webp      33.88 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/gm-ice-pockets-v1-perspective-GmPBkZxj.webp           35.06 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/classic-perspective-lNXJx3Wo.webp                     39.97 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/site-DNubgUZc.css                                      1.56 kB │ gzip:     0.74 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/index-BkOI61Xq.css                                   110.85 kB │ gzip:    20.77 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/platform-hARWgMdJ.js                                   0.09 kB │ gzip:     0.10 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/esm-ajU1IX2X.js                                        0.34 kB │ gzip:     0.24 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/esm-xydsxbu_.js                                        0.35 kB │ gzip:     0.24 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/web-BFNf8wA8.js                                        0.36 kB │ gzip:     0.24 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/web-GY_MJ6a_.js                                        0.84 kB │ gzip:     0.40 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/state-hash-BF8xTaBA.js                                 1.08 kB │ gzip:     0.65 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/web-DnK7Z17l.js                                        2.01 kB │ gzip:     0.63 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/esm-CcUQ_ucY.js                                        2.79 kB │ gzip:     0.92 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/determinism-probe-yP_S949L.js                          2.86 kB │ gzip:     1.41 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/friendly-lobby-BfAUf_y5.js                             8.05 kB │ gzip:     3.21 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/replay-CEQIXm6I.js                                     8.65 kB │ gzip:     3.41 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/web-ads-DEUxwZi2.js                                   10.26 kB │ gzip:     4.29 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/net-Kf7w43Ik.js                                       12.79 kB │ gzip:     4.67 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/online-selftest-DjgGXBc7.js                           22.47 kB │ gzip:     6.85 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/online-y8OngMUU.js                                    32.32 kB │ gzip:    10.02 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/site-CLpXEkym.js                                      94.84 kB │ gzip:    38.41 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/i18n-Detkvbnw.js                                     182.58 kB │ gzip:    58.17 kB
+../qa/quality-2026-10-30/web-candidate-dist/assets/index-DomEr8AO.js                                  4,143.43 kB │ gzip: 1,379.59 kB
+
+✓ built in 1.04s
+
+using deprecated parameters for the initialization function; pass a single object instead
+<script src="./boot-language.js"> in "/index.html" can't be bundled without type="module" attribute
+
+(!) outDir C:\Users\DooBokWie\Desktop\Project\nhnChess\ChessAlkkkaegi\qa\quality-2026-10-30\web-candidate-dist is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/friendly-copy.ts is dynamically imported by src/main.ts but also statically imported by src/friendly-code.ts, src/friendly-lobby.ts, src/social-service.ts, src/supabase-matchmaker.ts, dynamic import will not move module into another chunk.
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/friends-modal.ts is dynamically imported by src/main.ts but also statically imported by src/menu.ts, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/nickname.ts is dynamically imported by src/supabase-auth.ts but also statically imported by src/menu.ts, src/supabase-match-ui.ts, dynamic import will not move module into another chunk.
+
+
+EXIT 0
