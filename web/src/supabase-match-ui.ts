@@ -442,9 +442,11 @@ export class SupabaseMatchUi {
     modalOverlay.setAttribute("aria-label", I18nManager.t("online.searching_opponent", { mode: modeName }));
     parentCard.scrollTop = 0;
 
-    this.matchmaker = new SupabaseMatchmaker(this.client, this.profile, matchMode);
-    void this.matchmaker.startMatching(
+    const matcher = new SupabaseMatchmaker(this.client, this.profile, matchMode);
+    this.matchmaker = matcher;
+    void matcher.startMatching(
       (status: MatchmakingStatus) => {
+        if (this.matchmaker !== matcher || this.disposed) return;
         const timerEl = modalOverlay.querySelector<HTMLElement>("#matching-timer");
         const rangeEl = modalOverlay.querySelector<HTMLElement>("#matching-range");
         const waitersEl = modalOverlay.querySelector<HTMLElement>("#matching-waiters");
@@ -481,6 +483,8 @@ export class SupabaseMatchUi {
         }
       },
       async (transport, mySide, matchId, opponent) => {
+        if (this.matchmaker !== matcher || this.disposed) { transport.close(); return; }
+        this.matchmaker = null;
         const oppEl = modalOverlay.querySelector("#matching-opponent");
         const sideStr = mySide === "white" ? I18nManager.t("ingame.turn_white") : I18nManager.t("ingame.turn_black");
         if (oppEl) oppEl.textContent = I18nManager.t("online.match_ready", { side: sideStr });
@@ -492,6 +496,7 @@ export class SupabaseMatchUi {
         }
       },
       (error) => {
+        if (this.matchmaker !== matcher || this.disposed) return;
         console.error(error);
         alert(I18nManager.t("online.match_failed", { error: I18nManager.t("online.server_error_fallback") }));
         closeMatching();

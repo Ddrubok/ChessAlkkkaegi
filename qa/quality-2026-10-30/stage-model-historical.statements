@@ -1,0 +1,420 @@
+{
+  "format": 1,
+  "toolchain": "leanprover/lean4:v4.34.1",
+  "module": "Model.StageDrawRestart",
+  "declarations": [
+    {
+      "name": "StageDrawRestart.Phase",
+      "kind": "inductive",
+      "type": "Type",
+      "typeHash": "7051ab654d793c216d744f7920d98d672357a0efa67248ee75d146d668f60997",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.card",
+      "kind": "constructor",
+      "type": "StageDrawRestart.Phase",
+      "typeHash": "c48133c59d821cdcf4a757ac7e873a2e46a8b9c03ca81d67ce9ed3186384ef19",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.card.elim",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → (t : StageDrawRestart.Phase) → t.ctorIdx = 1 → motive StageDrawRestart.Phase.card → motive t",
+      "typeHash": "2b0d0e39fc18d342256e7af2411589fb3224c01339979186a1ba873833231f04",
+      "valueHash": "afc613ac7961956f55918b50013db1a6433f42551c2f379804550ad6bdb6ed46"
+    },
+    {
+      "name": "StageDrawRestart.Phase.card.sizeOf_spec",
+      "kind": "theorem",
+      "type": "sizeOf StageDrawRestart.Phase.card = 1",
+      "typeHash": "beef8d9685e483520ba69cce9fbeb7b7dffa8e6b102575f4113b284826f318e9",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.casesOn",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → (t : StageDrawRestart.Phase) → motive StageDrawRestart.Phase.playing → motive StageDrawRestart.Phase.card → motive StageDrawRestart.Phase.result → motive StageDrawRestart.Phase.ended → motive t",
+      "typeHash": "dc9eb17bbde1072933bf200dab6db6df1c615976c30e77fd46d695572f7ebe7f",
+      "valueHash": "58fc49f557d6e6eab657374f02d44e2fa11a6b1afce823f81e0a8fe2eaf17c0c"
+    },
+    {
+      "name": "StageDrawRestart.Phase.ctorElim",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → (ctorIdx : Nat) → (t : StageDrawRestart.Phase) → ctorIdx = t.ctorIdx → StageDrawRestart.Phase.ctorElimType ctorIdx → motive t",
+      "typeHash": "32c4bce91b67ca622638ec09a79a153a9cdf9d270817c5fef580ad829f5e7d46",
+      "valueHash": "fe8c17f6f8e53b5619ec91d509e982776b9357cebbc0c0cf40b8d4351e58a21b"
+    },
+    {
+      "name": "StageDrawRestart.Phase.ctorElimType",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → Nat → Sort (max 1 u)",
+      "typeHash": "19381737d25474e27f4eedcce27cfd14dc5e3cf6eb0d2f27bfb9ec2e96615f70",
+      "valueHash": "8a4d0bb93e8c52c21b8f1da451bdbbbf8f1dab5e70cb3edc52daa60e34ec7577"
+    },
+    {
+      "name": "StageDrawRestart.Phase.ctorIdx",
+      "kind": "definition",
+      "type": "StageDrawRestart.Phase → Nat",
+      "typeHash": "192d344f4f455ded789021d276fb663a38d88712a4b492e150e4d27340d125ae",
+      "valueHash": "26a75847b3f78b544282410d9ffdf50d01e3fb91bf3bcbd6c33978327a308281"
+    },
+    {
+      "name": "StageDrawRestart.Phase.ended",
+      "kind": "constructor",
+      "type": "StageDrawRestart.Phase",
+      "typeHash": "c48133c59d821cdcf4a757ac7e873a2e46a8b9c03ca81d67ce9ed3186384ef19",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.ended.elim",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → (t : StageDrawRestart.Phase) → t.ctorIdx = 3 → motive StageDrawRestart.Phase.ended → motive t",
+      "typeHash": "699e0673fdb52ae5e588082166174cf67866e41bee08ab395bbd1ef9734ec442",
+      "valueHash": "24508337844a987f1307afdd57c8f7e3806edac4bb18d19bc34ecc41900c8b1f"
+    },
+    {
+      "name": "StageDrawRestart.Phase.ended.sizeOf_spec",
+      "kind": "theorem",
+      "type": "sizeOf StageDrawRestart.Phase.ended = 1",
+      "typeHash": "11735a2ae2b464adc8497c67cbf26bd700d72e818b7b72141538d61f77c062ca",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.noConfusion",
+      "kind": "definition",
+      "type": "{P : Sort v✝} → {x y : StageDrawRestart.Phase} → x = y → StageDrawRestart.Phase.noConfusionType P x y",
+      "typeHash": "692c823dc055c82730074a215761df8d1a5d452c30c27831a57db78a80d39fab",
+      "valueHash": "689fd1a540e462ffec255628d7aa745108d8ff33e5e8b2770740745aa443ecb0"
+    },
+    {
+      "name": "StageDrawRestart.Phase.noConfusionType",
+      "kind": "definition",
+      "type": "Sort v✝ → StageDrawRestart.Phase → StageDrawRestart.Phase → Sort v✝",
+      "typeHash": "cfec3796d4f372c09e63300c0eea915464a2c6960703bc904253e0a5dac49e01",
+      "valueHash": "5dccf922972cd406a37e78ac14f78e9147a8669234620f582c48fe5da84c4493"
+    },
+    {
+      "name": "StageDrawRestart.Phase.ofNat",
+      "kind": "definition",
+      "type": "Nat → StageDrawRestart.Phase",
+      "typeHash": "0855f7308ffc1c37d98c8d902c75f55cd04bb13a4a0db18a228cce212a1a5d50",
+      "valueHash": "145eadb15e5e052959d67dae6d06ebfe068c0f0435f59414a1c2daff9d41fd73"
+    },
+    {
+      "name": "StageDrawRestart.Phase.ofNat_ctorIdx",
+      "kind": "theorem",
+      "type": "∀ (x : StageDrawRestart.Phase), StageDrawRestart.Phase.ofNat x.ctorIdx = x",
+      "typeHash": "8c0686b95a53bf3c19469a9d6cc764acf90e22de78a53b9fbe09095cf48f75e2",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.playing",
+      "kind": "constructor",
+      "type": "StageDrawRestart.Phase",
+      "typeHash": "c48133c59d821cdcf4a757ac7e873a2e46a8b9c03ca81d67ce9ed3186384ef19",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.playing.elim",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → (t : StageDrawRestart.Phase) → t.ctorIdx = 0 → motive StageDrawRestart.Phase.playing → motive t",
+      "typeHash": "45ca3a2c74966cd7ac9b95f483548cafe2a96539ca1aadb186f838c8b7c4a648",
+      "valueHash": "511f6c3f578a943e8d457e2fab7e843db2c96b812474a66c7dd64ec8f7ecf8f3"
+    },
+    {
+      "name": "StageDrawRestart.Phase.playing.sizeOf_spec",
+      "kind": "theorem",
+      "type": "sizeOf StageDrawRestart.Phase.playing = 1",
+      "typeHash": "e9d39b99991f756b41dadaa42d4db20a203116f5ff577269a27c04ed99d78045",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.rec",
+      "kind": "recursor",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → motive StageDrawRestart.Phase.playing → motive StageDrawRestart.Phase.card → motive StageDrawRestart.Phase.result → motive StageDrawRestart.Phase.ended → (t : StageDrawRestart.Phase) → motive t",
+      "typeHash": "43861455060111ee9c4b7f3a1fe26bb6373494bf562c1c213cd4528353de5ff7",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.recOn",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → (t : StageDrawRestart.Phase) → motive StageDrawRestart.Phase.playing → motive StageDrawRestart.Phase.card → motive StageDrawRestart.Phase.result → motive StageDrawRestart.Phase.ended → motive t",
+      "typeHash": "dc9eb17bbde1072933bf200dab6db6df1c615976c30e77fd46d695572f7ebe7f",
+      "valueHash": "58fc49f557d6e6eab657374f02d44e2fa11a6b1afce823f81e0a8fe2eaf17c0c"
+    },
+    {
+      "name": "StageDrawRestart.Phase.result",
+      "kind": "constructor",
+      "type": "StageDrawRestart.Phase",
+      "typeHash": "c48133c59d821cdcf4a757ac7e873a2e46a8b9c03ca81d67ce9ed3186384ef19",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.Phase.result.elim",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.Phase → Sort u} → (t : StageDrawRestart.Phase) → t.ctorIdx = 2 → motive StageDrawRestart.Phase.result → motive t",
+      "typeHash": "c3d5a45a30596d6bcb58cdb5b02d753bea9ca93f7f931214b850142d6c5a9b7c",
+      "valueHash": "854bdbc6cbeb57fcf4fa7e45be02c5674aafef98f72291ac0dd7764d7de54f2f"
+    },
+    {
+      "name": "StageDrawRestart.Phase.result.sizeOf_spec",
+      "kind": "theorem",
+      "type": "sizeOf StageDrawRestart.Phase.result = 1",
+      "typeHash": "ff653b4f809488737f9b9611341a599a1177d9abb1726ec9ae1944211c4e0160",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.RestartClearSafe",
+      "kind": "definition",
+      "type": "Nat → Nat → Prop",
+      "typeHash": "7ce90411c72da215710520598f46589d1eba50613577deff3d4d4b4118f62f6f",
+      "valueHash": "f241d90814b4ca23cd447f5661092422a205979fdc95520b75ed0848abc6c22e"
+    },
+    {
+      "name": "StageDrawRestart.State",
+      "kind": "inductive",
+      "type": "Type",
+      "typeHash": "7051ab654d793c216d744f7920d98d672357a0efa67248ee75d146d668f60997",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.State.casesOn",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.State → Sort u} → (t : StageDrawRestart.State) → ((stageNumber lastClearedStage : Nat) → (startedAtStage : Option Nat) → (phase : StageDrawRestart.Phase) → motive { stageNumber := stageNumber, lastClearedStage := lastClearedStage, startedAtStage := startedAtStage, phase := phase }) → motive t",
+      "typeHash": "2f03c956a904beb9dd3a40f404e9488857d635ad6222585603cf016ffcba8f1c",
+      "valueHash": "13480e618bd958abed67212db344b94a662b414a539dd16c5cda249e2e060200"
+    },
+    {
+      "name": "StageDrawRestart.State.ctorIdx",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Nat",
+      "typeHash": "d1161b58d8ac6a7cdc89b61ae17bad27db8adec00183e75a856b133937b542b4",
+      "valueHash": "b903e9b208b284f6d196235d121fe6b87e36bbf5089202aba18bfa861bb45418"
+    },
+    {
+      "name": "StageDrawRestart.State.lastClearedStage",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Nat",
+      "typeHash": "e167766e7d116fab5f8882c4783de5d9c890eb30110d9a885758a74f4c1753e3",
+      "valueHash": "a6b8b7ec35928e6d8715bcad39d3b4ff9fe85e82e1aa9ac6428d91f15daca662"
+    },
+    {
+      "name": "StageDrawRestart.State.mk",
+      "kind": "constructor",
+      "type": "Nat → Nat → Option Nat → StageDrawRestart.Phase → StageDrawRestart.State",
+      "typeHash": "d4d40319f3b2e680fbaa112236f129121685dbfeb488e540ca4fdd516fddcb4f",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.State.mk.inj",
+      "kind": "theorem",
+      "type": "∀ {stageNumber lastClearedStage : Nat} {startedAtStage : Option Nat} {phase : StageDrawRestart.Phase} {stageNumber_1 lastClearedStage_1 : Nat} {startedAtStage_1 : Option Nat} {phase_1 : StageDrawRestart.Phase}, { stageNumber := stageNumber, lastClearedStage := lastClearedStage, startedAtStage := startedAtStage, phase := phase } = { stageNumber := stageNumber_1, lastClearedStage := lastClearedStage_1, startedAtStage := startedAtStage_1, phase := phase_1 } → stageNumber = stageNumber_1 ∧ lastClearedStage = lastClearedStage_1 ∧ startedAtStage = startedAtStage_1 ∧ phase = phase_1",
+      "typeHash": "4d54b2b8aba84bf890daf19e97ada0640a5dfeb0c0775984f1db1721e99c3d55",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.State.mk.injEq",
+      "kind": "theorem",
+      "type": "∀ (stageNumber lastClearedStage : Nat) (startedAtStage : Option Nat) (phase : StageDrawRestart.Phase) (stageNumber_1 lastClearedStage_1 : Nat) (startedAtStage_1 : Option Nat) (phase_1 : StageDrawRestart.Phase), ({ stageNumber := stageNumber, lastClearedStage := lastClearedStage, startedAtStage := startedAtStage, phase := phase } = { stageNumber := stageNumber_1, lastClearedStage := lastClearedStage_1, startedAtStage := startedAtStage_1, phase := phase_1 }) = (stageNumber = stageNumber_1 ∧ lastClearedStage = lastClearedStage_1 ∧ startedAtStage = startedAtStage_1 ∧ phase = phase_1)",
+      "typeHash": "4ba98d1abbdc68e6d3ab401a9f0cf29af092d9541d30b1d1f19b80e21513fbbc",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.State.mk.noConfusion",
+      "kind": "definition",
+      "type": "{P : Sort u} → {stageNumber lastClearedStage : Nat} → {startedAtStage : Option Nat} → {phase : StageDrawRestart.Phase} → {stageNumber' lastClearedStage' : Nat} → {startedAtStage' : Option Nat} → {phase' : StageDrawRestart.Phase} → { stageNumber := stageNumber, lastClearedStage := lastClearedStage, startedAtStage := startedAtStage, phase := phase } = { stageNumber := stageNumber', lastClearedStage := lastClearedStage', startedAtStage := startedAtStage', phase := phase' } → (stageNumber = stageNumber' → lastClearedStage = lastClearedStage' → startedAtStage = startedAtStage' → phase = phase' → P) → P",
+      "typeHash": "01beabf237b89e10bf21d3c7559f5af9bf3f325fbcda70b6cada1927d9f92f5e",
+      "valueHash": "eba89e86787a139b777d49932a7023f1dbce90ecad1d7632b59244a9e7fe0ddc"
+    },
+    {
+      "name": "StageDrawRestart.State.mk.sizeOf_spec",
+      "kind": "theorem",
+      "type": "∀ (stageNumber lastClearedStage : Nat) (startedAtStage : Option Nat) (phase : StageDrawRestart.Phase), sizeOf { stageNumber := stageNumber, lastClearedStage := lastClearedStage, startedAtStage := startedAtStage, phase := phase } = 1 + sizeOf stageNumber + sizeOf lastClearedStage + sizeOf startedAtStage + sizeOf phase",
+      "typeHash": "dd373388dd5b14fa494989f88e97b100ff95fda36cf7d8e6a93f2c38def74d9b",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.State.noConfusion",
+      "kind": "definition",
+      "type": "{P : Sort u} → {t t' : StageDrawRestart.State} → t = t' → StageDrawRestart.State.noConfusionType P t t'",
+      "typeHash": "22bbe6b2575cd4620783dde981fb7a9dec50f25600bc515a76d50d0f58546f61",
+      "valueHash": "e1259e80f4475ce81d06f3b5cced8d5e6168b9d078a634aeb1672329333d7c92"
+    },
+    {
+      "name": "StageDrawRestart.State.noConfusionType",
+      "kind": "definition",
+      "type": "Sort u → StageDrawRestart.State → StageDrawRestart.State → Sort u",
+      "typeHash": "14ff4f8c1d1bd282cffb86b7034cb2ba4f5b9c7a50d9c1b26932e28aa0deaad7",
+      "valueHash": "236515c484ce5220a2deb6890b32650dd4929d829279c4532b1ad7e4d1eb6a37"
+    },
+    {
+      "name": "StageDrawRestart.State.phase",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → StageDrawRestart.Phase",
+      "typeHash": "95f45e30b320ad8a739916a32bd5d45c484301e1413e1e6db50f744c3bfbc0c4",
+      "valueHash": "1b67466de7970c372168c3e432fe25aba3d6d5ba1ffbf3cb723135b327103de4"
+    },
+    {
+      "name": "StageDrawRestart.State.rec",
+      "kind": "recursor",
+      "type": "{motive : StageDrawRestart.State → Sort u} → ((stageNumber lastClearedStage : Nat) → (startedAtStage : Option Nat) → (phase : StageDrawRestart.Phase) → motive { stageNumber := stageNumber, lastClearedStage := lastClearedStage, startedAtStage := startedAtStage, phase := phase }) → (t : StageDrawRestart.State) → motive t",
+      "typeHash": "2aa72679e56c45e1544bcb2cbe661635eecddda5572caa763ee6830c7f490fb9",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.State.recOn",
+      "kind": "definition",
+      "type": "{motive : StageDrawRestart.State → Sort u} → (t : StageDrawRestart.State) → ((stageNumber lastClearedStage : Nat) → (startedAtStage : Option Nat) → (phase : StageDrawRestart.Phase) → motive { stageNumber := stageNumber, lastClearedStage := lastClearedStage, startedAtStage := startedAtStage, phase := phase }) → motive t",
+      "typeHash": "2f03c956a904beb9dd3a40f404e9488857d635ad6222585603cf016ffcba8f1c",
+      "valueHash": "d4a3046ae22e0d592ad9c89ceef21caf1c0c51cbe2cdf96764ecc93f9be802c9"
+    },
+    {
+      "name": "StageDrawRestart.State.stageNumber",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Nat",
+      "typeHash": "e167766e7d116fab5f8882c4783de5d9c890eb30110d9a885758a74f4c1753e3",
+      "valueHash": "7adf9cea2896337c051ab237f43d7f616f2d8c434d3ac2702b2a12733cce3f6f"
+    },
+    {
+      "name": "StageDrawRestart.State.startedAtStage",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Option Nat",
+      "typeHash": "70621878d0687ef09c5f962b3a655004cf74aca663426acfa1630d115e2423f1",
+      "valueHash": "1c3e044e9f6003b7c06b261cfd9500742d255b0b25fc3b38c77558400e2771c8"
+    },
+    {
+      "name": "StageDrawRestart.createStageRunPointState",
+      "kind": "definition",
+      "type": "Nat → Option StageDrawRestart.State",
+      "typeHash": "91d4a30b70e9146eb7f1942252673ea889478793f6ffdd37f102b2890ec9d706",
+      "valueHash": "e0913bb8ff36402870969cba584380f340b45dd2f9f26067ae4b692fe80fd47a"
+    },
+    {
+      "name": "StageDrawRestart.drawResult",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Option StageDrawRestart.State",
+      "typeHash": "0d51e70cca122455de9c857a08451dba21e4d7c02c5dc20ea40ea8793bfdeadd",
+      "valueHash": "083f3384c35fac8d86fc99f4848427d23e845932178158115e39f4586b2eba8d"
+    },
+    {
+      "name": "StageDrawRestart.instDecidableEqPhase",
+      "kind": "definition",
+      "type": "DecidableEq StageDrawRestart.Phase",
+      "typeHash": "a48a710453fb60efa53a76f34219155cbfafb7a2ab5b43f30fdd58a6e9d9f4bf",
+      "valueHash": "24de068904d83e76de567124dedf4c4aa54b22b2bfa5615f738013877fc57131"
+    },
+    {
+      "name": "StageDrawRestart.instDecidableEqState",
+      "kind": "definition",
+      "type": "DecidableEq StageDrawRestart.State",
+      "typeHash": "f030efe3660aaa7773ab0a3db53f759f448d2f85608729563552a8acd3f81476",
+      "valueHash": "9e409ea02bcc8aa20ca202c8caaa156c30ddeab9afc82e2a8dbbcb78e9631a90"
+    },
+    {
+      "name": "StageDrawRestart.instDecidableEqState.decEq",
+      "kind": "definition",
+      "type": "(x x_1 : StageDrawRestart.State) → Decidable (x = x_1)",
+      "typeHash": "e64ec606e76f785e4f9982bcc14935f6fbc6acaa380112d374ef68e2f29fd5bb",
+      "valueHash": "ec5c4f61eac26a8e207b4a61fade3e3183de276319b65b8c548a12b389173c2e"
+    },
+    {
+      "name": "StageDrawRestart.instDecidableEqState.decEq.match_1",
+      "kind": "definition",
+      "type": "(motive : StageDrawRestart.State → StageDrawRestart.State → Sort u_1) → (x x_1 : StageDrawRestart.State) → ((a a_1 : Nat) → (a_2 : Option Nat) → (a_3 : StageDrawRestart.Phase) → (b b_1 : Nat) → (b_2 : Option Nat) → (b_3 : StageDrawRestart.Phase) → motive { stageNumber := a, lastClearedStage := a_1, startedAtStage := a_2, phase := a_3 } { stageNumber := b, lastClearedStage := b_1, startedAtStage := b_2, phase := b_3 }) → motive x x_1",
+      "typeHash": "6991e1ecb3a0e3d3a62fcdf9bd9f3643958a73b1f882926f5161478c1639e759",
+      "valueHash": "01a8d6cabbd15af97012d51f16c81c05d176f72b70d371fc02c88a2179565c40"
+    },
+    {
+      "name": "StageDrawRestart.instDecidableRestartClearSafe",
+      "kind": "definition",
+      "type": "(startStage targetStage : Nat) → Decidable (StageDrawRestart.RestartClearSafe startStage targetStage)",
+      "typeHash": "6be83d41fa1e49eb57b2271d353ab9381eef053a52a45579a162ea4b304192ff",
+      "valueHash": "ba88561197d0d4ec8408126d0123979005769f4830ea3b7072f47d074c7be8cb"
+    },
+    {
+      "name": "StageDrawRestart.instReprPhase",
+      "kind": "definition",
+      "type": "Repr StageDrawRestart.Phase",
+      "typeHash": "5d0afb8e64d2e155e89afaa9891c0e14bfa43f82542a4bd0eaa879a4b4b228e9",
+      "valueHash": "3b2bbd53417a8467f883009a3eb67992c1892c0443995c77bf6dc0458e2cfe47"
+    },
+    {
+      "name": "StageDrawRestart.instReprPhase.repr",
+      "kind": "definition",
+      "type": "StageDrawRestart.Phase → Nat → Format",
+      "typeHash": "ccec745c59b2a27b44e856553116f16ed0836a3288f98f04670ec75a2816857a",
+      "valueHash": "fc2a0463609b4d72c98eaea1d63d87149881a3fe7cdac80424c176d11a71903b"
+    },
+    {
+      "name": "StageDrawRestart.instReprPhase.repr.match_1",
+      "kind": "definition",
+      "type": "(motive : StageDrawRestart.Phase → Sort u_1) → (x : StageDrawRestart.Phase) → (Unit → motive StageDrawRestart.Phase.playing) → (Unit → motive StageDrawRestart.Phase.card) → (Unit → motive StageDrawRestart.Phase.result) → (Unit → motive StageDrawRestart.Phase.ended) → motive x",
+      "typeHash": "a6aca56f6e1419ec376658addbbb70315ef3eedb6606d228f211a8e7399225ac",
+      "valueHash": "41a7b68a6906fbcf4eac48d9b8d59febba48962099812e476f2380b0ba9cbfb5"
+    },
+    {
+      "name": "StageDrawRestart.instReprState",
+      "kind": "definition",
+      "type": "Repr StageDrawRestart.State",
+      "typeHash": "1a99fc5d8c8a111e46a4dfbc84ca1168b1998d7a6a178dd0ac130adaa4e836e9",
+      "valueHash": "220c939852c35ef8827261de40f45b8f15658c49b03e3286a6b5b780220034e0"
+    },
+    {
+      "name": "StageDrawRestart.instReprState.repr",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Nat → Format",
+      "typeHash": "cc221fd5c2cf33508b4c9e377a149c786ca5b613ff3f9e4ff42dad9dcfbbdac9",
+      "valueHash": "4748648f8271d5067e882e0dd05e2ecce42f1b9373968dbc813aaab2d648e0f8"
+    },
+    {
+      "name": "StageDrawRestart.normal_start_restart_clear_safe",
+      "kind": "theorem",
+      "type": "StageDrawRestart.RestartClearSafe 1 2",
+      "typeHash": "475d0d6a2bec54874339af6a35bef183b22ec39f05272076ef75bfd2d35fe5c5",
+      "valueHash": null
+    },
+    {
+      "name": "StageDrawRestart.recordStageRunClear",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Except String StageDrawRestart.State",
+      "typeHash": "54785b584f5417fb4e518170c7e2325192e605c2c14bdc66a6f8879a2d1d77a6",
+      "valueHash": "4c79569cf5d6de59225eb590a0a3473a900403d12e9f26101717e1d3d7469d24"
+    },
+    {
+      "name": "StageDrawRestart.restartAfterResult",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Option StageDrawRestart.State",
+      "typeHash": "0d51e70cca122455de9c857a08451dba21e4d7c02c5dc20ea40ea8793bfdeadd",
+      "valueHash": "7912e63607d20f19628a27ebc7d2cd76dabaf37027427be1011c7a83c89bd3d2"
+    },
+    {
+      "name": "StageDrawRestart.runLength",
+      "kind": "definition",
+      "type": "Nat",
+      "typeHash": "d38ea4c0b755428100ea00487f1413e32d3d5dd05a51e0e78c9de5d27dd99e38",
+      "valueHash": "6f6c36b66acbd7be3dd4ae0e9c7ac80211a83046845fbcadc3bd5b22be3399d8"
+    },
+    {
+      "name": "StageDrawRestart.runTo",
+      "kind": "definition",
+      "type": "Nat → Nat → Option StageDrawRestart.State",
+      "typeHash": "ae06b425a5c29e0aeb315df5056c51c378aa42f23988936e1225aedd5268eda3",
+      "valueHash": "cecfe1ac3d51600d6f564d4694a1fd8cf32ea5eda39061381235743e9cf671d8"
+    },
+    {
+      "name": "StageDrawRestart.selectUpgradeCard",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Option StageDrawRestart.State",
+      "typeHash": "0d51e70cca122455de9c857a08451dba21e4d7c02c5dc20ea40ea8793bfdeadd",
+      "valueHash": "a01cdca330131afc88d50b7ddf422338eee602f8bc701ddecfe7f99fe86cfadc"
+    },
+    {
+      "name": "StageDrawRestart.settleLoss",
+      "kind": "definition",
+      "type": "StageDrawRestart.State → Option StageDrawRestart.State",
+      "typeHash": "0d51e70cca122455de9c857a08451dba21e4d7c02c5dc20ea40ea8793bfdeadd",
+      "valueHash": "e039bef6e41b60e775b43eaa623af7510f016fad5be2fbebf3ba5b66378a8226"
+    }
+  ]
+}

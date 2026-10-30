@@ -403,7 +403,7 @@ async function createRematchCheckPair(modules, meta, label) {
         counters.hostStarted += 1;
       },
     },
-    { matchId: `rematch-check-${label}` },
+    { matchId: `rematch-check-${label}`, getLocalDisplayName: () => 'HostName' },
   );
   const guestOnline = modules.online.createOnlineRuntime(
     transports.guest,
@@ -419,7 +419,7 @@ async function createRematchCheckPair(modules, meta, label) {
         counters.guestStarted += 1;
       },
     },
-    { matchId: `rematch-check-${label}` },
+    { matchId: `rematch-check-${label}`, getLocalDisplayName: () => 'GuestName' },
   );
   hostOnline.startMatch();
   guestOnline.startMatch();
@@ -427,6 +427,7 @@ async function createRematchCheckPair(modules, meta, label) {
     hostOnline.waitUntilReady(),
     guestOnline.waitUntilReady(),
   ]);
+  assertCondition(hostOnline.opponentDisplayName === 'GuestName' && guestOnline.opponentDisplayName === 'HostName', `${label} initial friendly names were not exchanged`);
   hostOnline.resign("white");
   assertCondition(
     host.turnRuntime.phase === "match-over" &&
@@ -505,6 +506,13 @@ try {
     ),
   );
   const revision = "polyhaven-2026-10-28";
+  for (const kind of ["ready", "resume"]) {
+    const base = { kind, matchId: "name-check", side: "black", turnIndex: 0, stateHash: "a".repeat(64) };
+    assertCondition(online.parseOnlineMessage({ ...base, displayName: "  ＣＧPlayer  " }).displayName === "CGPlayer", `${kind} valid name normalization failed`);
+    for (const displayName of [undefined, null, {}, "x".repeat(81), "x".repeat(21), "A\nB", "A\u202eB", " "]) {
+      assertCondition(online.parseOnlineMessage({ ...base, displayName }).displayName === undefined, `${kind} invalid or absent name was accepted`);
+    }
+  }
   for (const kind of ["ready", "resume"]) {
     const base = { kind, matchId: "version-check", side: "black", turnIndex: 0, stateHash: "a".repeat(64) };
     for (const bad of [null, 42, {}, "x".repeat(65), "bad revision"]) {
@@ -608,6 +616,7 @@ try {
   ]);
   assertCondition(hostOnline.opponentBannerTheme === "banner_cosmic_knight" && guestOnline.opponentBannerTheme === "classic", "양쪽의 서로 다른 배너가 교환되지 않았습니다.");
 
+  assertCondition(hostOnline.opponentDisplayName === undefined && guestOnline.opponentDisplayName === undefined, "legacy peers must retain the generic opponent name");
   const blockedRequest = createScriptedRequest(guest, 0);
   const blocked = guestOnline.queueLocalLaunch(blockedRequest);
   assertCondition(
@@ -1288,6 +1297,8 @@ try {
   assertCondition(
     acceptedRematch.hostOnline.active &&
       acceptedRematch.guestOnline.active &&
+      acceptedRematch.hostOnline.opponentDisplayName === "GuestName" &&
+      acceptedRematch.guestOnline.opponentDisplayName === "HostName" &&
       acceptedRematch.hostOnline.matchId !==
         acceptedPreviousMatchId &&
       acceptedRematch.hostOnline.matchId ===

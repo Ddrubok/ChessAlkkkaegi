@@ -1,0 +1,14 @@
+spec MatchCancel.tla
+check INVARIANTS TypeOK ResourcePartition NoLateReady ReadyOnce
+reach CancelAwaitUntrack | peer-present
+reach RetryBeforeOldCleanup | peer-present
+reach StaleAfterRetry | peer-present
+reach NormalHandoff | pre-signaling
+reach TerminalClosed | pre-signaling
+run pre-signaling | StartWithPeer=FALSE
+run peer-present | StartWithPeer=TRUE
+
+spec MatchCancel.tla
+check PROPERTIES CleanupEventually
+run cleanup-pre-signaling | StartWithPeer=FALSE
+run cleanup-peer-present | StartWithPeer=TRUE

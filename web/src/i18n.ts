@@ -285,6 +285,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "승리! 스테이지 {stage} 클리어",
       "abandon_title": "대국 포기",
       "abandon_desc": "진행 중인 대국을 포기하시겠습니까?",
+      "friendly_confirm_title": "친선 대국",
+      "friendly_forfeit_desc": "이번 대국만 포기하면 결과 화면에서 재대국할 수 있습니다. 방을 나가면 연결이 종료됩니다.",
+      "friendly_forfeit_btn": "대국 포기",
+      "friendly_leave_btn": "방 나가기",
+      "stage_end_btn": "대국 종료 · 결과 보기",
       "abandon_stage_points_desc": "지금 나가면 이번 도전에서 쌓은 {points}포인트를 받지 못합니다.",
       "continue_btn": "계속하기",
       "billiards_mode": "당구식",
@@ -377,12 +382,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "계정이 변경되었습니다. 다시 로그인해주세요."
     },
     "tutorial": {
+      "skip_btn": "연습 건너뛰기",
       "step1_title": "조준과 발사",
-      "step1_mission": "폰을 당겨 발사해 전방의 적 폰을 보드 밖으로 밀어내세요.",
+      "step1_mission": "흰 폰을 뒤로 당겼다가 놓아 검은 폰을 판 밖으로 밀어내세요.",
       "step1_guide": "기물을 터치한 뒤 날아갈 반대 방향으로 당겼다 놓으세요. 길게 당길수록 더 강하게 날아갑니다.",
       "step1_success": "적 폰을 보드 밖으로 밀어냈습니다.",
       "step2_title": "대각선 조준과 밀어내기",
-      "step2_mission": "발사 각도를 조절해 대각선 위치의 적 폰을 보드 밖으로 밀어내세요.",
+      "step2_mission": "대각선의 검은 폰을 향하도록 반대 방향으로 당겼다가 놓으세요.",
       "step2_guide": "목표를 향해 반대 각도로 당겨 조준하고 발사하세요. 빗나가지 않도록 정확한 각도를 맞춥니다.",
       "step2_success": "대각선의 적 폰을 보드 밖으로 밀어냈습니다.",
       "step3_title": "실전 연습 대전",
@@ -688,6 +694,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Victory! Stage {stage} Cleared",
       "abandon_title": "Forfeit Match",
       "abandon_desc": "Do you want to forfeit this match?",
+      "friendly_confirm_title": "Friendly match",
+      "friendly_forfeit_desc": "Forfeit this round to see the result and offer a rematch. Leaving the room ends the connection.",
+      "friendly_forfeit_btn": "Forfeit round",
+      "friendly_leave_btn": "Leave room",
+      "stage_end_btn": "End & view result",
       "abandon_stage_points_desc": "If you leave now, you will lose the reward earned in this challenge ({points} P).",
       "continue_btn": "Continue",
       "billiards_mode": "Billiards",
@@ -780,12 +791,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "Account has changed. Please sign in again."
     },
     "tutorial": {
+      "skip_btn": "Skip tutorial",
       "step1_title": "Aim and Launch",
-      "step1_mission": "Pull and launch your Pawn to knock the enemy Pawn off the board.",
+      "step1_mission": "Drag the white pawn back, then release to knock the black pawn off the board.",
       "step1_guide": "Touch your piece, pull in the opposite direction, and release. A longer pull launches with more power.",
       "step1_success": "Enemy Pawn knocked off the board.",
       "step2_title": "Diagonal Aiming",
-      "step2_mission": "Adjust your angle and knock the diagonal enemy Pawn off the board.",
+      "step2_mission": "Aim at the black pawn diagonally: pull in the opposite direction, then release.",
       "step2_guide": "Pull in the opposite diagonal direction to line up your shot and release.",
       "step2_success": "Diagonal enemy Pawn knocked off the board.",
       "step3_title": "Practice Mini Match",
@@ -1091,6 +1103,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "勝利！ステージ {stage} クリア",
       "abandon_title": "対局の放棄",
       "abandon_desc": "この対局を放棄しますか？",
+      "friendly_confirm_title": "フレンド対局",
+      "friendly_forfeit_desc": "この対局だけ投了すると、結果画面から再戦できます。部屋を出ると接続が終了します。",
+      "friendly_forfeit_btn": "この対局を投了",
+      "friendly_leave_btn": "部屋を出る",
+      "stage_end_btn": "対局を終了・結果を見る",
       "abandon_stage_points_desc": "今退出すると、今回の挑戦で獲得した{points}ポイントを受け取れません。",
       "continue_btn": "続ける",
       "billiards_mode": "ビリヤード",
@@ -1183,12 +1200,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "アカウントが変更されました。再度ログインしてください。"
     },
     "tutorial": {
+      "skip_btn": "練習をスキップ",
       "step1_title": "照準と発射",
-      "step1_mission": "ポーンを引っ張って発射し、前方の敵ポーンを盤外へ弾き出してください。",
+      "step1_mission": "白いポーンを後ろに引いて離し、黒いポーンを盤外へ弾き出しましょう。",
       "step1_guide": "駒をタッチして飛ばしたい反対方向へ引き、指を離します。長く引くほど強力に飛びます。",
       "step1_success": "敵ポーンを盤外へ弾き出しました。",
       "step2_title": "斜め狙いと場外落下",
-      "step2_mission": "角度を調節して斜めの敵ポーンを盤外へ弾き出してください。",
+      "step2_mission": "斜めの黒いポーンを狙い、反対方向に引いて離しましょう。",
       "step2_guide": "目標の反対方向へ引っ張って照準を合わせ、正確に発射します。",
       "step2_success": "斜めの敵ポーンを盤外へ弾き出しました。",
       "step3_title": "実戦練習対戦",
@@ -1494,6 +1512,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "胜利！通关第 {stage} 关",
       "abandon_title": "放弃对局",
       "abandon_desc": "确定要放弃当前对局吗？",
+      "friendly_confirm_title": "好友对局",
+      "friendly_forfeit_desc": "认输本局后仍可在结果页面请求再战。离开房间将断开连接。",
+      "friendly_forfeit_btn": "认输本局",
+      "friendly_leave_btn": "离开房间",
+      "stage_end_btn": "结束对局并查看结果",
       "abandon_stage_points_desc": "如果现在退出，将无法获得本次挑战中积累的 {points} 积分。",
       "continue_btn": "继续游戏",
       "billiards_mode": "台球模式",
@@ -1586,12 +1609,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "账号已更改，请重新登录。"
     },
     "tutorial": {
+      "skip_btn": "跳过练习",
       "step1_title": "瞄准与发射",
-      "step1_mission": "拉动己方小兵发射，将前方敌方小兵击落出棋盘。",
+      "step1_mission": "向后拉动白色小兵并松开，把黑色小兵击出棋盘。",
       "step1_guide": "触摸棋子后向飞行反方向拉动并松开。拉动距离越长，发射力度越大。",
       "step1_success": "已将敌方小兵击落出界。",
       "step2_title": "斜向瞄准与击落",
-      "step2_mission": "调整发射角度，将斜对角的敌方小兵击落出棋盘。",
+      "step2_mission": "瞄准斜前方的黑色小兵，向相反方向拉动后松开。",
       "step2_guide": "向目标的相反对角方向拉动进行瞄准后发射。",
       "step2_success": "已将斜对角敌方小兵击落出界。",
       "step3_title": "实战练习微型对决",
@@ -1897,6 +1921,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Sieg! Etappe {stage} geschafft",
       "abandon_title": "Partie aufgeben",
       "abandon_desc": "Möchtest du diese Partie aufgeben?",
+      "friendly_confirm_title": "Freundschaftspartie",
+      "friendly_forfeit_desc": "Gib nur diese Partie auf, um im Ergebnis eine Revanche anzubieten. Beim Verlassen des Raums endet die Verbindung.",
+      "friendly_forfeit_btn": "Partie aufgeben",
+      "friendly_leave_btn": "Raum verlassen",
+      "stage_end_btn": "Beenden & Ergebnis",
       "abandon_stage_points_desc": "Wenn du jetzt aufgibst, verfällt die Belohnung aus dieser Herausforderung ({points} P).",
       "continue_btn": "Weiter",
       "billiards_mode": "Billard",
@@ -1989,12 +2018,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "Konto wurde geändert. Bitte erneut anmelden."
     },
     "tutorial": {
+      "skip_btn": "Übung überspringen",
       "step1_title": "Zielen und Schießen",
-      "step1_mission": "Spann deinen Bauern und stoße den gegnerischen Bauern vom Brett.",
+      "step1_mission": "Ziehe den weißen Bauern zurück und lasse los, um den schwarzen vom Brett zu stoßen.",
       "step1_guide": "Berühre die Figur, ziehe sie in die entgegengesetzte Richtung und lass los. Je weiter du ziehst, desto mehr Kraft erhält der Stoß.",
       "step1_success": "Gegnerischer Bauer vom Brett gestoßen.",
       "step2_title": "Diagonales Zielen",
-      "step2_mission": "Passe den Winkel an und stoße den diagonalen gegnerischen Bauern vom Brett.",
+      "step2_mission": "Ziele diagonal auf den schwarzen Bauern: Ziehe in die Gegenrichtung und lasse los.",
       "step2_guide": "Ziehe in die entgegengesetzte diagonale Richtung, um die Flugbahn auszurichten, und lasse los.",
       "step2_success": "Diagonaler gegnerischer Bauer vom Brett gestoßen.",
       "step3_title": "Mini-Übungsmatch",
@@ -2300,6 +2330,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Victoire ! Étape {stage} terminée",
       "abandon_title": "Abandonner la Partie",
       "abandon_desc": "Voulez-vous abandonner cette partie ?",
+      "friendly_confirm_title": "Partie amicale",
+      "friendly_forfeit_desc": "Abandonnez cette manche pour proposer une revanche depuis le résultat. Quitter la salle met fin à la connexion.",
+      "friendly_forfeit_btn": "Abandonner la manche",
+      "friendly_leave_btn": "Quitter la salle",
+      "stage_end_btn": "Terminer et voir le résultat",
       "abandon_stage_points_desc": "Si vous quittez maintenant, la récompense de ce défi sera perdue ({points} P).",
       "continue_btn": "Continuer",
       "billiards_mode": "Billard",
@@ -2392,12 +2427,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "Le compte a changé. Veuillez vous reconnecter."
     },
     "tutorial": {
+      "skip_btn": "Passer le tutoriel",
       "step1_title": "Viser et Lancer",
-      "step1_mission": "Tirez et lancez votre Pion pour éjecter le Pion adverse du plateau.",
+      "step1_mission": "Tirez le pion blanc vers l’arrière, puis relâchez pour pousser le pion noir hors du plateau.",
       "step1_guide": "Touchez votre pièce, tirez dans la direction opposée et relâchez. Un tirage plus long produit un lancer plus puissant.",
       "step1_success": "Pion ennemi éjecté du plateau.",
       "step2_title": "Visée Diagonale",
-      "step2_mission": "Ajustez votre angle et éjectez le Pion ennemi en diagonale hors du plateau.",
+      "step2_mission": "Visez le pion noir en diagonale : tirez dans le sens opposé, puis relâchez.",
       "step2_guide": "Tirez dans la direction diagonale opposée pour aligner la trajectoire et relâchez.",
       "step2_success": "Pion adverse en diagonale éjecté du plateau.",
       "step3_title": "Mini-Match d'Entraînement",
@@ -2703,6 +2739,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "¡Victoria! Etapa {stage} Superada",
       "abandon_title": "Abandonar Partida",
       "abandon_desc": "¿Deseas abandonar esta partida?",
+      "friendly_confirm_title": "Partida amistosa",
+      "friendly_forfeit_desc": "Ríndete solo en esta partida para pedir una revancha desde el resultado. Salir de la sala corta la conexión.",
+      "friendly_forfeit_btn": "Rendirse en esta partida",
+      "friendly_leave_btn": "Salir de la sala",
+      "stage_end_btn": "Terminar y ver resultado",
       "abandon_stage_points_desc": "Si sales ahora, perderás la recompensa acumulada en este desafío ({points} P).",
       "continue_btn": "Continuar",
       "billiards_mode": "Villar",
@@ -2795,12 +2836,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "La cuenta ha cambiado. Vuelve a iniciar sesión."
     },
     "tutorial": {
+      "skip_btn": "Saltar tutorial",
       "step1_title": "Apuntar y Lanzar",
-      "step1_mission": "Tira de tu Peón y lánzalo para expulsar al Peón enemigo del tablero.",
+      "step1_mission": "Arrastra el peón blanco hacia atrás y suéltalo para sacar al peón negro del tablero.",
       "step1_guide": "Toca tu pieza, arrastra en dirección opuesta y suelta. Cuanto más arrastres, mayor será la potencia del tiro.",
       "step1_success": "Peón enemigo expulsado del tablero.",
       "step2_title": "Puntería Diagonal",
-      "step2_mission": "Ajusta el ángulo de tiro y expulsa al Peón enemigo diagonal del tablero.",
+      "step2_mission": "Apunta al peón negro en diagonal: arrastra en sentido contrario y suelta.",
       "step2_guide": "Arrastra en el ángulo diagonal opuesto para alinear el tiro y suelta.",
       "step2_success": "Peón enemigo diagonal expulsado del tablero.",
       "step3_title": "Minipartida de Práctica",
@@ -3106,6 +3148,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Победа! Этап {stage} пройден",
       "abandon_title": "Сдаться",
       "abandon_desc": "Сдаться в этой партии?",
+      "friendly_confirm_title": "Товарищеская партия",
+      "friendly_forfeit_desc": "Сдайтесь в этом раунде, чтобы предложить реванш на экране результата. Выход из комнаты разрывает соединение.",
+      "friendly_forfeit_btn": "Сдаться в раунде",
+      "friendly_leave_btn": "Выйти из комнаты",
+      "stage_end_btn": "Завершить и показать итог",
       "abandon_stage_points_desc": "Если вы выйдете сейчас, награда за это испытание будет потеряна ({points} P).",
       "continue_btn": "Продолжить",
       "billiards_mode": "Бильярд",
@@ -3198,12 +3245,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "Аккаунт изменился. Пожалуйста, войдите снова."
     },
     "tutorial": {
+      "skip_btn": "Пропустить обучение",
       "step1_title": "Прицеливание и запуск",
-      "step1_mission": "Потяните и запустите свою пешку, чтобы выбить пешку соперника с доски.",
+      "step1_mission": "Оттяните белую пешку назад и отпустите, чтобы выбить чёрную пешку за край доски.",
       "step1_guide": "Коснитесь фигуры, потяните в противоположную сторону и отпустите. Чем сильнее натяжение, тем мощнее выстрел.",
       "step1_success": "Вражеская пешка выбита за доску.",
       "step2_title": "Прицеливание по диагонали",
-      "step2_mission": "Отрегулируйте угол и выбейте диагональную пешку соперника с доски.",
+      "step2_mission": "Цельтесь в чёрную пешку по диагонали: оттяните в обратную сторону и отпустите.",
       "step2_guide": "Тяните в противоположном диагональном направлении для точного удара и отпустите.",
       "step2_success": "Диагональная вражеская пешка выбита за доску.",
       "step3_title": "Тренировочный мини-матч",
@@ -3509,6 +3557,11 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "stage_clear": "Vitória! Fase {stage} Concluída",
       "abandon_title": "Desistir da Partida",
       "abandon_desc": "Deseja desistir desta partida?",
+      "friendly_confirm_title": "Partida amistosa",
+      "friendly_forfeit_desc": "Desista apenas desta rodada para pedir revanche na tela de resultado. Sair da sala encerra a conexão.",
+      "friendly_forfeit_btn": "Desistir da rodada",
+      "friendly_leave_btn": "Sair da sala",
+      "stage_end_btn": "Encerrar e ver resultado",
       "abandon_stage_points_desc": "Se você sair agora, perderá a recompensa acumulada neste desafio ({points} P).",
       "continue_btn": "Continuar",
       "billiards_mode": "Sinuca",
@@ -3601,12 +3654,13 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
       "account_changed": "A conta mudou. Faça login novamente."
     },
     "tutorial": {
+      "skip_btn": "Pular tutorial",
       "step1_title": "Mirar e Disparar",
-      "step1_mission": "Puxe e lance seu Peão para derrubar o Peão inimigo para fora do tabuleiro.",
+      "step1_mission": "Puxe o peão branco para trás e solte para empurrar o peão preto para fora do tabuleiro.",
       "step1_guide": "Toque na peça, puxe na direção oposta e solte. Quanto mais puxar, maior será a força do disparo.",
       "step1_success": "Peão inimigo derrubado para fora do tabuleiro.",
       "step2_title": "Mira Diagonal",
-      "step2_mission": "Ajuste o ângulo e derrube o Peão inimigo na diagonal para fora do tabuleiro.",
+      "step2_mission": "Mire no peão preto na diagonal: puxe na direção oposta e solte.",
       "step2_guide": "Puxe na direção diagonal oposta para alinhar o tiro e solte.",
       "step2_success": "Peão inimigo na diagonal derrubado para fora do tabuleiro.",
       "step3_title": "Minipartida de Treino",
@@ -3664,6 +3718,19 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
   }
 };
 
+export function normalizeLanguage(raw: unknown): LanguageCode | null {
+  if (typeof raw !== "string") return null;
+  const tag = raw.trim().replace(/_/g, "-").toLowerCase();
+  if (/^zh(?:-|$)/.test(tag)) {
+    if (/(?:^|-)(?:tw|hk|mo|hant)(?:-|$)/.test(tag)) return null;
+    return /^(?:zh-cn|zh-sg|zh-hans)(?:-|$)/.test(tag) ? "zh-CN" : null;
+  }
+  const base = tag.split("-")[0];
+  if (tag === "pt" || /^pt-br(?:-|$)/.test(tag)) return "pt-BR";
+  return ["ko", "en", "ja", "de", "fr", "es", "ru"].includes(base)
+    ? base as LanguageCode : null;
+}
+
 export class I18nManager {
   public static currentLang: LanguageCode = "en";
   private static listeners: Set<(lang: LanguageCode) => void> = new Set();
@@ -3674,12 +3741,19 @@ export class I18nManager {
    * - 없으면 사용자의 브라우저 언어(ko, ja, zh-CN, de, fr, es, ru, pt-BR) 감지
    * - 지원하지 않는 언어는 기본 영어(en)로 자동 폴백
    */
-  public static init(): void {
-    if (typeof localStorage === "undefined" || typeof document === "undefined") return;
-    const saved = localStorage.getItem("app_language") as LanguageCode | null;
-    if (saved && LOCALES[saved]) {
-      this.currentLang = saved;
+  public static init(initialLanguage?: LanguageCode): void {
+    if (typeof document === "undefined" || !document.documentElement) return;
+    let saved: string | null = null;
+    try { saved = localStorage.getItem("app_language"); } catch { /* Storage may be blocked. */ }
+    if (saved && Object.prototype.hasOwnProperty.call(LOCALES, saved)) {
+      this.currentLang = saved as LanguageCode;
       document.documentElement.lang = this.currentLang;
+      return;
+    }
+
+    if (initialLanguage) {
+      this.currentLang = initialLanguage;
+      document.documentElement.lang = initialLanguage;
       return;
     }
 
@@ -3688,44 +3762,11 @@ export class I18nManager {
         ? navigator.languages
         : [navigator.language || ""];
 
-    let detected: LanguageCode = "en";
-
-    for (const rawLang of browserLangs) {
-      if (!rawLang) continue;
-      const lower = rawLang.toLowerCase();
-      const code = lower.split("-")[0];
-
-      if (code === "ko") {
-        detected = "ko";
-        break;
-      } else if (code === "ja") {
-        detected = "ja";
-        break;
-      } else if (code === "zh" || lower.includes("zh")) {
-        detected = "zh-CN";
-        break;
-      } else if (code === "de") {
-        detected = "de";
-        break;
-      } else if (code === "fr") {
-        detected = "fr";
-        break;
-      } else if (code === "es") {
-        detected = "es";
-        break;
-      } else if (code === "ru") {
-        detected = "ru";
-        break;
-      } else if (code === "pt" || lower.includes("pt")) {
-        detected = "pt-BR";
-        break;
-      } else if (code === "en") {
-        detected = "en";
-        break;
-      }
-    }
-
-    this.currentLang = detected;
+    // Keep the existing web/Android language-family fallback; portal locales are stricter.
+    this.currentLang = browserLangs.map((raw) => {
+      const family = raw.toLowerCase().split("-")[0];
+      return family === "zh" ? "zh-CN" : family === "pt" ? "pt-BR" : normalizeLanguage(raw);
+    }).find((lang): lang is LanguageCode => !!lang) || "en";
     document.documentElement.lang = this.currentLang;
   }
 

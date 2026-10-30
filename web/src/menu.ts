@@ -154,6 +154,10 @@ export interface MainMenuRuntime {
   onOpenWeeklyChallenge?: () => void;
   onReturnToMenu: () => Promise<void>;
   onConfirmAbandon: () => Promise<void>;
+  canForfeitRound?: () => boolean;
+  onForfeitRound?: () => Promise<void>;
+  verifiedPortalProfile?: UserProfile | null;
+  isStageMatch?: () => boolean;
   getPendingStagePoints?: () => number;
   onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
 }
@@ -414,7 +418,9 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     localStorage.setItem("ca_logged_in_user", "true");
   }
 
-  if (localStorage.getItem("ca_logged_in_user") === "true") {
+  if (runtime.verifiedPortalProfile && runtime.verifiedPortalProfile.id === progressStorage.owner) {
+    runtime.userProfile = runtime.verifiedPortalProfile;
+  } else if (localStorage.getItem("ca_logged_in_user") === "true") {
     const classicMmr = Number(localStorage.getItem("ca_local_classic_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
     const strategyMmr = Number(localStorage.getItem("ca_local_strategy_mmr") || localStorage.getItem("ca_local_mmr") || 1200);
     const classicWins = Number(localStorage.getItem("ca_local_classic_wins") || 0);
@@ -826,7 +832,8 @@ export function createMainMenu(
       <p id="menu-confirm-desc" style="font-size:13px; color:#94a3b8; margin:0 0 20px 0; line-height:1.5; word-break:keep-all;">${I18nManager.t("ingame.abandon_desc")}</p>
       <div class="match-result-actions" style="display:flex; gap:10px; justify-content:center;">
         <button type="button" data-menu-cancel style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#334155; color:#f8fafc; border:none; cursor:pointer;">${I18nManager.t("ingame.continue_btn")}</button>
-        <button type="button" data-menu-confirm style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#ef4444; color:white; border:none; cursor:pointer;">${I18nManager.t("ingame.menu_btn")}</button>
+        <button type="button" data-menu-forfeit hidden style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#b45309; color:white; border:none; cursor:pointer;">${I18nManager.t("ingame.friendly_forfeit_btn")}</button>
+        <button type="button" data-menu-confirm style="flex:1; padding:10px 14px; font-weight:700; border-radius:8px; background:#ef4444; color:white; border:none; cursor:pointer; word-break:keep-all;">${I18nManager.t("ingame.menu_btn")}</button>
       </div>
     </div>
   `;
@@ -838,6 +845,7 @@ export function createMainMenu(
     confirmOverlay.querySelector<HTMLButtonElement>(
       "[data-menu-confirm]",
     );
+  const forfeitButton = confirmOverlay.querySelector<HTMLButtonElement>("[data-menu-forfeit]")!;
   if (cancelButton === null || confirmButton === null) {
     throw new Error("메뉴 복귀 확인 버튼을 만들지 못했습니다.");
   }
@@ -895,17 +903,21 @@ export function createMainMenu(
       ? I18nManager.t("ingame.abandon_stage_points_desc", { points })
       : I18nManager.t("ingame.abandon_desc");
   };
+  const abandonConfirmKey = (): string => runtime.canForfeitRound?.()
+    ? "ingame.friendly_leave_btn"
+    : runtime.isStageMatch?.() ? "ingame.stage_end_btn" : "ingame.menu_btn";
   renderMainMenu(runtime);
   I18nManager.subscribe(() => {
     returnButton.textContent = I18nManager.t("ingame.menu_btn");
     const confirmH1 = confirmOverlay.querySelector("#menu-confirm-title");
-    if (confirmH1) confirmH1.textContent = I18nManager.t("ingame.abandon_title");
+    if (confirmH1) confirmH1.textContent = I18nManager.t(runtime.canForfeitRound?.() ? "ingame.friendly_confirm_title" : "ingame.abandon_title");
     const confirmDesc = confirmOverlay.querySelector("#menu-confirm-desc");
-    if (confirmDesc) confirmDesc.textContent = abandonDescription();
+    if (confirmDesc) confirmDesc.textContent = runtime.canForfeitRound?.() ? I18nManager.t("ingame.friendly_forfeit_desc") : abandonDescription();
     const cancelBtn = confirmOverlay.querySelector("[data-menu-cancel]");
     if (cancelBtn) cancelBtn.textContent = I18nManager.t("ingame.continue_btn");
     const confirmBtn = confirmOverlay.querySelector("[data-menu-confirm]");
-    if (confirmBtn) confirmBtn.textContent = I18nManager.t("ingame.menu_btn");
+    if (confirmBtn) confirmBtn.textContent = I18nManager.t(abandonConfirmKey());
+    forfeitButton.textContent = I18nManager.t("ingame.friendly_forfeit_btn");
 
     if (runtime.visible) {
       renderMainMenu(runtime);
@@ -941,15 +953,16 @@ export function createMainMenu(
       confirmOverlay.querySelector<HTMLHeadingElement>(
         "#menu-confirm-title",
       );
-    if (heading !== null) {
-      heading.textContent = I18nManager.t("ingame.abandon_title");
-    }
+    const canForfeit = runtime.canForfeitRound?.() === true;
+    forfeitButton.hidden = !canForfeit;
+    confirmButton.textContent = I18nManager.t(abandonConfirmKey());
+    if (heading !== null) heading.textContent = I18nManager.t(canForfeit ? "ingame.friendly_confirm_title" : "ingame.abandon_title");
     const desc =
       confirmOverlay.querySelector<HTMLParagraphElement>(
         "#menu-confirm-desc",
       );
     if (desc !== null) {
-      desc.textContent = abandonDescription();
+      desc.textContent = canForfeit ? I18nManager.t("ingame.friendly_forfeit_desc") : abandonDescription();
     }
     runtime.confirming = true;
     confirmResumeVersion = gameplay.leave("confirm-open");
@@ -962,6 +975,25 @@ export function createMainMenu(
     runtime.returnButton.focus();
     if (confirmResumeVersion !== null) gameplay.enter("confirm-cancel", confirmResumeVersion);
     confirmResumeVersion = null;
+  });
+  forfeitButton.addEventListener("click", () => {
+    if (runtime.busy || !runtime.canForfeitRound?.() || !runtime.onForfeitRound) return;
+    forfeitButton.disabled = true;
+    confirmButton.disabled = true;
+    cancelButton.disabled = true;
+    void runtime.onForfeitRound().then(() => {
+      runtime.confirming = false;
+      runtime.confirmOverlay.hidden = true;
+      confirmResumeVersion = null;
+      forfeitButton.disabled = false;
+      confirmButton.disabled = false;
+      cancelButton.disabled = false;
+    }, (error: unknown) => {
+      console.error(error);
+      forfeitButton.disabled = false;
+      confirmButton.disabled = false;
+      cancelButton.disabled = false;
+    });
   });
   confirmButton.addEventListener("click", () => {
     if (runtime.busy) {

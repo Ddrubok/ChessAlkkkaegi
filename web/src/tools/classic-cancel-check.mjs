@@ -436,6 +436,8 @@ try {
         ['HUD right edge', 300, 440, true],
         ['left banner', 99.99, 440, false],
         ['right banner', 300.01, 440, false],
+        ['read-only power label', 40, 440, true],
+        ['outside power label', 81, 440, false],
         ['canvas bottom', 200, 400, true],
         ['just above cancel', 200, 479.99, true],
         ['cancel top edge', 200, 480, false],
@@ -445,6 +447,9 @@ try {
         ['above canvas', 200, -1, false],
       ]) {
         const runtime = createTestRuntime('classic');
+        runtime.aimRuntime.powerReadout.getBoundingClientRect = () => ({
+          left: 10, right: 80, top: 420, bottom: 460, width: 70, height: 40,
+        });
         const point = whitePieceMesh.position.clone().project(camera);
         const event = (clientX, clientY) => ({
           clientX, clientY, pointerId: 71, pointerType, button: 0,
@@ -460,7 +465,7 @@ try {
         assert.equal(capturedPointerIds.size, 0, `${label}: pointer capture released`);
       }
     }
-    console.log('  -> mouse/touch 24개 HUD·캔버스·취소·화면 밖 경계 통과');
+    console.log('  -> mouse/touch 28개 HUD·세기 표시·취소·화면 밖 경계 통과');
   } finally {
     mockCancelControl.getBoundingClientRect = originalCancelRect;
   }

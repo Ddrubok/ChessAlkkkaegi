@@ -1,0 +1,31 @@
+# Independent regressions checked against their named properties.
+mutation retry uses an out-of-range attempt identifier
+detects TypeOK
+-   /\ attempt' = 2 /\ cancelled' = FALSE /\ channel' = TRUE
++   /\ attempt' = 3 /\ cancelled' = FALSE /\ channel' = TRUE
+
+mutation peer creation loses its peer owner
+detects ResourcePartition
+-   /\ pc' = TRUE /\ dc' = TRUE /\ opponent' = TRUE
++   /\ pc' = FALSE /\ dc' = TRUE /\ opponent' = TRUE
+
+mutation stale open calls ready after cancel
+detects NoLateReady
+-   /\ staleDelivered' = TRUE
+-   /\ UNCHANGED <<attempt, cancelled, established, channel, pc, dc,
+-                   opponent, dcOpen, pcConnected, cleanupStage, status,
+-                   readyCount, lateReady, handedOff>>
++   /\ staleDelivered' = TRUE /\ lateReady' = cancelled
++   /\ UNCHANGED <<attempt, cancelled, established, channel, pc, dc,
++                   opponent, dcOpen, pcConnected, cleanupStage, status,
++                   readyCount, handedOff>>
+
+mutation ready callback fires twice on one open
+detects ReadyOnce
+-   /\ readyCount' = readyCount + 1
++   /\ readyCount' = readyCount + 2
+
+mutation awaited remove never finishes
+detects CleanupEventually
+-   /\ cleanupStage = "remove" /\ cleanupStage' = "done"
++   /\ cleanupStage = "remove" /\ cleanupStage' = "remove"

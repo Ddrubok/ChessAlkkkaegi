@@ -1,0 +1,2 @@
+﻿START 2026-10-30T02:35:47.7173141+09:00 | npx.cmd tsc --noEmit --pretty false
+END 2026-10-30T02:35:49.2024523+09:00 | exit=0

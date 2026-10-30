@@ -1,0 +1,125 @@
+{
+  "capturedAt": "2026-10-29T17:54:57.874Z",
+  "files": [
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/main.ts",
+      "sha256": "3df8fa8c62c2dd9a5310f0b66dfaffb419780a5ced2c144d0217cb64baef0140"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/match.ts",
+      "sha256": "b95393ec25707d9a6c13079c8c80203c7bb4b5dca98100a78ad5d2660d3caac2"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/meta.ts",
+      "sha256": "cf15ba32f26cabc77f64cb7c51af5f109c987603b05aed52d2d3c7d3bdcaa43e"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/supabase-matchmaker.ts",
+      "sha256": "7b3e1b2a791aa193ed0dd7e175318988dcd83be4fdd85f4ef9e8da9be05619d5"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/supabase-match-ui.ts",
+      "sha256": "a6076055b92f8735d1c2f97a362c0728891c02507ea6e1c9ad9b1d7a604d22db"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/turn.ts",
+      "sha256": "1879cdc4eb7c06e374b5316668ffbdabd8fa7019facc177517903787fe513ce9"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/turn-clock.ts",
+      "sha256": "a9a651a8242f7fa02663338c7454994970f3c1c33d3c3833f4067d923c435f34"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/turn-hud.ts",
+      "sha256": "13235ae48ce0b0c2217893dfcdf7d74c9af0616868fb71fc23a558a950db6338"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/loop.ts",
+      "sha256": "eb59b7597bb8e7fc334e6351ed23e415f84d41c9a3a666139e64cd1394fb0beb"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/scene.ts",
+      "sha256": "19a7b0c909348991acd560efd9b0965bf24349e7d1cadf12c11a8a194019c5e9"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/input.ts",
+      "sha256": "02bb78c335097ba1412ad99f1356a414d162ac440b6cbda422dd359b17389794"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/tutorial.ts",
+      "sha256": "24221980b05379714131dacd08a503093875cedf04586a98b4270ea7bf02775a"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/style.css",
+      "sha256": "a406cb9e1849d685323c0f1c120a258676cab23cc142beaadae53a580fd99635"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/i18n.ts",
+      "sha256": "381ee39732dce07906d9ca10b78b1f2e1e337377512ec9b2f7d1f06893082c38"
+    },
+    {
+      "path": "C:/Users/DooBokWie/Desktop/Project/nhnChess/ChessAlkkkaegi/web/src/lobby-recommendation.ts",
+      "sha256": "3a06b3ebe3faa70826a3eb662821777c27b7959fa7b01c7cb081b082fdd0a355"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/main.ts",
+      "sha256": "516a496dfca6355c1e60214c5a6f05d759a43c6846d63efcd8fb5b66db9649ed"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/match.ts",
+      "sha256": "de4d32a6974f46bb830eef136d8f864b609d32a1182c84c5f57387f81f1d4bd8"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/meta.ts",
+      "sha256": "582c12bb2b0bc157088d4b365de2a470618e668fc8eea7fff79a18a5d9a4f869"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/supabase-matchmaker.ts",
+      "sha256": "962bdc2c8a87e08d911dd0f8f6e3fba47e1fa45c653a8ec038118e7693e68f54"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/supabase-match-ui.ts",
+      "sha256": "cd1ca98838233eaf76719dee7e721dfaec237455defa66f406a3354a73c0041c"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/turn.ts",
+      "sha256": "5930c3ab63803ca68275cc6f367d7041da2698b72556787d514e23ede976c43a"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/turn-clock.ts",
+      "sha256": "a9a651a8242f7fa02663338c7454994970f3c1c33d3c3833f4067d923c435f34"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/turn-hud.ts",
+      "sha256": "13235ae48ce0b0c2217893dfcdf7d74c9af0616868fb71fc23a558a950db6338"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/loop.ts",
+      "sha256": "157b9b2610d2e127d3ff1080892f8d44bf150c57a35411d8053a6717161bdaae"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/scene.ts",
+      "sha256": "ec9fb1b877f33289ca29119ba0c4cbf955d9f337df5328d6359804b8451a9b58"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/input.ts",
+      "sha256": "739b3916e44fe18ea9822e35569adadec8c5424581da3d99d21b723b1dd67588"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/tutorial.ts",
+      "sha256": "a98e4304143c477962345b56a6cd8ad0d3807ab2573069b0c3fb5bfa15407aa7"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/style.css",
+      "sha256": "ebf311c1c7552bc74d6fff9857b2f98b3e253228c3e757326182bc9430a53770"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/i18n.ts",
+      "sha256": "5287d5f6fdd8fa46f5e3e2de3315cbf578a4bdbbf40f6230aa437f7ce708b844"
+    },
+    {
+      "path": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/crazygames-crossplay/web/src/lobby-recommendation.ts",
+      "sha256": "812cb447d21cb5fd088d097ad1645fa4dec5a0e26f6731f0c3154f772cf723f7"
+    }
+  ]
+}

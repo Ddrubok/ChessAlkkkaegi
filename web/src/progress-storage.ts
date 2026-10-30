@@ -15,6 +15,8 @@ type LocalStore = Pick<Storage, "getItem" | "setItem">;
 type Snapshot = { data: ProgressData; revision: number; dirty: boolean; base?: ProgressData };
 // Keep new fields away from older clients with strict cache parsers.
 const CACHE_PREFIX = "ca_account_progress_v4:";
+const GUEST_META_KEY = "ca_guest_meta_v1";
+const GUEST_META_KEYS = ["chessAlkkagi.meta.points", "chessAlkkagi.meta.upgrades", "has_completed_tutorial", "has_completed_adv_tutorial"] as const;
 const LEGACY_CACHE_PREFIXES = ["ca_account_progress_v3:", "ca_account_progress_v1:"] as const;
 const MASTERY_CAPABILITY = "mastery-v1";
 const BANNERS_CAPABILITY = "banners-v1";
@@ -318,9 +320,94 @@ export class AccountProgressStorage {
   private generation = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private saving: Promise<boolean> | null = null;
+  private claimQueue: Promise<void> = Promise.resolve();
   private unsafeCacheRaw: string | null = null;
   private lastCapabilityProbe = 0;
   private listeners = new Set<(reset: boolean) => void>();
+
+  private guestMeta(local: LocalStore): ProgressData {
+    const raw = local.getItem(GUEST_META_KEY);
+    if (raw !== null) {
+      const data = JSON.parse(raw) as unknown;
+      if (!data || typeof data !== "object" || Array.isArray(data)
+        || Object.keys(data).some(key => !(GUEST_META_KEYS as readonly string[]).includes(key))) throw new Error("Invalid guest meta record");
+      return readData(data);
+    }
+    // Legacy per-key data is imported only on the first guest meta write.
+    const data: ProgressData = {};
+    for (const key of GUEST_META_KEYS) {
+      const value = local.getItem(key);
+      if (value !== null) data[key] = value;
+    }
+    return data;
+  }
+
+  claimGuestTutorialReward(type: "basic" | "advanced"): "granted" | "repeat" | "pending" {
+    if (this.owner || !this.ready) return "pending";
+    const completion = type === "basic" ? "has_completed_tutorial" : "has_completed_adv_tutorial";
+    try {
+      if (this.getItem(completion) === "true") return "repeat";
+      const rawPoints = this.getItem("chessAlkkagi.meta.points");
+      const rawUpgrades = this.getItem("chessAlkkagi.meta.upgrades");
+      if (rawPoints === null || rawUpgrades === null) return "pending";
+      const points = Number(rawPoints);
+      if (!Number.isSafeInteger(points) || points < 0 || points > Number.MAX_SAFE_INTEGER - 100) return "pending";
+      this.setItems({ "chessAlkkagi.meta.points": String(points + 100), [completion]: "true" });
+      return "granted";
+    } catch { return "pending"; }
+  }
+
+  /** The server owns the first authenticated grant; progress saves remain CAS. */
+  claimTutorialReward(type: "basic" | "advanced"): Promise<"granted" | "repeat" | "pending"> {
+    const owner = this.owner;
+    const generation = this.generation;
+    const result = this.claimQueue.then(() => owner === this.owner && generation === this.generation
+      ? this.claimTutorialRewardOnce(type) : "pending" as const);
+    this.claimQueue = result.then(() => {}, () => {});
+    return result;
+  }
+
+  private async claimTutorialRewardOnce(type: "basic" | "advanced"): Promise<"granted" | "repeat" | "pending"> {
+    if (!this.owner || !this.client || !this.ready || this.conflict || this.unsafeData) return "pending";
+    const owner = this.owner;
+    const generation = this.generation;
+    if (!await this.flush() || generation !== this.generation || owner !== this.owner) return "pending";
+    const before = { ...this.snapshot.data };
+    const beforeRevision = this.snapshot.revision;
+    const { data, error } = await this.request(this.client, "claim_tutorial_first_reward", {
+      p_expected_user_id: owner, p_tutorial_type: type,
+    }).catch(() => ({ data: null, error: true }));
+    if (error || generation !== this.generation || owner !== this.owner) return "pending";
+    try {
+      const response = data as { data?: unknown; revision?: unknown; granted?: unknown };
+      const remote = readSnapshot({ data: response.data, revision: response.revision });
+      const granted = response.granted === true;
+      // Another save may have already observed this grant and committed newer progress.
+      if (this.conflict || !this.ready) return "pending";
+      if (remote.revision < this.snapshot.revision) return granted ? "granted" : "repeat";
+      const current = this.snapshot.data;
+      const localBase = this.snapshot.revision === beforeRevision ? before : (this.snapshot.base ?? before);
+      const merged = { ...remote.data };
+      for (const [key, value] of Object.entries(current)) {
+        if (value === localBase[key]) continue;
+        if (key === "chessAlkkagi.meta.points") {
+          const delta = Number(value) - Number(localBase[key] ?? "0");
+          merged[key] = String(Number(remote.data[key] ?? "0") + delta);
+        } else if (key !== "has_completed_tutorial" && key !== "has_completed_adv_tutorial") {
+          merged[key] = value;
+        }
+      }
+      readData(merged);
+      this.snapshot = { data: merged, revision: remote.revision, base: { ...remote.data }, dirty: !equalData(merged, remote.data) };
+      this.persist();
+      this.notify();
+      if (this.snapshot.dirty && !await this.flush()) return "pending";
+      if (generation !== this.generation || owner !== this.owner) return "pending";
+      return granted ? "granted" : "repeat";
+    } catch {
+      return "pending";
+    }
+  }
 
   private local: () => LocalStore | null;
   constructor(local: () => LocalStore | null = browserStorage) {
@@ -366,7 +453,15 @@ export class AccountProgressStorage {
 
   getItem(key: string): string | null {
     if (!(PROGRESS_KEYS as readonly string[]).includes(key)) throw new Error("지원하지 않는 진행도 키");
-    return this.owner ? this.snapshot.data[key] ?? null : this.readLocal(key);
+    if (this.owner) return this.snapshot.data[key] ?? null;
+    if ((GUEST_META_KEYS as readonly string[]).includes(key)) {
+      try {
+        const local = this.local();
+        if (!local) return null;
+        return this.guestMeta(local)[key] ?? null;
+      } catch { return null; }
+    }
+    return this.readLocal(key);
   }
 
   setItem(key: string, value: string): void {
@@ -380,7 +475,21 @@ export class AccountProgressStorage {
       const candidate = Object.fromEntries(MASTERY_KEYS.map(key => [key, values[key] ?? this.readLocal(key)])
         .filter((entry): entry is [string, string] => entry[1] !== null && entry[1] !== undefined));
       validateMasteryValues(candidate);
-      for (const [key, value] of Object.entries(values)) this.local()?.setItem(key, value);
+      const local = this.local();
+      if (!local) throw new Error("Guest storage unavailable");
+      const guestValues = Object.fromEntries(Object.entries(values).filter(([key]) => (GUEST_META_KEYS as readonly string[]).includes(key)));
+      if (Object.keys(guestValues).length) {
+        const next = { ...this.guestMeta(local), ...guestValues };
+        readData(next);
+        local.setItem(GUEST_META_KEY, JSON.stringify(next));
+        // Keep the direct-read lobby completion flag in sync when possible.
+        for (const key of ["has_completed_tutorial", "has_completed_adv_tutorial"]) {
+          if (key in guestValues) try { local.setItem(key, next[key]); } catch {}
+        }
+      }
+      for (const [key, value] of Object.entries(values)) {
+        if (!(GUEST_META_KEYS as readonly string[]).includes(key)) local.setItem(key, value);
+      }
       return;
     }
     const nextData = { ...this.snapshot.data, ...values };
@@ -407,6 +516,7 @@ export class AccountProgressStorage {
 
   suspend(): void {
     this.generation++;
+    this.claimQueue = Promise.resolve();
     clearTimeout(this.timer);
     this.ready = false;
     this.masterySupported = null;
@@ -423,6 +533,7 @@ export class AccountProgressStorage {
 
   async activate(client: SupabaseClient | null, owner: string | null): Promise<void> {
     const generation = ++this.generation;
+    this.claimQueue = Promise.resolve();
     clearTimeout(this.timer);
     this.saving = null;
     this.client = client;
@@ -446,7 +557,19 @@ export class AccountProgressStorage {
       this.setStatus("progress.guest_device_stored");
     }
     this.notify(true);
-    if (!owner) return;
+    if (!owner) {
+      // Repair the legacy lobby flag after a committed record whose mirror write failed.
+      try {
+        const local = this.local();
+        if (local && local.getItem(GUEST_META_KEY) !== null) {
+          const meta = this.guestMeta(local);
+          for (const key of ["has_completed_tutorial", "has_completed_adv_tutorial"]) {
+            if (meta[key] && local.getItem(key) !== meta[key]) local.setItem(key, meta[key]);
+          }
+        }
+      } catch {}
+      return;
+    }
     let cached: Snapshot | null = null;
     const cachedRaw = this.readLocal(CACHE_PREFIX + owner) ?? LEGACY_CACHE_PREFIXES.map(prefix => this.readLocal(prefix + owner)).find(raw => raw !== null) ?? null;
     if (cachedRaw) {

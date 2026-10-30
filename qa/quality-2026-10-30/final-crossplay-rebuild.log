@@ -1,0 +1,120 @@
+
+> chess-alkkagi-web@0.0.0 prebuild:crazygames
+> npm run check:chess && npm run check:balance
+
+
+> chess-alkkagi-web@0.0.0 check:chess
+> node src/tools/convert-polyhaven.mjs --check
+
+Pawn: piece_pawn_white_01, 1028 vertices, 1640 triangles, bounds {"x":0.266482,"y":0.520376,"z":0.267153}, baseRadius 0.133609, collider 173
+Rook: piece_rook_white_01, 2016 vertices, 2976 triangles, bounds {"x":0.31598,"y":0.589391,"z":0.317015}, baseRadius 0.149686, collider 222
+Knight: piece_knight_white_01, 1705 vertices, 2662 triangles, bounds {"x":0.447532,"y":0.739591,"z":0.328236}, baseRadius 0.175946, collider 342
+Bishop: piece_bishop_white_01, 1838 vertices, 2924 triangles, bounds {"x":0.370364,"y":0.784872,"z":0.370641}, baseRadius 0.186174, collider 251
+Queen: piece_queen_white, 1827 vertices, 2940 triangles, bounds {"x":0.307604,"y":0.823122,"z":0.308464}, baseRadius 0.145615, collider 249
+King: piece_king_white, 2643 vertices, 4172 triangles, bounds {"x":0.326371,"y":1,"z":0.327887}, baseRadius 0.164295, collider 267
+PASS: generated assets exactly match checked-in GLB and metadata
+Source glTF 3e21ecd0c2ffb703dfdb3f3ea7a379c1dbd4ec513ba2cb8e6cb1e5f276d7eb91, BIN c73476fd032a2cb4a9c256f70573eed260708132fdc42fec161c6216711560b3; output GLB 2ee584b125a20ddcf388e4798f28a376f2b2a3a22e8590aec1f96fc71e6f6863 (476800 bytes), metadata e386535e27f86a9f4114c566c8e9d3b47706d49e59a2b07544864cf2607d7ce8 (122768 bytes)
+
+> chess-alkkagi-web@0.0.0 check:balance
+> node src/tools/balance-csv-check.mjs
+
+PASS: 27 CSV values loaded; edited values, mode scaling, BOM/quoted CSV and invalid input checked.
+
+> chess-alkkagi-web@0.0.0 build:crazygames
+> tsc --noEmit && vite build --mode crazygames --outDir ../qa/quality-2026-10-30/crossplay-candidate-dist
+
+vite v8.1.5 building client environment for crazygames...
+[2Ktransforming...✓ 275 modules transformed.
+rendering chunks...
+computing gzip size...
+../qa/quality-2026-10-30/crossplay-candidate-dist/build-info.json                                               0.18 kB │ gzip:     0.15 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/index.html                                                    3.53 kB │ gzip:     1.62 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/classic-plan-C4eZAvz-.webp                             4.53 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-control-square-v1-thumb-DxzE_kn4.webp               6.85 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-push-blocks-v1-thumb-bSS_z07p.webp                  6.87 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-rotating-gate-v1-thumb-CnX926WW.webp                6.90 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-collapsing-center-v1-thumb-RNJQVjam.webp            7.02 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-breakable-bridge-v1-thumb-DfCaE1Kk.webp             7.05 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-lane-v1-thumb-D-a2TNi_.webp                     7.06 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-blocks-and-hole-v1-thumb-LSvI4HDf.webp              7.10 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-bounce-ramps-v1-thumb-DSyLAhPI.webp                 7.11 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-launch-ramps-v1-thumb-BQ8n7py3.webp                 7.14 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-bounce-corridor-v1-thumb-BBlj-h2s.webp              7.20 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-gate-v1-thumb-BOAOkkgU.webp                     7.25 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-collapsing-crown-v1-thumb-BtQ8sMGj.webp             7.38 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-collapsing-center-v1-plan-5tlBj1wa.webp             7.56 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-rotating-gate-v1-plan-pLZ3EDrF.webp                 7.64 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-pockets-v1-thumb-D34fzsd1.webp                  7.69 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-push-blocks-v1-plan-CeDMGjAS.webp                   7.87 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-control-square-v1-plan-lfqXA-v1.webp                7.87 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-bounce-corridor-v1-plan-WV-Ni2ul.webp               8.07 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/classic-thumb-CqRwG-bM.webp                            8.17 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-blocks-and-hole-v1-plan-Cbt4B-Hb.webp               8.18 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-lane-v1-plan-DvvOLDxH.webp                      8.22 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-breakable-bridge-v1-plan-Cwhce1rI.webp              8.31 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-gate-v1-plan-C6ADocrs.webp                      8.41 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-launch-ramps-v1-plan-DnqE7pww.webp                  8.46 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-bounce-ramps-v1-plan-Ceyp6xC8.webp                  8.63 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-collapsing-crown-v1-plan-DAxCvmli.webp              8.83 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-pockets-v1-plan-DPrL4LKe.webp                   9.50 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-push-blocks-v1-perspective-NZS4UgdA.webp           29.43 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-rotating-gate-v1-perspective-Phvt9mzR.webp         29.51 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-blocks-and-hole-v1-perspective-BMOyWK5w.webp       29.84 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-lane-v1-perspective-C1ZK001u.webp              30.00 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-control-square-v1-perspective-CLtw5cNP.webp        30.08 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-launch-ramps-v1-perspective-CDXT3QAn.webp          30.66 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-collapsing-center-v1-perspective-DcAiZzzW.webp     30.66 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-breakable-bridge-v1-perspective-DxdPuY15.webp      30.99 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-bounce-corridor-v1-perspective-BgHKK9gX.webp       31.07 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-bounce-ramps-v1-perspective-BxZoOx3c.webp          31.41 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-gate-v1-perspective-CzpUV6hl.webp              32.58 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-collapsing-crown-v1-perspective-DeC8SPqv.webp      33.88 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/gm-ice-pockets-v1-perspective-GmPBkZxj.webp           35.06 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/classic-perspective-lNXJx3Wo.webp                     39.97 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/friends-modal-0yOWy_BD.css                             0.57 kB │ gzip:     0.31 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/ui-motion-Dwb7r8I8.css                                 1.15 kB │ gzip:     0.43 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/main-D30sHmPu.css                                    106.52 kB │ gzip:    19.90 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/friendly-copy-DdkAedMg.js                              0.07 kB │ gzip:     0.08 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/friends-modal-BX2UxWfY.js                              0.07 kB │ gzip:     0.08 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/crazygames-auth-C6Bd3zAi.js                            0.08 kB │ gzip:     0.09 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/crazygames-sdk-e5I9CymQ.js                             0.08 kB │ gzip:     0.09 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/portal-lifecycle-CzT2mmuL.js                           0.10 kB │ gzip:     0.11 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/crazygames-multiplayer-BInU8KA9.js                     0.11 kB │ gzip:     0.11 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/esm-BbSVi1Iz.js                                        0.34 kB │ gzip:     0.25 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/portal-lifecycle-CbNgKb7a.js                           0.55 kB │ gzip:     0.35 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/web-39z3-heC.js                                        0.84 kB │ gzip:     0.39 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/metered-turn-ShqRSibT.js                               0.90 kB │ gzip:     0.61 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/preload-helper-HclGiUj8.js                             1.21 kB │ gzip:     0.67 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/crazygames-sdk-Csh8ea0c.js                             1.54 kB │ gzip:     0.78 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/ui-motion-BhG4LhiK.js                                  1.88 kB │ gzip:     0.93 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/index-BucY21kC.js                                      3.03 kB │ gzip:     1.52 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/friendly-lobby-UmgSjDqx.js                             5.09 kB │ gzip:     2.09 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/crazygames-multiplayer-DE8Bqnzd.js                     5.15 kB │ gzip:     2.09 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/dist-BDdlKBnh.js                                       7.74 kB │ gzip:     3.08 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/friendly-copy-BTWUxfyb.js                              8.90 kB │ gzip:     3.57 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/net-FZXCvtor.js                                        9.27 kB │ gzip:     3.60 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/crazygames-auth-5B7Nm8jQ.js                            9.78 kB │ gzip:     3.20 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/config-ICc3d66Y.js                                    12.06 kB │ gzip:     3.89 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/friends-modal-CDyBEbWO.js                             24.64 kB │ gzip:     7.70 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/online-DP0TJeoT.js                                    33.41 kB │ gzip:    10.37 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/progress-storage-CrtAnKkU.js                          43.75 kB │ gzip:    11.19 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/runtime-text-rmxlXbNF.js                              76.04 kB │ gzip:    17.61 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/i18n-Detkvbnw.js                                     182.58 kB │ gzip:    58.17 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/marketing-runtime-Bnj1pwa_.js                        216.26 kB │ gzip:    56.50 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/main-BXJQD3wi.js                                     619.18 kB │ gzip:   193.01 kB
+../qa/quality-2026-10-30/crossplay-candidate-dist/assets/ai-Dx478Quv.js                                     3,050.04 kB │ gzip: 1,062.86 kB
+
+✓ built in 769ms
+
+using deprecated parameters for the initialization function; pass a single object instead
+
+(!) outDir C:\Users\DooBokWie\orca\workspaces\ChessAlkkkaegi\crazygames-crossplay\qa\quality-2026-10-30\crossplay-candidate-dist is not inside project root and will not be emptied.
+Use --emptyOutDir to override.
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+EXIT 0

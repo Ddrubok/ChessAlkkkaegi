@@ -255,6 +255,7 @@ export class SupabaseMatchmaker {
     | null = null;
   private errorCallback: ((error: Error) => void) | null = null;
   private isCancelled = false;
+  private attempt = 0;
   private pendingIceCandidates: RTCIceCandidateInit[] = [];
   private isConnectionEstablished = false;
   private signalingTimeoutTimer: number | null = null;
@@ -283,7 +284,9 @@ export class SupabaseMatchmaker {
     onReady: (transport: OnlineTransport, mySide: PieceSide, matchId: string, opponent: { id: string; nickname: string; mmr: number }) => void,
     onError: (error: Error) => void,
   ): Promise<void> {
+    const attempt = ++this.attempt;
     await this.cleanup();
+    if (attempt !== this.attempt) return;
     this.isCancelled = false;
     this.isConnectionEstablished = false;
     this.pendingIceCandidates = [];
@@ -306,6 +309,7 @@ export class SupabaseMatchmaker {
         } catch {}
       }
     }
+    if (attempt !== this.attempt || this.isCancelled) return;
 
     this.channel = this.client.channel(channelName, {
       config: {
@@ -322,7 +326,7 @@ export class SupabaseMatchmaker {
         this.evaluateQueue();
       })
       .on("broadcast", { event: "webrtc-signal" }, ({ payload }) => {
-        if (this.channel !== queueChannel) return;
+        if (this.channel !== queueChannel || this.isCancelled) return;
         void this.handleIncomingSignal(payload as SignalMessage);
       })
       .subscribe(async (status) => {
@@ -505,6 +509,7 @@ export class SupabaseMatchmaker {
    */
   private async handleIncomingSignal(signal: SignalMessage): Promise<void> {
     if (this.isCancelled || !signal || !signal.toId) return;
+    const attempt = this.attempt;
     if (signal.toId.toLowerCase() !== this.user.id.toLowerCase()) return;
     if (this.friendlyRoom && (signal.matchId !== this.activeMatchId || signal.fromId !== this.opponentProfile?.id)) return;
 
@@ -551,6 +556,7 @@ export class SupabaseMatchmaker {
           this.processingOffer = true;
           try {
           await this.setupGuestWebRTC(signal.fromId, signal.matchId);
+          if (this.isCancelled || attempt !== this.attempt || this.activeMatchId !== signal.matchId) return;
 
           if (this.peerConnection) {
             this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_sending_answer"));
@@ -558,12 +564,16 @@ export class SupabaseMatchmaker {
               type: "offer",
               sdp: signal.sdp,
             }));
+            if (this.isCancelled || attempt !== this.attempt) return;
 
             // 버퍼링된 조기 ICE Candidate 적용
             await this.flushPendingIceCandidates();
+            if (this.isCancelled || attempt !== this.attempt) return;
 
             const answer = await this.peerConnection.createAnswer();
+            if (this.isCancelled || attempt !== this.attempt) return;
             await this.peerConnection.setLocalDescription(answer);
+            if (this.isCancelled || attempt !== this.attempt) return;
 
             await this.sendSignal({
               type: "answer",
@@ -590,6 +600,7 @@ export class SupabaseMatchmaker {
             type: "answer",
             sdp: signal.sdp,
           }));
+          if (this.isCancelled || attempt !== this.attempt) return;
 
           // 버퍼링된 조기 ICE Candidate 적용
           await this.flushPendingIceCandidates();
@@ -616,11 +627,13 @@ export class SupabaseMatchmaker {
 
   private async flushPendingIceCandidates(): Promise<void> {
     if (!this.peerConnection || !this.peerConnection.remoteDescription) return;
-    while (this.pendingIceCandidates.length > 0) {
+    const pc = this.peerConnection;
+    const attempt = this.attempt;
+    while (attempt === this.attempt && this.peerConnection === pc && this.pendingIceCandidates.length > 0) {
       const cand = this.pendingIceCandidates.shift();
       if (cand) {
         try {
-          await this.peerConnection.addIceCandidate(new RTCIceCandidate(cand));
+          await pc.addIceCandidate(new RTCIceCandidate(cand));
         } catch (e) {
           console.warn("지연된 ICE 후보 추가 실패:", e);
         }
@@ -632,9 +645,10 @@ export class SupabaseMatchmaker {
    * Host WebRTC RTCPeerConnection 설정 및 DataChannel 생성
    */
   private async setupHostWebRTC(guestId: string, matchId: string): Promise<void> {
+    const attempt = this.attempt;
     this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_creating_offer"));
     const iceServers = await getUnifiedIceServers();
-    if (this.isCancelled || !this.channel) return;
+    if (this.isCancelled || attempt !== this.attempt || !this.channel || this.activeMatchId !== matchId) return;
     const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 2 });
     this.peerConnection = pc;
 
@@ -642,7 +656,7 @@ export class SupabaseMatchmaker {
     this.dataChannel = dc;
 
     pc.onicecandidate = (event) => {
-      if (event.candidate) {
+      if (event.candidate && attempt === this.attempt && this.peerConnection === pc) {
         void this.sendSignal({
           type: "ice",
           matchId,
@@ -672,7 +686,7 @@ export class SupabaseMatchmaker {
 
     dc.onopen = checkOpen;
     const pollInterval = window.setInterval(() => {
-      if (this.isConnectionEstablished || this.isCancelled) {
+      if (this.isConnectionEstablished || this.isCancelled || attempt !== this.attempt || this.peerConnection !== pc) {
         clearInterval(pollInterval);
         return;
       }
@@ -680,11 +694,13 @@ export class SupabaseMatchmaker {
     }, 80);
 
     const offer = await pc.createOffer();
+    if (this.isCancelled || attempt !== this.attempt || this.peerConnection !== pc) return;
     await pc.setLocalDescription(offer);
+    if (this.isCancelled || attempt !== this.attempt || this.peerConnection !== pc) return;
     this.hostOfferSdp = offer.sdp || "";
 
     const sendOffer = () => {
-      if (this.isConnectionEstablished || this.isCancelled || !this.hostOfferSdp) return;
+      if (this.isConnectionEstablished || this.isCancelled || attempt !== this.attempt || this.peerConnection !== pc || !this.hostOfferSdp) return;
       void this.sendSignal({
         type: "offer",
         matchId,
@@ -710,14 +726,15 @@ export class SupabaseMatchmaker {
     if (this.setupGuestPromise) return this.setupGuestPromise;
 
     this.setupGuestPromise = (async () => {
+      const attempt = this.attempt;
       this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_responding"));
       const iceServers = await getUnifiedIceServers();
-      if (this.isCancelled || !this.channel) return;
+      if (this.isCancelled || attempt !== this.attempt || !this.channel || this.activeMatchId !== matchId) return;
       const pc = new RTCPeerConnection({ iceServers, iceCandidatePoolSize: 2 });
       this.peerConnection = pc;
 
       pc.onicecandidate = (event) => {
-        if (event.candidate) {
+        if (event.candidate && attempt === this.attempt && this.peerConnection === pc) {
           void this.sendSignal({
             type: "ice",
             matchId,
@@ -741,6 +758,10 @@ export class SupabaseMatchmaker {
 
       pc.ondatachannel = (event) => {
         const dc = event.channel;
+        if (this.isCancelled || attempt !== this.attempt || this.peerConnection !== pc) {
+          try { dc.close(); } catch {}
+          return;
+        }
         this.dataChannel = dc;
         const checkOpen = () => {
           if (dc.readyState === "open") {
@@ -749,7 +770,7 @@ export class SupabaseMatchmaker {
         };
         dc.onopen = checkOpen;
         const pollInterval = window.setInterval(() => {
-          if (this.isConnectionEstablished || this.isCancelled) {
+          if (this.isConnectionEstablished || this.isCancelled || attempt !== this.attempt || this.peerConnection !== pc) {
             clearInterval(pollInterval);
             return;
           }
@@ -759,7 +780,7 @@ export class SupabaseMatchmaker {
       };
 
       const sendGuestReady = () => {
-        if (this.isConnectionEstablished || this.isCancelled || (this.peerConnection && this.peerConnection.remoteDescription)) return;
+        if (this.isConnectionEstablished || this.isCancelled || attempt !== this.attempt || this.peerConnection !== pc || pc.remoteDescription) return;
         void this.sendSignal({
           type: "guest-ready",
           matchId,
@@ -788,7 +809,9 @@ export class SupabaseMatchmaker {
     mySide: PieceSide,
     matchId: string,
   ): void {
-    if (this.isConnectionEstablished) return;
+    if (this.isCancelled || this.isConnectionEstablished || this.peerConnection !== pc || this.dataChannel !== dc || this.activeMatchId !== matchId) return;
+    if (dc.readyState !== "open" || !this.opponentProfile || !this.matchReadyCallback) return;
+    const attempt = this.attempt;
     this.isConnectionEstablished = true;
     this.clearSignalingTimeout();
     this.clearRetryTimers();
@@ -804,11 +827,14 @@ export class SupabaseMatchmaker {
     } catch {}
 
     this.updateStatus("connected", getRuntimeText("matchmaking.connected_starting_game"));
+    if (this.isCancelled || attempt !== this.attempt || this.peerConnection !== pc || this.dataChannel !== dc) return;
 
     const transport = new WebRtcOnlineTransport(pc, dc);
-    if (this.matchReadyCallback && this.opponentProfile) {
-      this.matchReadyCallback(transport, mySide, matchId, this.opponentProfile);
-    }
+    const onReady = this.matchReadyCallback;
+    const opponent = this.opponentProfile;
+    this.peerConnection = null;
+    this.dataChannel = null;
+    onReady(transport, mySide, matchId, opponent);
   }
 
   private async sendSignal(message: SignalMessage): Promise<void> {
@@ -840,11 +866,12 @@ export class SupabaseMatchmaker {
   }
 
   private handleError(err: Error): void {
+    if (this.isCancelled || this.isConnectionEstablished) return;
+    ++this.attempt;
+    const onError = this.errorCallback;
     void this.cleanup();
     this.updateStatus("error", err.message);
-    if (this.errorCallback) {
-      this.errorCallback(err);
-    }
+    onError?.(err);
   }
 
   /**
@@ -862,7 +889,9 @@ export class SupabaseMatchmaker {
     ) => void,
     onError?: (error: Error) => void,
   ): Promise<void> {
+    const attempt = ++this.attempt;
     await this.cleanup();
+    if (attempt !== this.attempt) return;
     this.friendlyRoom = true;
     this.isHost = isHost;
     this.opponentProfile = opponent;
@@ -888,11 +917,14 @@ export class SupabaseMatchmaker {
       config: { broadcast: { self: false } },
     });
 
-    this.channel
+    const friendlyChannel = this.channel;
+    friendlyChannel
       .on("broadcast", { event: "webrtc-signal" }, ({ payload }) => {
+        if (this.channel !== friendlyChannel || this.isCancelled) return;
         void this.handleIncomingSignal(payload as SignalMessage);
       })
       .subscribe(async (status) => {
+        if (this.channel !== friendlyChannel || this.isCancelled || attempt !== this.attempt) return;
         if (status === "SUBSCRIBED") {
           this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_exchanging_signals"), 0, 0, opponent);
           try {
@@ -901,7 +933,7 @@ export class SupabaseMatchmaker {
           } else {
             await this.setupGuestWebRTC(opponent.id, roomId);
           }
-          } catch { this.handleError(new Error(getFriendlyCopy('peer_error'))); }
+          } catch { if (this.channel === friendlyChannel && attempt === this.attempt) this.handleError(new Error(getFriendlyCopy('peer_error'))); }
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           this.handleError(new Error(`친선전 채널 연결 오류: ${status}`));
         }
@@ -912,6 +944,7 @@ export class SupabaseMatchmaker {
    * 매칭 대기열 취소
    */
   public cancel(): void {
+    ++this.attempt;
     this.isCancelled = true;
     void this.cleanup();
     this.updateStatus("cancelled", getRuntimeText("matchmaking.cancelled"));
@@ -928,32 +961,22 @@ export class SupabaseMatchmaker {
       clearInterval(this.evalTimer);
       this.evalTimer = null;
     }
-    if (this.channel) {
-      const channel = this.channel;
-      this.channel = null;
-      try {
-        await channel.untrack();
-      } catch {}
-      try {
-        await this.client.removeChannel(channel);
-      } catch {}
-    }
-    if (this.dataChannel) {
-      try {
-        this.dataChannel.close();
-      } catch {}
-      this.dataChannel = null;
-    }
-    if (this.peerConnection) {
-      try {
-        this.peerConnection.close();
-      } catch {}
-      this.peerConnection = null;
-    }
+    const channel = this.channel;
+    const dc = this.dataChannel;
+    const pc = this.peerConnection;
+    this.channel = null;
+    this.dataChannel = null;
+    this.peerConnection = null;
     this.activeMatchId = null;
     this.opponentProfile = null;
     this.isHost = false;
     this.pendingIceCandidates = [];
+    try { dc?.close(); } catch {}
+    try { pc?.close(); } catch {}
+    if (channel) {
+      try { await channel.untrack(); } catch {}
+      try { await this.client.removeChannel(channel); } catch {}
+    }
   }
 
   /** Bind this game's participants before ready exchange; this is not proof of play. */

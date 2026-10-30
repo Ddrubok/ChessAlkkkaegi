@@ -262,15 +262,10 @@ export function fitCameraToBoard(runtime: SceneRuntime): void {
     horizontalDirection.set(0, 0, -1);
   }
   horizontalDirection.normalize();
-  // 정사각형 보드는 대각선 방위가 가장 넓게 투영되므로 그 최악 조건을 모든 회전에 공통 적용해 중간 각도 잘림을 막는다.
-  const worstCaseDirection = new Vector3(
-    Math.SQRT1_2,
-    0,
-    Math.SQRT1_2,
-  );
+  // Fit the current view direction so the side-facing opening does not inherit the diagonal distance.
   const minimumDistance = computeMinimumCameraDistance(
     runtime.camera,
-    worstCaseDirection,
+    horizontalDirection,
     runtime.boardHalfExtent,
   );
   runtime.minimumCameraDistance = minimumDistance;
@@ -920,6 +915,13 @@ export function createSceneRuntime(
     blackPieceMaterial: blackMaterial,
     onCameraFitChanged: null,
   };
+  let fittingControls = false;
+  controls.addEventListener("change", () => {
+    if (fittingControls) return;
+    fittingControls = true;
+    try { fitCameraToBoard(runtime); }
+    finally { fittingControls = false; }
+  });
 
   /**
    * 리사이즈 때 투영 비율과 보드 맞춤 거리를 함께 갱신해 세로 화면 잘림을 막는다.

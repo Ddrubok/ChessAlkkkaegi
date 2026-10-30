@@ -11,7 +11,10 @@ try {
   assert.equal((renderModeCards({userProfile:{id:'guest',nickname:'QA',mmr:1200},onOpenPuzzles(){}},0).match(/data-game-mode=/g)||[]).length,4);
   assert.match(renderWeeklyChallengeEntry(),/data-open-weekly-challenge/);
   const menu=await readFile(new URL('../menu.ts',import.meta.url),'utf8');
-  assert.match(menu,/renderQuestLobbyEntry\(questStorage\)\}\$\{renderWeeklyChallengeEntry\(\)\}\$\{renderTutorialBar\(\)/);
+  const activityTemplate = menu.match(/const otherActivities = ([^\n]+)/)?.[1] ?? '';
+  const orderedEntries = ['renderQuestLobbyEntry(questStorage)', 'renderWeeklyChallengeEntry()', 'renderTutorialBar()', 'renderModeCards(runtime, maxClearedStage)'];
+  const positions = orderedEntries.map(entry => activityTemplate.indexOf(entry));
+  assert.ok(positions.every((position, index) => position >= 0 && (index === 0 || position > positions[index - 1])), 'quest, weekly, tutorial and mode order, including platform conditionals');
   const css=await readFile(new URL('../lobby.css',import.meta.url),'utf8');
   assert.match(css,/\.lobby-weekly-entry\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
   assert.doesNotMatch(css,/\.lobby-weekly-entry\s*\{[^}]*flex-direction:column/);

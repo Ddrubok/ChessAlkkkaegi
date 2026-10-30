@@ -1,0 +1,20 @@
+# Each mutant is a plausible regression in the source lifecycle.
+mutation failed reset starts a new run
+-   if s.phase == .menu && resetSucceeds then
++   if s.phase == .menu then
+
+mutation restart retains old clear order
+-     { s with stageNumber := 1, lastClearedStage := 0,
++     { s with stageNumber := 1, lastClearedStage := s.lastClearedStage,
+
+mutation draw credits an extra point
+-            points := s.points + payout, paid := payout, phase := .terminal }
++            points := s.points + payout, paid := payout + 1, phase := .terminal }
+
+mutation repeat callback credits again
+-   if s.phase == .playing then settleStageRunPoints s else s
++   if s.phase == .playing || s.phase == .terminal then settleStageRunPoints s else s
+
+mutation resumed start receives earlier stage credit
+-     computeStageRunPayout (s.startedAtStage - 1)
++     computeStageRunPayout 0

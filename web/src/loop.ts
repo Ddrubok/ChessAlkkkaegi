@@ -27,6 +27,7 @@ import {
   type SceneRuntime,
 } from "./scene";
 import { playSoundEffect, scanLivePieceHitSounds } from "./sound";
+import { createTurnClock } from "./turn-clock";
 import {
   verifyTuningAfterStep,
   type TuningRuntime,
@@ -247,6 +248,13 @@ export function startGameLoop(
 
   }
   let lastFrameTime: number | null = null;
+  const turnClock = createTurnClock();
+  const updateFrameCallbacks = (now: number, physicsFrameDelta: number): void => {
+    const turnKey = `${turnRuntime.turnResetSerial}:${turnRuntime.turnNumber}:${turnRuntime.currentSide}`;
+    const turnElapsed = turnClock(now, turnKey, turnRuntime.phase === "ready");
+    // Online timeouts use real elapsed time. Physics and local modes retain their bounded delta.
+    updateOnlineRuntime(now, gameModeRuntime.mode === "online" ? turnElapsed : physicsFrameDelta);
+  };
   let accumulator = 0;
   let elapsedSimulatedSeconds = 0;
   let droppedSimulatedSeconds = 0;
@@ -326,7 +334,7 @@ export function startGameLoop(
   }
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      // 백그라운드 체류 시간은 플레이 시간이 아니므로 복귀 뒤 첫 프레임을 새 워밍업 기준으로 삼는다.
+      // 복귀 뒤 물리 시간 빚은 버린다. 온라인 턴 시계는 별도 벽시계를 사용한다.
       lastFrameTime = null;
       accumulator = 0;
       fpsFrameCount = 0;
@@ -344,7 +352,7 @@ export function startGameLoop(
       );
       updateTurnCamera(turnRuntime, now);
       updateAiRuntime(aiRuntime, now);
-      updateOnlineRuntime(now, 0);
+      updateFrameCallbacks(now, 0);
       updateInputRuntime(inputRuntime, now);
       if (
         turnRuntime.phase !== "camera-rotating" &&
@@ -453,7 +461,7 @@ export function startGameLoop(
     );
     updateTurnCamera(turnRuntime, now);
     updateAiRuntime(aiRuntime, now);
-    updateOnlineRuntime(now, frameDelta);
+    updateFrameCallbacks(now, frameDelta);
     updateInputRuntime(inputRuntime, now);
     if (
       turnRuntime.phase !== "camera-rotating" &&

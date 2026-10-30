@@ -15,6 +15,7 @@ export interface TurnHudOptions {
   getGameMode: () => string;
   getMySide: () => PieceSide | null;
   isMenuVisible?: () => boolean;
+  isOnlineReady?: () => boolean;
   onTimeoutLaunch?: () => void;
   getTrackedObjective?: () => string | null;
 }
@@ -130,24 +131,31 @@ export function createTurnHud(
   let remainingSeconds = TURN_TIME_LIMIT_SECONDS;
   let lastSide: PieceSide | null = null;
   let timeoutTriggered = false;
+  let suspended = false;
 
   // A new board can start on the same side as the previous game.
   const reset = (): void => {
     remainingSeconds = TURN_TIME_LIMIT_SECONDS;
     lastSide = null;
     timeoutTriggered = false;
+    suspended = false;
   };
 
   const update = (_now: number, frameDelta: number): void => {
+    const gameMode = options.getGameMode();
     // 경기 종료 또는 메인 메뉴가 열려있는 경우 숨김
-    if (turnRuntime.phase === "match-over" || (options.isMenuVisible && options.isMenuVisible())) {
+    if (turnRuntime.phase === "match-over" || options.isMenuVisible?.() ||
+      (gameMode === "online" && options.isOnlineReady?.() === false)) {
+      suspended = true;
       container.style.display = "none";
       objectiveBadge.hidden = true;
       if (objectiveBadge.parentElement?.matches(".puzzle-ui-mastery-slot")) objectiveBadge.parentElement.hidden = true;
       return;
     }
+    // Waiting for connection/menu dismissal must not spend the resumed turn.
+    if (suspended) frameDelta = 0;
+    suspended = false;
     container.style.display = "flex";
-    const gameMode = options.getGameMode();
     const isPuzzle = gameMode === "puzzle";
     const objectiveHost = isPuzzle ? document.querySelector<HTMLElement>(".puzzle-ui-overlay[data-screen=\"playing\"] [data-mastery-slot]") : null;
     const desiredObjectiveHost = objectiveHost ?? container;

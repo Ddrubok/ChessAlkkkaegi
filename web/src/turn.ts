@@ -154,6 +154,8 @@ export interface TurnRuntime {
   onPiecePromoted: ((pieceId: string, newType: PieceType) => void) | null;
   // 총 완료된 턴 횟수
   turnNumber: number;
+  // 새 보드가 같은 진영·턴 번호로 시작해도 벽시계 시간을 이어받지 않도록 한다.
+  turnResetSerial: number;
   // 순차 처리용 승급 대기 큐
   promotionQueue: string[];
   // 체스 보드 셀 크기
@@ -462,6 +464,7 @@ export function createTurnRuntime(
     onPromotionReady: null,
     onPiecePromoted: null,
     turnNumber: 0,
+    turnResetSerial: 0,
     promotionQueue: [],
     cellSize:
       cellSize ??
@@ -1258,6 +1261,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.pendingPromotionPawns.clear();
   runtime.promotionQueue = [];
   runtime.turnNumber = 0;
+  runtime.turnResetSerial += 1;
   runtime.kingSpecialUsed = { white: false, black: false };
   runtime.kingSwapUsed = { white: false, black: false };
   runtime.kingDefenseActive = { white: false, black: false };

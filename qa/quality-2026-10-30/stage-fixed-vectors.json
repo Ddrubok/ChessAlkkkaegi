@@ -1,0 +1,332 @@
+[
+  {
+    "start": 1,
+    "drawAt": 1,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 2,
+    "payout": 1,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 3,
+    "payout": 3,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 4,
+    "payout": 6,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 5,
+    "payout": 10,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 6,
+    "payout": 15,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 7,
+    "payout": 21,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 8,
+    "payout": 28,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 9,
+    "payout": 36,
+    "nextAccepted": true
+  },
+  {
+    "start": 1,
+    "drawAt": 10,
+    "payout": 45,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 2,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 3,
+    "payout": 2,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 4,
+    "payout": 5,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 5,
+    "payout": 9,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 6,
+    "payout": 14,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 7,
+    "payout": 20,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 8,
+    "payout": 27,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 9,
+    "payout": 35,
+    "nextAccepted": true
+  },
+  {
+    "start": 2,
+    "drawAt": 10,
+    "payout": 44,
+    "nextAccepted": true
+  },
+  {
+    "start": 3,
+    "drawAt": 3,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 3,
+    "drawAt": 4,
+    "payout": 3,
+    "nextAccepted": true
+  },
+  {
+    "start": 3,
+    "drawAt": 5,
+    "payout": 7,
+    "nextAccepted": true
+  },
+  {
+    "start": 3,
+    "drawAt": 6,
+    "payout": 12,
+    "nextAccepted": true
+  },
+  {
+    "start": 3,
+    "drawAt": 7,
+    "payout": 18,
+    "nextAccepted": true
+  },
+  {
+    "start": 3,
+    "drawAt": 8,
+    "payout": 25,
+    "nextAccepted": true
+  },
+  {
+    "start": 3,
+    "drawAt": 9,
+    "payout": 33,
+    "nextAccepted": true
+  },
+  {
+    "start": 3,
+    "drawAt": 10,
+    "payout": 42,
+    "nextAccepted": true
+  },
+  {
+    "start": 4,
+    "drawAt": 4,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 4,
+    "drawAt": 5,
+    "payout": 4,
+    "nextAccepted": true
+  },
+  {
+    "start": 4,
+    "drawAt": 6,
+    "payout": 9,
+    "nextAccepted": true
+  },
+  {
+    "start": 4,
+    "drawAt": 7,
+    "payout": 15,
+    "nextAccepted": true
+  },
+  {
+    "start": 4,
+    "drawAt": 8,
+    "payout": 22,
+    "nextAccepted": true
+  },
+  {
+    "start": 4,
+    "drawAt": 9,
+    "payout": 30,
+    "nextAccepted": true
+  },
+  {
+    "start": 4,
+    "drawAt": 10,
+    "payout": 39,
+    "nextAccepted": true
+  },
+  {
+    "start": 5,
+    "drawAt": 5,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 5,
+    "drawAt": 6,
+    "payout": 5,
+    "nextAccepted": true
+  },
+  {
+    "start": 5,
+    "drawAt": 7,
+    "payout": 11,
+    "nextAccepted": true
+  },
+  {
+    "start": 5,
+    "drawAt": 8,
+    "payout": 18,
+    "nextAccepted": true
+  },
+  {
+    "start": 5,
+    "drawAt": 9,
+    "payout": 26,
+    "nextAccepted": true
+  },
+  {
+    "start": 5,
+    "drawAt": 10,
+    "payout": 35,
+    "nextAccepted": true
+  },
+  {
+    "start": 6,
+    "drawAt": 6,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 6,
+    "drawAt": 7,
+    "payout": 6,
+    "nextAccepted": true
+  },
+  {
+    "start": 6,
+    "drawAt": 8,
+    "payout": 13,
+    "nextAccepted": true
+  },
+  {
+    "start": 6,
+    "drawAt": 9,
+    "payout": 21,
+    "nextAccepted": true
+  },
+  {
+    "start": 6,
+    "drawAt": 10,
+    "payout": 30,
+    "nextAccepted": true
+  },
+  {
+    "start": 7,
+    "drawAt": 7,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 7,
+    "drawAt": 8,
+    "payout": 7,
+    "nextAccepted": true
+  },
+  {
+    "start": 7,
+    "drawAt": 9,
+    "payout": 15,
+    "nextAccepted": true
+  },
+  {
+    "start": 7,
+    "drawAt": 10,
+    "payout": 24,
+    "nextAccepted": true
+  },
+  {
+    "start": 8,
+    "drawAt": 8,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 8,
+    "drawAt": 9,
+    "payout": 8,
+    "nextAccepted": true
+  },
+  {
+    "start": 8,
+    "drawAt": 10,
+    "payout": 17,
+    "nextAccepted": true
+  },
+  {
+    "start": 9,
+    "drawAt": 9,
+    "payout": 0,
+    "nextAccepted": true
+  },
+  {
+    "start": 9,
+    "drawAt": 10,
+    "payout": 9,
+    "nextAccepted": true
+  },
+  {
+    "start": 10,
+    "drawAt": 10,
+    "payout": 0,
+    "nextAccepted": true
+  }
+]

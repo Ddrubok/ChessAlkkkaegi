@@ -7,6 +7,16 @@ export function isBasicTutorialCompleted(value: string | null): boolean {
   return value === "true";
 }
 
+export function shouldStartFirstTutorial(input: {
+  tutorialHistory: string | null;
+  maxClearedStage: number;
+  hasPlayerProfile: boolean;
+  hasLaunchInvite: boolean;
+}): boolean {
+  return !input.hasLaunchInvite && !input.hasPlayerProfile &&
+    input.tutorialHistory === null && input.maxClearedStage === 0;
+}
+
 export function pickLobbyRecommendation(input: {
   basicTutorialCompleted: boolean;
   maxClearedStage: number;
