@@ -1,0 +1,4 @@
+• Premiers pas plus clairs : accès direct à l'entraînement et informations de partie plus lisibles sur les petits écrans.
+• Redémarrage des niveaux et annulation de la recherche d'adversaire plus fiables.
+• En partie amicale, abandonner une manche ou quitter la salle est plus clair, avec une revanche plus simple.
+• Les tutoriels de base et avancé rapportent chacun 100 P à leur première réussite. Les refaire ne donne pas de points supplémentaires.

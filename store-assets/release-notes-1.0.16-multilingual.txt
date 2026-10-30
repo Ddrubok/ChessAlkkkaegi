@@ -1,0 +1,27 @@
+<ko-KR>
+• 첫 플레이 안내를 더 쉽게 하고, 작은 화면에서도 대국 정보를 보기 좋게 다듬었습니다.
+• 스테이지 다시 시작과 온라인 매칭 취소를 더 안정적으로 처리합니다.
+• 친선전에서 이번 판 기권과 방 나가기를 명확히 구분하고 재대결 흐름을 개선했습니다.
+• 기초·심화 튜토리얼은 각각 첫 완료 시 100P를 받습니다. 다시 완료해도 포인트가 추가되지 않습니다.
+</ko-KR>
+
+<en-US>
+• First play is clearer, with a quicker path into practice and more readable match info on small screens.
+• Stage restarts and online matchmaking cancellation are more reliable.
+• Friendly matches have clearer forfeit and leave choices, plus an easier rematch flow.
+• Earn 100P the first time you complete the Basic tutorial and 100P for Advanced. Replays award no extra points.
+</en-US>
+
+<ja-JP>
+• 初回プレイは練習に入りやすくなり、小さな画面でも対局情報を見やすくしました。
+• ステージの再挑戦とオンラインマッチングのキャンセルを安定させました。
+• フレンド対局で投了と退出をわかりやすく分け、再戦しやすくしました。
+• 基礎・応用チュートリアルは、それぞれ初回クリア時に100P獲得できます。再挑戦で追加ポイントは入りません。
+</ja-JP>
+
+<fr-FR>
+• Premiers pas plus clairs : accès direct à l'entraînement et informations de partie plus lisibles sur les petits écrans.
+• Redémarrage des niveaux et annulation de la recherche d'adversaire plus fiables.
+• En partie amicale, abandonner une manche ou quitter la salle est plus clair, avec une revanche plus simple.
+• Les tutoriels de base et avancé rapportent chacun 100 P à leur première réussite. Les refaire ne donne pas de points supplémentaires.
+</fr-FR>
