@@ -24,7 +24,7 @@ try {
  await import('./headless-browser-env.mjs');
  const {Vector3}=await import('three');
  const {startLaunchPulse,updateLaunchPulses}=await vite.ssrLoadModule('/src/aim.ts');
- const mesh={scale:new Vector3(2,2,2)},runtime={sceneRuntime:{pieceMeshes:new Map([['p',mesh]])},pulses:new Map()};
+ const mesh={scale:new Vector3(2,2,2)},runtime={sceneRuntime:{pieceMeshes:new Map([['p',mesh]])},pulses:new Map(),pendingLaunchFeedback:null,launchRestore:null};
  startLaunchPulse(runtime,'p');const started=runtime.pulses.get('p').startedAt;
  updateLaunchPulses(runtime,started+60);assert.ok(Math.abs(mesh.scale.x-2.12)<1e-6);
  updateLaunchPulses(runtime,started+121);assert.equal(mesh.scale.x,2);assert.equal(runtime.pulses.size,0);

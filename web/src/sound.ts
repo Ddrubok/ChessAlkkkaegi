@@ -1,6 +1,5 @@
 import {
   SOUND_BGM_VOLUME,
-  SOUND_HIT_GLOBAL_COOLDOWN_MS,
   SOUND_HIT_MIN_RELATIVE_SPEED,
   SOUND_HIT_PAIR_COOLDOWN_MS,
   SOUND_SFX_VOLUME,
@@ -25,22 +24,29 @@ type CollisionSoundEffectId =
   | "iron";
 
 interface PowerThresholdState {
-  // 10%를 아래에서 위로 지날 때 다시 한 번 재생할 수 있는지 나타낸다.
-  power10Armed: boolean;
-  // 50%를 아래에서 위로 지날 때 다시 한 번 재생할 수 있는지 나타낸다.
-  power50Armed: boolean;
-  // 90%를 아래에서 위로 지날 때 다시 한 번 재생할 수 있는지 나타낸다.
-  power90Armed: boolean;
+  limit: number;
+  overdriveArmed: boolean;
+  maxArmed: boolean;
+  lastPower: number;
+  tension?: { oscillator: OscillatorNode; gain: GainNode; timer: ReturnType<typeof setTimeout> | null };
 }
 
 interface PieceHitSoundState {
-  // 직전 fixed step에서 실제 solver contact 중이던 말·표면 쌍 키다.
   touchingPairs: Set<string>;
-  // 같은 쌍의 빠른 재접촉음을 제한하는 마지막 재생 실제 시각이다.
   lastPlayedAtByPair: Map<string, number>;
-  // 여러 쌍의 동시 충돌음을 하나로 제한하는 마지막 전체 재생 실제 시각이다.
-  lastGlobalPlayAt: number;
+  preStep: Map<number, BodyMotion>;
+  candidates: ImpactCandidate[];
+  primed: boolean;
 }
+
+type Vec3 = { x: number; y: number; z: number };
+type BodyMotion = { position: Vec3; linear: Vec3; angular: Vec3 };
+export type ImpactFeedbackEvent = { pairKey: string; point: Vec3; direction: Vec3; strength: number };
+type ImpactCandidate = { event: ImpactFeedbackEvent; soundId: CollisionSoundEffectId; score: number; now: number; order: number };
+
+const hitState: PieceHitSoundState = {
+  touchingPairs: new Set(), lastPlayedAtByPair: new Map(), preStep: new Map(), candidates: [], primed: false,
+};
 
 interface SoundRuntime {
   // 저지연 효과음을 디코딩하고 재생하는 브라우저 오디오 컨텍스트다.
@@ -60,6 +66,9 @@ interface SoundRuntime {
   powerThresholds: PowerThresholdState;
   // live fixed step에서만 갱신하는 말·말과 말·맵 충돌음 접촉·제한 상태다.
   pieceHits: PieceHitSoundState;
+  duckUntil: number;
+  ringOutVoices: number;
+  synthSources: Set<OscillatorNode>;
 }
 
 // GitHub Pages 하위 경로 배포에서도 깨지지 않도록 에셋 로더와 같은 BASE_URL 기준으로 주소를 만든다.
@@ -197,6 +206,8 @@ async function syncSoundPlayback(runtime: SoundRuntime): Promise<void> {
     runtime.bgm.pause();
     for (const source of runtime.sources) source.stop();
     runtime.sources.clear();
+    for (const source of runtime.synthSources) source.stop();
+    runtime.synthSources.clear();
     if (runtime.context.state === "running") await runtime.context.suspend().catch(() => {});
     return;
   }
@@ -215,8 +226,12 @@ async function syncSoundPlayback(runtime: SoundRuntime): Promise<void> {
 export function applySoundSettings(): void {
   const runtime = soundRuntime;
   if (runtime === null) return;
+  if (!canPlaySound() || currentSoundSettings.sfxVolume === 0 || currentSoundSettings.masterVolume === 0) {
+    resetAimPowerSounds();
+    runtime.duckUntil = 0;
+  }
   const master = canPlaySound() ? currentSoundSettings.masterVolume : 0;
-  runtime.bgm.volume = Math.max(0, Math.min(1, SOUND_BGM_VOLUME * master * currentSoundSettings.bgmVolume));
+  runtime.bgm.volume = Math.max(0, Math.min(1, SOUND_BGM_VOLUME * master * currentSoundSettings.bgmVolume * (performance.now() < runtime.duckUntil ? 0.708 : 1)));
   runtime.sfxGain.gain.value = Math.max(0, Math.min(1, SOUND_SFX_VOLUME * master * currentSoundSettings.sfxVolume));
   void syncSoundPlayback(runtime);
 }
@@ -224,7 +239,7 @@ export function applySoundSettings(): void {
 /**
  * 준비된 효과음 버퍼를 독립 소스로 재생해 겹치는 UI 반응도 서로 끊지 않게 한다.
  */
-export function playSoundEffect(id: SoundEffectId): void {
+export function playSoundEffect(id: SoundEffectId, volume = 1, pitch = 1): void {
   const runtime = soundRuntime;
   if (
     runtime === null ||
@@ -241,9 +256,13 @@ export function playSoundEffect(id: SoundEffectId): void {
   try {
     const source = runtime.context.createBufferSource();
     source.buffer = buffer;
-    source.connect(runtime.sfxGain);
+    const gain = runtime.context.createGain();
+    gain.gain.value = Math.min(1, Math.max(0, volume));
+    source.playbackRate.value = pitch;
+    source.connect(gain);
+    gain.connect(runtime.sfxGain);
     runtime.sources.add(source);
-    source.onended = () => { runtime.sources.delete(source); source.disconnect(); };
+    source.onended = () => { runtime.sources.delete(source); source.disconnect(); gain.disconnect(); };
     source.start();
   } catch (error: unknown) {
     warnSoundOnce(
@@ -290,16 +309,11 @@ export function initializeSound(): void {
     sources: new Set(),
     sfxGain,
     warningKeys: new Set(),
-    powerThresholds: {
-      power10Armed: true,
-      power50Armed: true,
-      power90Armed: true,
-    },
-    pieceHits: {
-      touchingPairs: new Set(),
-      lastPlayedAtByPair: new Map(),
-      lastGlobalPlayAt: Number.NEGATIVE_INFINITY,
-    },
+    powerThresholds: { limit: 1, overdriveArmed: true, maxArmed: true, lastPower: 0 },
+    pieceHits: hitState,
+    duckUntil: 0,
+    ringOutVoices: 0,
+    synthSources: new Set(),
   };
   soundRuntime = runtime;
   // Reconcile late suspend/resume completions against the latest mute/visibility state.
@@ -339,288 +353,224 @@ export function playPieceClickSound(): void {
   playSoundEffect("button");
 }
 
-/**
- * 새 로컬 드래그가 시작되거나 끝날 때 세 임계값을 모두 다시 무장한다.
- */
+/** A new gesture, cap change, or cancellation clears the live tension voice. */
 export function resetAimPowerSounds(): void {
-  const thresholds = soundRuntime?.powerThresholds;
-  if (thresholds === undefined) {
-    return;
+  const state = soundRuntime?.powerThresholds;
+  if (!state) return;
+  if (state.tension) {
+    clearTimeout(state.tension.timer ?? undefined);
+    state.tension.gain.gain.setTargetAtTime(0, soundRuntime!.context.currentTime, 0.015);
+    state.tension.oscillator.stop(soundRuntime!.context.currentTime + 0.08);
+    state.tension = undefined;
   }
-  thresholds.power10Armed = true;
-  thresholds.power50Armed = true;
-  thresholds.power90Armed = true;
+  state.overdriveArmed = state.maxArmed = true;
+  state.lastPower = 0;
 }
 
-/**
- * 한 갱신에서는 가장 높은 단계음만 재생하고 3% 아래로 내려간 뒤 재무장한다.
- */
-export function updateAimPowerSounds(normalizedPower: number): void {
-  const thresholds = soundRuntime?.powerThresholds;
-  if (
-    thresholds === undefined ||
-    !Number.isFinite(normalizedPower)
-  ) {
+/** Absolute 0..1.5 power, with the actual local cap supplied by the caller. */
+export function updateAimPowerSounds(normalizedPower: number, maxPower = 1): void {
+  const runtime = soundRuntime;
+  const state = runtime?.powerThresholds;
+  if (!runtime || !state || !Number.isFinite(normalizedPower) || !Number.isFinite(maxPower)) return;
+  const limit = Math.min(1.5, Math.max(0, maxPower));
+  if (limit !== state.limit) { resetAimPowerSounds(); state.limit = limit; }
+  const power = Math.min(limit, Math.max(0, normalizedPower));
+  const changed = Math.abs(power - state.lastPower) > 0.002;
+  state.lastPower = power;
+  if (!canPlaySound() || !runtime.unlocked || runtime.context.state !== "running" || runtime.sfxGain.gain.value === 0) {
+    resetAimPowerSounds();
     return;
   }
-  const clampedPower = Math.min(Math.max(normalizedPower, 0), 1);
-  const definitions = [
-    ["power10Armed", 0.1, "power10"],
-    ["power50Armed", 0.5, "power50"],
-    ["power90Armed", 0.9, "power90"],
-  ] as const;
-  let cue: SoundEffectId | undefined;
-  for (const [armedKey, threshold, soundId] of definitions) {
-    if (clampedPower < threshold - 0.03) {
-      thresholds[armedKey] = true;
-    } else if (clampedPower >= threshold && thresholds[armedKey]) {
-      thresholds[armedKey] = false;
-      cue = soundId;
+  if (changed && power > 0.01 && runtime.context.createOscillator) {
+    if (!state.tension && runtime.synthSources.size < 4) {
+      const oscillator = runtime.context.createOscillator();
+      const gain = runtime.context.createGain();
+      oscillator.type = "triangle";
+      runtime.synthSources.add(oscillator);
+      oscillator.onended = () => { runtime.synthSources.delete(oscillator); oscillator.disconnect(); gain.disconnect(); };
+      gain.gain.value = 0;
+      oscillator.connect(gain);
+      gain.connect(runtime.sfxGain);
+      oscillator.start();
+      state.tension = { oscillator, gain, timer: null };
+    }
+    const voice = state.tension;
+    if (voice) {
+      if (voice.timer) clearTimeout(voice.timer);
+      const time = runtime.context.currentTime;
+      voice.oscillator.frequency.setTargetAtTime(135 + 115 * power / 1.5, time, 0.015);
+      voice.gain.gain.setTargetAtTime(0.035, time, 0.012);
+      voice.timer = setTimeout(() => {
+        voice.gain.gain.setTargetAtTime(0, runtime.context.currentTime, 0.03);
+        voice.oscillator.stop(runtime.context.currentTime + 0.12);
+        if (state.tension === voice) state.tension = undefined;
+        voice.timer = null;
+      }, 75);
     }
   }
-  if (cue) playSoundEffect(cue);
+  if (power < 1 - 0.03) state.overdriveArmed = true;
+  if (power < limit - 0.03) state.maxArmed = true;
+  let cue: SoundEffectId | undefined;
+  if (limit > 1 && power > 1 && state.overdriveArmed) {
+    state.overdriveArmed = false;
+    cue = "power50";
+  }
+  if (power >= limit && state.maxArmed && limit > 0) {
+    state.maxArmed = false;
+    cue = "power90";
+  }
+  if (cue) playSoundEffect(cue, 0.55);
 }
 
-/**
- * 새 보드의 사전 정착 접촉이 live 충돌로 이어지지 않도록 접촉 이력만 초기화한다.
- */
+/** Confirmed ring-out only; the caller determines whose piece left the board. */
+export function playRingOutSound(isOwn: boolean): void {
+  const runtime = soundRuntime;
+  if (!runtime || !runtime.unlocked || !canPlaySound() || runtime.sfxGain.gain.value === 0 ||
+      runtime.context.state !== "running" || !runtime.context.createOscillator || runtime.ringOutVoices >= 2) return;
+  const oscillator = runtime.context.createOscillator();
+  const gain = runtime.context.createGain();
+  const now = runtime.context.currentTime;
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(isOwn ? 330 : 420, now);
+  oscillator.frequency.exponentialRampToValueAtTime(isOwn ? 245 : 525, now + 0.14);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.055, now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.19);
+  oscillator.connect(gain);
+  gain.connect(runtime.sfxGain);
+  runtime.ringOutVoices += 1;
+  runtime.synthSources.add(oscillator);
+  oscillator.onended = () => { runtime.ringOutVoices -= 1; runtime.synthSources.delete(oscillator); oscillator.disconnect(); gain.disconnect(); };
+  oscillator.start(now);
+  oscillator.stop(now + 0.2);
+}
+
 export function resetPieceHitSoundTracking(): void {
-  const hitState = soundRuntime?.pieceHits;
-  if (hitState === undefined) {
-    return;
-  }
   hitState.touchingPairs.clear();
   hitState.lastPlayedAtByPair.clear();
-  hitState.lastGlobalPlayAt = Number.NEGATIVE_INFINITY;
+  hitState.preStep.clear();
+  hitState.candidates.length = 0;
+  hitState.primed = false;
 }
 
-/**
- * 두 콜라이더 사이에 실제 solver contact가 하나라도 있는지 상태를 바꾸지 않고 조회한다.
- */
-function hasSolverContact(
-  physicsRuntime: PhysicsRuntime,
-  leftCollider: PhysicsRuntime["boardCollider"],
-  rightCollider: PhysicsRuntime["boardCollider"],
-): boolean {
-  let touching = false;
-  physicsRuntime.world.contactPair(
-    leftCollider,
-    rightCollider,
-    (manifold) => {
-      if (manifold.numSolverContacts() > 0) {
-        touching = true;
-      }
-    },
-  );
-  return touching;
+function motionAt(body: PhysicsRuntime["boardBody"]): BodyMotion {
+  return { position: body.worldCom(), linear: body.linvel(), angular: body.angvel() };
 }
 
-/**
- * live fixed step 직후 말·말과 말·맵 접촉을 읽기만 해 표면에 맞는 가장 강한 새 충돌음을 재생한다.
- */
-export function scanLivePieceHitSounds(
-  physicsRuntime: PhysicsRuntime,
-  now: number,
-): void {
-  const runtime = soundRuntime;
-  if (runtime === null || !Number.isFinite(now)) {
-    return;
-  }
-  const pieces = [...physicsRuntime.pieces.values()].sort(
-    (left, right) =>
-      left.instance.id < right.instance.id
-        ? -1
-        : left.instance.id > right.instance.id
-          ? 1
-          : 0,
-  );
-  const currentTouchingPairs = new Set<string>();
-  const candidateState: {
-    // 중첩 접촉 등록 함수가 갱신해도 마지막 선택부에서 타입을 정확히 좁히는 공유 상자다.
-    strongest:
-      | {
-        // 충돌 제한과 추적에 쓰는 결정적 말·표면 쌍 키다.
-        pairKey: string;
-        // 같은 step의 여러 접촉 중 실제로 재생할 가장 큰 상대 선속도다.
-        relativeSpeed: number;
-        // 말·말, 목재 벽, 석재 벽, 철제 장애물을 구분하는 효과음이다.
-        soundId: CollisionSoundEffectId;
-      }
-      | null;
-  } = { strongest: null };
-  const considerContact = (
-    pairKey: string,
-    relativeSpeed: number,
-    soundId: CollisionSoundEffectId,
-  ): void => {
-    currentTouchingPairs.add(pairKey);
-    if (runtime.pieceHits.touchingPairs.has(pairKey)) {
-      return;
-    }
-    const lastPairPlay =
-      runtime.pieceHits.lastPlayedAtByPair.get(pairKey) ??
-      Number.NEGATIVE_INFINITY;
-    if (
-      relativeSpeed < SOUND_HIT_MIN_RELATIVE_SPEED ||
-      now - lastPairPlay < SOUND_HIT_PAIR_COOLDOWN_MS
-    ) {
-      return;
-    }
-    if (
-      candidateState.strongest === null ||
-      relativeSpeed > candidateState.strongest.relativeSpeed
-    ) {
-      candidateState.strongest = {
-        pairKey,
-        relativeSpeed,
-        soundId,
-      };
-    }
+/** Called immediately before each live world.step(), independently of audio state. */
+export function capturePreStepImpactState(physicsRuntime: PhysicsRuntime): void {
+  hitState.preStep.clear();
+  const add = (body: PhysicsRuntime["boardBody"]) => hitState.preStep.set(body.handle, motionAt(body));
+  for (const piece of physicsRuntime.pieces.values()) add(piece.body);
+  for (const wall of physicsRuntime.breakableWalls.values()) add(wall.body);
+  for (const obstacle of physicsRuntime.pinballObstacles.values()) add(obstacle.body);
+  for (const object of physicsRuntime.hotseatMap?.dynamicObjects.values() ?? []) add(object.body);
+}
+
+function pointVelocity(motion: BodyMotion, point: Vec3): Vec3 {
+  const r = { x: point.x - motion.position.x, y: point.y - motion.position.y, z: point.z - motion.position.z };
+  const w = motion.angular;
+  return {
+    x: motion.linear.x + w.y * r.z - w.z * r.y,
+    y: motion.linear.y + w.z * r.x - w.x * r.z,
+    z: motion.linear.z + w.x * r.y - w.y * r.x,
   };
-
-  for (let leftIndex = 0; leftIndex < pieces.length; leftIndex += 1) {
-    const left = pieces[leftIndex];
-    for (
-      let rightIndex = leftIndex + 1;
-      rightIndex < pieces.length;
-      rightIndex += 1
-    ) {
-      const right = pieces[rightIndex];
-      if (
-        !hasSolverContact(
-          physicsRuntime,
-          left.collider,
-          right.collider,
-        )
-      ) {
-        continue;
-      }
-      const leftVelocity = left.body.linvel();
-      const rightVelocity = right.body.linvel();
-      const isDefendedKing =
-        (left.instance.type === "King" && left.body.isFixed()) ||
-        (right.instance.type === "King" && right.body.isFixed());
-      considerContact(
-        `piece:${left.instance.id}|piece:${right.instance.id}`,
-        Math.hypot(
-          leftVelocity.x - rightVelocity.x,
-          leftVelocity.y - rightVelocity.y,
-          leftVelocity.z - rightVelocity.z,
-        ),
-        isDefendedKing ? "rock" : "hit",
-      );
-    }
-  }
-
-  const walls = [...physicsRuntime.breakableWalls.values()].sort(
-    (left, right) =>
-      left.definition.id < right.definition.id
-        ? -1
-        : left.definition.id > right.definition.id
-          ? 1
-          : 0,
-  );
-  for (const piece of pieces) {
-    const velocity = piece.body.linvel();
-    const speed = Math.hypot(
-      velocity.x,
-      velocity.y,
-      velocity.z,
-    );
-    for (const wall of walls) {
-      if (
-        !hasSolverContact(
-          physicsRuntime,
-          piece.collider,
-          wall.collider,
-        )
-      ) {
-        continue;
-      }
-      considerContact(
-        `piece:${piece.instance.id}|wall:${wall.definition.id}`,
-        speed,
-        wall.definition.variant === "breakable"
-          ? "wood"
-          : "rock",
-      );
-    }
-  }
-
-  const obstacles = [
-    ...physicsRuntime.pinballObstacles.values(),
-  ].sort((left, right) =>
-    left.definition.id < right.definition.id
-      ? -1
-      : left.definition.id > right.definition.id
-        ? 1
-        : 0,
-  );
-  for (const piece of pieces) {
-    const velocity = piece.body.linvel();
-    const speed = Math.hypot(
-      velocity.x,
-      velocity.y,
-      velocity.z,
-    );
-    for (const obstacle of obstacles) {
-      if (
-        !hasSolverContact(
-          physicsRuntime,
-          piece.collider,
-          obstacle.collider,
-        )
-      ) {
-        continue;
-      }
-      considerContact(
-        `piece:${piece.instance.id}|obstacle:${obstacle.definition.id}`,
-        speed,
-        "iron",
-      );
-    }
-  }
-
-  const mapObjects = [...physicsRuntime.hotseatMap?.dynamicObjects.values() ?? []];
-  for (const piece of pieces) {
-    for (const object of mapObjects) {
-      if (![object.collider, ...object.additionalColliders ?? []].some(collider => hasSolverContact(physicsRuntime, piece.collider, collider))) continue;
-      const first = piece.body.linvel();
-      const second = object.body.linvel();
-      considerContact(`piece:${piece.instance.id}|map:${object.definition.id}`,
-        Math.hypot(first.x - second.x, first.y - second.y, first.z - second.z), "wood");
-    }
-  }
-  for (let i = 0; i < mapObjects.length; i++) for (let j = i + 1; j < mapObjects.length; j++) {
-    const first = mapObjects[i];
-    const second = mapObjects[j];
-    if (![first.collider, ...first.additionalColliders ?? []].some(a =>
-      [second.collider, ...second.additionalColliders ?? []].some(b => hasSolverContact(physicsRuntime, a, b)))) continue;
-    const a = first.body.linvel();
-    const b = second.body.linvel();
-    considerContact(`map:${first.definition.id}|map:${second.definition.id}`,
-      Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z), "wood");
-  }
-  runtime.pieceHits.touchingPairs = currentTouchingPairs;
-  const strongestCandidate = candidateState.strongest;
-  if (
-    strongestCandidate === null ||
-    now - runtime.pieceHits.lastGlobalPlayAt <
-      SOUND_HIT_GLOBAL_COOLDOWN_MS
-  ) {
-    return;
-  }
-  runtime.pieceHits.lastGlobalPlayAt = now;
-  runtime.pieceHits.lastPlayedAtByPair.set(
-    strongestCandidate.pairKey,
-    now,
-  );
-  playSoundEffect(strongestCandidate.soundId);
 }
 
-/**
- * 소리 볼륨 조절 및 음소거 설정 팝업 모달을 띄운다.
- */
+/** Read only: gather real new solver contacts after one fixed step. */
+export function scanLivePieceHitSounds(physicsRuntime: PhysicsRuntime, now: number): void {
+  if (!Number.isFinite(now)) return;
+  const current = new Set<string>();
+  const pieces = [...physicsRuntime.pieces.values()];
+  const walls = [...physicsRuntime.breakableWalls.values()];
+  const obstacles = [...physicsRuntime.pinballObstacles.values()];
+  const objects = [...physicsRuntime.hotseatMap?.dynamicObjects.values() ?? []];
+  const inspect = (
+    key: string, first: PhysicsRuntime["boardBody"], second: PhysicsRuntime["boardBody"],
+    left: PhysicsRuntime["boardCollider"], right: PhysicsRuntime["boardCollider"],
+    soundId: CollisionSoundEffectId,
+  ) => {
+    physicsRuntime.world.contactPair(left, right, (manifold, flipped) => {
+      const count = manifold.numSolverContacts();
+      if (!count) return;
+      current.add(key);
+      if (!hitState.primed || hitState.touchingPairs.has(key) ||
+          now - (hitState.lastPlayedAtByPair.get(key) ?? -Infinity) < SOUND_HIT_PAIR_COOLDOWN_MS) return;
+      const beforeFirst = hitState.preStep.get(first.handle);
+      const beforeSecond = hitState.preStep.get(second.handle);
+      if (!beforeFirst || !beforeSecond) return;
+      let impulse = 0;
+      for (let i = 0; i < manifold.numContacts(); i++) impulse += Math.max(0, manifold.contactImpulse(i));
+      if (impulse <= 0) return;
+      const point = manifold.solverContactPoint(0);
+      const normal = manifold.normal();
+      if (flipped) { normal.x *= -1; normal.y *= -1; normal.z *= -1; }
+      const a = pointVelocity(beforeFirst, point);
+      const b = pointVelocity(beforeSecond, point);
+      const approaching = (a.x - b.x) * normal.x + (a.y - b.y) * normal.y + (a.z - b.z) * normal.z;
+      if (approaching < SOUND_HIT_MIN_RELATIVE_SPEED) return;
+      const firstMass = first.isFixed() ? Infinity : first.mass();
+      const secondMass = second.isFixed() ? Infinity : second.mass();
+      // Actual game pieces weigh about .027-.103; only guard near-zero custom bodies.
+      const mass = Math.max(0.01, Math.min(firstMass, secondMass));
+      const score = Math.min(1, Math.sqrt(Math.max(0, impulse / mass) * approaching) / 7);
+      if (score < 0.07) return;
+      const event: ImpactFeedbackEvent = {
+        pairKey: key, point: { x: point.x, y: point.y, z: point.z },
+        direction: { x: normal.x, y: normal.y, z: normal.z }, strength: score,
+      };
+      const existing = hitState.candidates.findIndex(candidate => candidate.event.pairKey === key);
+      if (existing >= 0) {
+        if (score > hitState.candidates[existing].score) hitState.candidates[existing] = {
+          event, soundId, score, now, order: hitState.candidates[existing].order,
+        };
+      } else hitState.candidates.push({ event, soundId, score, now, order: hitState.candidates.length });
+    });
+  };
+  for (let i = 0; i < pieces.length; i++) {
+    const a = pieces[i];
+    for (let j = i + 1; j < pieces.length; j++) {
+      const b = pieces[j];
+      inspect(`piece:${a.instance.id}|piece:${b.instance.id}`, a.body, b.body, a.collider, b.collider,
+        (a.instance.type === "King" && a.body.isFixed()) || (b.instance.type === "King" && b.body.isFixed()) ? "rock" : "hit");
+    }
+    for (const wall of walls) inspect(`piece:${a.instance.id}|wall:${wall.definition.id}`, a.body, wall.body,
+      a.collider, wall.collider, wall.definition.variant === "breakable" ? "wood" : "rock");
+    for (const obstacle of obstacles) inspect(`piece:${a.instance.id}|obstacle:${obstacle.definition.id}`, a.body,
+      obstacle.body, a.collider, obstacle.collider, "iron");
+    for (const object of objects) for (const collider of [object.collider, ...object.additionalColliders ?? []])
+      inspect(`piece:${a.instance.id}|map:${object.definition.id}`, a.body, object.body, a.collider, collider, "wood");
+  }
+  for (let i = 0; i < objects.length; i++) for (let j = i + 1; j < objects.length; j++) {
+    const a = objects[i], b = objects[j];
+    for (const left of [a.collider, ...a.additionalColliders ?? []])
+      for (const right of [b.collider, ...b.additionalColliders ?? []])
+        inspect(`map:${a.definition.id}|map:${b.definition.id}`, a.body, b.body, left, right, "wood");
+  }
+  hitState.touchingPairs = current;
+  hitState.primed = true;
+}
+
+/** One frame's at most two significant new impacts, returned in actual step order. */
+export function flushLiveImpactSounds(now: number): ImpactFeedbackEvent[] {
+  const candidates = hitState.candidates.splice(0);
+  if (!Number.isFinite(now)) return [];
+  const selected = candidates.sort((a, b) => b.score - a.score).slice(0, 2).sort((a, b) => a.order - b.order);
+  const runtime = soundRuntime;
+  for (const candidate of selected) {
+    hitState.lastPlayedAtByPair.set(candidate.event.pairKey, now);
+    if (runtime && runtime.sources.size < 8) {
+      playSoundEffect(candidate.soundId, Math.min(0.9, 0.22 + candidate.score * 0.68), 0.94 + candidate.score * 0.1);
+    }
+    if (runtime?.unlocked && runtime.context.state === "running" && runtime.sfxGain.gain.value > 0 &&
+        candidate.score >= 0.65 && canPlaySound() && runtime.duckUntil < performance.now()) {
+      runtime.duckUntil = performance.now() + 150;
+      applySoundSettings();
+      setTimeout(() => { if (runtime.duckUntil <= performance.now()) applySoundSettings(); }, 155);
+    }
+  }
+  return selected.map(candidate => candidate.event);
+}
 export function openSoundSettingsModal(parentContainer?: HTMLElement): void {
   const container = parentContainer ?? document.body;
   const existing = document.querySelector(".sound-settings-modal");

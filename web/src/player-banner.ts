@@ -48,6 +48,7 @@ export interface PlayerBannerState {
   loggedIn: boolean;
   opponentBannerTheme?: BannerAppearance;
   opponentCosmetics?: CosmeticLoadout;
+  remaining?: Record<PieceSide, number>;
 }
 
 export function getPlayerBannerModels(state: PlayerBannerState) {
@@ -135,11 +136,16 @@ export function createPlayerBanners(parent: HTMLElement, options: {
   const messages = new Map<string, { key: string; name: string }>();
   let last = '';
   let destroyed = false;
+  const lossUntil = { white: 0, black: 0 };
 
   const update = () => {
     if (destroyed) return;
     const state = options.getState();
     element.hidden = !state.visible || !['stage', 'online', 'hotseat'].includes(state.mode);
+    const models = getPlayerBannerModels(state);
+    for (const [view, model] of [[self, models.self], [opponent, models.opponent]] as const) {
+      view.card.classList.toggle('piece-loss', !element.hidden && performance.now() < lossUntil[model.side as PieceSide]);
+    }
     if (element.hidden) return;
 
     const key = `${state.profile?.id}:${state.opponent?.id}`;
@@ -181,10 +187,10 @@ export function createPlayerBanners(parent: HTMLElement, options: {
     if (signature === last) return;
     last = signature;
 
-    const models = getPlayerBannerModels(state);
     for (const [view, model] of [[self, models.self], [opponent, models.opponent]] as const) {
       const side = I18nManager.t(model.side === 'white' ? 'ingame.turn_white' : 'ingame.turn_black');
-      const label = [model.name, side, ...(model.bot ? [model.detail] : [])].join(' · ');
+      const count = state.remaining?.[model.side as PieceSide];
+      const label = [count === undefined ? '' : `${model.side === 'white' ? '♙' : '♟'} ${count}`, model.name, side, ...(model.bot ? [model.detail] : [])].filter(Boolean).join(' · ');
       view.compact.textContent = label;
       view.compact.title = label;
     }
@@ -192,20 +198,20 @@ export function createPlayerBanners(parent: HTMLElement, options: {
     // 내 배너 렌더링
     self.name.textContent = models.self.name;
     self.name.title = models.self.name;
-    self.detail.textContent = models.self.detail;
+    self.detail.textContent = [models.self.detail, state.remaining ? `${models.self.side === 'white' ? '♙' : '♟'} ${state.remaining[models.self.side as PieceSide]}` : ''].filter(Boolean).join(' · ');
     self.emblem.textContent = models.self.bot ? '♚' : models.self.side === 'white' ? '♙' : '♟';
     self.card.dataset.active = String(models.self.side === state.currentSide);
     updateCosmeticCard(self.cosmeticView, selfCosmetics);
-    self.card.setAttribute('aria-label', `${models.self.name} · ${models.self.detail}`);
+    self.card.setAttribute('aria-label', `${models.self.name} · ${self.detail.textContent}`);
 
     // 상대 배너 렌더링
     opponent.name.textContent = models.opponent.name;
     opponent.name.title = models.opponent.name;
-    opponent.detail.textContent = models.opponent.detail;
+    opponent.detail.textContent = [models.opponent.detail, state.remaining ? `${models.opponent.side === 'white' ? '♙' : '♟'} ${state.remaining[models.opponent.side as PieceSide]}` : ''].filter(Boolean).join(' · ');
     opponent.emblem.textContent = models.opponent.bot ? '♚' : models.opponent.side === 'white' ? '♙' : '♟';
     opponent.card.dataset.active = String(models.opponent.side === state.currentSide);
     updateCosmeticCard(opponent.cosmeticView, opponentCosmetics);
-    opponent.card.setAttribute('aria-label', `${models.opponent.name} · ${models.opponent.detail}`);
+    opponent.card.setAttribute('aria-label', `${models.opponent.name} · ${opponent.detail.textContent}`);
 
     // 친구 추가 버튼 및 상태
     add.hidden = !models.canAddFriend;
@@ -253,6 +259,8 @@ export function createPlayerBanners(parent: HTMLElement, options: {
   return {
     element,
     update,
+    pieceRemoved(side: PieceSide) { lossUntil[side] = performance.now() + 280; update(); },
+    resetFeedback() { lossUntil.white = 0; lossUntil.black = 0; update(); },
     destroy() {
       destroyed = true;
       unsubscribeTheme();
