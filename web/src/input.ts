@@ -24,7 +24,7 @@ import {
   isBishopPiece,
   selectAimPiece,
   setAimApplicationPoint,
-  startLaunchPulse,
+  prepareLaunchFeedback,
   updateAimPointer,
   updateDirectedAim,
   type AimRuntime,
@@ -1032,6 +1032,7 @@ export function isPointerOverElement(
 function cancelInteraction(
   runtime: InputRuntime,
   clearSelection: boolean,
+  preservePendingLaunch = false,
 ): void {
   endStrikePanelDrag(runtime);
   const captureElement = runtime.activeCaptureElement;
@@ -1043,7 +1044,7 @@ function cancelInteraction(
     runtime.cancelControl.classList.remove("is-hovered");
   }
   runtime.strategy.onAimCancel(runtime);
-  cancelAim(runtime.aimRuntime, clearSelection);
+  cancelAim(runtime.aimRuntime, clearSelection, preservePendingLaunch);
   clearStrikePreview(runtime.aimParametersRuntime);
   restoreHiddenPieceMeshes(
     runtime.sceneRuntime,
@@ -1168,8 +1169,8 @@ function commitActiveLaunch(runtime: InputRuntime): void {
   }
   if (outcome.accepted) {
     runtime.failureReason = null;
-    cancelInteraction(runtime, true);
-    startLaunchPulse(runtime.aimRuntime, request.pieceId);
+    prepareLaunchFeedback(runtime.aimRuntime, request.pieceId);
+    cancelInteraction(runtime, true, true);
     return;
   }
   const reason = outcome.reason ?? uiText("launchRejected");

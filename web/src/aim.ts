@@ -157,6 +157,14 @@ interface RenderPulse {
   startedAt: number;
 }
 
+interface LaunchBowstring {
+  pieceId: string;
+  firstAnchor: Vector3;
+  pullPoint: Vector3;
+  secondAnchor: Vector3;
+  startedAt?: number;
+}
+
 export interface AimRuntime {
   sceneRuntime: SceneRuntime;
   // 말의 자식이 아닌 월드 수평 선택 표시다.
@@ -191,6 +199,8 @@ export interface AimRuntime {
   applicationPoint: Vector3 | null;
   // 여러 프레임에 걸친 렌더 전용 발사 펄스를 개체별로 추적한다.
   pulses: Map<string, RenderPulse>;
+  pendingLaunchFeedback: LaunchBowstring | null;
+  launchRestore: LaunchBowstring | null;
 }
 
 // 선택 표시가 말과 함께 기울지 않도록 월드 장면에 놓는 얇은 수평 고리다.
@@ -198,6 +208,7 @@ const MARKER_GEOMETRY = new RingGeometry(0.23, 0.29, 48);
 
 // 발사 직후 물리 형상은 그대로 둔 채 렌더 메시만 짧게 강조하는 시간이다.
 const LAUNCH_PULSE_SECONDS = 0.12;
+const BOWSTRING_RESTORE_MS = 80;
 
 // 보드 아래나 말 뒤에서도 안내가 읽히되 주 패스보다 약하게 남는 보조 패스 불투명도다.
 const FAINT_GUIDE_OPACITY = 0.35;
@@ -1244,6 +1255,8 @@ export function createAimRuntime(
     activeAim: null,
     applicationPoint: null,
     pulses: new Map(),
+    pendingLaunchFeedback: null,
+    launchRestore: null,
   };
 }
 
@@ -1296,6 +1309,7 @@ export function applyPowerReadoutVisuals(
   normalizedPower: number,
   color: Color,
   isBishopSpin = false,
+  maxPower = 1,
 ): void {
   const percent = Math.round(normalizedPower * 100);
   powerReadout.style.color = color.getStyle();
@@ -1308,6 +1322,8 @@ export function applyPowerReadoutVisuals(
   } else {
     powerReadout.textContent = `${percent}%`;
   }
+  powerReadout.dataset.maxPower = `${Math.round(maxPower * 100)}%`;
+  powerReadout.dataset.baseReached = normalizedPower >= 1 ? "true" : "false";
 }
 
 /**
@@ -1327,6 +1343,9 @@ export function beginAim(
   isBishopOverride?: boolean,
 ): void {
   selectAimPiece(runtime, pieceId);
+  runtime.pendingLaunchFeedback = null;
+  runtime.launchRestore = null;
+  feedbackRuntimes.delete(runtime);
   const isKnight = isKnightOverride ?? isKnightPiece(pieceId);
   const isRook = isRookOverride ?? isRookPiece(pieceId);
   const isBishop = isBishopOverride ?? isBishopPiece(pieceId);
@@ -1363,6 +1382,8 @@ export function beginAim(
   setBowstringVisible(runtime, false);
   runtime.powerReadout.hidden = !showsPowerReadout;
   runtime.powerReadout.textContent = "0%";
+  runtime.powerReadout.dataset.maxPower = `${Math.round(getAimMaxPower(runtime.activeAim) * 100)}%`;
+  runtime.powerReadout.dataset.baseReached = "false";
   runtime.powerReadout.style.textShadow = "";
   runtime.powerReadout.style.transform = "translateX(-50%)";
   runtime.elevationGauge.hidden = showsPowerReadout;
@@ -1453,7 +1474,7 @@ export function updateDirectedAim(
     maxPower,
   );
   if (activeAim.tracksPowerSounds) {
-    updateAimPowerSounds(Math.min(activeAim.normalizedPower, 1.0));
+    updateAimPowerSounds(activeAim.normalizedPower, maxPower);
   }
   const isBishopSpin = Boolean(activeAim.isBishop && activeAim.hasCustomSpin);
   const color = computeAimColor(activeAim.normalizedPower, isBishopSpin);
@@ -1463,6 +1484,7 @@ export function updateDirectedAim(
       activeAim.normalizedPower,
       color,
       isBishopSpin,
+      maxPower,
     );
   }
   setAimGuideColor(runtime, color);
@@ -1488,7 +1510,7 @@ export function updateAimPointer(
   const dragLength = Math.hypot(deltaX, deltaY);
   activeAim.normalizedPower = Math.min(dragLength / MAX_DRAG_PIXELS, maxPower);
   if (activeAim.tracksPowerSounds) {
-    updateAimPowerSounds(Math.min(activeAim.normalizedPower, 1.0));
+    updateAimPowerSounds(activeAim.normalizedPower, maxPower);
   }
 
   // 화면 아래로 당기면 백 시점에서는 +z, 흑 시점에서는 -z로 발사되도록 카메라 forward의 부호를 유지한다.
@@ -1523,6 +1545,7 @@ export function updateAimPointer(
     activeAim.normalizedPower,
     color,
     isBishopSpin,
+    maxPower,
   );
   setAimGuideColor(runtime, color);
   setAimGuidesVisible(runtime, true);
@@ -1546,7 +1569,11 @@ export function setAimApplicationPoint(
 export function cancelAim(
   runtime: AimRuntime,
   clearSelection: boolean,
+  preservePendingLaunch = false,
 ): void {
+  if (!preservePendingLaunch) runtime.pendingLaunchFeedback = null;
+  runtime.launchRestore = null;
+  if (!preservePendingLaunch) feedbackRuntimes.delete(runtime);
   if (runtime.activeAim?.tracksPowerSounds === true) {
     resetAimPowerSounds();
   }
@@ -1571,6 +1598,12 @@ export function handleAimPieceRemoved(
   runtime: AimRuntime,
   pieceId: string,
 ): void {
+  if (runtime.pendingLaunchFeedback?.pieceId === pieceId) runtime.pendingLaunchFeedback = null;
+  if (runtime.launchRestore?.pieceId === pieceId) {
+    runtime.launchRestore = null;
+    setBowstringVisible(runtime, false);
+  }
+  if (runtime.pendingLaunchFeedback === null && runtime.launchRestore === null) feedbackRuntimes.delete(runtime);
   runtime.pulses.delete(pieceId);
   if (!runtime.pulses.size) pulseRuntimes.delete(runtime);
   if (
@@ -1579,6 +1612,43 @@ export function handleAimPieceRemoved(
   ) {
     cancelAim(runtime, true);
   }
+}
+
+/** Capture only an accepted local shot; cancelAim may hide the live guide afterward. */
+export function prepareLaunchFeedback(runtime: AimRuntime, pieceId: string): void {
+  runtime.pendingLaunchFeedback = null;
+  feedbackRuntimes.delete(runtime);
+  const aim = runtime.activeAim;
+  const point = runtime.applicationPoint;
+  const mesh = runtime.sceneRuntime.pieceMeshes.get(pieceId);
+  if (aim?.pieceId !== pieceId || aim.normalizedPower <= 0 || point === null || mesh === undefined) return;
+  const sideways = aim.direction.clone().cross(new Vector3(0, 1, 0));
+  if (sideways.lengthSq() < 1e-12) return;
+  sideways.normalize();
+  const radius = computePieceWorldBoundingSphere(mesh).radius;
+  runtime.pendingLaunchFeedback = {
+    pieceId,
+    firstAnchor: point.clone().addScaledVector(sideways, radius),
+    pullPoint: point.clone().addScaledVector(aim.direction, -aim.normalizedPower * BOWSTRING_MAX_PULL),
+    secondAnchor: point.clone().addScaledVector(sideways, -radius),
+  };
+  feedbackRuntimes.add(runtime);
+}
+
+/** Called only after applyPendingLaunchBeforeStep actually applies this shot. */
+export function confirmLaunchFeedback(runtime: AimRuntime, pieceId: string, now: number): void {
+  const pending = runtime.pendingLaunchFeedback;
+  runtime.pendingLaunchFeedback = null;
+  if (pending?.pieceId !== pieceId || isMotionReduced()) {
+    feedbackRuntimes.delete(runtime);
+    return;
+  }
+  runtime.launchRestore = { ...pending, startedAt: now };
+  setBowstringPoints(runtime.bowstring, pending.firstAnchor, pending.pullPoint, pending.secondAnchor);
+  setBowstringPoints(runtime.faintBowstring, pending.firstAnchor, pending.pullPoint, pending.secondAnchor);
+  runtime.bowPullMarker.position.copy(pending.pullPoint);
+  runtime.faintBowPullMarker.position.copy(pending.pullPoint);
+  setBowstringVisible(runtime, true);
 }
 
 /**
@@ -1606,14 +1676,22 @@ export function startLaunchPulse(
 }
 
 const pulseRuntimes = new Set<AimRuntime>();
-function clearLaunchMotion(runtime: AimRuntime): void {
+const feedbackRuntimes = new Set<AimRuntime>();
+export function clearLaunchMotion(runtime: AimRuntime): void {
+  runtime.pendingLaunchFeedback = null;
+  runtime.launchRestore = null;
+  if (runtime.activeAim === null) setBowstringVisible(runtime, false);
+  feedbackRuntimes.delete(runtime);
   for (const pulse of runtime.pulses.values()) pulse.mesh.scale.copy(pulse.baseScale);
   runtime.pulses.clear();
   pulseRuntimes.delete(runtime);
 }
-subscribeMotion(() => { if (isMotionReduced()) for (const runtime of pulseRuntimes) clearLaunchMotion(runtime); });
-if (typeof window !== 'undefined') window.addEventListener('pagehide', () => { for (const runtime of pulseRuntimes) clearLaunchMotion(runtime); });
-if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden) for (const runtime of pulseRuntimes) clearLaunchMotion(runtime); });
+function clearAllLaunchMotion(): void {
+  for (const runtime of new Set([...pulseRuntimes, ...feedbackRuntimes])) clearLaunchMotion(runtime);
+}
+subscribeMotion(() => { if (isMotionReduced()) clearAllLaunchMotion(); });
+if (typeof window !== 'undefined') window.addEventListener('pagehide', clearAllLaunchMotion);
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (document.hidden) clearAllLaunchMotion(); });
 
 /**
  * 발사 펄스의 화면 시간만 진행해 물리 step과 독립적으로 렌더 강조 배율을 갱신한다.
@@ -1623,6 +1701,22 @@ export function updateLaunchPulses(
   now: number,
 ): void {
   if (isMotionReduced()) { clearLaunchMotion(runtime); return; }
+  const restore = runtime.launchRestore;
+  if (restore !== null) {
+    const progress = Math.max(0, (now - (restore.startedAt ?? now)) / BOWSTRING_RESTORE_MS);
+    if (progress >= 1) {
+      runtime.launchRestore = null;
+      setBowstringVisible(runtime, false);
+      feedbackRuntimes.delete(runtime);
+    } else {
+      const midpoint = restore.firstAnchor.clone().add(restore.secondAnchor).multiplyScalar(0.5);
+      const pull = restore.pullPoint.clone().lerp(midpoint, progress);
+      setBowstringPoints(runtime.bowstring, restore.firstAnchor, pull, restore.secondAnchor);
+      setBowstringPoints(runtime.faintBowstring, restore.firstAnchor, pull, restore.secondAnchor);
+      runtime.bowPullMarker.position.copy(pull);
+      runtime.faintBowPullMarker.position.copy(pull);
+    }
+  }
   for (const [pieceId, pulse] of runtime.pulses) {
     const progress = Math.max(0,
       (now - pulse.startedAt) / 1000 / LAUNCH_PULSE_SECONDS);

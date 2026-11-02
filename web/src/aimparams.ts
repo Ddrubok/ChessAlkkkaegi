@@ -35,6 +35,7 @@ export interface AimParametersRuntime {
   // 슬라이더를 대체해 파생값과 실패 원인만 간결하게 보여 주는 상태 영역이다.
   root: HTMLElement;
   feedback: HTMLElement;
+  powerLimits: HTMLElement;
   error: HTMLElement;
   // 실제 적용점을 복사해 그리는 깊이 무시 중심 표식이다.
   redDot: Mesh;
@@ -199,10 +200,13 @@ export function createAimParametersRuntime(
   root.hidden = true;
   const feedback = document.createElement("pre");
   feedback.className = "strike-feedback";
+  const powerLimits = document.createElement("div");
+  powerLimits.className = "aim-power-limits";
+  powerLimits.setAttribute("aria-hidden", "true");
   const error = document.createElement("p");
   error.className = "aim-error";
   error.hidden = true;
-  root.append(feedback, error);
+  root.append(feedback, powerLimits, error);
   container.append(root);
 
   const redDot = new Mesh(
@@ -225,6 +229,7 @@ export function createAimParametersRuntime(
     tuningRuntime,
     root,
     feedback,
+    powerLimits,
     error,
     redDot,
     normalizedPower: 0,
@@ -269,6 +274,14 @@ export function updateStrikePreview(
     `${powerText} · ${uiText("pitch")} ${solution.cameraPitchDegrees.toFixed(1)}°`,
     `${uiText("elevation")} ${solution.elevationDegrees.toFixed(1)}°`,
   ].join("\n");
+  const maxPower = getAimMaxPower({
+    isRook: binding.instance.type === "Rook" || binding.instance.type === "Queen",
+    isBishop: binding.instance.type === "Bishop" || binding.instance.type === "Queen",
+    hasCustomSpin: runtime.strikePointOverride !== null,
+  });
+  runtime.powerLimits.textContent = maxPower > 1 ? "100%  ┆  150%" : "100%";
+  runtime.powerLimits.dataset.overdrive = maxPower > 1 ? "true" : "false";
+  runtime.powerLimits.dataset.baseReached = runtime.normalizedPower >= 1 ? "true" : "false";
   return solution;
 }
 

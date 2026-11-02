@@ -4,7 +4,9 @@ import {
   updateAiRuntime,
   type AiRuntime,
 } from "./ai";
-import { updateAimVisuals, type AimRuntime } from "./aim";
+import { clearLaunchMotion, confirmLaunchFeedback, updateAimVisuals, type AimRuntime } from "./aim";
+import { createImpactFeedback } from "./impact-feedback";
+import type { PieceSide } from "./layout";
 import {
   FIXED_STEP,
   getMaxLaunchSpeed,
@@ -26,7 +28,7 @@ import {
   synchronizePieceMeshes,
   type SceneRuntime,
 } from "./scene";
-import { playSoundEffect, scanLivePieceHitSounds } from "./sound";
+import { capturePreStepImpactState, flushLiveImpactSounds, playSoundEffect, resetPieceHitSoundTracking, scanLivePieceHitSounds } from "./sound";
 import { createTurnClock } from "./turn-clock";
 import {
   verifyTuningAfterStep,
@@ -233,7 +235,10 @@ export function startGameLoop(
     | null = () => null,
   shouldStepPhysics: () => boolean = () => true,
   stepSecondaryOnlineRuntime: () => void = () => {},
+  feedback: { isActive: () => boolean; onRingOut: (side: PieceSide) => void } = { isActive: () => true, onRingOut: () => {} },
 ): void {
+  const impactFeedback = createImpactFeedback(sceneRuntime);
+  let feedbackSerial = turnRuntime.feedbackResetSerial;
   const overlay = PLATFORM.features.debugTools ? document.createElement("pre") : null;
   if (overlay) {
     overlay.className = "debug-overlay";
@@ -345,6 +350,13 @@ export function startGameLoop(
    * 실제 렌더 프레임마다 필요한 fixed step만 진행하고 최신 물리 자세를 화면에 반영한다.
    */
   const frame = (now: number): void => {
+    const feedbackActive = feedback.isActive() && !document.hidden;
+    if (!feedbackActive || feedbackSerial !== turnRuntime.feedbackResetSerial) {
+      impactFeedback.reset();
+      clearLaunchMotion(aimRuntime);
+      resetPieceHitSoundTracking();
+      feedbackSerial = turnRuntime.feedbackResetSerial;
+    }
     if (lastFrameTime === null) {
       const maxRenderSyncError = synchronizePieceMeshes(
         sceneRuntime,
@@ -406,10 +418,15 @@ export function startGameLoop(
     ) {
       const stepsPrimaryPhysics = shouldStepPhysics();
       if (stepsPrimaryPhysics) {
-        if (applyPendingLaunchBeforeStep(turnRuntime)) playSoundEffect("wood");
+        const launchingPieceId = turnRuntime.pendingLaunch?.pieceId;
+        if (applyPendingLaunchBeforeStep(turnRuntime) && feedbackActive) {
+          playSoundEffect("wood");
+          if (launchingPieceId) confirmLaunchFeedback(aimRuntime, launchingPieceId, now);
+        }
+        if (feedbackActive) capturePreStepImpactState(physicsRuntime);
         physicsRuntime.world.step();
         // 사전 정착과 분리된 live 루프에서만 접촉을 읽어 물리 결과를 바꾸지 않고 충돌음을 낸다.
-        scanLivePieceHitSounds(physicsRuntime, now);
+        if (feedbackActive) scanLivePieceHitSounds(physicsRuntime, now);
         verifyTuningAfterStep(tuningRuntime);
       }
       accumulator -= FIXED_STEP;
@@ -418,7 +435,7 @@ export function startGameLoop(
 
       if (stepsPrimaryPhysics) {
         // 낙하 제거가 정지 판정보다 먼저 일어나도록 턴 갱신을 실제 물리 step 직후에만 호출한다.
-        updateTurnAfterStep(turnRuntime, FIXED_STEP);
+        updateTurnAfterStep(turnRuntime, FIXED_STEP, feedbackActive ? feedback.onRingOut : undefined);
       }
       // 단일 페이지 온라인 셀프테스트에서만 씬 없는 두 피어의 개별 step 허용 여부를 갱신한다.
       stepSecondaryOnlineRuntime();
@@ -455,6 +472,8 @@ export function startGameLoop(
       accumulator = 0;
     }
 
+    const impacts = flushLiveImpactSounds(now);
+    impactFeedback.add(impacts, now, aimRuntime.activeAim !== null);
     const maxRenderSyncError = synchronizePieceMeshes(
       sceneRuntime,
       physicsRuntime,
@@ -462,6 +481,13 @@ export function startGameLoop(
     updateTurnCamera(turnRuntime, now);
     updateAiRuntime(aiRuntime, now);
     updateFrameCallbacks(now, frameDelta);
+    // A snapshot can arrive in the update above, after this frame's live steps.
+    if (feedbackSerial !== turnRuntime.feedbackResetSerial || !feedback.isActive()) {
+      impactFeedback.reset();
+      clearLaunchMotion(aimRuntime);
+      resetPieceHitSoundTracking();
+      feedbackSerial = turnRuntime.feedbackResetSerial;
+    }
     updateInputRuntime(inputRuntime, now);
     if (
       turnRuntime.phase !== "camera-rotating" &&
@@ -480,10 +506,7 @@ export function startGameLoop(
       sceneRuntime.boardHalfExtent,
       maxRenderSyncError,
     );
-    sceneRuntime.renderer.render(
-      sceneRuntime.scene,
-      sceneRuntime.camera,
-    );
+    impactFeedback.render(now, feedbackActive && turnRuntime.phase === "settling" && aimRuntime.activeAim === null);
 
     fpsFrameCount += 1;
     const fpsWindowDuration = now - fpsWindowStart;

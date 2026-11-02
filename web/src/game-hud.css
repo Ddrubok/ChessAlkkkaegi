@@ -95,6 +95,39 @@
   transform: none !important;
 }
 
+/* Compact numeric reference inside the existing power chip. */
+#app .aim-power::after {
+  content: attr(data-max-power);
+  display: block;
+  margin-top: 1px;
+  padding-top: 1px;
+  border-top: 1px solid rgb(255 255 255 / 55%);
+  color: #f7f1df;
+  font: 600 10px/1 ui-monospace, monospace;
+  pointer-events: none;
+}
+
+#app .aim-power[data-max-power="150%"]::after {
+  content: "100%  ┆  150%";
+}
+
+#app .aim-power[data-base-reached="true"]::after {
+  border-top-color: #fff;
+}
+
+#app .aim-power-limits {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  color: #f7f1df;
+  font: 600 11px/1.2 ui-monospace, monospace;
+  pointer-events: none;
+}
+
+#app .aim-power-limits[data-base-reached="true"] {
+  text-decoration: underline;
+}
+
 #app .player-banner {
   width: 192px;
   left: auto;
@@ -228,7 +261,7 @@
   #app:has(.player-banners:not([hidden])) .classic-cancel-btn { min-height: 44px; }
   #app:has(.player-banners:not([hidden])) .aim-parameters,
   #app:has(.player-banners:not([hidden])) .king-swap-banner {
-    bottom: calc(var(--game-dock-bottom) + 58px);
+    bottom: calc(var(--game-dock-bottom) + 62px);
     padding: 4px 8px;
   }
 }

@@ -158,6 +158,7 @@ import {
 } from "./scene";
 import {
   initializeSound,
+  playRingOutSound,
   playSoundEffect,
   resetPieceHitSoundTracking,
 } from "./sound";
@@ -201,6 +202,7 @@ import {
 } from "./stage";
 import {
   canSelectTurnPiece,
+  countRemainingPieces,
   createTurnRuntime,
   executeKingDefense,
   executeKingSwap,
@@ -776,6 +778,7 @@ async function bootstrap(): Promise<void> {
       visible: !localBalancePreview && !isMenuBlocking(menuRuntime) && gameModeRuntime !== null && !gameModeRuntime.switching && turnRuntime.phase !== "match-over",
       mode: gameModeRuntime?.mode ?? "hotseat", stage: gameModeRuntime?.stageNumber ?? 1,
       currentSide: turnRuntime.currentSide, mySide: onlineRuntime?.mySide ?? null,
+      remaining: countRemainingPieces(turnRuntime),
       profile: menuRuntime.userProfile, opponent: activeMatchOpponent,
       opponentDisplayName: activeMatchOpponent ? undefined : onlineRuntime?.opponentDisplayName,
       rankedMode: activeOnlineMatchMode,
@@ -1346,6 +1349,7 @@ async function bootstrap(): Promise<void> {
     synchronizePieceMeshes(sceneRuntime, physicsRuntime);
     resetTurnRuntime(turnRuntime);
     turnHud.reset();
+    playerBanners.resetFeedback();
     const runId = typeof crypto !== "undefined" && "randomUUID" in crypto
       ? `match-${crypto.randomUUID()}` : `match-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     masteryRun = {
@@ -2134,6 +2138,15 @@ async function bootstrap(): Promise<void> {
       () => onlineRuntime?.getDebugStatus() ?? null,
       () => onlineRuntime?.shouldStepPhysics() ?? true,
       () => onlineSelfTestRuntime?.stepPeers(),
+      {
+        isActive: () => !isMenuBlocking(menuRuntime) && !gameModeRuntime?.switching && !localBalancePreview,
+        onRingOut: (side) => {
+          const mine = gameModeRuntime?.mode === "online" ? onlineRuntime?.mySide :
+            gameModeRuntime?.mode === "hotseat" ? turnRuntime.currentSide : "white";
+          playRingOutSound(side === mine);
+          playerBanners.pieceRemoved(side);
+        },
+      },
     );
     gameLoopStarted = true;
   };

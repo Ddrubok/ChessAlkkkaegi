@@ -110,6 +110,8 @@ export interface TurnRuntime {
   cameraRotation: CameraRotation | null;
   // 물리 제거와 입력 선택 목록 정리를 같은 경계에서 연결한다.
   onPieceRemoved: ((pieceId: string) => void) | null;
+  // Local presentation resets independently of authoritative turn clocks.
+  feedbackResetSerial: number;
   // 마지막 정착 뒤 승자가 생기면 카메라 회전 대신 결과 화면을 여는 연결점이다.
   onMatchOver: ((winner: MatchWinner) => void) | null;
   // 수락된 모든 플레이어·AI·향후 네트워크 발사를 수동 기록 계층에 알리는 연결점이다.
@@ -447,6 +449,7 @@ export function createTurnRuntime(
     forcedSettleCountedForCurrentSettle: false,
     cameraRotation: null,
     onPieceRemoved: null,
+    feedbackResetSerial: 0,
     onMatchOver: null,
     onLaunchAccepted: null,
     onTurnSettled: null,
@@ -872,7 +875,7 @@ function applyPendingLaunchImpulse(runtime: TurnRuntime): boolean {
 /**
  * 낙하한 말의 전체 연결 상태를 모아 순회가 끝난 뒤 일괄 제거한다.
  */
-function removeFallenPieces(runtime: TurnRuntime): void {
+function removeFallenPieces(runtime: TurnRuntime, onLiveRemoval?: (side: PieceSide) => void): void {
   runtime.pendingRemovalIds.clear();
   for (const binding of runtime.physicsRuntime.pieces.values()) {
     if (binding.body.translation().y < FALL_OUT_Y) {
@@ -900,6 +903,7 @@ function removeFallenPieces(runtime: TurnRuntime): void {
     );
     runtime.settlementRemovedPieces.push({ id: pieceId, side: binding.instance.side, type: binding.instance.type });
     runtime.onPieceRemoved?.(pieceId);
+    if (onLiveRemoval) invokePassiveHook("장외 피드백", () => onLiveRemoval(binding.instance.side));
   }
   runtime.pendingRemovalIds.clear();
 }
@@ -1171,6 +1175,7 @@ function applyBishopSpinRicochet(runtime: TurnRuntime): void {
 export function updateTurnAfterStep(
   runtime: TurnRuntime,
   fixedStep: number,
+  onLiveRemoval?: (side: PieceSide) => void,
 ): void {
   runtime.physicsStepNumber += 1;
   afterHotseatBridgeStep(runtime);
@@ -1189,7 +1194,7 @@ export function updateTurnAfterStep(
         second.instance.side === "black" &&
         hasSolverContact(runtime.physicsRuntime, first.collider, second.collider)));
   }
-  removeFallenPieces(runtime);
+  removeFallenPieces(runtime, onLiveRemoval);
   removeFallenHotseatObjects(runtime.physicsRuntime, runtime.sceneRuntime);
   validateControlZoneBonus(runtime);
   if (runtime.phase !== "settling") {
@@ -1262,6 +1267,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
   runtime.promotionQueue = [];
   runtime.turnNumber = 0;
   runtime.turnResetSerial += 1;
+  runtime.feedbackResetSerial += 1;
   runtime.kingSpecialUsed = { white: false, black: false };
   runtime.kingSwapUsed = { white: false, black: false };
   runtime.kingDefenseActive = { white: false, black: false };

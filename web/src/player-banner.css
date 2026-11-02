@@ -32,6 +32,9 @@
   container-type: inline-size;
 }
 
+/* A confirmed loss, not a win cue; no layout shift or flashing animation. */
+.player-banner.piece-loss { outline: 2px solid #d9ad6b; outline-offset: -2px; }
+
 /* 6개 기본 테마별 설정 */
 .player-banner[data-theme="slate"] {
   --banner-ink: #172c43;

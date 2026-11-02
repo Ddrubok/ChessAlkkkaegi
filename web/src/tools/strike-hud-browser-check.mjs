@@ -290,9 +290,9 @@ try {
       await restart();
     };
     await page.goto('http://127.0.0.1:5208/');
-    await page.locator('#btn-guest-submit').waitFor();
-    await page.waitForTimeout(1000);
-    await control('#btn-guest-submit');
+    await page.locator('.tutorial-skip-button, #btn-guest-submit').first().waitFor();
+    if (await page.locator('.tutorial-skip-button').isVisible()) await control('.tutorial-skip-button');
+    else await control('#btn-guest-submit');
     await page.waitForTimeout(350);
     await page.reload();
     await control('[data-game-mode="hotseat"]');

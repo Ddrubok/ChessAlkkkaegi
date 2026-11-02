@@ -747,6 +747,7 @@ export function applyOnlineStateSnapshot(
   turnRuntime: TurnRuntime,
   snapshot: OnlineStateSnapshotMessage,
 ): void {
+  turnRuntime.feedbackResetSerial += 1;
   const preservesMatchOver =
     turnRuntime.phase === "match-over";
   const currentIds = [...turnRuntime.physicsRuntime.pieces.keys()].sort();

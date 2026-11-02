@@ -920,6 +920,8 @@ try {
   const pulseRuntime = {
     sceneRuntime: giantMeshes,
     pulses: new Map(),
+    pendingLaunchFeedback: null,
+    launchRestore: null,
   };
   const readGiantScaleSnapshot = () => {
     const collider = measureColliderUniformScale(
