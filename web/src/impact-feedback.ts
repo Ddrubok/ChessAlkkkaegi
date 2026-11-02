@@ -66,7 +66,7 @@ export function createImpactFeedback(scene: SceneRuntime) {
       try {
         if (allowKick && age >= 0 && age < 100 && !isMotionReduced()) {
           const screenHeight = 2 * position.distanceTo(scene.controls.target) * Math.tan(camera.fov * Math.PI / 360);
-          camera.position.addScaledVector(kick, screenHeight * .0025 * kickStrength * (1 - age / 100));
+          camera.position.addScaledVector(kick, screenHeight * .0045 * kickStrength * (1 - age / 100));
           camera.updateMatrixWorld();
         }
         scene.renderer.render(scene.scene, camera);
