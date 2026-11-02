@@ -10,6 +10,13 @@ class MockElement extends EventTarget {
     super();
     this.tagName = tagName.toUpperCase();
     this.className = '';
+    this.classList = { toggle: (token, force) => {
+      const classes = new Set(this.className.split(/\s+/).filter(Boolean));
+      const enabled = force ?? !classes.has(token);
+      if (enabled) classes.add(token); else classes.delete(token);
+      this.className = [...classes].join(' ');
+      return enabled;
+    } };
     this.style = {};
     this.dataset = {};
     this.children = [];
