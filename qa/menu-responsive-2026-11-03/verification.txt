@@ -1,0 +1,58 @@
+반응형 첫 메뉴 구현 검수 · 2026-11-03
+
+적용 범위
+승인한 가로 웹·앱 844x390, 세로 390x844, CrazyGames 821x462 시안을 실제 메뉴에 연결했다.
+가로는 소개/모드 좌우 배치, 세로는 소개 위/모드 아래. 기존 이미지와 색상 및 플랫폼별 모드를 유지했다.
+웹·앱의 내 정보, 퀘스트, 주간 도전, 튜토리얼, 더보기는 실제 기존 기능으로 연결된다.
+CrazyGames 기본 빌드는 기존 제한대로 스테이지/튜토리얼/설정만 제공한다.
+게임 물리, 보상, 서버/DB, 운영 main, Play 배포, CrazyGames 제출에는 변경하지 않는다.
+
+최종 빌드 검수
+Edge headless, DPR2, 터치 가능 컨텍스트, 최초 연습을 건너뛴 게스트 메뉴.
+외부 요청은 차단한 로컬 테스트이며 실제 온라인 매칭 성공을 뜻하지 않는다.
+실제 dist-staging: 9개 언어 x 5크기 = 45건 통과.
+크기: 844x390,390x844,360x800,907x510,1280x720.
+실제 dist-crazygames: 9개 언어 x 4크기 = 36건 통과.
+크기: 821x462,800x450,844x390,390x844.
+모두 메뉴 scrollHeight/clientHeight 차이0, 검사한 내용 넘침0, 표시된 버튼 가림0.
+언어: ko/en/ja/fr/de/es/ru/pt-BR/zh-CN.
+
+동작 검수
+웹: 내 정보/튜토리얼/더보기 열기, Tab 초점 유지, Escape 닫기와 초점 복원.
+내 정보에서 로그아웃 확인 취소 후 보이는 버튼으로 복귀, 언어 변경으로 재렌더한 창 닫기.
+Android Back 공통 핸들러를 브라우저에서 호출하여 닫기 확인(실기기 버튼 검수 아님).
+퀘스트/주간 도전/설정/스테이지/2인 맵 선택/퍼즐 목록 진입과 닫기.
+기초 튜토리얼 선택 후 실제 연습 진입과 건너뛰기로 메뉴 복귀.
+CrazyGames: 튜토리얼 창 초점/닫기, 설정, 스테이지, 기초 연습 진입/복귀.
+한국어 844x390에 --menu-ad-inset:74px 주입: 첫 메뉴 스크롤0, 주요 버튼 전체 표시.
+작은 세로360x640 첫 메뉴 및 저장 실패 상태를 주입한390x844: 재시도 버튼과 메뉴 표시.
+내 정보가 길면 창 본문만 스크롤되며 닫기 버튼은 유지됨. 본문 끝 로그아웃 버튼 접근 확인.
+
+시안 대조
+원본: ../menu-layout-examples-2026-11-03/{web-app-844x390,web-app-390x844,crazygames-821x462}.png
+실제: web-built/ko-844x390.png, web-built/ko-390x844.png, portal-built/ko-821x462.png
+동일 논리 크기와 DPR2에서 직접 열어 주요 영역/이미지/배치/문구 비교 완료.
+기존 게임 폰트 스택과 실제 버튼 상태를 유지하며 픽셀 단위 동일성을 주장하지 않음.
+긴 번역 문구는 소개 이미지 영역을 줄이거나 버튼 내부 배치를 조정하는 파생 레이아웃 적용.
+극단적으로 작은 창이나 큰 글꼴에서는 내용 유실을 막는 스크롤 대체 동작을 유지한다.
+
+기존 검사
+build:staging, build:crazygames, check:crazygames (85파일/6613861바이트/오류0),
+check:lobby, check:ui-polish, check:lobby-motion, check:i18n, check:auth-interaction 통과.
+구식 세로 메뉴 순서를 강제하던 소스 문자열 검사를 제거하고 실제 브라우저 배치/동작 검사로 대체했다.
+기존 번들 크기/동적 import 경고가 남으며 새 오류는 없다.
+
+재실행
+web 폴더에서 실행. Playwright가 별도 설치라면 PLAYWRIGHT_MODULE 환경 변수에 해당 index.mjs 절대 경로 지정.
+node src/tools/lobby-responsive-browser-check.mjs
+node src/tools/lobby-responsive-browser-check.mjs --portal
+node src/tools/lobby-responsive-browser-check.mjs --flows
+node src/tools/lobby-responsive-browser-check.mjs --portal --flows
+각 빌드 생성 후 --built 옵션으로 실제 산출물 배치 검사 가능. --flows는 개발 서버에서 실행.
+화면/검사 결과 JSON은 이 폴더에 생성된다. edge-check.mjs는 로컬 상태 주입 검증 보조 파일.
+
+미확인
+현재 adb 연결 기기0: 실제 휴대전화 설치·물리 회전·노치·손가락 조작성은 검수하지 못했다.
+CrazyGames 실제 포털 iframe 재업로드/SDK/실제 계정 온라인 대전은 이번 작업에서 수행하지 않았다.
+서버에 연결한 회원 계정의 로그인/진행 저장 성공은 이번 배치 검사로 인증하지 않는다.
+운영 반영이나 AAB 재발급은 이번 develop 변경 이후 별도 릴리스 작업이 필요하다.

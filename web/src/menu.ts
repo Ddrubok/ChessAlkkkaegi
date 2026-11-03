@@ -31,27 +31,27 @@ import {
   safeRuntimeAssetUrl,
   renderHeaderActions,
   getRecommendation,
-  renderProfileCard,
+  renderProfilePanel,
   renderRecommendationCard,
   renderModeCards,
   renderFooterLinks,
   renderCommunityLink,
-  renderTutorialBar,
-  renderWeeklyChallengeEntry,
   lobbyState,
 } from "./lobby";
 import type { LobbyMode } from "./lobby";
 import { MASTERY_DEFINITIONS, type MasteryId } from "./mastery";
-import { openMasteryBook } from "./mastery-ui";
+import { masteryCopy, openMasteryBook } from "./mastery-ui";
 import { questStorage } from "./quest-storage";
-import { openQuestBook, renderQuestLobbyEntry } from "./quest-ui";
+import { openQuestBook } from "./quest-ui";
+import { weeklyChallengeCopy } from "./weekly-challenge-ui";
+import { lobbyLayoutCopy } from "./lobby-layout-copy";
 import { openHotseatMapMenu } from "./hotseat-map-menu";
 import { DEFAULT_HOTSEAT_MAP_ID } from "./maps/map-catalog";
 
 function openLogoutConfirm(runtime: MainMenuRuntime): void {
   if (runtime.overlay.querySelector(".lobby-logout-confirm")) return;
 
-  const previousFocus = runtime.overlay.querySelector<HTMLButtonElement>("#btn-logout");
+  const previousFocus = runtime.overlay.querySelector<HTMLButtonElement>("#menu-account-btn, #btn-logout");
   const dialog = document.createElement("section");
   dialog.className = "match-result-overlay menu-confirm-overlay lobby-logout-confirm";
   dialog.setAttribute("role", "dialog");
@@ -412,6 +412,12 @@ export async function returnToMainMenu(
 export function renderMainMenu(runtime: MainMenuRuntime): void {
   const panel = runtime.overlay.querySelector<HTMLElement>(".main-menu-panel");
   if (panel === null) return;
+  const oldDialog = panel.querySelector<HTMLDialogElement>(".lobby-fit-dialog[open]");
+  const previousSheet = oldDialog?.dataset.lobbySheet;
+  if (oldDialog) {
+    oldDialog.dataset.restoreFocus = "false";
+    oldDialog.close();
+  }
 
   if (!PLATFORM.features.accounts && localStorage.getItem("ca_logged_in_user") !== "true") {
     localStorage.setItem("ca_local_nickname", PLATFORM.id === "crazygames" ? "Player" : `Player_${Math.floor(1000 + Math.random() * 9000)}`);
@@ -449,6 +455,9 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   }
 
   const user = runtime.userProfile as UserProfile;
+  panel.classList.toggle("lobby-fit", progressStorage.ready && runtime.ready && user !== null);
+  if (PLATFORM.id === "crazygames") panel.dataset.portal = "crazygames";
+  else delete panel.dataset.portal;
 
   if (!progressStorage.ready) {
     panel.innerHTML = `<h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.progress_title"))}</h1><p role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-retry">${escapeHtml(I18nManager.t("lobby.progress_retry"))}</button>${progressStorage.conflict ? `<button type="button" id="progress-use-server">${escapeHtml(I18nManager.t("lobby.progress_use_server"))}</button>` : ''}<button type="button" id="progress-signout">${escapeHtml(I18nManager.t("common.logout"))}</button>`;
@@ -670,14 +679,46 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const maxClearedStage = getMaxClearedStage(runtime.metaRuntime.storage);
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
-  const firstPlay = maxClearedStage === 0 && !["true", "skipped"].includes(progressStorage.getItem("has_completed_tutorial") ?? "");
-  const otherModesOpen = panel.querySelector<HTMLDetailsElement>(".lobby-other-modes")?.open ?? false;
-  const otherActivities = `${PLATFORM.id === "crazygames" ? "" : `${renderQuestLobbyEntry(questStorage)}${renderWeeklyChallengeEntry()}`}${renderTutorialBar()}${renderModeCards(runtime, maxClearedStage)}`;
-  const activities = firstPlay && PLATFORM.id !== "crazygames"
-    ? `<details class="lobby-other-modes"${otherModesOpen ? " open" : ""}><summary>${escapeHtml(I18nManager.t("lobby.other_modes"))}</summary><div>${otherActivities}</div></details>`
-    : otherActivities;
-
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${I18nManager.t("lobby.title")}</h1>${renderHeaderActions({ showLogout: true })}</header>${PLATFORM.id === "crazygames" ? "" : renderProfileCard(user, runtime.metaRuntime.state.points)}<div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div>${renderRecommendationCard(recommendation, heroAsset)}${activities}${renderFooterLinks()}<p class="main-menu-status" data-menu-status aria-live="polite"></p>`;
+  const isPortal = PLATFORM.id === "crazygames";
+  const layoutCopy = lobbyLayoutCopy();
+  const settings = escapeHtml(I18nManager.t("common.settings"));
+  const accountTitle = escapeHtml(I18nManager.t("lobby.profile_sheet_title"));
+  const tutorialTitle = escapeHtml(I18nManager.t("lobby.tutorial_sheet_title"));
+  const tutorialLabel = escapeHtml(I18nManager.t("lobby.footer_tutorial"));
+  const moreLabel = escapeHtml(layoutCopy.more);
+  const closeLabel = escapeHtml(I18nManager.t("common.close"));
+  const sheet = (name: string, title: string, body: string) => `<dialog id="lobby-${name}-dialog" class="lobby-fit-dialog" data-lobby-sheet="${name}" aria-label="${title}"><header class="lobby-fit-dialog-header"><h2>${title}</h2><button type="button" data-lobby-sheet-close aria-label="${closeLabel}">${closeLabel}</button></header><div class="lobby-fit-dialog-body">${body}</div></dialog>`;
+  const accountBody = isPortal ? "" : `<div class="lobby-profile is-expanded" data-expanded="true">${renderProfilePanel(user, runtime.metaRuntime.state.points, true)}</div><button type="button" data-open-mastery>${escapeHtml(masteryCopy().book)}</button>${PLATFORM.features.online ? `<button type="button" id="menu-ranking-btn">${escapeHtml(I18nManager.t("common.ranking_btn"))}</button><button type="button" id="menu-friends-btn">${escapeHtml(I18nManager.t("common.friends_btn"))}</button>` : ""}${PLATFORM.features.accounts ? `<button type="button" id="btn-logout">${escapeHtml(I18nManager.t("common.logout"))}</button>` : ""}`;
+  const tutorialBody = `<button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="basic">${escapeHtml(I18nManager.t("lobby.tutorial_basic"))}</button><button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="advanced">${escapeHtml(I18nManager.t("lobby.tutorial_advanced"))}</button>`;
+  const tutorialTrigger = `<button type="button" id="menu-tutorial-btn"${isPortal ? ' class="lobby-fit-tutorial"' : ""} aria-haspopup="dialog" aria-controls="lobby-tutorial-dialog">${isPortal ? renderHeaderActions("tutorial", 22) : ""}${tutorialLabel}${isPortal ? renderHeaderActions("chevron", 22) : ""}</button>`;
+  const nav = isPortal ? "" : `<nav class="lobby-fit-nav" aria-label="${escapeHtml(I18nManager.t("lobby.other_modes"))}"><button type="button" data-open-quests${questStorage.view().ready ? "" : " disabled"}>${escapeHtml(layoutCopy.quests)}</button><button type="button" data-open-weekly-challenge>${escapeHtml(weeklyChallengeCopy().title)}</button>${tutorialTrigger}<button type="button" id="menu-more-btn" aria-haspopup="dialog" aria-controls="lobby-more-dialog">${moreLabel}</button></nav>`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.title"))}</h1><div class="lobby-fit-header-actions">${isPortal ? "" : `<button type="button" id="menu-account-btn" aria-haspopup="dialog" aria-controls="lobby-account-dialog" aria-label="${accountTitle}">${renderHeaderActions("profile", 20)}${escapeHtml(layoutCopy.account)}</button>`}<button type="button" id="menu-sound-btn">${settings}</button></div></header><div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div><div class="lobby-fit-body">${renderRecommendationCard(recommendation, heroAsset)}<div class="lobby-fit-mode-area">${renderModeCards(runtime, maxClearedStage)}${isPortal ? tutorialTrigger : ""}</div></div>${nav}<p class="main-menu-status" data-menu-status aria-live="polite"></p>${isPortal ? "" : sheet("account", accountTitle, accountBody)}${sheet("tutorial", tutorialTitle, tutorialBody)}${isPortal ? "" : sheet("more", moreLabel, renderFooterLinks())}`;
+  const openSheet = (name: string): void => {
+    const dialog = panel.querySelector<HTMLDialogElement>(`.lobby-fit-dialog[data-lobby-sheet="${name}"]`);
+    if (dialog && !dialog.open) {
+      delete dialog.dataset.restoreFocus;
+      dialog.showModal();
+    }
+  };
+  const closeSheet = (restoreFocus = true): void => {
+    const dialog = panel.querySelector<HTMLDialogElement>(".lobby-fit-dialog[open]");
+    if (dialog) {
+      dialog.dataset.restoreFocus = String(restoreFocus);
+      dialog.close();
+    }
+  };
+  for (const dialog of panel.querySelectorAll<HTMLDialogElement>(".lobby-fit-dialog")) {
+    dialog.querySelector("[data-lobby-sheet-close]")?.addEventListener("click", () => closeSheet());
+    dialog.addEventListener("close", () => {
+      if (!dialog.isConnected || dialog.dataset.restoreFocus === "false") return;
+      const opener = dialog.dataset.lobbySheet === "account" ? "#menu-account-btn" : dialog.dataset.lobbySheet === "tutorial" ? "#menu-tutorial-btn" : "#menu-more-btn";
+      panel.querySelector<HTMLButtonElement>(opener)?.focus();
+    });
+  }
+  panel.querySelector("#menu-account-btn")?.addEventListener("click", () => openSheet("account"));
+  panel.querySelector("#menu-tutorial-btn")?.addEventListener("click", () => openSheet("tutorial"));
+  panel.querySelector("#menu-more-btn")?.addEventListener("click", () => openSheet("more"));
+  if (previousSheet) openSheet(previousSheet);
   panel.querySelector("#progress-save")?.addEventListener("click", () => { void progressStorage.retry(); });
   markMenuPressables(panel);
   if (PLATFORM.features.accounts && progressStorage.owner === user.id) {
@@ -688,21 +729,26 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     editName.style.cssText = 'min-height:44px;padding:8px 12px;font:inherit;white-space:normal;';
     editName.onclick = () => {
       const client = getSupabaseClient();
-      if (client) openNicknameDialog(client, user, name => {
-        if (runtime.userProfile?.id === user.id) {
-          runtime.userProfile.nickname = name;
-          SocialService.init(runtime.userProfile);
-          renderMainMenu(runtime);
-        }
-      });
+      if (client) {
+        closeSheet(false);
+        openNicknameDialog(client, user, name => {
+          if (runtime.userProfile?.id === user.id) {
+            runtime.userProfile.nickname = name;
+            SocialService.init(runtime.userProfile);
+            renderMainMenu(runtime);
+          }
+        });
+      }
     };
     panel.querySelector('#menu-profile-panel')?.append(editName);
   }
   panel.querySelector("#menu-ranking-btn")?.addEventListener("click", () => {
+    closeSheet(false);
     if (PLATFORM.features.online) void openRankingModal(runtime.overlay, runtime.userProfile);
   });
 
   panel.querySelector("#menu-friends-btn")?.addEventListener("click", () => {
+    closeSheet(false);
     if (PLATFORM.features.online) void openFriendsModal(runtime.overlay, runtime.userProfile, {
       onStartFriendlyMatch: (friend, roomId, isHost) => {
         void runtime.onStartFriendlyMatch?.(friend, roomId, isHost);
@@ -714,11 +760,8 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     openSettingsModal(runtime.overlay, () => runtime.userProfile);
   });
 
-  panel.querySelectorAll("[data-profile-toggle]").forEach(button => button.addEventListener("click", () => {
-    lobbyState.profileExpanded = !lobbyState.profileExpanded;
-    renderMainMenu(runtime);
-  }));
   panel.querySelector("[data-open-mastery]")?.addEventListener("click", () => {
+    closeSheet(false);
     openMasteryBook(runtime.overlay, progressStorage, (id: MasteryId) => {
       const route = MASTERY_DEFINITIONS.find(definition => definition.id === id)?.route;
       if (route === "puzzle") void startLobbyMode(runtime, "puzzle");
@@ -727,22 +770,22 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     }, () => renderMainMenu(runtime));
   });
   panel.querySelectorAll("[data-open-quests]").forEach(button => button.addEventListener("click", () => {
+    closeSheet(false);
     openQuestBook(runtime.overlay, questStorage, (route) => {
       if (route === "puzzle") void startLobbyMode(runtime, "puzzle");
       else openPveLobbyModal(runtime, stage => startLobbyMode(runtime, "stage", stage));
     });
   }));
   panel.querySelectorAll("[data-open-weekly-challenge]").forEach((button) => button.addEventListener("click", () => {
+    closeSheet(false);
     runtime.onOpenWeeklyChallenge?.();
   }));
-  panel.querySelector("#menu-tutorial-btn")?.addEventListener("click", () => {
-    lobbyState.tutorialExpanded = !lobbyState.tutorialExpanded;
-    renderMainMenu(runtime);
-  });
   panel.querySelector("#btn-logout")?.addEventListener("click", () => {
+    closeSheet(false);
     if (PLATFORM.features.accounts) openLogoutConfirm(runtime);
   });
   panel.querySelector("#menu-recommendation-btn")?.addEventListener("click", () => {
+    closeSheet(false);
     if (recommendation.mode === "stage") {
       openPveLobbyModal(runtime, (stage) => startLobbyMode(runtime, "stage", stage), recommendation.stage);
     } else {
@@ -761,6 +804,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     button.addEventListener("click", () => {
       const mode = button.dataset.gameMode as LobbyMode | undefined;
       if (!mode || runtime.busy || !runtime.ready) return;
+      closeSheet(false);
       if (mode === "stage") {
         openPveLobbyModal(runtime, (stage) => startLobbyMode(runtime, "stage", stage));
         return;
@@ -807,7 +851,7 @@ export function createMainMenu(
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-labelledby", "main-menu-title");
   overlay.innerHTML = `
-    <div class="main-menu-panel" style="max-width:440px; padding:28px;"></div>
+    <div class="main-menu-panel"></div>
   `;
 
   const returnButton = document.createElement("button");
@@ -926,10 +970,13 @@ export function createMainMenu(
   overlay.addEventListener("keydown", (event) => {
     if (event.code !== "Tab") {
       if (event.code === "Escape") {
+        const dialog = overlay.querySelector<HTMLDialogElement>(".lobby-fit-dialog[open]");
+        if (dialog) dialog.close();
         event.preventDefault();
       }
       return;
     }
+    if (overlay.querySelector(".lobby-fit-dialog[open]")) return;
     const focusable = [...overlay.querySelectorAll<HTMLElement>(
       'button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
     )].filter(element => element.tabIndex >= 0 && !element.closest('[hidden], [inert]')
