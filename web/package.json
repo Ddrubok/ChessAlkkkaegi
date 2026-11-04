@@ -37,12 +37,13 @@
     "check:tiers": "node src/tools/tier-check.mjs && node src/tools/tier-ranking-check.mjs",
     "check:ads": "node --experimental-vm-modules src/tools/ads-check.mjs && node src/tools/interstitial-menu-check.mjs",
     "check:game-feel": "node src/tools/sound-check.mjs && node src/tools/aim-feedback-check.mjs && node src/tools/impact-feedback-check.mjs",
-    "check:regressions": "npm run check:tiers && node src/tools/auth-regression-check.mjs && node src/tools/nickname-safety-check.mjs && npm run check:game-feel && node src/tools/gameplay-regression-check.mjs && node src/tools/settlement-client-check.mjs && node src/tools/matchmaking-presence-check.mjs && node --import ./src/tools/headless-browser-env.mjs src/tools/online-check.mjs && npm run check:i18n && node src/tools/selection-check.mjs && node src/tools/player-banner-check.mjs && node src/tools/banner-progress-check.mjs && node src/tools/banner-storage-check.mjs && node src/tools/banner-match-check.mjs && node src/tools/turn-timer-check.mjs",
+    "check:regressions": "npm run check:tiers && node src/tools/auth-regression-check.mjs && node src/tools/nickname-safety-check.mjs && npm run check:game-feel && node src/tools/gameplay-regression-check.mjs && node src/tools/settlement-client-check.mjs && node src/tools/matchmaking-presence-check.mjs && node --import ./src/tools/headless-browser-env.mjs src/tools/online-check.mjs && npm run check:i18n && node src/tools/selection-check.mjs && node src/tools/player-banner-check.mjs && node src/tools/banner-progress-check.mjs && node src/tools/banner-storage-check.mjs && node src/tools/banner-match-check.mjs && node src/tools/turn-timer-check.mjs && npm run check:performance",
     "check:i18n": "node src/tools/i18n-check.mjs && node src/tools/verify-site-i18n.mjs",
     "check:cosmetics": "node src/tools/cosmetics-storage-check.mjs && node src/tools/cosmetics-profile-check.mjs && node src/tools/cosmetics-view-check.mjs",
     "check:auth-interaction": "node src/tools/google-auth-check.mjs && node src/tools/nickname-change-check.mjs && node src/tools/friendly-code-check.mjs && node src/tools/classic-cancel-check.mjs",
     "convert:chess": "node src/tools/convert-polyhaven.mjs",
-    "check:chess": "node src/tools/convert-polyhaven.mjs --check"
+    "check:chess": "node src/tools/convert-polyhaven.mjs --check",
+    "check:performance": "node src/tools/menu-loop-check.mjs && node src/tools/piece-preview-performance-check.mjs"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.1.0",

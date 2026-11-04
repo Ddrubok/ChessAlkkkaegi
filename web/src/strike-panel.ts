@@ -364,9 +364,9 @@ export function updateStrikePointPanel(
 ): void {
   const becameVisible = visible && !runtime.wasVisible;
   runtime.wasVisible = visible;
-  runtime.root.hidden = !visible;
+  if (runtime.root.hidden !== !visible) runtime.root.hidden = !visible;
   if (!visible || selectedPieceId === null || selectedMesh === null) {
-    runtime.marker.hidden = true;
+    if (!runtime.marker.hidden) runtime.marker.hidden = true;
     if (selectedPieceId === null) {
       // 판 재생성 뒤 같은 id를 다시 골라도 새 메시 배율·자세를 반드시 다시 그리게 한다.
       runtime.selectedPieceId = null;
@@ -379,7 +379,7 @@ export function updateStrikePointPanel(
   const viewDirection = mainCameraDirection.clone();
   viewDirection.y = 0;
   if (viewDirection.lengthSq() < 1e-12) {
-    runtime.marker.hidden = true;
+    if (!runtime.marker.hidden) runtime.marker.hidden = true;
     return;
   }
   viewDirection.normalize();
@@ -461,18 +461,21 @@ export function updateStrikePointPanel(
 
   const projection = runtime.projection;
   if (projection === null || effectiveStrikePoint === null) {
-    runtime.marker.hidden = true;
+    if (!runtime.marker.hidden) runtime.marker.hidden = true;
     return;
   }
   const markerPoint = projectStrikePointToPanel(
     effectiveStrikePoint,
     projection,
   );
-  runtime.marker.hidden =
+  const markerHidden =
     Math.abs(markerPoint.u) > 1.1 ||
     Math.abs(markerPoint.v) > 1.1;
-  runtime.marker.style.left = `${((markerPoint.u + 1) / 2) * 100}%`;
-  runtime.marker.style.top = `${((1 - markerPoint.v) / 2) * 100}%`;
+  if (runtime.marker.hidden !== markerHidden) runtime.marker.hidden = markerHidden;
+  const left = `${((markerPoint.u + 1) / 2) * 100}%`;
+  const top = `${((1 - markerPoint.v) / 2) * 100}%`;
+  if (runtime.marker.style.left !== left) runtime.marker.style.left = left;
+  if (runtime.marker.style.top !== top) runtime.marker.style.top = top;
 }
 
 /**

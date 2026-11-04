@@ -141,7 +141,8 @@ export function createPlayerBanners(parent: HTMLElement, options: {
   const update = () => {
     if (destroyed) return;
     const state = options.getState();
-    element.hidden = !state.visible || !['stage', 'online', 'hotseat'].includes(state.mode);
+    const hidden = !state.visible || !['stage', 'online', 'hotseat'].includes(state.mode);
+    if (element.hidden !== hidden) element.hidden = hidden;
     const models = getPlayerBannerModels(state);
     for (const [view, model] of [[self, models.self], [opponent, models.opponent]] as const) {
       view.card.classList.toggle('piece-loss', !element.hidden && performance.now() < lossUntil[model.side as PieceSide]);

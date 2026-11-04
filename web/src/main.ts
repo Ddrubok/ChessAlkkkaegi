@@ -2147,6 +2147,7 @@ async function bootstrap(): Promise<void> {
           playerBanners.pieceRemoved(side);
         },
       },
+      () => menuRuntime.visible && !localBalancePreview && onlineRuntime === null && onlineSelfTestRuntime === null,
     );
     gameLoopStarted = true;
   };
@@ -2901,11 +2902,11 @@ async function bootstrap(): Promise<void> {
         goldMet: evaluation.medal === 3, medal: evaluation.medal,
         failureCode: evaluation.failureReasons[0]?.code,
       });
-      const puzzleResultCard = app.querySelector<HTMLElement>(".puzzle-ui-result-card");
-      if (puzzleResultCard) appendMasteryResult(puzzleResultCard, recentMasteryItems, () => {
+      const puzzleResultBody = app.querySelector<HTMLElement>(".puzzle-ui-result-card .puzzle-ui-body");
+      if (puzzleResultBody) appendMasteryResult(puzzleResultBody, recentMasteryItems, () => {
         openMasteryBook(app, progressStorage, () => { void showPuzzleLibrary(); });
       });
-      if (puzzleResultCard) appendQuestResult(puzzleResultCard, questResultBaseline, questStorage, () => {
+      if (puzzleResultBody) appendQuestResult(puzzleResultBody, questResultBaseline, questStorage, () => {
         openQuestBook(app, questStorage);
       });
     } else {

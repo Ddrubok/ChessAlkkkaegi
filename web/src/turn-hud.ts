@@ -132,6 +132,28 @@ export function createTurnHud(
   let lastSide: PieceSide | null = null;
   let timeoutTriggered = false;
   let suspended = false;
+  let sideContent = "";
+  let sideIsHtml = false;
+  let borderColor = "";
+  let timerColor = "";
+  const setBorderColor = (value: string): void => {
+    if (borderColor === value) return;
+    borderColor = value;
+    mainBadge.style.borderColor = value;
+  };
+  const setTimerColor = (value: string): void => {
+    if (timerColor === value) return;
+    timerColor = value;
+    timerText.style.color = value;
+    progressBarFill.style.backgroundColor = value;
+  };
+  const setSide = (value: string, html = false): void => {
+    if (sideContent === value && sideIsHtml === html) return;
+    sideContent = value;
+    sideIsHtml = html;
+    if (html) sideIndicator.innerHTML = value;
+    else sideIndicator.textContent = value;
+  };
 
   // A new board can start on the same side as the previous game.
   const reset = (): void => {
@@ -147,25 +169,26 @@ export function createTurnHud(
     if (turnRuntime.phase === "match-over" || options.isMenuVisible?.() ||
       (gameMode === "online" && options.isOnlineReady?.() === false)) {
       suspended = true;
-      container.style.display = "none";
-      objectiveBadge.hidden = true;
-      if (objectiveBadge.parentElement?.matches(".puzzle-ui-mastery-slot")) objectiveBadge.parentElement.hidden = true;
+      if (container.style.display !== "none") container.style.display = "none";
+      if (!objectiveBadge.hidden) objectiveBadge.hidden = true;
+      if (objectiveBadge.parentElement?.matches(".puzzle-ui-mastery-slot") && !objectiveBadge.parentElement.hidden) objectiveBadge.parentElement.hidden = true;
       return;
     }
     // Waiting for connection/menu dismissal must not spend the resumed turn.
     if (suspended) frameDelta = 0;
     suspended = false;
-    container.style.display = "flex";
+    if (container.style.display !== "flex") container.style.display = "flex";
     const isPuzzle = gameMode === "puzzle";
     const objectiveHost = isPuzzle ? document.querySelector<HTMLElement>(".puzzle-ui-overlay[data-screen=\"playing\"] [data-mastery-slot]") : null;
     const desiredObjectiveHost = objectiveHost ?? container;
     if (objectiveBadge.parentElement !== desiredObjectiveHost) desiredObjectiveHost.appendChild(objectiveBadge);
     const objective = options.getTrackedObjective?.() ?? null;
-    objectiveBadge.hidden = objective === null;
-    if (objectiveHost) objectiveHost.hidden = objective === null;
-    objectiveBadge.textContent = objective ?? "";
+    if (objectiveBadge.hidden !== (objective === null)) objectiveBadge.hidden = objective === null;
+    if (objectiveHost && objectiveHost.hidden !== (objective === null)) objectiveHost.hidden = objective === null;
+    if (objectiveBadge.textContent !== (objective ?? "")) objectiveBadge.textContent = objective ?? "";
 
-    mainBadge.style.display = isPuzzle ? "none" : "inline-flex";
+    const mainDisplay = isPuzzle ? "none" : "inline-flex";
+    if (mainBadge.style.display !== mainDisplay) mainBadge.style.display = mainDisplay;
     const mySide = options.getMySide();
     const currentSide = turnRuntime.currentSide;
 
@@ -181,38 +204,36 @@ export function createTurnHud(
     const isTutorial = gameMode === "tutorial";
     const isMyTurn = isOnline ? mySide === currentSide : true;
 
-    if (isTutorial) {
+    if (turnRuntime.phase === "settling") {
+      setSide(uiText("settling"));
+      if (timerWrapper.style.display !== "none") timerWrapper.style.display = "none";
+      setBorderColor("rgba(148, 163, 184, 0.3)");
+    } else if (isTutorial) {
       if (tutorialManager.tutorialType === "basic" || !tutorialManager.isMatchStep) {
-        timerWrapper.style.display = "none";
-        sideIndicator.textContent = I18nManager.t(tutorialManager.isMatchStep
+        if (timerWrapper.style.display !== "none") timerWrapper.style.display = "none";
+        setSide(I18nManager.t(tutorialManager.isMatchStep
           ? currentSide === "white" ? "ingame.my_turn" : "ingame.opponent_turn"
-          : "ingame.unlimited_time");
-        mainBadge.style.borderColor = "rgba(56, 189, 248, 0.3)";
+          : "ingame.unlimited_time"));
+        setBorderColor("rgba(56, 189, 248, 0.3)");
       } else {
-        timerWrapper.style.display = "flex";
-        sideIndicator.innerHTML = `<span style="color:#22c55e;">${I18nManager.t("ingame.time_limited")}</span>`;
-        mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
+        if (timerWrapper.style.display !== "flex") timerWrapper.style.display = "flex";
+        setSide(`<span style="color:#22c55e;">${I18nManager.t("ingame.time_limited")}</span>`, true);
+        setBorderColor("rgba(34, 197, 94, 0.4)");
       }
     } else if (isOnline || gameMode === "stage" || gameMode === "weekly") {
-      timerWrapper.style.display = "flex";
+      if (timerWrapper.style.display !== "flex") timerWrapper.style.display = "flex";
       if (isOnline ? isMyTurn : currentSide === "white") {
-        sideIndicator.innerHTML = `<span style="color:#22c55e;">${I18nManager.t("ingame.my_turn")}</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "W" : "B"})</span>`;
-        mainBadge.style.borderColor = "rgba(34, 197, 94, 0.4)";
+        setSide(`<span style="color:#22c55e;">${I18nManager.t("ingame.my_turn")}</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "W" : "B"})</span>`, true);
+        setBorderColor("rgba(34, 197, 94, 0.4)");
       } else {
-        sideIndicator.innerHTML = `<span style="color:#38bdf8;">${I18nManager.t("ingame.opponent_turn")}</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "W" : "B"})</span>`;
-        mainBadge.style.borderColor = "rgba(56, 189, 248, 0.3)";
+        setSide(`<span style="color:#38bdf8;">${I18nManager.t("ingame.opponent_turn")}</span> <span style="color:#94a3b8; font-size:12px;">(${currentSide === "white" ? "W" : "B"})</span>`, true);
+        setBorderColor("rgba(56, 189, 248, 0.3)");
       }
     } else {
-      timerWrapper.style.display = "flex";
+      if (timerWrapper.style.display !== "flex") timerWrapper.style.display = "flex";
       const sideName = currentSide === "white" ? I18nManager.t("ingame.turn_white") : I18nManager.t("ingame.turn_black");
-      sideIndicator.innerHTML = `<span style="color:${currentSide === "white" ? "#f8fafc" : "#94a3b8"};">${sideName}</span>`;
-      mainBadge.style.borderColor = currentSide === "white" ? "rgba(248, 250, 252, 0.3)" : "rgba(148, 163, 184, 0.3)";
-    }
-
-    if (turnRuntime.phase === "settling") {
-      sideIndicator.textContent = uiText("settling");
-      timerWrapper.style.display = "none";
-      mainBadge.style.borderColor = "rgba(148, 163, 184, 0.3)";
+      setSide(`<span style="color:${currentSide === "white" ? "#f8fafc" : "#94a3b8"};">${sideName}</span>`, true);
+      setBorderColor(currentSide === "white" ? "rgba(248, 250, 252, 0.3)" : "rgba(148, 163, 184, 0.3)");
     }
 
     // 기초는 시간 압박 없이, 심화 마지막 대전에서 기존 제한 시간을 사용한다.
@@ -232,35 +253,36 @@ export function createTurnHud(
 
     // 타이머 텍스트 및 프로그레스 바 색상
     const displaySeconds = Math.ceil(remainingSeconds);
-    timerText.textContent = `${displaySeconds}s`;
+    const timerLabel = `${displaySeconds}s`;
+    if (timerText.textContent !== timerLabel) timerText.textContent = timerLabel;
 
     const progressRatio = Math.max(0, Math.min(1, remainingSeconds / TURN_TIME_LIMIT_SECONDS));
-    progressBarFill.style.width = `${(progressRatio * 100).toFixed(1)}%`;
+    const progressWidth = `${(progressRatio * 100).toFixed(1)}%`;
+    if (progressBarFill.style.width !== progressWidth) progressBarFill.style.width = progressWidth;
 
     if (remainingSeconds <= 5.0) {
-      timerText.style.color = "#ef4444";
-      progressBarFill.style.backgroundColor = "#ef4444";
-      timerText.style.animation = turnRuntime.phase === "ready" ? "pulse 0.8s infinite" : "none";
+      setTimerColor("#ef4444");
+      const animation = turnRuntime.phase === "ready" ? "pulse 0.8s infinite" : "none";
+      if (timerText.style.animation !== animation) timerText.style.animation = animation;
     } else if (remainingSeconds <= 10.0) {
-      timerText.style.color = "#eab308";
-      progressBarFill.style.backgroundColor = "#eab308";
-      timerText.style.animation = "none";
+      setTimerColor("#eab308");
+      if (timerText.style.animation !== "none") timerText.style.animation = "none";
     } else {
-      timerText.style.color = "#22c55e";
-      progressBarFill.style.backgroundColor = "#22c55e";
-      timerText.style.animation = "none";
+      setTimerColor("#22c55e");
+      if (timerText.style.animation !== "none") timerText.style.animation = "none";
     }
 
     // 발사 후 5초 초과 정착 가속 인디케이터 배지
     if (!isPuzzle && turnRuntime.phase === "settling" && turnRuntime.settleSeconds > 5.0) {
       const accel = Math.min(4.5, 1.0 + (turnRuntime.settleSeconds - 5.0) * 0.7);
-      accelBadge.style.display = "flex";
+      if (accelBadge.style.display !== "flex") accelBadge.style.display = "flex";
       const accelTextEl = accelBadge.querySelector("#accel-text");
       if (accelTextEl) {
-        accelTextEl.textContent = uiText("acceleration", {speed:accel.toFixed(1)});
+        const accelText = uiText("acceleration", {speed:accel.toFixed(1)});
+        if (accelTextEl.textContent !== accelText) accelTextEl.textContent = accelText;
       }
     } else {
-      accelBadge.style.display = "none";
+      if (accelBadge.style.display !== "none") accelBadge.style.display = "none";
     }
   };
 

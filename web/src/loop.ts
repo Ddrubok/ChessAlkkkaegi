@@ -236,6 +236,7 @@ export function startGameLoop(
   shouldStepPhysics: () => boolean = () => true,
   stepSecondaryOnlineRuntime: () => void = () => {},
   feedback: { isActive: () => boolean; onRingOut: (side: PieceSide) => void } = { isActive: () => true, onRingOut: () => {} },
+  isMenuCovered: () => boolean = () => false,
 ): void {
   const impactFeedback = createImpactFeedback(sceneRuntime);
   let feedbackSerial = turnRuntime.feedbackResetSerial;
@@ -253,6 +254,9 @@ export function startGameLoop(
 
   }
   let lastFrameTime: number | null = null;
+  let menuPaused = false;
+  let menuCanvasWidth = 0;
+  let menuCanvasHeight = 0;
   const turnClock = createTurnClock();
   const updateFrameCallbacks = (now: number, physicsFrameDelta: number): void => {
     const turnKey = `${turnRuntime.turnResetSerial}:${turnRuntime.turnNumber}:${turnRuntime.currentSide}`;
@@ -350,6 +354,31 @@ export function startGameLoop(
    * 실제 렌더 프레임마다 필요한 fixed step만 진행하고 최신 물리 자세를 화면에 반영한다.
    */
   const frame = (now: number): void => {
+    // Only the offline main menu may suspend the board. Online clocks and peers keep running.
+    if (gameModeRuntime.mode !== "online" && !gameModeRuntime.switching && isMenuCovered()) {
+      if (!menuPaused) {
+        impactFeedback.reset();
+        clearLaunchMotion(aimRuntime);
+        resetPieceHitSoundTracking();
+        updateFrameCallbacks(now, 0);
+        updateInputRuntime(inputRuntime, now);
+        updateAimVisuals(aimRuntime, physicsRuntime.pieces, now,
+          getMaxLaunchSpeed(turnRuntime.gameMode, "Knight", tuningRuntime.settings.maxLaunchSpeed));
+      }
+      const canvas = sceneRuntime.renderer.domElement;
+      if (!menuPaused || canvas.width !== menuCanvasWidth || canvas.height !== menuCanvasHeight) {
+        sceneRuntime.renderer.render(sceneRuntime.scene, sceneRuntime.camera);
+        menuCanvasWidth = canvas.width;
+        menuCanvasHeight = canvas.height;
+      }
+      menuPaused = true;
+      lastFrameTime = null;
+      accumulator = 0;
+      fpsFrameCount = 0;
+      requestAnimationFrame(frame);
+      return;
+    }
+    menuPaused = false;
     const feedbackActive = feedback.isActive() && !document.hidden;
     if (!feedbackActive || feedbackSerial !== turnRuntime.feedbackResetSerial) {
       impactFeedback.reset();
