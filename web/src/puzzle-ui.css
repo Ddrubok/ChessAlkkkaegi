@@ -1,6 +1,6 @@
 .puzzle-ui-overlay {
   z-index: 60;
-  padding: 20px;
+  padding: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
 }
 
 .puzzle-ui-overlay[data-screen="playing"] {
@@ -20,8 +20,12 @@
 }
 
 .puzzle-ui-overlay[hidden] { display: none; }
-.piece-stat-modal-card.puzzle-ui-card-shell { max-width: 980px; width: 100%; max-height: calc(100dvh - 40px); overflow-y: auto; }
+.piece-stat-modal-card.puzzle-ui-card-shell { max-width: 980px; width: 100%; max-height: min(100%, calc(100dvh - 40px)); overflow-y: auto; box-sizing: border-box; }
 .puzzle-ui-library-card, .puzzle-ui-briefing-card { height: min(960px, calc(100dvh - 40px)); }
+.piece-stat-modal-card.puzzle-ui-briefing-card, .piece-stat-modal-card.puzzle-ui-result-card { overflow: hidden; }
+.puzzle-ui-briefing-card > .puzzle-ui-header, .puzzle-ui-briefing-card > .puzzle-ui-footer, .puzzle-ui-result-card > .puzzle-ui-footer { flex-shrink: 0; }
+.puzzle-ui-briefing-card > .puzzle-ui-body, .puzzle-ui-result-card > .puzzle-ui-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.puzzle-ui-briefing-card > .puzzle-ui-body { display: grid; align-content: start; gap: 16px; }
 .puzzle-ui-briefing-card > .puzzle-ui-footer { margin-top: 0; padding-top:0; border:0; }
 .puzzle-ui-briefing-card > .puzzle-ui-footer button { width:100%; min-height:44px; }
 .puzzle-ui-info .puzzle-ui-policy { font-size:12px; color:#aebbd0; margin:0; }
@@ -63,6 +67,7 @@
 .puzzle-ui-rules p:first-child { color: #f5ce83; font-weight: 700; }
 .puzzle-ui-action-error { margin: 10px 0 0; padding: 8px 10px; border-radius: 7px; color: #fecaca; background: #7f1d1d99; font-size: 12px; line-height: 1.4; }
 .puzzle-ui-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid #34445e; }
+.puzzle-ui-result-card .puzzle-ui-footer button { flex: 1 1 0; min-width: 0; min-height: 44px; white-space: normal; overflow-wrap: anywhere; }
 .puzzle-ui-primary { min-width: 150px; background: #d97706 !important; }
 .puzzle-ui-playing { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; padding: 14px; pointer-events: none; color: #f8fafc; box-sizing: border-box; }
 .puzzle-ui-hud-top, .puzzle-ui-hud-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; pointer-events: none; }
@@ -91,8 +96,8 @@
 .puzzle-ui-result-conditions p { margin: 0; color: #d5deec; font-size: 13px; }
 
 @media (max-width: 780px) {
-  .puzzle-ui-overlay { padding: 8px; }
-  .piece-stat-modal-card.puzzle-ui-card-shell { max-height: calc(100dvh - 16px); padding: 16px; }
+  .puzzle-ui-overlay { padding: max(8px, env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
+  .piece-stat-modal-card.puzzle-ui-card-shell { max-height: min(100%, calc(100dvh - 16px)); padding: 16px; }
   .puzzle-ui-library-card, .puzzle-ui-briefing-card { height: calc(100dvh - 16px); }
   .puzzle-ui-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .puzzle-ui-detail-layout { grid-template-columns: 1fr; gap: 16px; }

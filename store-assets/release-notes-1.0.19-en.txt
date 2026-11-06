@@ -1,0 +1,4 @@
+• Reduced unnecessary processing in menus and piece previews.
+• Made Start, Practice, and Retry buttons easier to reach in puzzles and weekly challenges on smaller screens.
+• Optimized updates to the turn timer and player information.
+• Reduced the app bundle size by excluding unused promotional images.

@@ -1,0 +1,36 @@
+Chess Alkkagi 1.0.19 / Android versionCode 20
+Release source verification: 2026-11-06
+
+Source
+- Merge develop 974cb39bcc716815aee79117f4f710b367454050 into main b92f3b31e691530b5f3eadda5413758d513b1f55.
+- Set Android versionName to 1.0.19 and versionCode to 20.
+- Preserve main-only release history, reward migration documentation and cosmetics test DOM fix.
+- Production application sources match the source used for the existing 1.0.19 AAB. The retained cosmetics test mock is a test-only difference.
+- Include responsive menu/stage access changes and menu, piece-preview, timer and challenge-action optimizations from develop.
+
+Existing Android release artifact
+- File: ChessAlkkagi-1.0.19-vc20.aab (binary excluded from Git).
+- Application ID: com.chessalkkagi.app
+- Bytes: 11,609,031
+- SHA256: 4e718e1531484f9911fe3a6764c21f5829383bc3f176f914a435ff95b761471d
+- Originally built from develop 974cb39 with Android release metadata changed to 1.0.19 / 20.
+- Existing build verification confirmed the upload signature, bundle metadata and 106 packaged web files. Artifact hash was rechecked for this release.
+- This main promotion does not replace or rebuild the AAB already prepared for Play Console.
+
+Checks on the merged source (all passed)
+- npm ci
+- npm run build (includes TypeScript and prebuild asset/balance checks)
+- npm run check:regressions
+- npm run check:auth-interaction
+- npm run check:cosmetics
+- npm run check:lobby
+- npm run check:progress
+- npm run check:ads
+- node src/tools/queen-overdrive-check.mjs
+- node src/tools/classic-balance-check.mjs
+- node src/tools/classic-friction-check.mjs
+- git diff --check
+- Independent read-only release review
+
+The build retains existing bundle-size and mixed static/dynamic import warnings. No production application changes were introduced to address them during release promotion.
+CrazyGames-specific rename/submission files and unrelated local edits are outside this Android release. A main push triggers the existing GitHub Pages workflow; its actual result is recorded in GitHub Actions.

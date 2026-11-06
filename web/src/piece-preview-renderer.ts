@@ -70,6 +70,7 @@ export class PiecePreviewRenderer {
   private disposed = false;
   private lost = false;
   private dirty = true;
+  private effectActive = false;
   private sizeScale = 1;
   private pointer: number | null = null;
   private pointerX = 0;
@@ -139,13 +140,17 @@ export class PiecePreviewRenderer {
     const bounds = this.canvas.getBoundingClientRect();
     if (!this.canvas.isConnected || bounds.width < 1 || bounds.height < 1) return;
     const moving = !isMotionReduced();
-    if (!this.dirty && now - this.lastFrame < 1000 / 30) { if (moving) this.frame = requestAnimationFrame(this.draw); return; }
+    const autoRotating = moving && this.pointer === null && now > this.resumeAt;
+    const frameInterval = 1000 / 30;
+    if (!this.dirty && now - this.lastFrame < frameInterval) { if (moving) this.frame = requestAnimationFrame(this.draw); return; }
     const elapsed = Math.min((now - this.lastFrame) / 1000, 0.1);
-    this.lastFrame = now; this.dirty = false;
+    this.lastFrame = now;
+    const dirty = this.dirty; this.dirty = false;
     const ratio = Math.min(devicePixelRatio, 1.5, 512 / Math.max(bounds.width, bounds.height));
     const width = Math.max(1, Math.round(bounds.width * ratio));
     const height = Math.max(1, Math.round(bounds.height * ratio));
-    if (this.target.width !== width || this.target.height !== height) {
+    const resized = this.target.width !== width || this.target.height !== height;
+    if (resized) {
       this.target.setSize(width, height); this.canvas.width = width; this.canvas.height = height;
       this.pixels = new Uint8Array(width * height * 4); this.imageData = this.context.createImageData(width, height);
     }
@@ -159,8 +164,11 @@ export class PiecePreviewRenderer {
     const depth = Math.max(fit.height, fit.radius) * 5;
     this.camera.position.set(0, fit.height * 0.5 * 1.025 + depth * 0.28, depth);
     this.camera.lookAt(0, fit.height * 0.5 * 1.025, 0); this.camera.updateProjectionMatrix();
-    if (moving && this.pointer === null && now > this.resumeAt) this.rotation.rotation.y += elapsed * 0.24;
-    this.effects.update(now, this.model, this.sizeScale);
+    if (autoRotating) this.rotation.rotation.y += elapsed * 0.24;
+    const effectActive = this.effects.update(now, this.model, this.sizeScale);
+    const changed = dirty || resized || autoRotating || effectActive || this.effectActive;
+    this.effectActive = effectActive;
+    if (!changed) { if (moving) this.frame = requestAnimationFrame(this.draw); return; }
     try {
       renderPreviewTarget(this.services.renderer, this.scene, this.camera, this.target, this.pixels);
       if (this.imageData) {

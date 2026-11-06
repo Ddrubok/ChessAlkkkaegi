@@ -7,13 +7,19 @@ import { createServer } from 'vite';
 function createFakeElement(tag = 'div') {
   const children = [];
   let parent = null;
+  const writes = { textContent: 0, innerHTML: 0, hidden: 0, style: 0 };
+  const style = new Proxy({}, {
+    set(target, key, value) {
+      writes.style += 1;
+      target[key] = value;
+      return true;
+    },
+  });
   const element = {
     tagName: tag.toUpperCase(),
-    style: {},
+    style,
+    writes,
     className: '',
-    innerHTML: '',
-    textContent: '',
-    hidden: false,
     id: '',
     get children() { return children; },
     get parentElement() { return parent; },
@@ -60,6 +66,13 @@ function createFakeElement(tag = 'div') {
       return false;
     },
   };
+  for (const [property, initial] of [['innerHTML', ''], ['textContent', ''], ['hidden', false]]) {
+    let value = initial;
+    Object.defineProperty(element, property, {
+      get() { return value; },
+      set(next) { writes[property] += 1; value = next; },
+    });
+  }
   return element;
 }
 
@@ -118,6 +131,19 @@ try {
   // Case 1: initial20
   hud.update(0, 0);
   assert.equal(timerTextEl.textContent, '20s', 'Case initial20: initial countdown must be 20s');
+  const sideEl = findDescendantByClass(hud.element, 'turn-hud-side');
+  const objectiveEl = findDescendantByClass(hud.element, 'mastery-hud-objective');
+  const unchangedWrites = [timerTextEl, sideEl, objectiveEl, hud.element].map((el) => ({ ...el.writes }));
+  for (let frame = 0; frame < 120; frame += 1) hud.update(frame * 16, 0);
+  [timerTextEl, sideEl, objectiveEl, hud.element].forEach((el, index) => {
+    assert.deepEqual(el.writes, unchangedWrites[index], 'Unchanged HUD fields must not be written every frame');
+  });
+  hud.update(1000, 0.1);
+  assert.equal(timerTextEl.textContent, '20s', 'Subsecond elapsed time keeps the integer label');
+  assert.equal(timerTextEl.writes.textContent, unchangedWrites[0].textContent, 'Smooth timer progress must not rewrite the same label');
+  const progressFill = findDescendantByClass(hud.element, 'turn-hud-progress-track').children[0];
+  assert.equal(progressFill.style.width, '99.5%', 'Subsecond timer progress keeps its one decimal precision');
+  hud.reset();
 
   // Case 2: elapse5=>15
   hud.update(5000, 5.0);
@@ -251,8 +277,32 @@ try {
   assert.equal(timerTextEl.textContent, '15s', 'Reconnection preserves the remaining deadline');
   hud.update(165000, 15);
   assert.equal(timeoutCount, 5, 'Resumed local turn times out once when eligible');
+
+  const { tutorialManager } = await vite.ssrLoadModule('/src/tutorial.ts');
+  const { I18nManager } = await vite.ssrLoadModule('/src/i18n.ts');
+  const originalLanguage = I18nManager.getLanguage();
+  gameMode = 'tutorial';
+  tutorialManager.isActive = true;
+  tutorialManager.tutorialType = 'basic';
+  tutorialManager.currentStep = 1;
+  hud.reset();
+  hud.update(170000, 5);
+  assert.equal(timerWrap.style.display, 'none', 'Basic tutorial hides its timer');
+  assert.equal(timerTextEl.textContent, '20s', 'Basic tutorial does not consume time');
+  I18nManager.setLanguage('en');
+  hud.update(170000, 0);
+  assert.equal(side.textContent, I18nManager.t('ingame.unlimited_time'), 'Language change refreshes cached side text');
+  tutorialManager.tutorialType = 'advanced';
+  tutorialManager.currentStep = tutorialManager.stepCount;
+  hud.update(170000, 0);
+  assert.equal(timerWrap.style.display, 'flex', 'Advanced tutorial match shows timer');
+  assert.ok(side.innerHTML.includes(I18nManager.t('ingame.time_limited')), 'Tutorial phase change refreshes cached HTML');
+  hud.update(171000, 1);
+  assert.equal(timerTextEl.textContent, '19s', 'Advanced tutorial match keeps timer accuracy');
+  I18nManager.setLanguage(originalLanguage);
+  tutorialManager.isActive = false;
   hud.destroy();
-  console.log('PASS: turn-timer regression (initial20, elapse5=>15, reset same white=>20, timeout onlyonce, reset after timeout permits another timeout, black turn resets, menu hide/show preserves remaining time, match-over update does not count)');
+  console.log('PASS: turn-timer regression (idempotent HUD writes, subsecond progress, timeout, side changes, menu, settling, tutorial and language)');
 } finally {
   await vite.close();
 }

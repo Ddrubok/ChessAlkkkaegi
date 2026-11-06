@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Challenge action layout QA fixture</title></head><body><main id="app"><button id="opener">QA opener</button></main>
+<script type="module">
+import '/src/style.css';
+import '/src/piece-stat-workbench.css';
+import '/src/weekly-challenge-ui.css';
+import '/src/mastery-ui.css';
+import {PuzzleUI} from '/src/puzzle-ui.ts';
+import {I18nManager} from '/src/i18n.ts';
+import {openWeeklyChallenge} from '/src/weekly-challenge-ui.ts';
+import {WeeklyChallengeStorage} from '/src/weekly-challenge-storage.ts';
+import {createLocalWeeklyDefinition} from '/src/weekly-challenge-definition.ts';
+import {appendMasteryResult} from '/src/mastery-ui.ts';
+I18nManager.init('ko');
+const calls=[];
+const puzzle=new PuzzleUI(document.querySelector('#app'),{
+  progress:()=>({clearedIds:[],medals:{}}),
+  onStart:id=>{calls.push(['start',id]);puzzle.showPlaying(id,{shotsRemaining:2});},
+  onRetry:id=>{calls.push(['retry',id]);puzzle.showPlaying(id,{shotsRemaining:2});},
+  onLibrary:()=>calls.push(['library']),onExit:()=>calls.push(['exit'])
+});
+const guest=new WeeklyChallengeStorage(); await guest.activate(null,null);
+const guestView=structuredClone(guest.view()), definition=await createLocalWeeklyDefinition(new Date());
+let view, listeners=new Set(), fail=false;
+const storage={owner:null,view:()=>view,estimatedNow:()=>Date.now(),subscribe:f=>{listeners.add(f);return()=>listeners.delete(f);},refreshAtBoundary:async()=>{}};
+const action=name=>async()=>{calls.push([name]);if(fail)throw Error('QA simulated action error');};
+window.qa={calls,
+  open(kind,lang='ko'){
+    document.querySelector('[data-weekly-action="close"]')?.click();puzzle.hide();calls.length=0;fail=false;
+    I18nManager.setLanguage(lang);document.querySelector('#opener').focus();
+    if(kind.startsWith('puzzle')){
+      if(kind==='puzzle-briefing')puzzle.showBriefing('puzzle-01');
+      else {puzzle.showResult('puzzle-01',{success:kind==='puzzle-success',objectiveMet:kind==='puzzle-success',goldMet:kind==='puzzle-success',medal:kind==='puzzle-success'?3:0,failureCode:'no-player-pieces'});appendMasteryResult(document.querySelector('.puzzle-ui-result-card .puzzle-ui-body'),[{medalId:'M02',before:0,after:1,threshold:6,achieved:false}],()=>calls.push(['mastery']));}
+      return;
+    }
+    view=structuredClone(guestView);
+    if(kind!=='weekly-guest'){
+      view.owner='qa-layout-owner';view.syncState=kind==='weekly-offline'?'offline':'synced';
+      view.snapshot={currentWeek:definition,previousWeek:null,activeAttempt:null,records:{}};
+      if(kind==='weekly-takeover')view.snapshot.activeAttempt={weekId:definition.weekId,definitionHash:definition.definitionHash,status:'ready-for-stage',ownerSessionId:'different-session'};
+    }
+    storage.owner=view.owner;
+    openWeeklyChallenge(storage,Object.fromEntries(['practice','start','resume','takeover','terminate','retry'].map(k=>[k,action(k)])));
+  },refresh(){listeners.forEach(f=>f());},failAction(){fail=true;}
+};
+</script></body></html>

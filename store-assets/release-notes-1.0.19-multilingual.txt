@@ -1,0 +1,24 @@
+<ko-KR>
+• 메뉴와 기물 미리보기의 불필요한 처리를 줄였습니다.
+• 작은 화면에서 퍼즐·주간 도전의 시작, 연습, 재시도 버튼을 더 쉽게 누를 수 있도록 개선했습니다.
+• 대전 중 남은 시간과 플레이어 정보 표시를 최적화했습니다.
+• 불필요한 홍보 이미지를 제외해 앱 배포 파일의 크기를 줄였습니다.
+</ko-KR>
+<en-US>
+• Reduced unnecessary processing in menus and piece previews.
+• Made Start, Practice, and Retry buttons easier to reach in puzzles and weekly challenges on smaller screens.
+• Optimized updates to the turn timer and player information.
+• Reduced the app bundle size by excluding unused promotional images.
+</en-US>
+<ja-JP>
+• メニューと駒のプレビューで不要な処理を減らしました。
+• 小さな画面でも、パズルやウィークリーチャレンジの開始・練習・再挑戦ボタンを押しやすくしました。
+• 対戦中の残り時間とプレイヤー情報の表示を最適化しました。
+• 不要な宣伝用画像を除き、アプリの配布ファイルを小さくしました。
+</ja-JP>
+<fr-FR>
+• Réduction des traitements inutiles dans les menus et les aperçus des pièces.
+• Boutons de lancement, d’entraînement et de nouvelle tentative plus accessibles dans les puzzles et défis hebdomadaires sur les petits écrans.
+• Optimisation de l’affichage du temps de tour et des informations des joueurs.
+• Réduction de la taille du fichier de l’application en retirant des images promotionnelles inutilisées.
+</fr-FR>

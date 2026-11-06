@@ -1,0 +1,4 @@
+• Réduction des traitements inutiles dans les menus et les aperçus des pièces.
+• Boutons de lancement, d’entraînement et de nouvelle tentative plus accessibles dans les puzzles et défis hebdomadaires sur les petits écrans.
+• Optimisation de l’affichage du temps de tour et des informations des joueurs.
+• Réduction de la taille du fichier de l’application en retirant des images promotionnelles inutilisées.
