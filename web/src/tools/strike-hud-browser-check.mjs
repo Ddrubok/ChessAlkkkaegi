@@ -298,6 +298,8 @@ try {
     await control('[data-game-mode="hotseat"]');
     await control('[data-map-action="start"]');
     await page.waitForTimeout(500);
+    await control('[data-mode="billiards"]');
+    await page.waitForFunction(() => window.__strikeHudQA.runtime.cameraTransition === null && !window.__strikeHudQA.runtime.policy.isCameraRotating());
     await selectPawn();
     if(process.env.QA_EDGE) {
       const languages=['ko','en','ja','zh-CN','de','fr','es','ru','pt-BR'];

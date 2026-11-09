@@ -5,6 +5,7 @@
   --game-dock-left: calc(max(8px, env(safe-area-inset-left, 0px)) + 104px);
   --game-dock-right: calc(max(12px, env(safe-area-inset-right, 0px)) + 204px);
   --game-dock-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  --strike-panel-width: min(176px, 23vw);
 }
 
 #app > .game-canvas {
@@ -14,6 +15,29 @@
   width: calc(100% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   height: calc(100% - var(--game-board-top) - var(--game-hud-height));
 }
+
+#app > .game-canvas.is-outside-aim-release {
+  outline: 3px solid #ff7070;
+  outline-offset: -3px;
+}
+
+#app .classic-cancel-feedback {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  bottom: calc(var(--game-dock-bottom) + 84px);
+  padding: 6px 12px;
+  border: 1px solid #ff7070;
+  border-radius: 8px;
+  background: #351b1b;
+  color: #fff;
+  font-weight: 700;
+  pointer-events: none;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  text-align: center;
+}
+#app .classic-cancel-feedback[hidden] { display: none; }
 
 #app .strike-action-bar,
 #app .classic-cancel-control {
@@ -144,10 +168,12 @@
 
 #app .strike-point-panel {
   left: max(8px, env(safe-area-inset-left, 0px));
-  top: calc(var(--game-board-top) + (100% - var(--game-board-top) - var(--game-hud-height)) / 2);
-  width: min(176px, 23vw);
-  max-height: calc(100% - var(--game-board-top) - var(--game-hud-height) - 12px);
-  height: min(250px, calc(100% - var(--game-board-top) - var(--game-hud-height) - 12px));
+  /* The panel occupies the board's upper left; the power and action docks own its lower edge. */
+  top: calc(var(--game-board-top) + 6px);
+  transform: none;
+  width: var(--strike-panel-width);
+  max-height: calc(100% - var(--game-board-top) - max(var(--game-hud-height), 116px) - 12px);
+  height: min(250px, calc(100% - var(--game-board-top) - max(var(--game-hud-height), 116px) - 12px));
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 4px;
   padding: 5px;
@@ -205,7 +231,14 @@
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
-  #app .strike-point-panel { width: 140px; }
+  #app { --strike-panel-width: 140px; }
+}
+
+/* Tutorial boards extend behind the HUD. Reserve the panel's width as well as its height. */
+@media (orientation: landscape) {
+  #app:has(.strike-point-panel:not([hidden])) {
+    --game-dock-left: calc(max(8px, env(safe-area-inset-left, 0px)) + var(--strike-panel-width) + 8px);
+  }
 }
 
 /* Keep player identity outside the board and reserve the same space throughout a shot. */

@@ -147,7 +147,13 @@ try {
   const physicsRuntime = { pieces: bindings };
 
   const capturedPointerIds = new Set();
+  const canvasClasses = new Set();
   const mockCanvas = {
+    classList: {
+      toggle: (name, active) => active ? canvasClasses.add(name) : canvasClasses.delete(name),
+      remove: (name) => canvasClasses.delete(name),
+      contains: (name) => canvasClasses.has(name),
+    },
     getBoundingClientRect: () => ({ left: 0, top: 0, right: 400, bottom: 400, width: 400, height: 400 }),
     setPointerCapture: (id) => capturedPointerIds.add(id),
     releasePointerCapture: (id) => capturedPointerIds.delete(id),
@@ -194,6 +200,7 @@ try {
   const createTestRuntime = (mode = 'classic') => {
     launchQueueCalls = [];
     capturedPointerIds.clear();
+    canvasClasses.clear();
     classListSet.clear();
     mockCancelControl.hidden = true;
 
@@ -251,6 +258,7 @@ try {
       cancelControl: mockCancelControl,
       cancelControlTitle: {},
       cancelControlHint: {},
+      cancelFeedback: { hidden: true },
       isPointerOverCancel: false,
     };
     return runtime;
@@ -459,8 +467,12 @@ try {
         assert.equal(runtime.state, 'aiming');
         pointerMove(runtime, event(x, y));
         assert.ok(runtime.aimRuntime.activeAim.normalizedPower > 0);
+        const outside = ['left banner', 'right banner', 'outside power label', 'below cancel', 'outside screen', 'above canvas'].includes(label);
+        assert.equal(canvasClasses.has('is-outside-aim-release'), outside, `${pointerType}: ${label} preview`);
         pointerUp(runtime, event(x, y));
         assert.equal(launchQueueCalls.length, launches ? 1 : 0, `${pointerType}: ${label}`);
+        assert.equal(runtime.cancelFeedback.hidden, !outside, `${pointerType}: ${label} cancellation status`);
+        assert.equal(canvasClasses.has('is-outside-aim-release'), false, `${pointerType}: ${label} preview resets`);
         assert.equal(runtime.cancelControl.hidden, true, `${label}: cancel feedback resets`);
         assert.equal(capturedPointerIds.size, 0, `${label}: pointer capture released`);
       }

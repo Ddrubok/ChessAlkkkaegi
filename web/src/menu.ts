@@ -156,6 +156,7 @@ export interface MainMenuRuntime {
   onConfirmAbandon: () => Promise<void>;
   canForfeitRound?: () => boolean;
   onForfeitRound?: () => Promise<void>;
+  onResumeSoloConfirm?: (pausedMilliseconds: number) => void;
   verifiedPortalProfile?: UserProfile | null;
   isStageMatch?: () => boolean;
   getPendingStagePoints?: () => number;
@@ -844,6 +845,7 @@ export function createMainMenu(
   onOpenPuzzles?: () => void,
 ): MainMenuRuntime {
   let confirmResumeVersion: number | null = null;
+  let confirmOpenedAt: number | null = null;
   const overlay = document.createElement("section");
   overlay.className = "main-menu-overlay";
   if (PLATFORM.id === "poki" || PLATFORM.id === "crazygames") overlay.inert = true;
@@ -993,7 +995,7 @@ export function createMainMenu(
   });
 
   returnButton.addEventListener("click", () => {
-    if (runtime.busy || runtime.visible) {
+    if (runtime.busy || runtime.visible || runtime.confirming) {
       return;
     }
     const heading =
@@ -1012,11 +1014,15 @@ export function createMainMenu(
       desc.textContent = canForfeit ? I18nManager.t("ingame.friendly_forfeit_desc") : abandonDescription();
     }
     runtime.confirming = true;
+    confirmOpenedAt = performance.now();
     confirmResumeVersion = gameplay.leave("confirm-open");
     runtime.confirmOverlay.hidden = false;
     confirmButton.focus();
   });
   cancelButton.addEventListener("click", () => {
+    if (!runtime.confirming || cancelButton.disabled) return;
+    if (confirmOpenedAt !== null) runtime.onResumeSoloConfirm?.(performance.now() - confirmOpenedAt);
+    confirmOpenedAt = null;
     runtime.confirming = false;
     runtime.confirmOverlay.hidden = true;
     runtime.returnButton.focus();
@@ -1030,6 +1036,7 @@ export function createMainMenu(
     cancelButton.disabled = true;
     void runtime.onForfeitRound().then(() => {
       runtime.confirming = false;
+      confirmOpenedAt = null;
       runtime.confirmOverlay.hidden = true;
       confirmResumeVersion = null;
       forfeitButton.disabled = false;
@@ -1051,6 +1058,7 @@ export function createMainMenu(
     void runtime.onConfirmAbandon().then(
       () => {
         runtime.confirming = false;
+        confirmOpenedAt = null;
         runtime.confirmOverlay.hidden = true;
         confirmButton.disabled = false;
         cancelButton.disabled = false;

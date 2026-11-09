@@ -1593,6 +1593,21 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
 .tutorial-skip-button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
 @media (pointer: coarse) { .tutorial-skip-button { min-height: 44px; } }
 .tutorial-guide-text:empty { display: none; }
+.tutorial-gesture {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 24;
+  pointer-events: none;
+  fill: none;
+  stroke: #ffdf69;
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px #000);
+}
+#app .tutorial-next-control { outline: 3px solid #ffdf69; outline-offset: 2px; }
 @media (max-height: 500px) {
   body[data-tutorial] { --tutorial-coach-top: 48px; }
   body[data-tutorial="basic"] #app { --game-hud-height: calc(104px + env(safe-area-inset-bottom, 0px)); --game-dock-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
@@ -1621,6 +1636,14 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
   body[data-tutorial="basic"] #app .aim-power {
     left: calc(max(12px, env(safe-area-inset-left, 0px)) + 172px);
   }
+}
+
+/* Keep the advanced aim target above the dock at the small portal sizes. */
+@media (orientation: landscape) {
+  body[data-tutorial="advanced"] #app:has(.strike-action-bar:not([hidden])) {
+    --game-hud-height: calc(140px + env(safe-area-inset-bottom, 0px));
+  }
+  body[data-tutorial="advanced"] { --tutorial-coach-top: 48px; }
 }
 
 .settings-modal-overlay {

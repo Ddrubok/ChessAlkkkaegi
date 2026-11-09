@@ -35,7 +35,7 @@ import { getRuntimeText } from "./runtime-text";
 import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
-import { tutorialManager } from "./tutorial";
+import { getTutorialInputMode, tutorialManager } from "./tutorial";
 import { shouldStartFirstTutorial } from "./lobby-recommendation";
 import { PuzzlePhysicsTracker } from "./puzzle-physics";
 import { applyPuzzleSpawnDefinitions } from "./puzzle-spawn";
@@ -800,7 +800,7 @@ async function bootstrap(): Promise<void> {
   const turnHud = createTurnHud(app, turnRuntime, {
     getGameMode: () => localBalancePreview && onlineRuntime === null ? "hotseat" : gameModeRuntime?.mode ?? "hotseat",
     getMySide: () => onlineRuntime?.mySide ?? null,
-    isMenuVisible: () => !menuRuntime.overlay.hidden,
+    isMenuVisible: () => !menuRuntime.overlay.hidden || (gameModeRuntime?.mode !== "online" && menuRuntime.confirming),
     isOnlineReady: () => onlineRuntime?.active === true,
     onTimeoutLaunch: handleTurnTimeout,
     getTrackedObjective: () => trackedMasteryText(progressStorage),
@@ -970,6 +970,7 @@ async function bootstrap(): Promise<void> {
         const apply = () => {
           const swapped = executeKingSwap(turnRuntime, kingPieceId, targetPieceId);
           if (!swapped) return false;
+          tutorialManager.showKingSwapFollowup();
           playSoundEffect("power90");
           cancelInputInteraction(inputRuntime, true);
           selectPiece(inputRuntime, kingPieceId);
@@ -1099,6 +1100,17 @@ async function bootstrap(): Promise<void> {
     () => undefined,
     () => appliedEnemyBuffStepScale,
   );
+  menuRuntime.onResumeSoloConfirm = (pausedMilliseconds) => {
+    if (gameModeRuntime?.mode === "online") return;
+    inputRuntime.lastUpdateTime = null;
+    if (aiRuntime.scheduledAt !== null) aiRuntime.scheduledAt += pausedMilliseconds;
+    if (aiRuntime.telegraph) {
+      aiRuntime.telegraph.previewAt += pausedMilliseconds;
+      if (aiRuntime.telegraph.chargeStartedAt !== null) aiRuntime.telegraph.chargeStartedAt += pausedMilliseconds;
+    }
+    if (turnRuntime.cameraRotation) turnRuntime.cameraRotation.startedAt += pausedMilliseconds;
+    if (inputRuntime.cameraTransition) inputRuntime.cameraTransition.startedAt += pausedMilliseconds;
+  };
   readsAiTelegraphActive = () =>
     isAiTelegraphActive(aiRuntime);
   const computePendingCardTuningValues = (
@@ -1710,12 +1722,17 @@ async function bootstrap(): Promise<void> {
   const renderRematchControls = (
     status: OnlineRematchStatus | null,
   ): void => {
+    if (gameModeRuntime?.mode === "online" && status?.connected && status.phase === "failed") {
+      // Board preparation may already have cleared the previous winner and overlay.
+      showDisconnectedMatchEnd(matchRuntime, () => returnToMainMenu(menuRuntime, true));
+      matchRuntime.winnerHeading.textContent = getRuntimeText("online.rematch_btn");
+    }
     rematchCancelButton.textContent = getRuntimeText("online.rematch_cancel_btn");
     rematchAcceptButton.textContent = getRuntimeText("online.rematch_accept_btn");
     rematchDeclineButton.textContent = getRuntimeText("online.rematch_decline_btn");
     const showsOnlineResult =
       gameModeRuntime?.mode === "online" &&
-      matchRuntime.winner !== null &&
+      (matchRuntime.winner !== null || !matchRuntime.overlay.hidden) &&
       status?.connected === true;
     rematchButton.hidden = true;
     rematchCancelButton.hidden = true;
@@ -1742,7 +1759,7 @@ async function bootstrap(): Promise<void> {
     } else if (status.phase === "incoming") {
       rematchAcceptButton.hidden = false;
       rematchDeclineButton.hidden = false;
-    } else if (status.phase === "declined") {
+    } else if (status.phase === "declined" || status.phase === "failed") {
       rematchButton.hidden = false;
     }
   };
@@ -1854,6 +1871,11 @@ async function bootstrap(): Promise<void> {
     }
   };
 
+  const restartStageRun = async (): Promise<void> => {
+    // Reuse the same new-run transaction and readiness checks as the lobby.
+    await menuRuntime.onStartMode("stage", 1);
+    hideMainMenuAfterModeStart(menuRuntime);
+  };
   setMatchOverHandler(turnRuntime, (winner) => {
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
     // A settled stage can be reported again by a delayed callback; credit it once.
@@ -1992,6 +2014,7 @@ async function bootstrap(): Promise<void> {
           completedRun,
           () => returnToMainMenu(menuRuntime, true),
           winner,
+          restartStageRun,
         );
         if (PLATFORM.id !== "crazygames") {
           appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
@@ -2106,6 +2129,7 @@ async function bootstrap(): Promise<void> {
       tuningRuntime,
       (now, frameDelta) => {
         turnHud.update(now, frameDelta);
+        tutorialManager.updateInputGuide(inputRuntime);
         playerBanners.update();
         const weeklyVisible = gameModeRuntime?.mode === "weekly" && weeklyRun !== null && !isMenuBlocking(menuRuntime) && !gameModeRuntime.switching && turnRuntime.phase !== "match-over" && !weeklyRecoveryVisible;
         if (weeklyRun && weeklyVisible) {
@@ -2147,7 +2171,7 @@ async function bootstrap(): Promise<void> {
           playerBanners.pieceRemoved(side);
         },
       },
-      () => menuRuntime.visible && !localBalancePreview && onlineRuntime === null && onlineSelfTestRuntime === null,
+      () => (menuRuntime.visible || menuRuntime.confirming) && !localBalancePreview && onlineRuntime === null && onlineSelfTestRuntime === null,
     );
     gameLoopStarted = true;
   };
@@ -2360,11 +2384,7 @@ async function bootstrap(): Promise<void> {
       const step = selectedStage ?? 1;
       tutorialInputModeBeforeStart ??= inputRuntime.mode;
       tutorialManager.start(step, tutorialType);
-      if (tutorialType === "basic") {
-        switchInputMode(inputRuntime, "classic", false);
-      } else if (step === 3) {
-        switchInputMode(inputRuntime, "billiards", false);
-      }
+      switchInputMode(inputRuntime, getTutorialInputMode(step, tutorialType), false);
     } else {
       tutorialManager.stop();
       if (tutorialInputModeBeforeStart !== null) {
@@ -2705,6 +2725,8 @@ async function bootstrap(): Promise<void> {
       0,
       false,
       () => returnToMainMenu(menuRuntime),
+      "black",
+      restartStageRun,
     );
     if (PLATFORM.id !== "crazygames") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, () => {
       openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });
@@ -2947,9 +2969,7 @@ async function bootstrap(): Promise<void> {
           gameMode: "tutorial",
           stageNumber: nextStep,
         });
-        if (tutorialManager.tutorialType === "advanced" && nextStep === 3) {
-          switchInputMode(inputRuntime, "billiards", false);
-        }
+        switchInputMode(inputRuntime, getTutorialInputMode(nextStep, tutorialManager.tutorialType), false);
       }
     },
     async (destination) => {

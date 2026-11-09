@@ -8,6 +8,7 @@ import type { Rule } from "postcss";
 
 const GITHUB_PAGES_BASE = "./";
 const PROJECT_ROOT = fileURLToPath(new URL(".", import.meta.url));
+const CRAZYGAMES_TITLE = "chessalkkagi";
 
 interface PortableAssetDefinition {
   // 런타임 코드가 경로 대신 사용하는 안정적인 식별자다.
@@ -204,15 +205,31 @@ export default defineConfig(({ command, isPreview, mode }) => {
       },
     }] : []), ...(crazygamesBuild ? [{
       name: "crazygames-build",
+      enforce: "pre" as const,
+      transform(code: string, id: string) {
+        if (!/\/src\/(?:i18n|runtime-text|ui-text)\.ts$/u.test(id.replaceAll("\\", "/"))) return;
+        // Keep the portal brand consistent across locales, including tutorial copy.
+        const previousTitles = new Set(["ChessAlkkagi", "Chess Alkkagi"]);
+        for (const [, title] of code.matchAll(/"lobby":\s*\{\s*"title":\s*"([^"]+)"/gu)) {
+          previousTitles.add(title!);
+          previousTitles.add(title!.replace(/ \(Alkkagi\)$/u, ""));
+        }
+        let branded = code;
+        for (const title of [...previousTitles].sort((a, b) => b.length - a.length)) {
+          branded = branded.replaceAll(title, CRAZYGAMES_TITLE);
+        }
+        return branded;
+      },
       transformIndexHtml: {
         order: "pre" as const,
         handler: (html: string) => html
           .replace(/<!--[^]*?-->/gu, "")
           .replace(/<html lang="[^"]*">/u, '<html lang="en">')
+          .replace(/<title>[^<]*<\/title>/u, `<title>${CRAZYGAMES_TITLE}</title>`)
           .replace(/<meta name="description"[^>]*>/u, '<meta name="description" content="Aim and launch chess pieces to knock opponents off the board.">')
           .replace(/\s*<meta name="google-adsense-account"[^>]*>/u, "")
           .replace(/\s*<link rel="preload"[^>]*>/u, "")
-          .replace(/<div class="boot-loading-card">[^]*?<div class="boot-loading-track"[^>]*><\/div>\s*<\/div>/u, '<div class="boot-loading-card"><h1>Chess Alkkagi</h1><p>Aim and launch chess pieces to knock opponents off the board.</p><p id="boot-loading-phase">Loading…</p><div class="boot-loading-track" aria-hidden="true"></div></div>')
+          .replace(/<div class="boot-loading-card">[^]*?<div class="boot-loading-track"[^>]*><\/div>\s*<\/div>/u, `<div class="boot-loading-card"><h1>${CRAZYGAMES_TITLE}</h1><p>Aim and launch chess pieces to knock opponents off the board.</p><p id="boot-loading-phase">Loading…</p><div class="boot-loading-track" aria-hidden="true"></div></div>`)
           .replace(/\s*<script src="\.\/boot-language\.js"><\/script>/u, "")
           .replace('src="/src/main.ts"', 'src="/src/crazygames-entry.ts"'),
       },

@@ -47,7 +47,7 @@ for (const file of files) {
 
 const html = await readFile(join(root, 'index.html'), 'utf8');
 if (!/<html lang="en">/u.test(html)) failures.push('index.html: English boot language missing');
-if (!/Chess Alkkagi/u.test(html) || !/Loading…/u.test(html)) failures.push('index.html: English boot copy missing');
+if (!/<title>chessalkkagi<\/title>/u.test(html) || !/<h1>chessalkkagi<\/h1>/u.test(html) || !/Loading…/u.test(html)) failures.push('index.html: CrazyGames title or English boot copy missing');
 if (/<nav\b|google-adsense|about\.html|guide\.html|tiers\.html|updates\.html|boot-language\.js/iu.test(html)) failures.push('index.html: promotional boot content');
 for (const match of html.matchAll(/<(?:script|link|img)\b[^>]*(?:src|href)="([^"#?]+)"/gu)) {
   const path = match[1];

@@ -245,6 +245,7 @@ export interface InputRuntime {
   cancelControl?: HTMLElement;
   cancelControlTitle?: HTMLElement;
   cancelControlHint?: HTMLElement;
+  cancelFeedback?: HTMLElement;
   isPointerOverCancel?: boolean;
 }
 
@@ -380,6 +381,24 @@ function containsClientPoint(
     event.clientX <= rect.right &&
     event.clientY >= rect.top &&
     event.clientY <= rect.bottom
+  );
+}
+
+function isInsideAimReleaseArea(runtime: InputRuntime, event: PointerEvent): boolean {
+  const canvas = runtime.sceneRuntime.renderer.domElement;
+  if (containsClientPoint(canvas, event)) return true;
+  const cancelRect = runtime.cancelControl?.hidden === false
+    ? runtime.cancelControl.getBoundingClientRect()
+    : undefined;
+  const overAimDock =
+    (runtime.gesture?.source === "red-dot" || runtime.gesture?.source === "classic-canvas") &&
+    cancelRect !== undefined && cancelRect.width > 0 && cancelRect.height > 0 &&
+    event.clientX >= cancelRect.left && event.clientX <= cancelRect.right &&
+    event.clientY >= canvas.getBoundingClientRect().bottom &&
+    event.clientY < cancelRect.top;
+  return overAimDock || (
+    runtime.gesture?.source === "classic-canvas" &&
+    isPointerOverElement(runtime.aimRuntime.powerReadout, event.clientX, event.clientY)
   );
 }
 
@@ -654,7 +673,7 @@ function beginCameraRestore(
       : runtime.sceneRuntime.pieceMeshes.get(selectedId);
   const redDot = runtime.aimParametersRuntime.currentSolution
     ?.applicationPoint;
-  const adaptiveDistance =
+  let adaptiveDistance =
     selected &&
     selectedMesh !== undefined &&
     redDot !== undefined
@@ -668,6 +687,15 @@ function beginCameraRestore(
           fromSpherical.theta,
         )
       : null;
+  // A far-side piece should not shrink the entire board just to remain centered.
+  // Strike editing keeps its close-up; ordinary aim can frame the board center.
+  if (adaptiveDistance !== null && adaptiveDistance > wholeBoardDistance && !runtime.strikeMode) {
+    toTarget.set(0, 0, 0);
+    adaptiveDistance = computeAdaptiveCloseDistance(
+      camera, selectedMesh!, toTarget, redDot!, runtime.sceneRuntime.boardHalfExtent,
+      desiredPhi, fromSpherical.theta,
+    );
+  }
   const maxDistance =
     policy.mode === "classic"
       ? Math.max(
@@ -1039,6 +1067,7 @@ function cancelInteraction(
   const pointerId = runtime.activePointerId;
   runtime.state = "cancel";
   runtime.isPointerOverCancel = false;
+  runtime.sceneRuntime.renderer.domElement.classList?.remove("is-outside-aim-release");
   if (runtime.cancelControl) {
     runtime.cancelControl.hidden = true;
     runtime.cancelControl.classList.remove("is-hovered");
@@ -1658,6 +1687,7 @@ function handleCanvasPointerDown(
       runtime.cancelControl.hidden = false;
       runtime.cancelControl.classList.remove("is-hovered");
     }
+    if (runtime.cancelFeedback) runtime.cancelFeedback.hidden = true;
     runtime.activePointerId = event.pointerId;
     runtime.activeCaptureElement = canvas;
     runtime.gesture = {
@@ -1704,6 +1734,7 @@ function handleCanvasPointerDown(
       runtime.cancelControl.hidden = false;
       runtime.cancelControl.classList.remove("is-hovered");
     }
+    if (runtime.cancelFeedback) runtime.cancelFeedback.hidden = true;
     runtime.activePointerId = event.pointerId;
     runtime.activeCaptureElement = canvas;
     runtime.gesture = {
@@ -1777,8 +1808,15 @@ function handleCanvasPointerMove(
       event.clientX,
       event.clientY,
     );
+    const outsideRelease = !overCancel && !isInsideAimReleaseArea(runtime, event);
+    if (runtime.cancelControlHint) {
+      const copy = inputCancelCopy();
+      runtime.cancelControlHint.textContent = outsideRelease ? copy.outsideHint
+        : isCoarsePointerEnvironment() ? copy.cancelHintMobile : copy.cancelHintDesktop;
+    }
     runtime.isPointerOverCancel = overCancel;
-    if (overCancel) {
+    runtime.sceneRuntime.renderer.domElement.classList?.toggle("is-outside-aim-release", outsideRelease);
+    if (overCancel || outsideRelease) {
       runtime.cancelControl?.classList.add("is-hovered");
     } else {
       runtime.cancelControl?.classList.remove("is-hovered");
@@ -1886,23 +1924,16 @@ function handleCanvasPointerUp(
     cancelInteraction(runtime, false);
     return;
   }
-  const canvas = runtime.sceneRuntime.renderer.domElement;
   // 캔버스 아래에 배치된 세기·피치·고도와 그 여백도 진행 중인 발사의 release 영역이다.
   // 취소 버튼은 위에서 먼저 처리하고, HUD 옆 배너나 화면 밖까지 영역을 넓히지 않는다.
-  const cancelRect = runtime.cancelControl?.hidden === false
-    ? runtime.cancelControl.getBoundingClientRect()
-    : undefined;
-  const overAimDock =
-    (gesture.source === "red-dot" || gesture.source === "classic-canvas") &&
-    cancelRect !== undefined && cancelRect.width > 0 && cancelRect.height > 0 &&
-    event.clientX >= cancelRect.left && event.clientX <= cancelRect.right &&
-    event.clientY >= canvas.getBoundingClientRect().bottom &&
-    event.clientY < cancelRect.top;
-  // The classic power label is read-only even when it sits beside the cancel dock.
-  const overPowerReadout = gesture.source === "classic-canvas" &&
-    isPointerOverElement(runtime.aimRuntime.powerReadout, event.clientX, event.clientY);
-  if (!containsClientPoint(canvas, event) && !overAimDock && !overPowerReadout) {
+  if (!isInsideAimReleaseArea(runtime, event)) {
     cancelInteraction(runtime, false);
+    if (gesture.source === "classic-canvas" && runtime.cancelFeedback) {
+      runtime.cancelFeedback.hidden = false;
+      window.setTimeout(() => {
+        if (runtime.cancelFeedback) runtime.cancelFeedback.hidden = true;
+      }, 1400);
+    }
     return;
   }
   if (gesture.source === "red-dot") {
@@ -2070,7 +2101,7 @@ export function createInputRuntime(
   const initialMode: InputMode =
     storedMode === "classic" || storedMode === "billiards"
       ? storedMode
-      : "billiards";
+      : "classic";
   const modeToggle = document.createElement("div");
   modeToggle.className = "input-mode-toggle";
   modeToggle.setAttribute("role", "group");
@@ -2149,6 +2180,10 @@ export function createInputRuntime(
 
   cancelControlBtn.append(cancelControlTitle, cancelControlHint);
   cancelControl.append(cancelControlBtn);
+  const cancelFeedback = document.createElement("div");
+  cancelFeedback.className = "classic-cancel-feedback";
+  cancelFeedback.setAttribute("role", "status");
+  cancelFeedback.hidden = true;
 
   const updateCancelControlLabels = () => {
     const isCoarse = isCoarsePointerEnvironment();
@@ -2158,6 +2193,7 @@ export function createInputRuntime(
       ? copy.cancelHintMobile
       : copy.cancelHintDesktop;
     cancelControl.setAttribute("aria-label", copy.cancelTitle);
+    cancelFeedback.textContent = copy.cancelledOutside;
   };
   updateCancelControlLabels();
 
@@ -2175,7 +2211,7 @@ export function createInputRuntime(
   if (overlayContainer === null) {
     throw new Error("타점 패널을 붙일 게임 컨테이너가 없습니다.");
   }
-  overlayContainer.append(cancelControl);
+  overlayContainer.append(cancelControl, cancelFeedback);
   const strikePointPanel =
     createStrikePointPanel(overlayContainer);
   const kingSwapBanner = document.createElement("div");
@@ -2221,6 +2257,7 @@ export function createInputRuntime(
     cancelControl,
     cancelControlTitle,
     cancelControlHint,
+    cancelFeedback,
     isPointerOverCancel: false,
   };
 

@@ -37,6 +37,16 @@
   margin-left: auto;
 }
 
+@media (max-width: 600px) {
+  .main-menu-panel[data-portal="crazygames"] .lobby-header h1 {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .main-menu-panel[data-portal="crazygames"] .lobby-fit-header-actions {
+    flex-shrink: 0;
+  }
+}
+
 .lobby-icon-btn {
   display: inline-flex;
   width: 36px;

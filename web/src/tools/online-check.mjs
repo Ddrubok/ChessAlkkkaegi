@@ -388,6 +388,8 @@ async function createRematchCheckPair(modules, meta, label) {
     guestPrepared: 0,
     hostStarted: 0,
     guestStarted: 0,
+    guestFailure: null,
+    hostGate: null,
   };
   const hostOnline = modules.online.createOnlineRuntime(
     transports.host,
@@ -397,6 +399,7 @@ async function createRematchCheckPair(modules, meta, label) {
     {
       prepareRematch: async () => {
         counters.hostPrepared += 1;
+        if (counters.hostGate) await counters.hostGate;
         resetMatchRuntime(modules, meta, host);
       },
       onRematchStarted: () => {
@@ -413,7 +416,13 @@ async function createRematchCheckPair(modules, meta, label) {
     {
       prepareRematch: async () => {
         counters.guestPrepared += 1;
+        if (counters.guestFailure === "reject") throw new Error("injected prepare failure");
         resetMatchRuntime(modules, meta, guest);
+        if (counters.guestFailure === "hash") {
+          const piece = guest.physicsRuntime.pieces.values().next().value;
+          const position = piece.body.translation();
+          piece.body.setTranslation({ ...position, x: position.x + 1 }, true);
+        }
       },
       onRematchStarted: () => {
         counters.guestStarted += 1;
@@ -1396,6 +1405,49 @@ try {
     `[통과 m] 재대결 거절: matchId=${declinedMatchId} 유지, phase=match-over/match-over, 두 번째 offerId=white-2`,
   );
   closeRematchPair(declinedRematch);
+
+  for (const failure of ["reject", "hash"]) {
+    const pair = await createRematchCheckPair(modules, meta, `failed-${failure}`);
+    pair.counters.guestFailure = failure;
+    let releaseHost;
+    if (failure === "reject") {
+      pair.counters.hostGate = new Promise(resolve => { releaseHost = resolve; });
+    }
+    pair.hostOnline.offerRematch();
+    pair.guestOnline.respondRematch(true);
+    if (releaseHost) await pair.guestOnline.flush();
+    else await flushRematchPair(pair);
+    assertCondition(
+      !pair.hostOnline.active && !pair.guestOnline.active &&
+      pair.hostOnline.getRematchStatus().phase === "failed" &&
+      pair.guestOnline.getRematchStatus().phase === "failed",
+      `${failure}: both peers must return to failed match-over state`,
+    );
+    if (releaseHost) {
+      pair.counters.hostGate = null;
+      releaseHost();
+      await flushRematchPair(pair);
+      assertCondition(!pair.hostOnline.localReady && pair.hostOnline.getRematchStatus().phase === "failed",
+        'Late preparation callback changed the failed match');
+    }
+    const failedMatchId = pair.hostOnline.matchId;
+    const staleReady = pair.transports.host.log.find(entry =>
+      entry.payload.kind === "ready" && entry.payload.matchId === failedMatchId,
+    )?.payload;
+    if (staleReady) pair.transports.host.deliver(staleReady);
+    assertCondition(!pair.guestOnline.active && pair.guestOnline.getRematchStatus().phase === "failed",
+      `${failure}: stale ready activated failed match`);
+    pair.counters.guestFailure = null;
+    pair.guestOnline.offerRematch();
+    pair.hostOnline.respondRematch(true);
+    await flushRematchPair(pair);
+    assertCondition(pair.hostOnline.active && pair.guestOnline.active &&
+      pair.hostOnline.matchId === pair.guestOnline.matchId &&
+      pair.hostOnline.matchId !== failedMatchId &&
+      pair.counters.hostStarted === 1 && pair.counters.guestStarted === 1,
+      `${failure}: same connection retry did not start exactly once`);
+    closeRematchPair(pair);
+  }
 
   const simultaneousRematch = await createRematchCheckPair(
     modules,

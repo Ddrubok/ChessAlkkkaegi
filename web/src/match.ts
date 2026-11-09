@@ -50,7 +50,7 @@ export interface StageRunResultCopy {
   heading: string;
   // 획득 포인트 또는 완주 안내를 순서대로 표시하는 본문 문구다.
   detailLines: readonly string[];
-  // 런 종료 뒤 선택 가능한 유일한 메인 메뉴 이동 버튼 문구다.
+  // 런 종료 뒤 메인 메뉴 이동 버튼 문구다.
   buttonLabel: string;
 }
 
@@ -425,7 +425,7 @@ export function createStageRunResultCopy(
 }
 
 /**
- * 끝난 스테이지 런은 카드나 다시 시작 없이 정산 문구와 메인 이동 한 동작만 표시한다.
+ * 정산된 런은 새 런 시작과 메인 이동을 제공한다. 보상은 여기서 재정산하지 않는다.
  */
 export function showStageRunResult(
   runtime: MatchRuntime,
@@ -434,6 +434,7 @@ export function showStageRunResult(
   completed: boolean,
   onReturnToMenu: () => Promise<void>,
   winner: MatchWinner = completed ? "white" : "black",
+  onRestart: (() => Promise<void>) | null = null,
 ): void {
   gameplay.leave("stage-run-result");
   const copy = createStageRunResultCopy(
@@ -446,6 +447,7 @@ export function showStageRunResult(
   runtime.restarting = false;
   runtime.onCardSelected = null;
   runtime.onReturnToMenu = onReturnToMenu;
+  if (onRestart) runtime.onRestart = onRestart;
   runtime.resultKicker.hidden = copy.kicker === null;
   runtime.resultKicker.textContent = copy.kicker ?? "";
   runtime.winnerHeading.textContent = copy.heading;
@@ -459,7 +461,8 @@ export function showStageRunResult(
   runtime.resultDetails.hidden = false;
   runtime.cardChoices.replaceChildren();
   runtime.cardChoices.hidden = true;
-  runtime.restartButton.hidden = true;
+  runtime.restartButton.hidden = onRestart === null;
+  runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
   runtime.restartButton.disabled = false;
   runtime.menuButton.hidden = false;
   runtime.menuButton.disabled = false;
@@ -467,7 +470,7 @@ export function showStageRunResult(
   runtime.actionStatus.hidden = true;
   runtime.actionStatus.textContent = "";
   runtime.overlay.hidden = false;
-  runtime.menuButton.focus();
+  (onRestart ? runtime.restartButton : runtime.menuButton).focus();
   beginResultMotion(runtime.overlay, `stage-end:${stageNumber}:${winner}`, runtime.winnerHeading);
 }
 

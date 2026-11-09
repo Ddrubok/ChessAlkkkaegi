@@ -11,8 +11,14 @@ import { saveMetaState } from "./meta";
 import { I18nManager } from "./i18n";
 import { marketingRuntime } from "./marketing-runtime";
 import { getRuntimeText } from "./runtime-text";
+import { Vector3 } from "three";
+import type { InputRuntime } from "./input";
 
 export type TutorialType = "basic" | "advanced";
+
+export function getTutorialInputMode(step: number, type: TutorialType): "classic" | "billiards" {
+  return type === "advanced" && step >= 3 ? "billiards" : "classic";
+}
 
 export interface TutorialStepInfo {
   step: number;
@@ -47,6 +53,10 @@ export class TutorialManager {
   private completionModal: HTMLElement | null = null;
   private rewardRequest = 0;
   private overlayElement: HTMLElement | null = null;
+  private gestureElement: SVGSVGElement | null = null;
+  private nextControl: HTMLElement | null = null;
+  private kingSwapped = false;
+  private readonly guidePoint = new Vector3();
   private coachResizeObserver: ResizeObserver | null = null;
   private onStepCompletedCallback: ((nextStep: number) => Promise<void>) | null = null;
   private onTutorialFinishedCallback: ((destination?: "stage") => Promise<void>) | null = null;
@@ -93,6 +103,11 @@ export class TutorialManager {
     this.generation += 1;
     this.isTransitioning = false;
     this.isActive = false;
+    this.kingSwapped = false;
+    this.gestureElement?.remove();
+    this.gestureElement = null;
+    this.nextControl?.classList.remove("tutorial-next-control");
+    this.nextControl = null;
     delete document.body.dataset.tutorial;
     this.coachResizeObserver?.disconnect();
     this.coachResizeObserver = null;
@@ -351,6 +366,7 @@ export class TutorialManager {
     const generation = this.generation;
     await new Promise(r => setTimeout(r, 1200));
     if (!this.isActive || this.generation !== generation) return;
+    this.kingSwapped = false;
     await this.onStepCompletedCallback?.(this.currentStep);
     if (this.generation === generation) {
       this.isTransitioning = false;
@@ -454,7 +470,7 @@ export class TutorialManager {
           <button type="button" class="tutorial-skip-button">${I18nManager.t("tutorial.skip_btn")}</button>
         </div>
         <div class="tutorial-mission-text">${stepInfo.mission}</div>
-        <div class="tutorial-guide-text">${this.tutorialType === "basic" && this.currentStep < 3 ? "" : stepInfo.guide}</div>
+        <div class="tutorial-guide-text">${(this.tutorialType === "basic" && this.currentStep < 3) || (this.tutorialType === "advanced" && this.currentStep === 4) ? "" : stepInfo.guide}</div>
       </div>
     `;
     this.overlayElement.querySelector<HTMLButtonElement>(".tutorial-skip-button")?.addEventListener("click", async (event) => {
@@ -467,6 +483,54 @@ export class TutorialManager {
       this.stop();
       await this.onTutorialFinishedCallback?.();
     });
+  }
+
+  public showKingSwapFollowup(): void {
+    if (!this.isActive || this.tutorialType !== "advanced" || this.currentStep !== 4) return;
+    this.kingSwapped = true;
+    const mission = this.overlayElement?.querySelector(".tutorial-mission-text");
+    if (mission) mission.textContent = I18nManager.t("tutorial.adv_step4_after_swap");
+  }
+
+  /** A non-interactive cue follows the real piece; input, menus and scene exits hide it. */
+  public updateInputGuide(input: InputRuntime): void {
+    if (!this.isActive) return;
+    const idle = !this.isTransitioning && !input.policy.isInputBlocked() && input.activePointerId === null && input.cameraTransition === null;
+    const bishop = this.tutorialType === "advanced" && this.currentStep === 3;
+    const king = this.tutorialType === "advanced" && this.currentStep === 4;
+    const action = idle && input.aimRuntime.selectedPieceId !== null
+      ? bishop ? (input.strikeMode && input.aimParametersRuntime.strikePointOverride !== null ? "launch" : !input.strikeMode && input.aimParametersRuntime.strikePointOverride === null ? "strike" : null)
+      : king && !this.kingSwapped && !input.kingSwapMode ? "swap" : null : null;
+    const next = action ? input.actionBar.querySelector<HTMLElement>(`[data-action="${action}"]`) : null;
+    if (next !== this.nextControl) {
+      this.nextControl?.classList.remove("tutorial-next-control");
+      next?.classList.add("tutorial-next-control");
+      this.nextControl = next;
+    }
+    const firstShot = this.tutorialType === "basic" && this.currentStep === 1;
+    const showPull = firstShot || (king && this.kingSwapped && input.mode === "billiards" && input.aimRuntime.selectedPieceId !== null && !input.strikeMode);
+    const pieceId = firstShot ? "white-pawn-d6" : bishop && input.aimRuntime.selectedPieceId === null ? "white-bishop-d2" : king && !this.kingSwapped ? (input.kingSwapMode ? "white-pawn-f6" : input.aimRuntime.selectedPieceId === null ? "white-king-d2" : null) : null;
+    const mesh = pieceId ? input.sceneRuntime.pieceMeshes.get(pieceId) : showPull ? input.aimParametersRuntime.redDot : undefined;
+    if (!idle || !mesh || !mesh.visible || (pieceId && !input.policy.canSelectPiece(pieceId))) {
+      if (this.gestureElement) this.gestureElement.style.display = "none";
+      return;
+    }
+    if (!this.gestureElement) {
+      this.gestureElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      this.gestureElement.classList.add("tutorial-gesture");
+      this.gestureElement.setAttribute("aria-hidden", "true");
+      this.gestureElement.innerHTML = '<circle r="16"/><path/>';
+      document.body.append(this.gestureElement);
+    }
+    const canvas = input.sceneRuntime.renderer.domElement.getBoundingClientRect();
+    mesh.getWorldPosition(this.guidePoint).project(input.sceneRuntime.camera);
+    const x = canvas.left + (this.guidePoint.x + 1) * canvas.width / 2;
+    const y = canvas.top + (1 - this.guidePoint.y) * canvas.height / 2;
+    const end = Math.min(y + 64, canvas.bottom - 12);
+    this.gestureElement.style.display = this.guidePoint.z < -1 || this.guidePoint.z > 1 ? "none" : "block";
+    const circle = this.gestureElement.querySelector("circle")!;
+    circle.setAttribute("cx", String(x)); circle.setAttribute("cy", String(y));
+    this.gestureElement.querySelector("path")!.setAttribute("d", showPull && end > y + 24 ? `M ${x} ${y + 21} V ${end} m -7 -9 l 7 9 l 7 -9` : "");
   }
 
   /**
