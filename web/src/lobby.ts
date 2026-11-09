@@ -47,7 +47,7 @@ export function renderHeaderActions(nameOrOptions?: HeaderActionIcon | { showLog
   if (typeof nameOrOptions !== "string") {
     const showLogout = PLATFORM.features.accounts && nameOrOptions?.showLogout === true;
     const logout = showLogout ? `<button id="btn-logout" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.logout"))}" title="${escapeHtml(I18nManager.t("common.logout"))}">${renderHeaderActions("logout", 20)}</button>` : "";
-    return `<div class="lobby-header-actions">${logout}${PLATFORM.features.online ? `<button id="menu-ranking-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.ranking_btn"))}" title="${escapeHtml(I18nManager.t("common.ranking_btn"))}">${renderHeaderActions("trophy", 20)}</button><button id="menu-friends-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.friends_btn"))}" title="${escapeHtml(I18nManager.t("common.friends_btn"))}">${renderHeaderActions("users", 20)}</button>` : ""}<button id="menu-sound-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.settings"))}" title="${escapeHtml(I18nManager.t("common.settings"))}">${renderHeaderActions("gear", 20)}</button></div>`;
+    return `<div class="lobby-header-actions">${logout}${PLATFORM.features.online && PLATFORM.id !== "crazygames" ? `<button id="menu-ranking-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.ranking_btn"))}" title="${escapeHtml(I18nManager.t("common.ranking_btn"))}">${renderHeaderActions("trophy", 20)}</button><button id="menu-friends-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.friends_btn"))}" title="${escapeHtml(I18nManager.t("common.friends_btn"))}">${renderHeaderActions("users", 20)}</button>` : ""}<button id="menu-sound-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.settings"))}" title="${escapeHtml(I18nManager.t("common.settings"))}">${renderHeaderActions("gear", 20)}</button></div>`;
   }
   const name = nameOrOptions;
   const paths: Record<typeof name, string> = {
@@ -93,7 +93,7 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     };
   }
   if (recommendation.kind === "online") {
-    const member = progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id;
+    const member = PLATFORM.id === "crazygames" || (progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id);
     return {
       mode: "online",
       tutorialType: "basic",
@@ -133,7 +133,7 @@ export function renderRecommendationCard(recommendation: ReturnType<typeof getRe
 }
 
 export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: number): string {
-  const member = progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id;
+  const member = PLATFORM.id === "crazygames" || (progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id);
   const cards = [
     { mode: "online" as const, icon: "globe" as const, label: "lobby.mode_online", status: "lobby.card_online_status", detail: "" },
     { mode: "stage" as const, icon: "flag" as const, label: "lobby.mode_stage_short", status: "lobby.card_stage_status", detail: "" },
@@ -146,11 +146,11 @@ export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: numbe
   const statusByMode: Record<LobbyMode, string> = {
     stage: I18nManager.t("lobby.card_stage_status", { cleared: maxClearedStage, max: PVE_MAX_STAGE }),
     puzzle: I18nManager.t("lobby.card_puzzle_status", { count: puzzleCount }),
-    online: member ? I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
+    online: PLATFORM.id === "crazygames" ? I18nManager.t("lobby.card_online_crazygames") : member ? I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
     hotseat: I18nManager.t("lobby.card_2p_status"),
     tutorial: "",
   };
-  const visibleCards = PLATFORM.id === "crazygames" ? cards.filter(card => card.mode === "stage") : PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online");
+  const visibleCards = PLATFORM.id === "crazygames" ? cards.filter(card => card.mode === "stage" || card.mode === "online") : PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online");
   return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${visibleCards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
 }
 
@@ -163,6 +163,7 @@ export function renderCommunityLink(): string {
 }
 
 export function renderFooterLinks(): string {
+  if (PLATFORM.id === "crazygames") return '<nav class="lobby-footer" aria-label="Privacy"><span>Online play uses your CrazyGames ID and saves match results and progress.</span><a href="./privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a></nav>';
   if (!PLATFORM.features.externalLinks) return "";
   return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>${renderCommunityLink()}`;
 }

@@ -91,7 +91,14 @@ const BGM_URL = resolveRuntimeAssetUrl("bgm");
 // 모듈 하나가 메뉴와 대국 전체에서 같은 BGM·버퍼·제한 상태를 공유한다.
 let soundRuntime: SoundRuntime | null = null;
 let adSoundMuted = false;
+let platformSoundMuted = false;
 let pageInactive = false;
+
+/** Portal audio policy overrides, but never changes, saved player preferences. */
+export function setPlatformSoundMuted(muted: boolean): void {
+  platformSoundMuted = muted;
+  applySoundSettings();
+}
 
 /** Mute advertising breaks without changing saved player preferences. */
 export function setAdSoundMuted(muted: boolean): void {
@@ -197,7 +204,7 @@ export function updateSoundSettings(patch: Partial<SoundSettings>): SoundSetting
 }
 
 function canPlaySound(): boolean {
-  return !currentSoundSettings.muted && !adSoundMuted && !pageInactive && !document.hidden;
+  return !currentSoundSettings.muted && !adSoundMuted && !platformSoundMuted && !pageInactive && !document.hidden;
 }
 
 async function syncSoundPlayback(runtime: SoundRuntime): Promise<void> {

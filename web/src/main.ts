@@ -284,7 +284,24 @@ async function bootstrap(): Promise<void> {
   // app을 비울 때 인라인 부트 노드를 함께 넘겨 같은 요소를 유지한다.
   app.replaceChildren(loadingPanel);
   initializeSound();
-  const progressClient = PLATFORM.id === "crazygames" ? null : getSupabaseClient();
+  let portalVerifiedProfile: UserProfile | null = null;
+  if (PLATFORM.id === "crazygames") {
+    const { onIdentityChanged } = await import("./crazygames-sdk");
+    const portalClient = getSupabaseClient();
+    onIdentityChanged(() => {
+      // A different portal account must never inherit an active ranked peer/session.
+      app.inert = true;
+      portalClient?.realtime.disconnect();
+      window.location.reload();
+    });
+    if (portalClient) {
+      const { signInCrazyGames } = await import("./crazygames-auth");
+      // Resolve the portal account before selecting its progress namespace.
+      // A failed exchange still lets guests start a solo game.
+      portalVerifiedProfile = await signInCrazyGames(portalClient).catch(() => null);
+    }
+  }
+  const progressClient = PLATFORM.id === "crazygames" && !portalVerifiedProfile ? null : getSupabaseClient();
   if (PLATFORM.features.accounts) await initializeGoogleAuth(progressClient);
   const progressSession = progressClient ? await progressClient.auth.getSession() : null;
   if (progressSession?.error) throw new Error("로그인 상태를 확인하지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.");
@@ -356,6 +373,10 @@ async function bootstrap(): Promise<void> {
       await confirmAbandonAction();
     },
   );
+  if (portalVerifiedProfile && portalVerifiedProfile.id === progressOwner) {
+    menuRuntime.verifiedPortalProfile = portalVerifiedProfile;
+    renderMainMenu(menuRuntime);
+  }
   await installAndroidBackHandler(() => {
     if (backFromDialog(menuRuntime.overlay)) return true;
     if (menuRuntime.visible) return false;
@@ -2181,7 +2202,7 @@ async function bootstrap(): Promise<void> {
     tutorialType = "basic",
     mapId,
   ): Promise<void> => {
-    if (PLATFORM.id === "crazygames" && mode !== "tutorial" && mode !== "stage") return;
+    if (PLATFORM.id === "crazygames" && mode !== "tutorial" && mode !== "stage" && mode !== "online") return;
     if (!PLATFORM.features.online && mode === "online") return;
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
@@ -2196,6 +2217,8 @@ async function bootstrap(): Promise<void> {
       const { createOnlineRuntime } = await import("./online");
       const { openFriendlyLobby } = await import("./friendly-lobby");
       const { openFriendsModal } = await import("./friends-modal");
+      const portalInvite = PLATFORM.id === "crazygames"
+        && (await import("./crazygames-multiplayer")).hasLaunchInvite();
 
       const session = await new Promise<{
         transport: OnlineTransport;
@@ -2209,7 +2232,7 @@ async function bootstrap(): Promise<void> {
       }>((resolve, reject) => {
         const openFriendly = async () => {
           try {
-            const member = progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id;
+            const member = PLATFORM.id !== "crazygames" && progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id;
             const manualSession = await openFriendlyLobby(menuRuntime.overlay, member ? () => {
               void openFriendsModal(menuRuntime.overlay, menuRuntime.userProfile, {
                 onStartFriendlyMatch: (friend, roomId, isHost) => {
@@ -2221,7 +2244,7 @@ async function bootstrap(): Promise<void> {
               rejoining: false, opponent: null, myProfile: null, strategyDeck: null, finishLobby: manualSession.finishLobby });
           } catch (error) { reject(error); }
         };
-        if (progressStorage.owner === null) { void openFriendly(); return; }
+        if (portalInvite || (PLATFORM.id !== "crazygames" && progressStorage.owner === null)) { void openFriendly(); return; }
         const matchUiContainer = document.createElement("div");
         menuRuntime.overlay.appendChild(matchUiContainer);
 
@@ -2941,6 +2964,7 @@ async function bootstrap(): Promise<void> {
     await AdManager.init();
     loadingFinished();
   }
+  if (PLATFORM.id === "crazygames") loadingFinished();
   setMainMenuReady(menuRuntime, true);
   marketingRuntime.ready();
   if (localBalancePreview) {
@@ -2980,7 +3004,7 @@ async function bootstrap(): Promise<void> {
   if (PLATFORM.id !== "poki" && PLATFORM.id !== "crazygames") await AdManager.init();
   if (PLATFORM.id !== "crazygames") await AdManager.showBanner();
 
-  if (PLATFORM.features.online) SocialService.setChallengeHandler((challenge) => {
+  if (PLATFORM.features.online && PLATFORM.id !== "crazygames") SocialService.setChallengeHandler((challenge) => {
       if (!menuRuntime.visible || menuRuntime.busy || progressStorage.owner !== menuRuntime.userProfile?.id) return;
       openChallengeReceivedModal(challenge, {
         onAccept: (req) => {
@@ -2993,9 +3017,16 @@ async function bootstrap(): Promise<void> {
         onReject: () => {},
       });
     });
-  if (PLATFORM.features.online && menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
-  if (!localBalancePreview && firstTutorialCandidate) {
-    // Solo practice needs no server account or nickname form.
+  if (PLATFORM.features.online && PLATFORM.id !== "crazygames" && menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
+  let hasIncomingMatch = false;
+  if (PLATFORM.id === "crazygames") {
+    const { prepareLaunchInvite, hasLaunchInvite } = await import("./crazygames-multiplayer");
+    await prepareLaunchInvite();
+    hasIncomingMatch = hasLaunchInvite();
+    if (hasIncomingMatch) await startLobbyMode(menuRuntime, "online");
+  }
+  if (!localBalancePreview && firstTutorialCandidate && !hasIncomingMatch) {
+    // Invite/Instant Multiplayer take precedence even after the invite is consumed.
     localStorage.setItem("ca_logged_in_user", "true");
     if (!localStorage.getItem("ca_local_nickname")) localStorage.setItem("ca_local_nickname", "Player");
     await startLobbyMode(menuRuntime, "tutorial", 1, "basic");

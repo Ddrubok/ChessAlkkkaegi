@@ -33,7 +33,7 @@ function observationPlugin() {
       if (!path.endsWith('/src/main.ts')) return;
       code = replaceOnce(code, '    const baseOptions = requestedOptions ?? {',
         '    (window as any).__pokiSmokeBoards = ((window as any).__pokiSmokeBoards ?? 0) + 1;\n    const baseOptions = requestedOptions ?? {');
-      return replaceOnce(code, '  await AdManager.showBanner();', `  await AdManager.showBanner();
+      return replaceOnce(code, 'await AdManager.showBanner();', `await AdManager.showBanner();
   (window as any).__pokiSmoke = {
     snapshot: () => ({
       boards: (window as any).__pokiSmokeBoards ?? 0,

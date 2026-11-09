@@ -132,14 +132,22 @@ export default defineConfig(({ command, isPreview, mode }) => {
   const pokiBuild = mode === "poki";
   const crazygamesBuild = mode === "crazygames";
   const portalBuild = pokiBuild || crazygamesBuild;
+  const crazygamesNetworkEnv = new Set(["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_METERED_APP_NAME", "VITE_METERED_API_KEY"]);
   const portalEnv = portalBuild ? Object.fromEntries(
     [...new Set([
       ...Object.keys(loadEnv(mode, PROJECT_ROOT, "VITE_")),
       "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_METERED_APP_NAME",
       "VITE_METERED_API_KEY", "VITE_WEB_ADS_MODE", "VITE_ADSENSE_CLIENT_ID", "VITE_ADSENSE_SLOT_ID",
-    ])].filter((key) => crazygamesBuild || /^VITE_(?:SUPABASE|METERED|WEB_ADS|ADSENSE)/u.test(key))
+    ])].filter((key) => crazygamesBuild ? !crazygamesNetworkEnv.has(key) : /^VITE_(?:SUPABASE|METERED|WEB_ADS|ADSENSE)/u.test(key))
       .map((key) => [`import.meta.env.${key}`, JSON.stringify("")]),
   ) : {};
+  if (crazygamesBuild) {
+    const env = loadEnv(mode, PROJECT_ROOT, "VITE_");
+    if (env.VITE_SUPABASE_URL !== "https://yoajmckkrpgvcljrffww.supabase.co"
+      || !env.VITE_SUPABASE_ANON_KEY?.startsWith("sb_publishable_")) {
+      throw new Error("CrazyGames crossplay requires the production Supabase URL and publishable key used by the Android app.");
+    }
+  }
   if (staging) {
     const env = loadEnv(mode, PROJECT_ROOT, "VITE_");
     // A staging build must never silently inherit the production .env backend.
@@ -156,7 +164,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
   return {
     ...(portalBuild ? {
       resolve: { alias: [
-        { find: "@supabase/supabase-js", replacement: resolve(PROJECT_ROOT, "src/poki-stubs/backend.ts") },
+        ...(pokiBuild ? [{ find: "@supabase/supabase-js", replacement: resolve(PROJECT_ROOT, "src/poki-stubs/backend.ts") }] : []),
         { find: /^\.\/ad-manager$/u, replacement: resolve(PROJECT_ROOT, crazygamesBuild ? "src/crazygames-stubs/ads.ts" : "src/poki-stubs/ads.ts") },
         { find: /^\.\/web-ads$/u, replacement: resolve(PROJECT_ROOT, "src/poki-stubs/web-ads.ts") },
         ...(crazygamesBuild ? [{ find: /^\.\/poki-sdk$/u, replacement: resolve(PROJECT_ROOT, "src/crazygames-stubs/portal-lifecycle.ts") }] : []),
@@ -182,8 +190,10 @@ export default defineConfig(({ command, isPreview, mode }) => {
         if (!id.replaceAll("\\", "/").startsWith(`${resolve(PROJECT_ROOT, "src").replaceAll("\\", "/")}/`) || !id.endsWith(".ts")) return;
         // Vite define does not replace properties of an imported binding.
         // Resolve these known feature reads before bundling so disabled imports disappear.
-        const featuresResolved = code.replace(/\bPLATFORM\.features\.(?:online|accounts|externalLinks|debugTools)\b/gu, String(!portalBuild));
-        return crazygamesBuild ? featuresResolved.replace(/\bPLATFORM\.id\b/gu, '"crazygames"') : featuresResolved;
+        const featuresResolved = code.replace(/\bPLATFORM\.features\.(online|accounts|externalLinks|debugTools)\b/gu,
+          (_match, feature: string) => String(feature === "online" ? !pokiBuild : !portalBuild));
+        return featuresResolved.replace(/\bPLATFORM\.id\b/gu,
+          JSON.stringify(crazygamesBuild ? "crazygames" : pokiBuild ? "poki" : "web"));
       },
     }, ...(pokiBuild ? [{
       name: "poki-build",
@@ -239,6 +249,8 @@ export default defineConfig(({ command, isPreview, mode }) => {
           recursive: true,
           filter: (path) => !/\.(?:md|gitkeep)$/iu.test(path),
         });
+        writeFileSync(resolve(output, "privacy.html"),
+          readFileSync(resolve(PROJECT_ROOT, "crazygames-licenses/privacy.html"), "utf8").replaceAll("Chess Alkkagi", CRAZYGAMES_TITLE));
         const notices = [
           ["Three.js", "node_modules/three/LICENSE"],
           ["Capacitor Core", "node_modules/@capacitor/core/LICENSE"],
@@ -246,6 +258,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
           ["Capacitor Browser", "node_modules/@capacitor/browser/LICENSE"],
           ["meshoptimizer", "node_modules/meshoptimizer/LICENSE.md"],
           ["Rapier / rapier.js (Apache-2.0)", "crazygames-licenses/RAPIER-LICENSE"],
+          ["Supabase JS (MIT)", "node_modules/@supabase/supabase-js/LICENSE"],
           ["Chess Set / Poly Haven (CC0)", "public/assets/chess-model-license.txt"],
         ].map(([name, path]) => `${name}\n${"=".repeat(name!.length)}\n${readFileSync(resolve(PROJECT_ROOT, path!), "utf8")}`);
         writeFileSync(resolve(output, "THIRD_PARTY_NOTICES.txt"),

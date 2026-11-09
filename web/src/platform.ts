@@ -5,7 +5,7 @@ const portalBuild = pokiBuild || crazygamesBuild;
 export const PLATFORM = {
   id: crazygamesBuild ? "crazygames" : pokiBuild ? "poki" : "web",
   features: {
-    online: !portalBuild,
+    online: !pokiBuild,
     accounts: !portalBuild,
     externalLinks: !portalBuild,
     debugTools: !portalBuild,

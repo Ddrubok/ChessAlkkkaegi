@@ -4,6 +4,7 @@ import { PLATFORM } from "./platform";
 const STORAGE_KEY_URL = "ca_supabase_url";
 const STORAGE_KEY_ANON = "ca_supabase_anon_key";
 const IS_STAGING = import.meta.env?.MODE === "staging";
+const IS_CRAZYGAMES = PLATFORM.id === "crazygames";
 
 export interface SupabaseConfig {
   url: string;
@@ -25,7 +26,7 @@ export function getSavedSupabaseConfig(): SupabaseConfig | null {
     : "";
 
   // Ignore previously saved production connections on the development site.
-  if (IS_STAGING) return envUrl && envKey ? { url: envUrl, anonKey: envKey } : null;
+  if (IS_STAGING || IS_CRAZYGAMES) return envUrl && envKey ? { url: envUrl, anonKey: envKey } : null;
 
   const storageUrl = (localStorage.getItem(STORAGE_KEY_URL) || "").trim();
   const storageKey = (localStorage.getItem(STORAGE_KEY_ANON) || "").trim();
@@ -43,10 +44,10 @@ export function getSavedSupabaseConfig(): SupabaseConfig | null {
  * Supabase 설정을 LocalStorage에 저장하고 클라이언트를 재초기화한다.
  */
 export function saveSupabaseConfig(config: SupabaseConfig): SupabaseClient {
-  if (IS_STAGING) {
+  if (IS_STAGING || IS_CRAZYGAMES) {
     const expected = getSavedSupabaseConfig();
     if (config.url.trim() !== expected?.url || config.anonKey.trim() !== expected?.anonKey) {
-      throw new Error("Staging Supabase configuration is fixed to chessalkkagi-dev.");
+      throw new Error("This build uses a fixed Supabase configuration.");
     }
   } else {
     localStorage.setItem(STORAGE_KEY_URL, config.url.trim());
@@ -56,7 +57,8 @@ export function saveSupabaseConfig(config: SupabaseConfig): SupabaseClient {
   supabaseInstance = createClient(currentConfig.url, currentConfig.anonKey, {
     auth: {
       flowType: "pkce",
-      persistSession: true,
+      persistSession: !IS_CRAZYGAMES,
+      detectSessionInUrl: !IS_CRAZYGAMES,
       autoRefreshToken: true,
     },
     realtime: {
@@ -72,7 +74,7 @@ export function saveSupabaseConfig(config: SupabaseConfig): SupabaseClient {
  * 저장된 설정을 지우고 클라이언트를 초기화 해제한다.
  */
 export function clearSupabaseConfig(): void {
-  if (!IS_STAGING) {
+  if (!IS_STAGING && !IS_CRAZYGAMES) {
     localStorage.removeItem(STORAGE_KEY_URL);
     localStorage.removeItem(STORAGE_KEY_ANON);
   }
@@ -84,7 +86,7 @@ export function clearSupabaseConfig(): void {
  * Supabase 싱글톤 클라이언트를 가져오거나 새로 초기화한다.
  */
 export function getSupabaseClient(): SupabaseClient | null {
-  if (!PLATFORM.features.accounts) return null;
+  if (!PLATFORM.features.accounts && !PLATFORM.features.online) return null;
   if (supabaseInstance) {
     return supabaseInstance;
   }
@@ -95,7 +97,8 @@ export function getSupabaseClient(): SupabaseClient | null {
     supabaseInstance = createClient(config.url, config.anonKey, {
       auth: {
         flowType: "pkce",
-        persistSession: true,
+        persistSession: !IS_CRAZYGAMES,
+        detectSessionInUrl: !IS_CRAZYGAMES,
         autoRefreshToken: true,
       },
       realtime: {
