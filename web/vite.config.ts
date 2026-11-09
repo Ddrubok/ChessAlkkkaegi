@@ -190,8 +190,8 @@ export default defineConfig(({ command, isPreview, mode }) => {
         if (!id.replaceAll("\\", "/").startsWith(`${resolve(PROJECT_ROOT, "src").replaceAll("\\", "/")}/`) || !id.endsWith(".ts")) return;
         // Vite define does not replace properties of an imported binding.
         // Resolve these known feature reads before bundling so disabled imports disappear.
-        const featuresResolved = code.replace(/\bPLATFORM\.features\.(online|accounts|externalLinks|debugTools)\b/gu,
-          (_match, feature: string) => String(feature === "online" ? !pokiBuild : !portalBuild));
+        const featuresResolved = code.replace(/\bPLATFORM\.features\.(online|cloudProgress|accounts|externalLinks|debugTools)\b/gu,
+          (_match, feature: string) => String(feature === "cloudProgress" ? !pokiBuild : !portalBuild));
         return featuresResolved.replace(/\bPLATFORM\.id\b/gu,
           JSON.stringify(crazygamesBuild ? "crazygames" : pokiBuild ? "poki" : "web"));
       },

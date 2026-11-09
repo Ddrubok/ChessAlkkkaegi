@@ -1,4 +1,7 @@
 import { PLATFORM } from "./platform";
+import { readSoloState, writeSoloCheckpoint, soloCopy } from "./crazygames-solo";
+import { portalStoragePersistent } from "./portal-browser-guards";
+import "./crazygames-opening.css";
 import { marketingRuntime } from "./marketing-runtime";
 import { gameplay, isAdActive, loadingFinished, setBeforeAd } from "./poki-sdk";
 import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED } from "./config";
@@ -286,7 +289,7 @@ async function bootstrap(): Promise<void> {
   initializeSound();
   let portalVerifiedProfile: UserProfile | null = null;
   if (PLATFORM.id === "crazygames") {
-    const { onIdentityChanged } = await import("./crazygames-sdk");
+    const { onIdentityChanged, getCachedUser } = await import("./crazygames-sdk");
     const portalClient = getSupabaseClient();
     onIdentityChanged(() => {
       // A different portal account must never inherit an active ranked peer/session.
@@ -300,6 +303,13 @@ async function bootstrap(): Promise<void> {
       // A failed exchange still lets guests start a solo game.
       portalVerifiedProfile = await signInCrazyGames(portalClient).catch(() => null);
     }
+    if (getCachedUser() && !portalVerifiedProfile) {
+      const notice = document.createElement("p");
+      notice.className = "solo-account-notice";
+      notice.setAttribute("role", "status");
+      notice.textContent = soloCopy().accountUnavailable;
+      document.body.append(notice);
+    }
   }
   const progressClient = PLATFORM.id === "crazygames" && !portalVerifiedProfile ? null : getSupabaseClient();
   if (PLATFORM.features.accounts) await initializeGoogleAuth(progressClient);
@@ -308,8 +318,8 @@ async function bootstrap(): Promise<void> {
   const sessionUser = progressSession?.data.session?.user;
   const progressOwner = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : null;
   await progressStorage.activate(progressClient, progressOwner);
-  await questStorage.activate(progressClient, progressOwner);
-  await weeklyChallengeStorage.activate(progressClient, progressOwner);
+  await questStorage.activate(PLATFORM.id === "crazygames" ? null : progressClient, progressOwner);
+  await weeklyChallengeStorage.activate(PLATFORM.id === "crazygames" ? null : progressClient, progressOwner);
   if (progressOwner && progressClient) {
     localStorage.setItem("ca_logged_in_user", "true");
     localStorage.setItem("ca_guest_user_uuid", progressOwner);
@@ -337,11 +347,25 @@ async function bootstrap(): Promise<void> {
   const metaRuntime = createMetaRuntime();
   // Capture before portal menus create their local guest profile.
   const firstTutorialCandidate = shouldStartFirstTutorial({
-    tutorialHistory: progressStorage.getItem("has_completed_tutorial"),
+    tutorialHistory: PLATFORM.id === "crazygames" && progressStorage.getItem("has_completed_tutorial") === "started"
+      ? null : progressStorage.getItem("has_completed_tutorial"),
     maxClearedStage: getMaxClearedStage(metaRuntime.storage),
-    hasPlayerProfile: hadPlayerProfileBeforeBoot,
+    hasPlayerProfile: PLATFORM.id === "crazygames" ? false : hadPlayerProfileBeforeBoot,
     hasLaunchInvite: false,
   });
+  let launchQuickIntro = PLATFORM.id === "crazygames" && firstTutorialCandidate && readSoloState(progressOwner).intro === null;
+  if (PLATFORM.id === "crazygames") {
+    const showStorageNotice = (): void => {
+      if (portalStoragePersistent || document.querySelector(".solo-storage-notice")) return;
+      const notice = document.createElement("p");
+      notice.className = "solo-storage-notice";
+      notice.setAttribute("role", "status");
+      notice.textContent = soloCopy().noSave;
+      document.body.append(notice);
+    };
+    window.addEventListener("portal-storage-unavailable", showStorageNotice);
+    showStorageNotice();
+  }
   let tutorialInputModeBeforeStart: InputMode | null = null;
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
   let selectedHotseatMapId = DEFAULT_HOTSEAT_MAP_ID;
@@ -796,7 +820,7 @@ async function bootstrap(): Promise<void> {
 
   const playerBanners = createPlayerBanners(app, {
     getState: () => ({
-      visible: !localBalancePreview && !isMenuBlocking(menuRuntime) && gameModeRuntime !== null && !gameModeRuntime.switching && turnRuntime.phase !== "match-over",
+      visible: !localBalancePreview && !isMenuBlocking(menuRuntime) && gameModeRuntime !== null && !gameModeRuntime.switching && turnRuntime.phase !== "match-over" && !(PLATFORM.id === "crazygames" && gameModeRuntime.mode === "stage" && gameModeRuntime.stageNumber <= 3),
       mode: gameModeRuntime?.mode ?? "hotseat", stage: gameModeRuntime?.stageNumber ?? 1,
       currentSide: turnRuntime.currentSide, mySide: onlineRuntime?.mySide ?? null,
       remaining: countRemainingPieces(turnRuntime),
@@ -824,7 +848,10 @@ async function bootstrap(): Promise<void> {
     isMenuVisible: () => !menuRuntime.overlay.hidden || (gameModeRuntime?.mode !== "online" && menuRuntime.confirming),
     isOnlineReady: () => onlineRuntime?.active === true,
     onTimeoutLaunch: handleTurnTimeout,
-    getTrackedObjective: () => trackedMasteryText(progressStorage),
+    hasTurnTimeLimit: () => !(PLATFORM.id === "crazygames" && gameModeRuntime?.mode === "stage" && gameModeRuntime.stageNumber <= 3),
+    getTrackedObjective: () => PLATFORM.id === "crazygames" && gameModeRuntime?.mode === "stage"
+      ? `${soloCopy().stage} ${gameModeRuntime.stageNumber}/10 · ${soloCopy().remaining}: ${countRemainingPieces(turnRuntime).black} · ${soloCopy().goal}`
+      : trackedMasteryText(progressStorage),
   });
   const weeklyHud = createWeeklyChallengeHud(app);
   let weeklyHudLanguage = I18nManager.getLanguage();
@@ -1267,6 +1294,10 @@ async function bootstrap(): Promise<void> {
       gameMode: gameModeRuntime?.mode ?? "hotseat",
       stageNumber: gameModeRuntime?.stageNumber ?? 1,
     };
+    if (PLATFORM.id === "crazygames") {
+      document.body.dataset.soloOpening = String(baseOptions.gameMode === "stage" && baseOptions.stageNumber <= 3);
+    }
+    turnRuntime.promotionEnabled = !(PLATFORM.id === "crazygames" && baseOptions.gameMode === "stage" && baseOptions.stageNumber <= 3);
     // The selected ID survives resets; map state is rebuilt for every match.
     if (baseOptions.gameMode === "hotseat" && !getHotseatMap(selectedHotseatMapId)) {
       throw new Error(`Unknown hotseat map: ${selectedHotseatMapId}`);
@@ -1675,6 +1706,14 @@ async function bootstrap(): Promise<void> {
     else resetRunCardState(runCardState);
     delete stageRunPoints.startedAtStage;
     Object.assign(stageRunPoints, nextRunPoints);
+    if (PLATFORM.id === "crazygames" && mode === "stage") {
+      const saved = readSoloState(progressStorage.owner).run;
+      if (saved && saved.stage === gameModeRuntime?.stageNumber && saved.metaPoints === metaRuntime.state.points) {
+        restoreRunCardState(runCardState, saved.cards);
+        delete stageRunPoints.startedAtStage;
+        Object.assign(stageRunPoints, saved.points);
+      }
+    }
     setTurnGameMode(turnRuntime, mode);
     turnRuntime.tuningSettings = mode === "weekly" ? weeklyTuningSettings : tuningRuntime.settings;
     setTuningGameMode(tuningRuntime, mode);
@@ -1686,6 +1725,9 @@ async function bootstrap(): Promise<void> {
     try {
       const stageNumber = gameModeRuntime?.stageNumber ?? 1;
       await resetBoard({ gameMode: mode, stageNumber });
+      if (PLATFORM.id === "crazygames" && mode === "stage") writeSoloCheckpoint(progressStorage.owner, {
+        stage: stageNumber, metaPoints: metaRuntime.state.points, cards: cloneRunCardState(runCardState), points: { ...stageRunPoints },
+      });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
       delete stageRunPoints.startedAtStage;
@@ -1879,7 +1921,7 @@ async function bootstrap(): Promise<void> {
       );
 
       const ownKingLost = tutorialManager.isMatchStep && ![...physicsRuntime.pieces.values()].some(p =>
-        p.instance.side === "white" && p.instance.type === "King");
+        p.instance.side === "white" && (PLATFORM.id === "crazygames" && tutorialManager.tutorialType === "basic" || p.instance.type === "King"));
       if (checkResult.cleared && !ownKingLost) {
         void tutorialManager.handleStepSuccess();
       } else if (!tutorialManager.isMatchStep || ownKingLost) {
@@ -1893,6 +1935,7 @@ async function bootstrap(): Promise<void> {
   };
 
   const restartStageRun = async (): Promise<void> => {
+    if (PLATFORM.id === "crazygames") writeSoloCheckpoint(progressStorage.owner, null);
     // Reuse the same new-run transaction and readiness checks as the lobby.
     await menuRuntime.onStartMode("stage", 1);
     hideMainMenuAfterModeStart(menuRuntime);
@@ -2021,6 +2064,7 @@ async function bootstrap(): Promise<void> {
         winner === "white" &&
         completedStage === STAGE_RUN_LENGTH;
       if (winner !== "white" || completedRun) {
+        if (PLATFORM.id === "crazygames") writeSoloCheckpoint(progressStorage.owner, null);
         const payout = settleStageRunPoints(
           metaRuntime,
           stageRunPoints,
@@ -2094,6 +2138,9 @@ async function bootstrap(): Promise<void> {
                 gameMode: "stage",
                 stageNumber: nextStage,
               });
+              if (PLATFORM.id === "crazygames") writeSoloCheckpoint(progressStorage.owner, {
+                stage: nextStage, metaPoints: metaRuntime.state.points, cards: cloneRunCardState(runCardState), points: { ...stageRunPoints },
+              });
               gameplay.enter("stage-card-next");
               marketingRuntime.startLocalMatch("stage");
             } catch (error: unknown) {
@@ -2121,6 +2168,20 @@ async function bootstrap(): Promise<void> {
       gameMode === "online"
         ? onlineRuntime?.mySide ?? null
         : null,
+      PLATFORM.id === "crazygames" && gameMode === "stage" ? Object.fromEntries(upgradeCards.map(card => {
+        const next = cloneRunCardState(runCardState);
+        applyCardPick(next, card.id, tuningRuntime.settings.cardEffectScale);
+        if (card.id === "giantPawn") {
+          const count = (cards: typeof next) => selectStageSpawnInstances(PIECE_INSTANCES, { gameMode: "stage", stageNumber: completedStage + 1, runCards: cards }).filter(p => p.side === "white" && p.type === "Pawn").length;
+          return [card.id, { pawnsLost: count(runCardState) - count(next) }];
+        }
+        if (card.id === "proneStart") return [card.id, {}];
+        const tuning = createCardEffectTuning(cardTuningRuntime.settings);
+        return [card.id, {
+          before: computeTunedGeneralCardEffect("stage", runCardState, card.id, tuningRuntime.settings.cardEffectScale, tuning),
+          after: computeTunedGeneralCardEffect("stage", next, card.id, tuningRuntime.settings.cardEffectScale, tuning),
+        }];
+      })) : {},
     );
     if (gameMode === "stage" && PLATFORM.id !== "crazygames") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
     if (gameMode === "stage" && PLATFORM.id !== "crazygames") appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
@@ -2406,7 +2467,8 @@ async function bootstrap(): Promise<void> {
     if (mode === "tutorial") {
       const step = selectedStage ?? 1;
       tutorialInputModeBeforeStart ??= inputRuntime.mode;
-      tutorialManager.start(step, tutorialType);
+      tutorialManager.start(step, tutorialType, launchQuickIntro);
+      launchQuickIntro = false;
       switchInputMode(inputRuntime, getTutorialInputMode(step, tutorialType), false);
     } else {
       tutorialManager.stop();
@@ -2416,6 +2478,7 @@ async function bootstrap(): Promise<void> {
       }
     }
     if (mode === "weekly" && !weeklyRun) throw new Error("Weekly challenge run is not prepared.");
+    if (PLATFORM.id === "crazygames" && mode === "stage" && (selectedStage ?? 1) <= 3) switchInputMode(inputRuntime, "classic", false);
     const previousHotseatMapId = selectedHotseatMapId;
     if (mode === "hotseat") selectedHotseatMapId = nextHotseatMapId;
     try {
@@ -2736,6 +2799,7 @@ async function bootstrap(): Promise<void> {
       return;
     }
     const abandonedStage = gameModeRuntime.stageNumber;
+    if (PLATFORM.id === "crazygames") writeSoloCheckpoint(progressStorage.owner, null);
     marketingRuntime.endMatch("black", "white", true);
     discardStageRunPoints(stageRunPoints);
     turnRuntime.phase = "match-over";
@@ -2997,7 +3061,7 @@ async function bootstrap(): Promise<void> {
       }
     },
     async (destination) => {
-      if (destination === "stage") await startLobbyMode(menuRuntime, "stage");
+      if (destination === "stage") await startLobbyMode(menuRuntime, "stage", 1);
       else await returnToMainMenu(menuRuntime);
     },
   );
@@ -3019,13 +3083,13 @@ async function bootstrap(): Promise<void> {
     });
   if (PLATFORM.features.online && PLATFORM.id !== "crazygames" && menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
   let hasIncomingMatch = false;
-  if (PLATFORM.id === "crazygames") {
+  if (PLATFORM.id === "crazygames" && PLATFORM.features.online) {
     const { prepareLaunchInvite, hasLaunchInvite } = await import("./crazygames-multiplayer");
     await prepareLaunchInvite();
     hasIncomingMatch = hasLaunchInvite();
     if (hasIncomingMatch) await startLobbyMode(menuRuntime, "online");
   }
-  if (!localBalancePreview && firstTutorialCandidate && !hasIncomingMatch) {
+  if (!localBalancePreview && firstTutorialCandidate && !hasIncomingMatch && (PLATFORM.id !== "crazygames" || launchQuickIntro)) {
     // Invite/Instant Multiplayer take precedence even after the invite is consumed.
     localStorage.setItem("ca_logged_in_user", "true");
     if (!localStorage.getItem("ca_local_nickname")) localStorage.setItem("ca_local_nickname", "Player");

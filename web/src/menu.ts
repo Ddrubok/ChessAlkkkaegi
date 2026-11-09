@@ -791,7 +791,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   });
   panel.querySelector("#menu-recommendation-btn")?.addEventListener("click", () => {
     closeSheet(false);
-    if (recommendation.mode === "stage") {
+    if (recommendation.mode === "stage" && PLATFORM.id !== "crazygames") {
       openPveLobbyModal(runtime, (stage) => startLobbyMode(runtime, "stage", stage), recommendation.stage);
     } else {
       void startLobbyMode(runtime, recommendation.mode, recommendation.stage, recommendation.tutorialType);

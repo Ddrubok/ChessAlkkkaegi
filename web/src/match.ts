@@ -5,6 +5,20 @@ import type { GameMode } from "./game-mode";
 import type { CardId, UpgradeCard } from "./cards";
 import { I18nManager } from "./i18n";
 import { beginResultMotion, closeResultMotion } from './result-motion';
+import { PLATFORM } from './platform';
+import { presentCard, type CardPreview } from './crazygames-progression';
+import './crazygames-progression.css';
+
+function progressionText(ko: string, en: string): string {
+  return I18nManager.getLanguage() === 'ko' ? ko : en;
+}
+
+function addCardLine(parent: HTMLElement, className: string, value: string): void {
+  const line = document.createElement('span');
+  line.className = className;
+  line.textContent = value;
+  parent.append(line);
+}
 
 export interface RemainingPieceCounts {
   // 판에 남아 있는 백 말 수다.
@@ -223,14 +237,14 @@ export function createMatchRuntime(
     } else if (event.code === "Tab") {
       event.preventDefault();
       const focusableButtons = [
-        ...overlay.querySelectorAll<HTMLButtonElement>("button"),
+        ...overlay.querySelectorAll<HTMLElement>("button, summary"),
       ].filter(
-        (button) => !button.closest("[hidden]") && !button.disabled && button.getClientRects().length > 0,
+        (element) => !element.closest("[hidden]") && !(element instanceof HTMLButtonElement && element.disabled) && element.getClientRects().length > 0,
       );
       if (focusableButtons.length > 0) {
         event.preventDefault();
         const currentIndex = focusableButtons.indexOf(
-          document.activeElement as HTMLButtonElement,
+          document.activeElement as HTMLElement,
         );
         const direction = event.shiftKey ? -1 : 1;
         const nextIndex =
@@ -272,9 +286,11 @@ export function showMatchResult(
   onCardSelected: ((cardId: CardId) => Promise<void>) | null = null,
   onReturnToMenu: (() => Promise<void>) | null = null,
   localSide: PieceSide | null = null,
+  cardPreviews: Partial<Record<CardId, CardPreview>> = {},
 ): void {
   gameplay.leave("match-result");
   runtime.overlay.classList.remove("weekly-result-open");
+  runtime.overlay.classList.toggle('cg-progression', PLATFORM.id === 'crazygames' && gameMode === 'stage');
   runtime.winner = winner;
   runtime.restarting = false;
   runtime.onRestart = onRestart;
@@ -307,12 +323,22 @@ export function showMatchResult(
     onCardSelected !== null;
   runtime.cardChoices.replaceChildren();
   runtime.cardChoices.hidden = !showsCards;
+  if (PLATFORM.id === 'crazygames' && gameMode === 'stage' && showsCards) {
+    runtime.resultKicker.textContent = progressionText('단계 완료', 'Stage complete');
+    const prompt = document.createElement('p');
+    prompt.textContent = progressionText(
+      `스테이지 ${stageNumber} 완료 · 강화 하나를 고르면 다음 경기로 이동합니다`,
+      `Stage ${stageNumber} clear · Choose one upgrade for the next match`,
+    );
+    runtime.resultDetails.replaceChildren(prompt);
+    runtime.resultDetails.hidden = false;
+  }
   runtime.restartButton.hidden =
     showsCards || gameMode === "online" || gameMode === "weekly";
   runtime.restartButton.disabled = false;
   runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
   runtime.menuButton.hidden =
-    showsCards ||
+    (showsCards && PLATFORM.id !== 'crazygames') ||
     (gameMode === "stage" && winner !== "black") ||
     (gameMode !== "stage" && gameMode !== "weekly" && gameMode !== "online") ||
     onReturnToMenu === null;
@@ -320,20 +346,49 @@ export function showMatchResult(
   runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
   if (showsCards) {
     for (const card of upgradeCards) {
+      const crazyCard = PLATFORM.id === 'crazygames' && gameMode === 'stage';
       const button = document.createElement("button");
       button.type = "button";
       button.className = "upgrade-card";
       const cardName = I18nManager.t(`cards.${card.id}_name`) || card.name;
-      const cardDesc = I18nManager.t(`cards.${card.id}_desc`) || card.description;
-      button.innerHTML = `
-        <strong>${cardName}</strong>
-        <span>${cardDesc}</span>
-      `;
+      const cardDesc = card.id === 'giantPawn' && cardPreviews.giantPawn
+        ? progressionText('a·c·e·g열의 폰을 제외하고 남은 폰 크기 ×1.3. 각 단계 배치에 따라 감소하는 폰 수가 달라집니다.', 'Pawns on files a, c, e and g are removed; remaining pawns grow ×1.3. The number removed depends on each stage layout.')
+        : I18nManager.t(`cards.${card.id}_desc`) || card.description;
+      if (crazyCard) {
+        const presented = presentCard(card, I18nManager.getLanguage(), cardPreviews[card.id]);
+        const top = document.createElement('span');
+        top.className = 'cg-card-top';
+        addCardLine(top, 'cg-card-icon', presented.icon);
+        top.firstElementChild?.setAttribute('aria-hidden', 'true');
+        addCardLine(top, 'cg-card-copy', cardName);
+        button.append(top);
+        if (presented.grade && I18nManager.getLanguage() === 'ko') {
+          addCardLine(button, 'cg-card-grade', presented.grade);
+        }
+        addCardLine(button, 'cg-card-effect', presented.effect);
+        if (presented.measuredEffect) {
+          addCardLine(button, 'cg-card-value', progressionText(
+            `카드 보너스 ${presented.measuredEffect}`,
+            `Card bonus ${presented.measuredEffect}`,
+          ));
+        }
+        if (presented.tradeoff) {
+          addCardLine(button, 'cg-card-tradeoff', presented.tradeoff);
+        }
+        addCardLine(button, 'cg-card-scope', progressionText('이번 도전 동안', 'For this run'));
+      } else {
+        const title = document.createElement('strong');
+        title.textContent = cardName;
+        const description = document.createElement('span');
+        description.textContent = cardDesc;
+        button.append(title, description);
+      }
       button.addEventListener("click", () => {
         if (runtime.restarting || runtime.onCardSelected === null) {
           return;
         }
         runtime.restarting = true;
+        button.classList.add('cg-selected');
         for (const cardButton of runtime.cardChoices.querySelectorAll(
           "button",
         )) {
@@ -346,6 +401,7 @@ export function showMatchResult(
           () => {
             runtime.winner = null;
             runtime.restarting = false;
+            button.classList.remove('cg-selected');
             closeResultMotion(runtime.overlay);
             runtime.overlay.hidden = true;
           },
@@ -366,7 +422,21 @@ export function showMatchResult(
           },
         );
       });
-      runtime.cardChoices.append(button);
+      if (crazyCard) {
+        const wrap = document.createElement('div');
+        wrap.className = 'upgrade-card-wrap';
+        const details = document.createElement('details');
+        details.className = 'cg-card-details';
+        const summary = document.createElement('summary');
+        summary.textContent = progressionText('자세히', 'Details');
+        const description = document.createElement('p');
+        description.textContent = cardDesc;
+        details.append(summary, description);
+        wrap.append(button, details);
+        runtime.cardChoices.append(wrap);
+      } else {
+        runtime.cardChoices.append(button);
+      }
     }
   }
   runtime.actionStatus.hidden = true;
@@ -437,6 +507,7 @@ export function showStageRunResult(
   onRestart: (() => Promise<void>) | null = null,
 ): void {
   gameplay.leave("stage-run-result");
+  runtime.overlay.classList.toggle('cg-progression', PLATFORM.id === 'crazygames');
   const copy = createStageRunResultCopy(
     stageNumber,
     payout,
@@ -482,6 +553,7 @@ export function showDisconnectedMatchEnd(
   onReturnToMenu: () => Promise<void>,
 ): void {
   closeResultMotion(runtime.overlay);
+  runtime.overlay.classList.remove('cg-progression');
   runtime.winner = null;
   runtime.restarting = false;
   runtime.onCardSelected = null;
@@ -510,6 +582,7 @@ export function showDisconnectedMatchEnd(
  */
 export function hideMatchResult(runtime: MatchRuntime): void {
   closeResultMotion(runtime.overlay);
+  runtime.overlay.classList.remove('cg-progression');
   runtime.overlay.classList.remove("weekly-result-open");
   runtime.overlay.hidden = true;
   runtime.winner = null;

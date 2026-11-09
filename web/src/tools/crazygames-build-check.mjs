@@ -59,12 +59,15 @@ else {
   if (!/<html lang="en">/u.test(privacy) || !/chessalkkagi Privacy Policy/u.test(privacy)) failures.push('privacy.html: English policy missing');
   if (/<script\b|<iframe\b|<img\b|\bon\w+\s*=|https?:\/\/|google-analytics|googletagmanager|pixel/iu.test(privacy)) failures.push('privacy.html: script, tracking, or remote resource');
 }
-if (!runtime.includes('Online play uses your CrazyGames ID and saves match results and progress.')
+if (!runtime.includes('Account progress uses your CrazyGames ID. Run upgrades are saved in this browser.')
   || !runtime.includes('<a href="./privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>')) {
   failures.push('lobby: CrazyGames privacy notice or local link missing');
 }
-for (const marker of ['crazygames-sdk-v3.js', 'crazygames-auth', 'IN_GAME_AUTH', 'ca-matchmaking-', 'yoajmckkrpgvcljrffww.supabase.co']) {
-  if (!runtime.includes(marker)) failures.push(`missing online integration: ${marker}`);
+for (const marker of ['crazygames-sdk-v3.js', 'crazygames-auth', 'yoajmckkrpgvcljrffww.supabase.co']) {
+  if (!runtime.includes(marker)) failures.push(`missing account integration: ${marker}`);
+}
+for (const marker of ['ca-matchmaking-', 'RTCPeerConnection', 'join_friendly_room_v1']) {
+  if (runtime.includes(marker)) failures.push(`solo build retains multiplayer runtime: ${marker}`);
 }
 for (const match of runtime.matchAll(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/gu)) {
   try {

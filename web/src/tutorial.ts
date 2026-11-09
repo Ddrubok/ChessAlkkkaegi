@@ -1,5 +1,6 @@
 import { progressStorage } from "./progress-storage";
 import { PLATFORM } from "./platform";
+import { soloCopy, writeSoloIntro } from "./crazygames-solo";
 import { gameplay } from "./poki-sdk";
 /**
  * 기초: 장외 → 방향 조절 → 미니 대전. 심화: 기존 5단계 기물 특성 연습.
@@ -37,8 +38,8 @@ export function getTutorialStepInfo(
   return {
     step: s,
     title: I18nManager.t(`${prefix}${s}_title`),
-    mission: I18nManager.t(`${prefix}${s}_mission`),
-    guide: I18nManager.t(`${prefix}${s}_guide`),
+    mission: PLATFORM.id === "crazygames" && type === "basic" && s === 3 ? soloCopy().goal : I18nManager.t(`${prefix}${s}_mission`),
+    guide: PLATFORM.id === "crazygames" && type === "basic" && s === 3 ? soloCopy().pull : I18nManager.t(`${prefix}${s}_guide`),
     successMessage: I18nManager.t(`${prefix}${s}_success`),
   };
 }
@@ -48,6 +49,7 @@ export class TutorialManager {
   public tutorialType: TutorialType = "basic";
   public isActive: boolean = false;
   public isTransitioning = false;
+  public quickIntro = false;
   private generation = 0;
   public get sessionToken(): number { return this.generation; }
   private completionModal: HTMLElement | null = null;
@@ -81,10 +83,12 @@ export class TutorialManager {
   public start(
     startStep: number = 1,
     tutorialType: TutorialType = "basic",
+    quickIntro = false,
   ): void {
     this.stop();
     this.isActive = true;
     this.tutorialType = tutorialType;
+    this.quickIntro = quickIntro && tutorialType === "basic" && PLATFORM.id === "crazygames";
     this.currentStep = Math.max(1, Math.min(this.stepCount, startStep));
     if (tutorialType === "basic" && progressStorage.getItem("has_completed_tutorial") === null) {
       progressStorage.setItem("has_completed_tutorial", "started");
@@ -103,6 +107,7 @@ export class TutorialManager {
     this.generation += 1;
     this.isTransitioning = false;
     this.isActive = false;
+    this.quickIntro = false;
     this.kingSwapped = false;
     this.gestureElement?.remove();
     this.gestureElement = null;
@@ -297,7 +302,7 @@ export class TutorialManager {
     if (!this.isActive) return { cleared: false };
 
     if (this.tutorialType === "basic") {
-      return { cleared: this.currentStep < 3
+      return { cleared: this.currentStep < 3 || PLATFORM.id === "crazygames"
         ? remainingBlackPieceCount === 0
         : !remainingBlackPieces.some(p => p.type === "King") };
     }
@@ -346,6 +351,15 @@ export class TutorialManager {
 
     await new Promise((r) => setTimeout(r, 1200));
     if (!this.isActive || this.generation !== generation) return;
+
+    if (this.quickIntro) {
+      // One real knockout is the quick introduction, not the full three-step
+      // basic tutorial. Its existing 100P reward remains attached to that course.
+      writeSoloIntro(progressStorage.owner, "complete");
+      this.stop();
+      await this.onTutorialFinishedCallback?.("stage");
+      return;
+    }
 
     if (this.currentStep < this.stepCount) {
       const nextStep = this.currentStep + 1;
@@ -465,11 +479,11 @@ export class TutorialManager {
     this.overlayElement.innerHTML = `
       <div class="tutorial-coach-card">
         <div class="tutorial-coach-header">
-          <span class="tutorial-step-badge">${badgePrefix} ${this.currentStep}/${this.stepCount}</span>
-          <strong class="tutorial-step-title">${stepInfo.title}</strong>
-          <button type="button" class="tutorial-skip-button">${I18nManager.t("tutorial.skip_btn")}</button>
+          <span class="tutorial-step-badge">${this.quickIntro ? soloCopy().quick : `${badgePrefix} ${this.currentStep}/${this.stepCount}`}</span>
+          <strong class="tutorial-step-title">${this.quickIntro ? soloCopy().pull : stepInfo.title}</strong>
+          <button type="button" class="tutorial-skip-button">${this.quickIntro ? soloCopy().skip : I18nManager.t("tutorial.skip_btn")}</button>
         </div>
-        <div class="tutorial-mission-text">${stepInfo.mission}</div>
+        <div class="tutorial-mission-text">${this.quickIntro ? soloCopy().goal : stepInfo.mission}</div>
         <div class="tutorial-guide-text">${(this.tutorialType === "basic" && this.currentStep < 3) || (this.tutorialType === "advanced" && this.currentStep === 4) ? "" : stepInfo.guide}</div>
       </div>
     `;
@@ -477,11 +491,13 @@ export class TutorialManager {
       if (!this.isActive) return;
       const button = event.currentTarget as HTMLButtonElement;
       button.disabled = true;
+      const quick = this.quickIntro;
+      if (quick) writeSoloIntro(progressStorage.owner, "skipped");
       if (this.tutorialType === "basic" && progressStorage.getItem("has_completed_tutorial") !== "true") {
         progressStorage.setItem("has_completed_tutorial", "skipped");
       }
       this.stop();
-      await this.onTutorialFinishedCallback?.();
+      await this.onTutorialFinishedCallback?.(quick ? "stage" : undefined);
     });
   }
 
@@ -570,7 +586,7 @@ export class TutorialManager {
         <div class="tutorial-modal-card" style="max-width:380px;">
           <h2 style="margin:0 0 10px 0; font-size:22px; color:#38bdf8; font-weight:800;">${I18nManager.t("tutorial.basic_complete_title")}</h2>
           <p style="margin:0 0 16px 0; font-size:14px; color:#cbd5e1; line-height:1.5;">
-            ${I18nManager.t("tutorial.basic_complete_desc").split("<br>")[0]}
+            ${PLATFORM.id === "crazygames" ? soloCopy().goal : I18nManager.t("tutorial.basic_complete_desc").split("<br>")[0]}
           </p>
           <div style="display:flex; flex-direction:column; gap:10px;">
             <button id="btn-tutorial-start-stage" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">

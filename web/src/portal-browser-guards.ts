@@ -1,3 +1,9 @@
+export let portalStoragePersistent = true;
+export function reportPortalStorageUnavailable(): void {
+  portalStoragePersistent = false;
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("portal-storage-unavailable"));
+}
+
 function memoryStorage(): Storage {
   const values = new Map<string, string>();
   return {
@@ -7,6 +13,36 @@ function memoryStorage(): Storage {
     key(index) { return [...values.keys()][index] ?? null; },
     removeItem(key) { values.delete(String(key)); },
     setItem(key, value) { values.set(String(key), String(value)); },
+  };
+}
+
+export function resilientPortalStorage(storage: Storage, persistent: boolean): Storage {
+  const memory = memoryStorage();
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (key !== null) memory.setItem(key, storage.getItem(key) ?? "");
+  }
+  let failed = false;
+  const attempt = <T>(native: () => T, fallback: () => T): T => {
+    if (!failed) {
+      try { return native(); }
+      catch { failed = true; if (persistent) reportPortalStorageUnavailable(); }
+    }
+    return fallback();
+  };
+  return {
+    get length() { return attempt(() => storage.length, () => memory.length); },
+    key(index) { return attempt(() => storage.key(index), () => memory.key(index)); },
+    getItem(key) {
+      return attempt(() => {
+        const value = storage.getItem(key);
+        if (value === null) memory.removeItem(key); else memory.setItem(key, value);
+        return value;
+      }, () => memory.getItem(key));
+    },
+    setItem(key, value) { memory.setItem(key, value); attempt(() => storage.setItem(key, value), () => {}); },
+    removeItem(key) { memory.removeItem(key); attempt(() => storage.removeItem(key), () => {}); },
+    clear() { memory.clear(); attempt(() => storage.clear(), () => {}); },
   };
 }
 
@@ -20,7 +56,9 @@ export function installPortalBrowserGuards(): void {
       if (storage.getItem(key) !== "1") throw new Error("Storage unavailable");
       storage.removeItem(key);
       if (previous !== null) storage.setItem(key, previous);
+      Object.defineProperty(window, name, { configurable: true, value: resilientPortalStorage(storage, name === "localStorage") });
     } catch {
+      if (name === "localStorage") reportPortalStorageUnavailable();
       Object.defineProperty(window, name, { configurable: true, value: memoryStorage() });
     }
   }

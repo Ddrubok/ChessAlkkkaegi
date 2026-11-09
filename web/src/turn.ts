@@ -82,6 +82,8 @@ interface CameraRotation {
 }
 
 export interface TurnRuntime {
+  // Opening stages teach flicking before asking for a promotion choice.
+  promotionEnabled?: boolean;
   physicsRuntime: PhysicsRuntime;
   sceneRuntime: SceneRuntime;
   // 백 선공 뒤 한 번의 유효 발사마다 교대하는 활성 진영이다.
@@ -1280,7 +1282,7 @@ export function resetTurnRuntime(runtime: TurnRuntime): void {
  */
 export function checkAndTriggerPromotion(runtime: TurnRuntime): void {
   // Ponytail: Online promotion requires synchronized events/state before enablement.
-  if (runtime.gameMode === "online" || runtime.gameMode === "puzzle") {
+  if (runtime.gameMode === "online" || runtime.gameMode === "puzzle" || runtime.promotionEnabled === false) {
     runtime.pendingPromotionPawns.clear();
     runtime.promotionQueue.length = 0;
     return;

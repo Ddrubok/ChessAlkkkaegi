@@ -5,7 +5,9 @@ const portalBuild = pokiBuild || crazygamesBuild;
 export const PLATFORM = {
   id: crazygamesBuild ? "crazygames" : pokiBuild ? "poki" : "web",
   features: {
-    online: !pokiBuild,
+    // Solo review candidate. Keep the other releases' multiplayer routes intact.
+    online: !portalBuild,
+    cloudProgress: !pokiBuild,
     accounts: !portalBuild,
     externalLinks: !portalBuild,
     debugTools: !portalBuild,

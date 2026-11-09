@@ -86,7 +86,7 @@ export function clearSupabaseConfig(): void {
  * Supabase 싱글톤 클라이언트를 가져오거나 새로 초기화한다.
  */
 export function getSupabaseClient(): SupabaseClient | null {
-  if (!PLATFORM.features.accounts && !PLATFORM.features.online) return null;
+  if (!PLATFORM.features.cloudProgress) return null;
   if (supabaseInstance) {
     return supabaseInstance;
   }

@@ -23,9 +23,13 @@ import {
 import type { GameMode } from "./game-mode";
 import {
   getCellCenter,
+  PIECE_INSTANCES,
   type CellCenter,
+  type ChessFile,
+  type ChessRank,
   type PieceInstance,
 } from "./layout";
+import { PLATFORM } from "./platform";
 import {
   computePermanentSizeFraction,
   computePermanentWeightFraction,
@@ -34,6 +38,29 @@ import {
 
 // 확대된 폰 받침끼리 접촉하지 않도록 한 칸 간격에 추가하는 최소 여유다.
 const PAWN_ZIGZAG_MARGIN = 0.02;
+
+// The first three CrazyGames matches teach one new choice at a time. Later stages keep their existing boards.
+const CRAZYGAMES_OPENING_SQUARES: Readonly<Record<number, readonly (readonly [PieceInstance["type"], ChessFile, ChessRank])[]>> = {
+  1: [["Pawn", "c", 2], ["Pawn", "d", 2], ["Pawn", "f", 2]],
+  2: [["Pawn", "c", 2], ["Pawn", "d", 3], ["Pawn", "f", 2], ["Rook", "e", 1]],
+  3: [["Pawn", "c", 3], ["Pawn", "d", 2], ["Pawn", "f", 2], ["Knight", "e", 1]],
+};
+
+export function getCrazyGamesOpeningStageInstances(stageNumber: number): PieceInstance[] | null {
+  const squares = CRAZYGAMES_OPENING_SQUARES[stageNumber];
+  if (!squares) return null;
+  return (["white", "black"] as const).flatMap((side) =>
+    squares.map(([type, file, whiteRank]): PieceInstance => {
+      const rank = (side === "white" ? whiteRank : 9 - whiteRank) as ChessRank;
+      return {
+        id: `${side}-${type.toLowerCase()}-${file}${rank}`,
+        type,
+        side,
+        startingSquare: { file, rank },
+      };
+    }),
+  );
+}
 
 export type PawnTier = "none" | "rook" | "king";
 
@@ -100,6 +127,7 @@ export function computeStageBoardScale(
       `판 배율 스테이지 번호 ${stageNumber}가 1 이상의 정수가 아닙니다.`,
     );
   }
+  if (PLATFORM.id === "crazygames" && gameMode === "stage" && stageNumber <= 3) return 1;
   return (gameMode === "stage" || gameMode === "weekly") && stageNumber >= 2
     ? STAGE_BOARD_SCALE
     : 1;
@@ -419,6 +447,11 @@ export function selectStageSpawnInstances(
   instances: readonly PieceInstance[],
   options: StageSpawnOptions,
 ): PieceInstance[] {
+  const opening = PLATFORM.id === "crazygames" &&
+    options.gameMode === "stage" && instances === PIECE_INSTANCES
+    ? getCrazyGamesOpeningStageInstances(options.stageNumber)
+    : null;
+  const selected = opening ?? instances;
   if (
     !isGiantPawnCardActive(
       options.gameMode,
@@ -426,9 +459,9 @@ export function selectStageSpawnInstances(
       options.cardTuning,
     )
   ) {
-    return [...instances];
+    return [...selected];
   }
-  return instances.filter(
+  return selected.filter(
     (instance) =>
       !(
         instance.side === "white" &&

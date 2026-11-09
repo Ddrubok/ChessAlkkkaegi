@@ -387,19 +387,18 @@ function containsClientPoint(
 function isInsideAimReleaseArea(runtime: InputRuntime, event: PointerEvent): boolean {
   const canvas = runtime.sceneRuntime.renderer.domElement;
   if (containsClientPoint(canvas, event)) return true;
+  // A classic drag may leave the board, but release must stay in the game canvas.
+  if (runtime.gesture?.source === "classic-canvas") return false;
   const cancelRect = runtime.cancelControl?.hidden === false
     ? runtime.cancelControl.getBoundingClientRect()
     : undefined;
   const overAimDock =
-    (runtime.gesture?.source === "red-dot" || runtime.gesture?.source === "classic-canvas") &&
+    runtime.gesture?.source === "red-dot" &&
     cancelRect !== undefined && cancelRect.width > 0 && cancelRect.height > 0 &&
     event.clientX >= cancelRect.left && event.clientX <= cancelRect.right &&
     event.clientY >= canvas.getBoundingClientRect().bottom &&
     event.clientY < cancelRect.top;
-  return overAimDock || (
-    runtime.gesture?.source === "classic-canvas" &&
-    isPointerOverElement(runtime.aimRuntime.powerReadout, event.clientX, event.clientY)
-  );
+  return overAimDock;
 }
 
 /**
@@ -1779,6 +1778,7 @@ function handleCanvasPointerMove(
 ): void {
   if (runtime.policy.isInputBlocked()) {
     event.preventDefault();
+    if (runtime.gesture?.source === "classic-canvas") cancelInteraction(runtime, false);
     return;
   }
   const gesture = runtime.gesture;
@@ -1903,6 +1903,7 @@ function handleCanvasPointerUp(
   }
   if (runtime.policy.isInputBlocked()) {
     event.preventDefault();
+    if (runtime.gesture?.source === "classic-canvas") cancelInteraction(runtime, false);
     return;
   }
   const gesture = runtime.gesture;
@@ -1913,7 +1914,6 @@ function handleCanvasPointerUp(
     return;
   }
   if (
-    runtime.isPointerOverCancel ||
     isPointerOverElement(
       runtime.cancelControl,
       event.clientX,
@@ -2477,6 +2477,9 @@ export function createInputRuntime(
   window.addEventListener("blur", () =>
     cancelInputInteraction(runtime, true),
   );
+  window.addEventListener("resize", () => {
+    if (runtime.activePointerId !== null) cancelInputInteraction(runtime, false);
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") {
       cancelInputInteraction(runtime, true);

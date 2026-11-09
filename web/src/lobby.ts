@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { PLATFORM } from "./platform";
+import { readSoloState, soloCopy } from "./crazygames-solo";
 import type { MainMenuRuntime } from "./menu";
 import { getMaxClearedStage, type MetaRuntime } from "./meta";
 import { I18nManager } from "./i18n";
@@ -71,7 +72,8 @@ export function renderHeaderActions(nameOrOptions?: HeaderActionIcon | { showLog
 }
 
 export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; tutorialType: "basic" | "advanced"; stage: number; assetId: "lobbyHeroStage" | "lobbyHeroTutorial" | "lobbyAvatar"; eyebrow: string; title: string; body: string; cta: string } {
-  const basicTutorialCompleted = isBasicTutorialCompleted(readLobbyStorage("has_completed_tutorial"));
+  const solo = PLATFORM.id === "crazygames" ? readSoloState(progressStorage.owner) : null;
+  const basicTutorialCompleted = isBasicTutorialCompleted(readLobbyStorage("has_completed_tutorial")) || solo?.intro != null || (PLATFORM.id === "crazygames" && getMaxClearedStage(runtime.metaRuntime.storage) > 0);
   const picked = pickLobbyRecommendation({
     basicTutorialCompleted,
     maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage),
@@ -105,7 +107,7 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
       cta: member ? I18nManager.t("lobby.hero_cta_online") : uiPolishCopy().friendlyTitle,
     };
   }
-  const stage = recommendation.stage;
+  const stage = solo?.run?.stage ?? recommendation.stage;
   return {
     mode: "stage",
     tutorialType: "basic",
@@ -113,7 +115,7 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     assetId: "lobbyHeroStage",
     eyebrow: I18nManager.t("lobby.hero_eyebrow_continue"),
     title: I18nManager.t("lobby.hero_title_stage", { stage }),
-    body: I18nManager.t("lobby.hero_sub_stage", { cleared: getMaxClearedStage(runtime.metaRuntime.storage), max: PVE_MAX_STAGE, points: runtime.metaRuntime.state.points }),
+    body: solo?.run ? soloCopy().saved : I18nManager.t("lobby.hero_sub_stage", { cleared: getMaxClearedStage(runtime.metaRuntime.storage), max: PVE_MAX_STAGE, points: runtime.metaRuntime.state.points }),
     cta: I18nManager.t("lobby.hero_cta_stage"),
   };
 }
@@ -150,7 +152,7 @@ export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: numbe
     hotseat: I18nManager.t("lobby.card_2p_status"),
     tutorial: "",
   };
-  const visibleCards = PLATFORM.id === "crazygames" ? cards.filter(card => card.mode === "stage" || card.mode === "online") : PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online");
+  const visibleCards = PLATFORM.id === "crazygames" ? cards.filter(card => card.mode === "stage") : PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online");
   return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${visibleCards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
 }
 
@@ -163,7 +165,7 @@ export function renderCommunityLink(): string {
 }
 
 export function renderFooterLinks(): string {
-  if (PLATFORM.id === "crazygames") return '<nav class="lobby-footer" aria-label="Privacy"><span>Online play uses your CrazyGames ID and saves match results and progress.</span><a href="./privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a></nav>';
+  if (PLATFORM.id === "crazygames") return `<nav class="lobby-footer" aria-label="Privacy"><span>${escapeHtml(soloCopy().revision)}<br>${escapeHtml(soloCopy().privacy)}</span><a href="./privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a></nav>`;
   if (!PLATFORM.features.externalLinks) return "";
   return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>${renderCommunityLink()}`;
 }

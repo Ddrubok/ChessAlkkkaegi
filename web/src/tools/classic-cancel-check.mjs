@@ -426,12 +426,34 @@ try {
     assert.equal(launchQueueCalls.length, 1, 'Normal release must commit exactly 1 launch');
     assert.equal(launchQueueCalls[0].pieceId, 'white-pawn-a2');
     assert.equal(runtime.cancelControl.hidden, true, 'Cancel control hidden on launch');
+    pointerUp(runtime, {
+      clientX: canvasX + 40, clientY: canvasY + 40, pointerId: 7, pointerType: 'mouse',
+      preventDefault() {},
+    });
+    assert.equal(launchQueueCalls.length, 1, 'Repeated pointerup must not queue another launch');
     console.log('  -> 일반 조준 후 정상 릴리스 시 1회 발사 커밋 정상 동작');
   }
 
-  // The fixed HUD sits below the canvas. Exercise real input handlers through
-  // queueLaunch, including the exact boundary where the cancel control begins.
-  console.log('[검증 9] 캔버스 아래 조준 HUD 발사 영역과 취소 경계');
+  // The final pointerup coordinates win if an earlier move hovered the cancel zone.
+  {
+    const runtime = createTestRuntime('classic');
+    const point = whitePieceMesh.position.clone().project(camera);
+    const event = (clientX, clientY) => ({
+      clientX, clientY, pointerId: 70, pointerType: 'mouse', button: 0,
+      preventDefault() {}, stopImmediatePropagation() {},
+    });
+    pointerDown(runtime, event((point.x + 1) * 200, (1 - point.y) * 200));
+    pointerMove(runtime, event(350, 30));
+    assert.equal(runtime.isPointerOverCancel, true);
+    pointerUp(runtime, event(250, 250));
+    assert.equal(launchQueueCalls.length, 1, 'Release back on canvas must launch once');
+    assert.equal(runtime.activePointerId, null);
+    assert.equal(capturedPointerIds.size, 0);
+  }
+
+  // A valid drag may release beyond the board, anywhere inside the canvas.
+  // The HUD below it is outside the shot area; the cancel control stays explicit.
+  console.log('[검증 9] 캔버스 여백 발사와 HUD/화면 바깥 취소 경계');
   const originalCancelRect = mockCancelControl.getBoundingClientRect;
   mockCancelControl.getBoundingClientRect = () => ({
     left: 100, right: 300, top: 480, bottom: 550, width: 200, height: 70,
@@ -439,15 +461,16 @@ try {
   try {
     for (const pointerType of ['mouse', 'touch']) {
       for (const [label, x, y, launches] of [
-        ['HUD center', 200, 440, true],
-        ['HUD left edge', 100, 440, true],
-        ['HUD right edge', 300, 440, true],
+        ['canvas side margin', 2, 200, true],
+        ['HUD center', 200, 440, false],
+        ['HUD left edge', 100, 440, false],
+        ['HUD right edge', 300, 440, false],
         ['left banner', 99.99, 440, false],
         ['right banner', 300.01, 440, false],
-        ['read-only power label', 40, 440, true],
+        ['read-only power label', 40, 440, false],
         ['outside power label', 81, 440, false],
         ['canvas bottom', 200, 400, true],
-        ['just above cancel', 200, 479.99, true],
+        ['just above cancel', 200, 479.99, false],
         ['cancel top edge', 200, 480, false],
         ['cancel center', 200, 520, false],
         ['below cancel', 200, 600, false],
@@ -467,7 +490,7 @@ try {
         assert.equal(runtime.state, 'aiming');
         pointerMove(runtime, event(x, y));
         assert.ok(runtime.aimRuntime.activeAim.normalizedPower > 0);
-        const outside = ['left banner', 'right banner', 'outside power label', 'below cancel', 'outside screen', 'above canvas'].includes(label);
+        const outside = !launches && !['cancel top edge', 'cancel center'].includes(label);
         assert.equal(canvasClasses.has('is-outside-aim-release'), outside, `${pointerType}: ${label} preview`);
         pointerUp(runtime, event(x, y));
         assert.equal(launchQueueCalls.length, launches ? 1 : 0, `${pointerType}: ${label}`);
@@ -477,7 +500,7 @@ try {
         assert.equal(capturedPointerIds.size, 0, `${label}: pointer capture released`);
       }
     }
-    console.log('  -> mouse/touch 28개 HUD·세기 표시·취소·화면 밖 경계 통과');
+    console.log('  -> mouse/touch 30개 캔버스·HUD·취소·화면 밖 경계 통과');
   } finally {
     mockCancelControl.getBoundingClientRect = originalCancelRect;
   }
