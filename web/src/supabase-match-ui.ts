@@ -28,9 +28,10 @@ import type { PiecePreviewServices } from "./piece-preview-renderer";
 import type { PieceType } from "./config";
 import { escapeHtml } from "./html";
 import { formatTier, renderTierBadge } from "./tier-view";
-import { PLATFORM } from "./platform";
 import { signInCrazyGames } from "./crazygames-auth";
 import { getCachedUser, isSdkAvailable, onIdentityChanged } from "./crazygames-sdk";
+import { isCurrentRankedMember } from "./online-member";
+import { feedbackCopy } from "./feedback-copy";
 
 export interface SupabaseMatchUiCallbacks {
   onMatchStarted: (
@@ -73,7 +74,7 @@ export class SupabaseMatchUi {
         void this.renderLobby();
       }
     });
-    if (PLATFORM.id === "crazygames") {
+    if (__CRAZYGAMES_BUILD__) {
       this.unsubscribeCrazyGamesIdentity = onIdentityChanged(() => {
         if (this.disposed) return;
         this.profile = null;
@@ -94,7 +95,7 @@ export class SupabaseMatchUi {
     this.unbindModal?.(); this.unbindModal = null;
     this.container.innerHTML = "";
     this.client = getSupabaseClient();
-    if (PLATFORM.id === "crazygames") {
+    if (__CRAZYGAMES_BUILD__) {
       this.profile = null;
       this.crazyGamesUserId = null;
       this.userEmail = null;
@@ -155,7 +156,7 @@ export class SupabaseMatchUi {
 
     // Supabase 설정 미등록 시 설정 안내 폼 표시
     if (!this.client) {
-      if (PLATFORM.id === "crazygames") {
+      if (__CRAZYGAMES_BUILD__ || __ITCH_BUILD__) {
         this.renderCrazyGamesNotice(card, "Online service is unavailable. Please try again.");
       } else {
         this.renderConfigForm(card);
@@ -166,7 +167,7 @@ export class SupabaseMatchUi {
 
     // 계정 상태 바 (이메일 로그인 vs 게스트)
     let crazyGamesError = false;
-    if (PLATFORM.id === "crazygames") {
+    if (__CRAZYGAMES_BUILD__) {
       try {
         const profile = await signInCrazyGames(this.client, false);
         if (this.disposed || version !== this.renderVersion) return;
@@ -181,7 +182,11 @@ export class SupabaseMatchUi {
         crazyGamesError = true;
       }
     } else {
-      this.userEmail = await getSessionEmail(this.client);
+      this.userEmail = __ITCH_BUILD__ ? null : await getSessionEmail(this.client);
+      if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+        if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+        return;
+      }
     }
     if (this.disposed || version !== this.renderVersion) return;
     const authBar = document.createElement("div");
@@ -196,7 +201,7 @@ export class SupabaseMatchUi {
       font-size: 13px;
     `;
 
-    if (PLATFORM.id === "crazygames") {
+    if (__CRAZYGAMES_BUILD__) {
       const cachedUser = this.profile ? getCachedUser() : null;
       const name = cachedUser?.username || this.profile?.nickname;
       const label = document.createElement("div");
@@ -221,6 +226,11 @@ export class SupabaseMatchUi {
         };
         authBar.appendChild(signInBtn);
       }
+    } else if (__ITCH_BUILD__ && this.profile) {
+      const label = document.createElement("div");
+      label.style.cssText = "color:#38bdf8; font-weight:600;";
+      label.textContent = this.profile.nickname;
+      authBar.appendChild(label);
     } else if (this.userEmail) {
       authBar.innerHTML = `
         <div style="color:#38bdf8; font-weight:600;">
@@ -276,7 +286,7 @@ export class SupabaseMatchUi {
     profileSection.innerHTML = `<div style="color:#94a3b8; font-size:14px; text-align:center;">${I18nManager.t("online.loading_profile")}</div>`;
     card.appendChild(profileSection);
 
-    if (PLATFORM.id === "crazygames") {
+    if (__CRAZYGAMES_BUILD__) {
       if (this.profile) {
         this.renderProfileCard(profileSection, this.profile);
       } else {
@@ -286,8 +296,20 @@ export class SupabaseMatchUi {
       try {
         this.profile = await getOrCreateUserProfile(this.client);
         if (this.disposed || version !== this.renderVersion) return;
+        if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+          if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+          return;
+        }
+        if (__ITCH_BUILD__) {
+          const label = authBar.querySelector("div");
+          if (label) label.textContent = this.profile.nickname;
+        }
         this.renderProfileCard(profileSection, this.profile);
       } catch (err: any) {
+        if (__ITCH_BUILD__) {
+          if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+          return;
+        }
         if (this.profile) {
           this.renderProfileCard(profileSection, this.profile);
         } else {
@@ -303,6 +325,9 @@ export class SupabaseMatchUi {
     if (this.disposed || version !== this.renderVersion) return;
 
     // 클래식 vs 전략 랭크 탭
+    const guide = document.createElement("p"); guide.className = "feedback-online-guide";
+    guide.textContent = feedbackCopy().onlineMember;
+    card.append(guide);
     const modeTabs = document.createElement("div");
     modeTabs.style.cssText = "display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;";
     
@@ -355,10 +380,10 @@ export class SupabaseMatchUi {
             void this.openMatchingModal(card, null, "classic");
           }
         };
-        if (PLATFORM.id === "crazygames" && !this.profile) searchBtn.disabled = true;
+        if (__CRAZYGAMES_BUILD__ && !this.profile) searchBtn.disabled = true;
         actionContainer.appendChild(searchBtn);
       } else {
-        if (PLATFORM.id !== "crazygames" || this.profile) {
+        if (!__CRAZYGAMES_BUILD__ || this.profile) {
           this.workbench = new PieceStatWorkbench(adapter, { selectedPiece: this.selectedPiece, previewServices: this.previewServices });
           actionContainer.append(this.workbench.element);
         }
@@ -415,10 +440,10 @@ export class SupabaseMatchUi {
     nameWrapper.style.cssText = "display:flex; align-items:center; gap:8px;";
 
     const nickDisplay = document.createElement("span");
-    nickDisplay.textContent = PLATFORM.id === "crazygames" ? getCachedUser()?.username || profile.nickname : profile.nickname;
+    nickDisplay.textContent = __CRAZYGAMES_BUILD__ ? getCachedUser()?.username || profile.nickname : profile.nickname;
     nickDisplay.style.cssText = "font-size:17px; font-weight:700; color:#f1f5f9;";
 
-    if (PLATFORM.id === "crazygames") {
+    if (__CRAZYGAMES_BUILD__) {
       const avatarUrl = getCachedUser()?.profilePictureUrl;
       if (avatarUrl) {
         try {
@@ -436,7 +461,7 @@ export class SupabaseMatchUi {
     }
 
     nameWrapper.appendChild(nickDisplay);
-    if (PLATFORM.id !== "crazygames") {
+    if (!__CRAZYGAMES_BUILD__) {
       const editBtn = document.createElement("button");
       editBtn.textContent = "✎";
       editBtn.title = I18nManager.t("online.edit_nickname_title");
@@ -485,7 +510,11 @@ export class SupabaseMatchUi {
     if (!this.client || !this.profile) return;
 
     const version = this.renderVersion;
-    if (PLATFORM.id === "crazygames") {
+    if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+      if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+      return;
+    }
+    if (__CRAZYGAMES_BUILD__) {
       const previousId = this.profile.id;
       const previousCrazyGamesId = this.crazyGamesUserId;
       try {
@@ -512,7 +541,14 @@ export class SupabaseMatchUi {
     } else {
       try {
         this.profile = await getOrCreateUserProfile(this.client);
-      } catch {}
+      } catch {
+        if (__ITCH_BUILD__ && !this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+        if (__ITCH_BUILD__) return;
+      }
+    }
+    if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+      if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+      return;
     }
     if (this.disposed || version !== this.renderVersion || !parentCard.isConnected || parentCard.querySelector(".matching-modal-overlay")) return;
 
@@ -579,7 +615,7 @@ export class SupabaseMatchUi {
     void matcher.startMatching(
       (status: MatchmakingStatus) => {
         if (this.matchmaker !== matcher || this.disposed) return;
-        if (PLATFORM.id === "crazygames" && getCachedUser()?.__dangerousUserId !== this.crazyGamesUserId) {
+        if (__CRAZYGAMES_BUILD__ && getCachedUser()?.__dangerousUserId !== this.crazyGamesUserId) {
           this.profile = null;
           this.crazyGamesUserId = null;
           this.cancelSearch();
@@ -603,7 +639,9 @@ export class SupabaseMatchUi {
               ? I18nManager.t("online.waiting_players", { count })
               : I18nManager.t("online.waiting_players_unknown");
             if (waitersEl.textContent !== label) waitersEl.textContent = label;
-            hintEl.textContent = I18nManager.t("online.waiting_players_hint");
+            hintEl.textContent = count === 0 && status.phase === "searching"
+              ? feedbackCopy().searchingEmpty(modeName)
+              : feedbackCopy().separateQueues;
           } else {
             waitersEl.style.display = "none";
             waitersEl.textContent = "";
@@ -623,7 +661,13 @@ export class SupabaseMatchUi {
       },
       async (transport, mySide, matchId, opponent) => {
         if (this.matchmaker !== matcher || this.disposed) { transport.close(); return; }
-        if (PLATFORM.id === "crazygames" && (this.disposed || version !== this.renderVersion || !this.profile || getCachedUser()?.__dangerousUserId !== this.crazyGamesUserId)) {
+        if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+          transport.close();
+          this.cancelSearch();
+          if (!this.disposed) { this.destroy(); this.callbacks.onClose(); }
+          return;
+        }
+        if (__CRAZYGAMES_BUILD__ && (this.disposed || version !== this.renderVersion || !this.profile || getCachedUser()?.__dangerousUserId !== this.crazyGamesUserId)) {
           transport.close();
           return;
         }
@@ -640,7 +684,7 @@ export class SupabaseMatchUi {
       },
       (error) => {
         if (this.matchmaker !== matcher || this.disposed) return;
-        if (PLATFORM.id === "crazygames" && (this.disposed || version !== this.renderVersion)) return;
+        if (__CRAZYGAMES_BUILD__ && (this.disposed || version !== this.renderVersion)) return;
         console.error(error);
         alert(I18nManager.t("online.match_failed", { error: I18nManager.t("online.server_error_fallback") }));
         closeMatching();
@@ -671,7 +715,7 @@ export class SupabaseMatchUi {
    * 이메일 회원가입 및 로그인 모달
    */
   private openAuthModal(parentCard: HTMLElement): void {
-    if (PLATFORM.id === "crazygames") return;
+    if (__CRAZYGAMES_BUILD__ || __ITCH_BUILD__) return;
     if (!this.client) return;
 
     let mode: "signin" | "signup" = "signup";
@@ -744,7 +788,7 @@ export class SupabaseMatchUi {
       });
 
       const submitBtn = modalOverlay.querySelector("#auth-submit-btn") as HTMLButtonElement;
-      appendGoogleSignIn(modalOverlay);
+      if (!__ITCH_BUILD__) appendGoogleSignIn(modalOverlay);
       submitBtn?.addEventListener("click", async () => {
         if (!this.client) return;
         const email = (modalOverlay.querySelector("#auth-email") as HTMLInputElement)?.value.trim();
@@ -790,7 +834,7 @@ export class SupabaseMatchUi {
    * Supabase URL 및 Anon Key 설정 폼
    */
   private renderConfigForm(container: HTMLElement): void {
-    if (PLATFORM.id === "crazygames") return;
+    if (__CRAZYGAMES_BUILD__ || __ITCH_BUILD__) return;
     container.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:14px;">
         <div style="font-size:18px; font-weight:700; color:#f8fafc;">${I18nManager.t("online.config_title")}</div>

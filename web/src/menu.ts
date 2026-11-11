@@ -22,6 +22,7 @@ import {
   type UserProfile,
 } from "./supabase-auth";
 import { getSupabaseClient } from "./supabase-client";
+import { cancelItchAuth, startItchAuth } from "./itch-auth";
 import { AdManager } from "./ad-manager";
 import { escapeHtml } from "./html";
 import { progressStorage } from "./progress-storage";
@@ -47,6 +48,7 @@ import { weeklyChallengeCopy } from "./weekly-challenge-ui";
 import { lobbyLayoutCopy } from "./lobby-layout-copy";
 import { openHotseatMapMenu } from "./hotseat-map-menu";
 import { DEFAULT_HOTSEAT_MAP_ID } from "./maps/map-catalog";
+import { feedbackCopy } from "./feedback-copy";
 
 function openLogoutConfirm(runtime: MainMenuRuntime): void {
   if (runtime.overlay.querySelector(".lobby-logout-confirm")) return;
@@ -84,6 +86,11 @@ function openLogoutConfirm(runtime: MainMenuRuntime): void {
   confirmButton.addEventListener("click", async () => {
     cancelButton.disabled = true;
     confirmButton.disabled = true;
+    if (PLATFORM.id === "itch" && !await cancelItchAuth()) {
+      cancelButton.disabled = false;
+      confirmButton.disabled = false;
+      return;
+    }
     await progressStorage.flush();
     const sb = getSupabaseClient();
     if (sb) await signOutUser(sb);
@@ -106,7 +113,7 @@ export async function startLobbyMode(
   tutorialType: "basic" | "advanced" = "basic",
 ): Promise<void> {
   if (runtime.busy || !runtime.ready || !progressStorage.ready) return;
-  if (PLATFORM.id === "crazygames" && mode !== "tutorial" && mode !== "stage" && mode !== "online") return;
+  if (PLATFORM.features.solo && mode !== "tutorial" && mode !== "stage" && mode !== "online") return;
   if (!PLATFORM.features.online && mode === "online") return;
   if (mode === "puzzle") {
     runtime.onOpenPuzzles?.();
@@ -152,6 +159,7 @@ export interface MainMenuRuntime {
   /** 퍼즐 목록을 여는 선택적 연결점입니다. 퍼즐 모듈이 없는 빌드에서는 버튼을 숨깁니다. */
   onOpenPuzzles?: () => void;
   onOpenWeeklyChallenge?: () => void;
+  onOpenPowerPractice?: () => Promise<void>;
   onReturnToMenu: () => Promise<void>;
   onConfirmAbandon: () => Promise<void>;
   canForfeitRound?: () => boolean;
@@ -164,7 +172,7 @@ export interface MainMenuRuntime {
 }
 
 export function openHotseatMapSelection(runtime: MainMenuRuntime): void {
-  if (PLATFORM.id === "crazygames") return;
+  if (PLATFORM.features.solo) return;
   if (runtime.busy || !runtime.ready || !progressStorage.ready || runtime.closeHotseatMapSelection) return;
   runtime.closeHotseatMapSelection = openHotseatMapMenu(runtime.overlay, {
     selectedMapId: runtime.selectedHotseatMapId,
@@ -341,7 +349,7 @@ export function setMainMenuReady(
   ready: boolean,
 ): void {
   runtime.ready = ready;
-  if (PLATFORM.id === "poki" || PLATFORM.id === "crazygames") runtime.overlay.inert = !ready;
+  if (PLATFORM.id === "poki" || PLATFORM.features.solo) runtime.overlay.inert = !ready;
   renderMainMenu(runtime);
 }
 
@@ -359,7 +367,7 @@ export function showMainMenu(runtime: MainMenuRuntime): void {
   runtime.confirmOverlay.hidden = true;
   runtime.returnButton.hidden = true;
   renderMainMenu(runtime);
-  if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
+  if (!PLATFORM.features.solo) void AdManager.showBanner();
   runtime.overlay
     .querySelector<HTMLButtonElement>(".lobby-modes [data-game-mode], [data-game-mode], #auth-tab-guest")
     ?.focus();
@@ -396,7 +404,7 @@ export async function returnToMainMenu(
   gameplay.leave("return-to-menu");
   runtime.busy = true;
   try {
-    if (afterCompletedMatch && PLATFORM.id !== "crazygames") {
+    if (afterCompletedMatch && !PLATFORM.features.solo) {
       try { await AdManager.showInterstitial(); }
       catch (error) { console.warn("전면 광고를 표시하지 못했습니다.", error); }
     }
@@ -420,8 +428,8 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     oldDialog.close();
   }
 
-  if (!PLATFORM.features.accounts && localStorage.getItem("ca_logged_in_user") !== "true") {
-    localStorage.setItem("ca_local_nickname", PLATFORM.id === "crazygames" ? "Player" : `Player_${Math.floor(1000 + Math.random() * 9000)}`);
+  if ((!PLATFORM.features.accounts || PLATFORM.id === "itch") && localStorage.getItem("ca_logged_in_user") !== "true") {
+    localStorage.setItem("ca_local_nickname", PLATFORM.features.solo ? "Player" : `Player_${Math.floor(1000 + Math.random() * 9000)}`);
     localStorage.setItem("ca_logged_in_user", "true");
   }
 
@@ -457,13 +465,13 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
 
   const user = runtime.userProfile as UserProfile;
   panel.classList.toggle("lobby-fit", progressStorage.ready && runtime.ready && user !== null);
-  if (PLATFORM.id === "crazygames") panel.dataset.portal = "crazygames";
+  if (PLATFORM.features.solo) panel.dataset.portal = "crazygames";
   else delete panel.dataset.portal;
 
   if (!progressStorage.ready) {
-    panel.innerHTML = `<h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.progress_title"))}</h1><p role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-retry">${escapeHtml(I18nManager.t("lobby.progress_retry"))}</button>${progressStorage.conflict ? `<button type="button" id="progress-use-server">${escapeHtml(I18nManager.t("lobby.progress_use_server"))}</button>` : ''}${PLATFORM.id === "crazygames" ? '' : `<button type="button" id="progress-signout">${escapeHtml(I18nManager.t("common.logout"))}</button>`}`;
+    panel.innerHTML = `<h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.progress_title"))}</h1><p role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-retry">${escapeHtml(I18nManager.t("lobby.progress_retry"))}</button>${progressStorage.conflict ? `<button type="button" id="progress-use-server">${escapeHtml(I18nManager.t("lobby.progress_use_server"))}</button>` : ''}${PLATFORM.features.solo ? '' : `<button type="button" id="progress-signout">${escapeHtml(I18nManager.t("common.logout"))}</button>`}`;
     panel.querySelector("#progress-retry")?.addEventListener("click", () => {
-      if (PLATFORM.id === "crazygames") window.location.reload();
+      if (PLATFORM.features.solo) window.location.reload();
       else void progressStorage.retry();
     });
     panel.querySelector("#progress-use-server")?.addEventListener("click", async () => { await progressStorage.useServer(); if (progressStorage.ready) window.location.reload(); });
@@ -476,7 +484,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
     return;
   }
 
-  if (PLATFORM.features.accounts && user === null) {
+  if (PLATFORM.features.accounts && PLATFORM.id !== "itch" && user === null) {
     // -------------------------------------------------------------
     // 1. 미로그인 상태: 로그인 / 회원가입 / 게스트 로그인 뷰
     // -------------------------------------------------------------
@@ -683,7 +691,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const maxClearedStage = getMaxClearedStage(runtime.metaRuntime.storage);
   const recommendation = getRecommendation(runtime);
   const heroAsset = safeRuntimeAssetUrl(recommendation.assetId);
-  const isPortal = PLATFORM.id === "crazygames";
+  const isPortal = PLATFORM.features.solo;
   const layoutCopy = lobbyLayoutCopy();
   const settings = escapeHtml(I18nManager.t("common.settings"));
   const accountTitle = escapeHtml(I18nManager.t("lobby.profile_sheet_title"));
@@ -692,11 +700,14 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const moreLabel = escapeHtml(layoutCopy.more);
   const closeLabel = escapeHtml(I18nManager.t("common.close"));
   const sheet = (name: string, title: string, body: string) => `<dialog id="lobby-${name}-dialog" class="lobby-fit-dialog" data-lobby-sheet="${name}" aria-label="${title}"><header class="lobby-fit-dialog-header"><h2>${title}</h2><button type="button" data-lobby-sheet-close aria-label="${closeLabel}">${closeLabel}</button></header><div class="lobby-fit-dialog-body">${body}</div></dialog>`;
-  const accountBody = isPortal ? "" : `<div class="lobby-profile is-expanded" data-expanded="true">${renderProfilePanel(user, runtime.metaRuntime.state.points, true)}</div><button type="button" data-open-mastery>${escapeHtml(masteryCopy().book)}</button>${PLATFORM.features.online ? `<button type="button" id="menu-ranking-btn">${escapeHtml(I18nManager.t("common.ranking_btn"))}</button><button type="button" id="menu-friends-btn">${escapeHtml(I18nManager.t("common.friends_btn"))}</button>` : ""}${PLATFORM.features.accounts ? `<button type="button" id="btn-logout">${escapeHtml(I18nManager.t("common.logout"))}</button>` : ""}`;
-  const tutorialBody = `<button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="basic">${escapeHtml(I18nManager.t("lobby.tutorial_basic"))}</button><button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="advanced">${escapeHtml(I18nManager.t("lobby.tutorial_advanced"))}</button>`;
+  const itchAccountBody = progressStorage.owner
+    ? `<p>Signed in as ${escapeHtml(user.nickname)}. Account progress syncs across devices. Stage run upgrades and checkpoints stay in this browser.</p><p>Link your itch.io identity to this account for future itch.io sign-in. Linking does not merge accounts or transfer progress. If this itch.io identity already belongs to another account, linking will fail.</p><button type="button" id="itch-auth-link">Link itch.io to this account</button><button type="button" id="itch-auth-cancel" hidden>Cancel itch.io sign-in</button><p role="status" data-itch-oauth-status aria-live="polite"></p><button type="button" id="btn-logout">${escapeHtml(I18nManager.t("common.logout"))}</button>`
+    : `<p>Sign in with itch.io to sync account progress. Your guest stage run upgrades and checkpoints stay in this browser and are not moved to the signed-in account.</p><button type="button" id="itch-auth-sign-in">Sign in with itch.io</button><button type="button" id="itch-auth-cancel" hidden>Cancel itch.io sign-in</button><p role="status" data-itch-oauth-status aria-live="polite"></p><p>Sign in with an existing email account to sync account progress. Guest play stays available. Stage run upgrades and checkpoints stay in this browser. Google sign-in is unavailable here.</p><form id="itch-account-login"><label>Email <input name="email" type="email" autocomplete="email" required></label><label>Password <input name="password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><p role="status" data-itch-auth-status aria-live="polite"></p></form>`;
+  const accountBody = PLATFORM.id === "itch" ? itchAccountBody : isPortal ? "" : `<div class="lobby-profile is-expanded" data-expanded="true">${renderProfilePanel(user, runtime.metaRuntime.state.points, true)}</div><button type="button" data-open-mastery>${escapeHtml(masteryCopy().book)}</button>${PLATFORM.features.online ? `<button type="button" id="menu-ranking-btn">${escapeHtml(I18nManager.t("common.ranking_btn"))}</button><button type="button" id="menu-friends-btn">${escapeHtml(I18nManager.t("common.friends_btn"))}</button>` : ""}${PLATFORM.features.accounts ? `<button type="button" id="btn-logout">${escapeHtml(I18nManager.t("common.logout"))}</button>` : ""}`;
+  const tutorialBody = `<button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="basic">${escapeHtml(I18nManager.t("lobby.tutorial_basic"))}</button><button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="advanced">${escapeHtml(I18nManager.t("lobby.tutorial_advanced"))}</button>${runtime.onOpenPowerPractice ? `<button type="button" class="lobby-tutorial-choice" data-power-practice>${escapeHtml(feedbackCopy().practice)}</button>` : ""}`;
   const tutorialTrigger = `<button type="button" id="menu-tutorial-btn"${isPortal ? ' class="lobby-fit-tutorial"' : ""} aria-haspopup="dialog" aria-controls="lobby-tutorial-dialog">${isPortal ? renderHeaderActions("tutorial", 22) : ""}${tutorialLabel}${isPortal ? renderHeaderActions("chevron", 22) : ""}</button>`;
   const nav = isPortal ? "" : `<nav class="lobby-fit-nav" aria-label="${escapeHtml(I18nManager.t("lobby.other_modes"))}"><button type="button" data-open-quests${questStorage.view().ready ? "" : " disabled"}>${escapeHtml(layoutCopy.quests)}</button><button type="button" data-open-weekly-challenge>${escapeHtml(weeklyChallengeCopy().title)}</button>${tutorialTrigger}<button type="button" id="menu-more-btn" aria-haspopup="dialog" aria-controls="lobby-more-dialog">${moreLabel}</button></nav>`;
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.title"))}</h1><div class="lobby-fit-header-actions">${isPortal ? `<button type="button" id="menu-privacy-btn" aria-haspopup="dialog" aria-controls="lobby-privacy-dialog">Privacy</button>` : `<button type="button" id="menu-account-btn" aria-haspopup="dialog" aria-controls="lobby-account-dialog" aria-label="${accountTitle}">${renderHeaderActions("profile", 20)}${escapeHtml(layoutCopy.account)}</button>`}<button type="button" id="menu-sound-btn">${settings}</button></div></header><div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div><div class="lobby-fit-body">${renderRecommendationCard(recommendation, heroAsset)}<div class="lobby-fit-mode-area">${renderModeCards(runtime, maxClearedStage)}${isPortal ? tutorialTrigger : ""}</div></div>${nav}<p class="main-menu-status" data-menu-status aria-live="polite"></p>${isPortal ? sheet("privacy", "Privacy Policy", renderFooterLinks()) : sheet("account", accountTitle, accountBody)}${sheet("tutorial", tutorialTitle, tutorialBody)}${isPortal ? "" : sheet("more", moreLabel, renderFooterLinks())}`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.title"))}</h1><div class="lobby-fit-header-actions">${isPortal ? `<button type="button" id="menu-privacy-btn" aria-haspopup="dialog" aria-controls="lobby-privacy-dialog">Privacy</button>${PLATFORM.id === "itch" ? `<button type="button" id="menu-account-btn" aria-haspopup="dialog" aria-controls="lobby-account-dialog" aria-label="${accountTitle}">${renderHeaderActions("profile", 20)}${escapeHtml(layoutCopy.account)}</button>` : ""}` : `<button type="button" id="menu-account-btn" aria-haspopup="dialog" aria-controls="lobby-account-dialog" aria-label="${accountTitle}">${renderHeaderActions("profile", 20)}${escapeHtml(layoutCopy.account)}</button>`}<button type="button" id="menu-sound-btn">${settings}</button></div></header><div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div><div class="lobby-fit-body">${renderRecommendationCard(recommendation, heroAsset)}<div class="lobby-fit-mode-area">${renderModeCards(runtime, maxClearedStage)}${isPortal ? tutorialTrigger : ""}</div></div>${nav}<p class="main-menu-status" data-menu-status aria-live="polite"></p>${isPortal ? sheet("privacy", "Privacy Policy", renderFooterLinks()) + (PLATFORM.id === "itch" ? sheet("account", accountTitle, accountBody) : "") : sheet("account", accountTitle, accountBody)}${sheet("tutorial", tutorialTitle, tutorialBody)}${isPortal ? "" : sheet("more", moreLabel, renderFooterLinks())}`;
   const openSheet = (name: string): void => {
     const dialog = panel.querySelector<HTMLDialogElement>(`.lobby-fit-dialog[data-lobby-sheet="${name}"]`);
     if (dialog && !dialog.open) {
@@ -711,15 +722,67 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       dialog.close();
     }
   };
+  panel.querySelector<HTMLButtonElement>("[data-power-practice]")?.addEventListener("click", () => {
+    if (runtime.busy || !runtime.ready) return;
+    closeSheet(false);
+    void runtime.onOpenPowerPractice?.();
+  });
   for (const dialog of panel.querySelectorAll<HTMLDialogElement>(".lobby-fit-dialog")) {
-    dialog.querySelector("[data-lobby-sheet-close]")?.addEventListener("click", () => closeSheet());
-    dialog.addEventListener("close", () => {
+    dialog.querySelector("[data-lobby-sheet-close]")?.addEventListener("click", async () => {
+      if (PLATFORM.id === "itch" && dialog.dataset.lobbySheet === "account" && !await cancelItchAuth()) return;
+      closeSheet();
+    });
+    dialog.addEventListener("close", async () => {
+      if (PLATFORM.id === "itch" && dialog.dataset.lobbySheet === "account" && !await cancelItchAuth()) {
+        if (dialog.isConnected && !dialog.open) dialog.showModal();
+        return;
+      }
       if (!dialog.isConnected || dialog.dataset.restoreFocus === "false") return;
       const opener = dialog.dataset.lobbySheet === "account" ? "#menu-account-btn" : dialog.dataset.lobbySheet === "tutorial" ? "#menu-tutorial-btn" : dialog.dataset.lobbySheet === "privacy" ? "#menu-privacy-btn" : "#menu-more-btn";
       panel.querySelector<HTMLButtonElement>(opener)?.focus();
     });
   }
   panel.querySelector("#menu-account-btn")?.addEventListener("click", () => openSheet("account"));
+  const itchStatus = panel.querySelector<HTMLElement>('[data-itch-oauth-status]');
+  const itchCancel = panel.querySelector<HTMLButtonElement>('#itch-auth-cancel');
+  const itchButton = panel.querySelector<HTMLButtonElement>('#itch-auth-sign-in, #itch-auth-link');
+  itchButton?.addEventListener('click', () => {
+    if (PLATFORM.id !== "itch") return;
+    const client = getSupabaseClient();
+    if (!client) { if (itchStatus) itchStatus.textContent = I18nManager.t('lobby.supabase_not_configured'); return; }
+    startItchAuth(client, Boolean(progressStorage.owner), (message, busy) => {
+      if (itchStatus?.isConnected) itchStatus.textContent = message;
+      if (itchCancel?.isConnected) itchCancel.hidden = !busy;
+    });
+  });
+  itchCancel?.addEventListener('click', async () => {
+    if (PLATFORM.id !== "itch") return;
+    const cancelled = await cancelItchAuth();
+    if (!cancelled) return;
+    if (itchStatus?.isConnected) itchStatus.textContent = 'Itch.io sign-in cancelled.';
+    itchCancel.hidden = true;
+  });
+  panel.querySelector<HTMLFormElement>("#itch-account-login")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (PLATFORM.id !== "itch") return;
+    if (!await cancelItchAuth()) return;
+    const form = event.currentTarget as HTMLFormElement;
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const status = form.querySelector<HTMLElement>("[data-itch-auth-status]");
+    const email = form.querySelector<HTMLInputElement>('input[name="email"]')?.value ?? "";
+    const password = form.querySelector<HTMLInputElement>('input[name="password"]')?.value ?? "";
+    const client = getSupabaseClient();
+    if (!client) { if (status) status.textContent = I18nManager.t("lobby.supabase_not_configured"); return; }
+    if (button) button.disabled = true;
+    if (status) status.textContent = "Signing in...";
+    try {
+      const result = await signInWithEmail(client, email, password);
+      if (!result.success) { if (status) status.textContent = result.error || I18nManager.t("lobby.login_failed"); return; }
+      // The auth listener reloads into the account's isolated progress namespace.
+      window.location.reload();
+    } catch { if (status) status.textContent = I18nManager.t("lobby.login_failed"); }
+    finally { if (button) button.disabled = false; }
+  });
   panel.querySelector("#menu-privacy-btn")?.addEventListener("click", () => openSheet("privacy"));
   panel.querySelector("#menu-tutorial-btn")?.addEventListener("click", () => openSheet("tutorial"));
   panel.querySelector("#menu-more-btn")?.addEventListener("click", () => openSheet("more"));
@@ -791,7 +854,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   });
   panel.querySelector("#menu-recommendation-btn")?.addEventListener("click", () => {
     closeSheet(false);
-    if (recommendation.mode === "stage" && PLATFORM.id !== "crazygames") {
+    if (recommendation.mode === "stage" && !PLATFORM.features.solo) {
       openPveLobbyModal(runtime, (stage) => startLobbyMode(runtime, "stage", stage), recommendation.stage);
     } else {
       void startLobbyMode(runtime, recommendation.mode, recommendation.stage, recommendation.tutorialType);
@@ -852,7 +915,7 @@ export function createMainMenu(
   let confirmOpenedAt: number | null = null;
   const overlay = document.createElement("section");
   overlay.className = "main-menu-overlay";
-  if (PLATFORM.id === "poki" || PLATFORM.id === "crazygames") overlay.inert = true;
+  if (PLATFORM.id === "poki" || PLATFORM.features.solo) overlay.inert = true;
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-labelledby", "main-menu-title");

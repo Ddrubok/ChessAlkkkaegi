@@ -8,6 +8,9 @@ import type { OnlinePeerSession } from './online';
 import { getUnifiedIceServers } from './metered-turn';
 import { marketingRuntime } from './marketing-runtime';
 import { clearRoom, consumeLaunchInvite, inviteLink, updateRoom } from './crazygames-multiplayer';
+import { PLATFORM } from './platform';
+import { feedbackCopy } from './feedback-copy';
+import { progressStorage } from './progress-storage';
 
 /** A single shared code; SDP answers are exchanged through Realtime, not the clipboard. */
 export function openFriendlyLobby(parent: HTMLElement, onFriends?: () => void): Promise<OnlinePeerSession> {
@@ -21,6 +24,7 @@ export function openFriendlyLobby(parent: HTMLElement, onFriends?: () => void): 
     panel.setAttribute('aria-labelledby', 'friendly-title');
     panel.innerHTML = `<div class="online-lobby-card">
       <h2 id="friendly-title">${escapeHtml(copy('title'))}</h2>
+      <p class="feedback-online-guide">${escapeHtml(feedbackCopy().friendGuide)}${PLATFORM.id === 'itch' && progressStorage.owner === null ? `<br>${escapeHtml(feedbackCopy().onlineGuest)} ${escapeHtml(feedbackCopy().onlineSiteLogin)}` : ''}</p>
       ${onFriends ? `<button type="button" data-friendly-friends>${escapeHtml(copy('friend_challenge_title'))} · ${escapeHtml(I18nManager.t('friends.title'))}</button>` : ''}
       <h3>${escapeHtml(copy('guest_code_title'))}</h3>
       <button type="button" data-friendly-host>${escapeHtml(copy('create_room_btn'))}</button>
@@ -42,6 +46,8 @@ export function openFriendlyLobby(parent: HTMLElement, onFriends?: () => void): 
     const portalCopy = I18nManager.getLanguage() === 'ko'
       ? { link: 'CrazyGames 초대 링크', copy: '링크 복사', copied: '복사됨' }
       : { link: 'CrazyGames invite link', copy: 'Copy link', copied: 'Copied!' };
+    if (PLATFORM.id === 'itch') portalCopy.link = I18nManager.getLanguage() === 'ko'
+      ? 'itch.io 게임 페이지 (방 코드도 공유하세요)' : 'itch.io game page (share the room code too)';
     q<HTMLElement>('[data-friendly-link-label]').textContent = portalCopy.link;
     q<HTMLButtonElement>('[data-friendly-link-copy]').textContent = portalCopy.copy;
     let session: FriendlyCodeSession | null = null;

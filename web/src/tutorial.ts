@@ -14,6 +14,10 @@ import { marketingRuntime } from "./marketing-runtime";
 import { getRuntimeText } from "./runtime-text";
 import { Vector3 } from "three";
 import type { InputRuntime } from "./input";
+import { getSupabaseClient } from "./supabase-client";
+import { cancelItchAuth, startItchAuth } from "./itch-auth";
+import { feedbackCopy, isPracticePower } from "./feedback-copy";
+import { getMousePowerDistance } from "./power-controls";
 
 export type TutorialType = "basic" | "advanced";
 
@@ -38,8 +42,8 @@ export function getTutorialStepInfo(
   return {
     step: s,
     title: I18nManager.t(`${prefix}${s}_title`),
-    mission: PLATFORM.id === "crazygames" && type === "basic" && s === 3 ? soloCopy().goal : I18nManager.t(`${prefix}${s}_mission`),
-    guide: PLATFORM.id === "crazygames" && type === "basic" && s === 3 ? soloCopy().pull : I18nManager.t(`${prefix}${s}_guide`),
+    mission: PLATFORM.features.solo && type === "basic" && s === 3 ? soloCopy().goal : I18nManager.t(`${prefix}${s}_mission`),
+    guide: PLATFORM.features.solo && type === "basic" && s === 3 ? soloCopy().pull : I18nManager.t(`${prefix}${s}_guide`),
     successMessage: I18nManager.t(`${prefix}${s}_success`),
   };
 }
@@ -50,6 +54,13 @@ export class TutorialManager {
   public isActive: boolean = false;
   public isTransitioning = false;
   public quickIntro = false;
+  public powerPractice = false;
+  private practicePower: number | null = null;
+  private practiceModalCleanup: (() => void) | null = null;
+  private showItchSignIn = false;
+  private itchAuthBusy = false;
+  private itchAuthStarted = false;
+  private itchAuthStatus = "";
   private generation = 0;
   public get sessionToken(): number { return this.generation; }
   private completionModal: HTMLElement | null = null;
@@ -61,7 +72,7 @@ export class TutorialManager {
   private readonly guidePoint = new Vector3();
   private coachResizeObserver: ResizeObserver | null = null;
   private onStepCompletedCallback: ((nextStep: number) => Promise<void>) | null = null;
-  private onTutorialFinishedCallback: ((destination?: "stage") => Promise<void>) | null = null;
+  private onTutorialFinishedCallback: ((destination?: "stage" | "power") => Promise<void>) | null = null;
   private metaRuntime: MetaRuntime | null = null;
 
   /**
@@ -70,7 +81,7 @@ export class TutorialManager {
   public init(
     metaRuntime: MetaRuntime,
     onStepCompleted: (nextStep: number) => Promise<void>,
-    onTutorialFinished: (destination?: "stage") => Promise<void>,
+    onTutorialFinished: (destination?: "stage" | "power") => Promise<void>,
   ): void {
     this.metaRuntime = metaRuntime;
     this.onStepCompletedCallback = onStepCompleted;
@@ -84,13 +95,17 @@ export class TutorialManager {
     startStep: number = 1,
     tutorialType: TutorialType = "basic",
     quickIntro = false,
+    powerPractice = false,
   ): void {
     this.stop();
     this.isActive = true;
     this.tutorialType = tutorialType;
-    this.quickIntro = quickIntro && tutorialType === "basic" && PLATFORM.id === "crazygames";
+    this.powerPractice = powerPractice;
+    this.practicePower = null;
+    this.quickIntro = quickIntro && !powerPractice && tutorialType === "basic" && PLATFORM.features.solo;
+    this.showItchSignIn = PLATFORM.id === "itch" && this.quickIntro && progressStorage.owner === null;
     this.currentStep = Math.max(1, Math.min(this.stepCount, startStep));
-    if (tutorialType === "basic" && progressStorage.getItem("has_completed_tutorial") === null) {
+    if (!powerPractice && tutorialType === "basic" && progressStorage.getItem("has_completed_tutorial") === null) {
       progressStorage.setItem("has_completed_tutorial", "started");
     }
     document.body.dataset.tutorial = tutorialType;
@@ -98,16 +113,28 @@ export class TutorialManager {
   }
 
   public get stepCount(): number { return this.tutorialType === "basic" ? 3 : 5; }
-  public get isMatchStep(): boolean { return this.isActive && this.currentStep === this.stepCount; }
+  public get isMatchStep(): boolean { return this.isActive && !this.powerPractice && this.currentStep === this.stepCount; }
+
+  public recordPracticeShot(power: number): void {
+    if (this.powerPractice && this.isActive && !this.isTransitioning) this.practicePower = power;
+  }
 
   /**
    * 튜토리얼 모드 종료 및 UI 제거
    */
   public stop(): void {
+    if (PLATFORM.id === "itch" && this.itchAuthStarted) void cancelItchAuth();
+    this.itchAuthStarted = false;
+    this.itchAuthBusy = false;
+    this.itchAuthStatus = "";
+    this.showItchSignIn = false;
     this.generation += 1;
     this.isTransitioning = false;
     this.isActive = false;
     this.quickIntro = false;
+    this.powerPractice = false;
+    this.practicePower = null;
+    this.practiceModalCleanup?.(); this.practiceModalCleanup = null;
     this.kingSwapped = false;
     this.gestureElement?.remove();
     this.gestureElement = null;
@@ -132,6 +159,10 @@ export class TutorialManager {
     step: number,
     type: TutorialType = this.tutorialType,
   ): PieceInstance[] {
+    if (this.powerPractice) return [
+      { id: "white-pawn-d4", type: "Pawn", side: "white", startingSquare: { file: "d", rank: 4 } },
+      { id: "black-pawn-h8", type: "Pawn", side: "black", startingSquare: { file: "h", rank: 8 } },
+    ];
     if (type === "basic") {
       // Real starting-square spawns, with the first target close to the edge.
       if (step === 1) return [
@@ -300,9 +331,13 @@ export class TutorialManager {
     hasCustomStrikePoint: boolean = false,
   ): { cleared: boolean; hint?: string } {
     if (!this.isActive) return { cleared: false };
+    if (this.powerPractice) return {
+      cleared: this.practicePower !== null && isPracticePower(this.practicePower),
+      hint: this.practicePower === null ? feedbackCopy().practiceGuide : feedbackCopy().practiceMiss(Math.round(this.practicePower * 100)),
+    };
 
     if (this.tutorialType === "basic") {
-      return { cleared: this.currentStep < 3 || PLATFORM.id === "crazygames"
+      return { cleared: this.currentStep < 3 || PLATFORM.features.solo
         ? remainingBlackPieceCount === 0
         : !remainingBlackPieces.some(p => p.type === "King") };
     }
@@ -345,6 +380,10 @@ export class TutorialManager {
     if (!this.isActive || this.isTransitioning) return;
     this.isTransitioning = true;
     const generation = this.generation;
+    if (this.powerPractice) {
+      this.showPracticeChoice(true);
+      return;
+    }
     const stepInfo = getTutorialStepInfo(this.currentStep, this.tutorialType);
 
     this.updateCoachMessage(stepInfo.successMessage, true);
@@ -356,8 +395,7 @@ export class TutorialManager {
       // One real knockout is the quick introduction, not the full three-step
       // basic tutorial. Its existing 100P reward remains attached to that course.
       writeSoloIntro(progressStorage.owner, "complete");
-      this.stop();
-      await this.onTutorialFinishedCallback?.("stage");
+      this.showPracticeChoice(false);
       return;
     }
 
@@ -381,6 +419,7 @@ export class TutorialManager {
     await new Promise(r => setTimeout(r, 1200));
     if (!this.isActive || this.generation !== generation) return;
     this.kingSwapped = false;
+    this.practicePower = null;
     await this.onStepCompletedCallback?.(this.currentStep);
     if (this.generation === generation) {
       this.isTransitioning = false;
@@ -405,6 +444,7 @@ export class TutorialManager {
    */
   public completeTutorial(): void {
     if (!this.isActive) return;
+    if (this.powerPractice) { this.showPracticeChoice(true); return; }
     marketingRuntime.tutorialComplete(this.tutorialType);
     const type = this.tutorialType;
     // A fresh profile has only in-memory defaults. Seed it once, never on a retry.
@@ -470,6 +510,7 @@ export class TutorialManager {
     }
 
     const stepInfo = getTutorialStepInfo(this.currentStep, this.tutorialType);
+    const practice = this.powerPractice ? feedbackCopy() : null;
     const rawBadge =
       this.tutorialType === "advanced"
         ? I18nManager.t("lobby.mode_tutorial_advanced")
@@ -479,26 +520,62 @@ export class TutorialManager {
     this.overlayElement.innerHTML = `
       <div class="tutorial-coach-card">
         <div class="tutorial-coach-header">
-          <span class="tutorial-step-badge">${this.quickIntro ? soloCopy().quick : `${badgePrefix} ${this.currentStep}/${this.stepCount}`}</span>
-          <strong class="tutorial-step-title">${this.quickIntro ? soloCopy().pull : stepInfo.title}</strong>
-          <button type="button" class="tutorial-skip-button">${this.quickIntro ? soloCopy().skip : I18nManager.t("tutorial.skip_btn")}</button>
+          <span class="tutorial-step-badge">${practice ? practice.practiceTitle : this.quickIntro ? soloCopy().quick : `${badgePrefix} ${this.currentStep}/${this.stepCount}`}</span>
+          <strong class="tutorial-step-title">${practice ? "30–50%" : this.quickIntro ? soloCopy().pull : stepInfo.title}</strong>
+          <button type="button" class="tutorial-skip-button">${practice ? practice.practiceExit : this.quickIntro ? soloCopy().skip : I18nManager.t("tutorial.skip_btn")}</button>
         </div>
-        <div class="tutorial-mission-text">${this.quickIntro ? soloCopy().goal : stepInfo.mission}</div>
-        <div class="tutorial-guide-text">${(this.tutorialType === "basic" && this.currentStep < 3) || (this.tutorialType === "advanced" && this.currentStep === 4) ? "" : stepInfo.guide}</div>
+        <div class="tutorial-mission-text">${practice ? practice.practiceGoal : this.quickIntro ? soloCopy().goal : stepInfo.mission}</div>
+        <div class="tutorial-guide-text">${practice ? practice.practiceGuide : (this.tutorialType === "basic" && this.currentStep < 3) || (this.tutorialType === "advanced" && this.currentStep === 4) ? "" : stepInfo.guide}</div>
+        ${this.showItchSignIn ? `<div class="tutorial-itch-auth"><button type="button" class="tutorial-itch-sign-in">Sign in with itch.io</button><button type="button" class="tutorial-itch-cancel"${this.itchAuthBusy ? "" : " hidden"}>Cancel sign-in</button><p class="tutorial-itch-status" role="status" aria-live="polite"></p></div>` : ""}
       </div>
     `;
+    this.updateItchAuthControls();
+    this.overlayElement.querySelector<HTMLButtonElement>(".tutorial-itch-sign-in")?.addEventListener("click", () => {
+      if (PLATFORM.id !== "itch") return;
+      const client = getSupabaseClient();
+      if (!client) { this.setItchAuthStatus(I18nManager.t("lobby.supabase_not_configured"), false); return; }
+      this.itchAuthStarted = true;
+      const generation = this.generation;
+      startItchAuth(client, false, (message, busy) => {
+        if (this.generation === generation && this.isActive) this.setItchAuthStatus(message, busy);
+      });
+    });
+    this.overlayElement.querySelector<HTMLButtonElement>(".tutorial-itch-cancel")?.addEventListener("click", async () => {
+      if (PLATFORM.id !== "itch") return;
+      if (!await cancelItchAuth()) return;
+      this.itchAuthStarted = false;
+      this.setItchAuthStatus("Itch.io sign-in cancelled.", false);
+    });
     this.overlayElement.querySelector<HTMLButtonElement>(".tutorial-skip-button")?.addEventListener("click", async (event) => {
       if (!this.isActive) return;
       const button = event.currentTarget as HTMLButtonElement;
       button.disabled = true;
+      if (PLATFORM.id === "itch" && this.itchAuthStarted && !await cancelItchAuth()) { button.disabled = false; return; }
+      this.itchAuthStarted = false;
       const quick = this.quickIntro;
       if (quick) writeSoloIntro(progressStorage.owner, "skipped");
-      if (this.tutorialType === "basic" && progressStorage.getItem("has_completed_tutorial") !== "true") {
+      if (!this.powerPractice && this.tutorialType === "basic" && progressStorage.getItem("has_completed_tutorial") !== "true") {
         progressStorage.setItem("has_completed_tutorial", "skipped");
       }
       this.stop();
       await this.onTutorialFinishedCallback?.(quick ? "stage" : undefined);
     });
+  }
+
+  private setItchAuthStatus(message: string, busy: boolean): void {
+    this.itchAuthStatus = message;
+    this.itchAuthBusy = busy;
+    this.updateItchAuthControls();
+  }
+
+  private updateItchAuthControls(): void {
+    if (!this.overlayElement) return;
+    const signIn = this.overlayElement.querySelector<HTMLButtonElement>(".tutorial-itch-sign-in");
+    const cancel = this.overlayElement.querySelector<HTMLButtonElement>(".tutorial-itch-cancel");
+    const status = this.overlayElement.querySelector<HTMLElement>(".tutorial-itch-status");
+    if (signIn) signIn.disabled = this.itchAuthBusy;
+    if (cancel) cancel.hidden = !this.itchAuthBusy;
+    if (status) status.textContent = this.itchAuthStatus;
   }
 
   public showKingSwapFollowup(): void {
@@ -525,7 +602,7 @@ export class TutorialManager {
     }
     const firstShot = this.tutorialType === "basic" && this.currentStep === 1;
     const showPull = firstShot || (king && this.kingSwapped && input.mode === "billiards" && input.aimRuntime.selectedPieceId !== null && !input.strikeMode);
-    const pieceId = firstShot ? "white-pawn-d6" : bishop && input.aimRuntime.selectedPieceId === null ? "white-bishop-d2" : king && !this.kingSwapped ? (input.kingSwapMode ? "white-pawn-f6" : input.aimRuntime.selectedPieceId === null ? "white-king-d2" : null) : null;
+    const pieceId = firstShot ? this.powerPractice ? "white-pawn-d4" : "white-pawn-d6" : bishop && input.aimRuntime.selectedPieceId === null ? "white-bishop-d2" : king && !this.kingSwapped ? (input.kingSwapMode ? "white-pawn-f6" : input.aimRuntime.selectedPieceId === null ? "white-king-d2" : null) : null;
     const mesh = pieceId ? input.sceneRuntime.pieceMeshes.get(pieceId) : showPull ? input.aimParametersRuntime.redDot : undefined;
     if (!idle || !mesh || !mesh.visible || (pieceId && !input.policy.canSelectPiece(pieceId))) {
       if (this.gestureElement) this.gestureElement.style.display = "none";
@@ -542,7 +619,7 @@ export class TutorialManager {
     mesh.getWorldPosition(this.guidePoint).project(input.sceneRuntime.camera);
     const x = canvas.left + (this.guidePoint.x + 1) * canvas.width / 2;
     const y = canvas.top + (1 - this.guidePoint.y) * canvas.height / 2;
-    const end = Math.min(y + 64, canvas.bottom - 12);
+    const end = Math.min(y + (this.powerPractice ? getMousePowerDistance() * 0.4 : 64), canvas.bottom - 12);
     this.gestureElement.style.display = this.guidePoint.z < -1 || this.guidePoint.z > 1 ? "none" : "block";
     const circle = this.gestureElement.querySelector("circle")!;
     circle.setAttribute("cx", String(x)); circle.setAttribute("cy", String(y));
@@ -567,6 +644,60 @@ export class TutorialManager {
     }
   }
 
+  /** Optional, reward-free practice never completes or pays for a tutorial course. */
+  private showPracticeChoice(practiceComplete: boolean): void {
+    this.stop();
+    gameplay.leave("power-practice-choice");
+    const copy = feedbackCopy();
+    const modal = document.createElement("div");
+    modal.className = "tutorial-modal-overlay feedback-practice-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "feedback-practice-heading");
+    const card = document.createElement("div"); card.className = "tutorial-modal-card";
+    const heading = document.createElement("h2"); heading.id = "feedback-practice-heading";
+    heading.textContent = practiceComplete ? copy.practiceSuccess : copy.firstSuccess;
+    const description = document.createElement("p");
+    description.textContent = practiceComplete ? copy.practiceNoReward : copy.firstNext;
+    const actions = document.createElement("div"); actions.className = "feedback-practice-actions";
+    const status = document.createElement("p"); status.setAttribute("role", "status");
+    const addAction = (label: string, destination: "stage" | "power" | undefined, id: string) => {
+      const button = document.createElement("button"); button.textContent = label; button.id = id;
+      button.onclick = async () => {
+        if (button.disabled) return;
+        const buttons = Array.from(actions.querySelectorAll("button"));
+        buttons.forEach(item => item.disabled = true);
+        try {
+          await this.onTutorialFinishedCallback?.(destination);
+          modal.remove();
+        } catch {
+          if (modal.isConnected) {
+            status.textContent = I18nManager.t("common.retry");
+            buttons.forEach(item => item.disabled = false);
+          }
+        }
+      };
+      actions.append(button); return button;
+    };
+    if (!practiceComplete) addAction(copy.startStage, "stage", "feedback-start-stage");
+    addAction(practiceComplete ? copy.practiceRetry : copy.practice, "power", "feedback-practice-again");
+    const exit = addAction(copy.menu, undefined, "feedback-practice-menu");
+    card.append(heading, description, actions, status); modal.append(card);
+    this.completionModal = modal; document.body.append(modal);
+    const keyboard = (event: KeyboardEvent) => {
+      event.stopPropagation();
+      if (event.key === "Escape") { event.preventDefault(); exit.click(); }
+      if (event.key === "Tab") {
+        const buttons = Array.from(actions.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+        if (event.shiftKey && document.activeElement === buttons[0]) { event.preventDefault(); buttons.at(-1)?.focus(); }
+        else if (!event.shiftKey && document.activeElement === buttons.at(-1)) { event.preventDefault(); buttons[0]?.focus(); }
+      }
+    };
+    modal.addEventListener("keydown", keyboard);
+    this.practiceModalCleanup = () => modal.removeEventListener("keydown", keyboard);
+    actions.querySelector<HTMLButtonElement>("button")?.focus();
+  }
+
   /**
    * 튜토리얼 최종 완료 축하 팝업 모달
    */
@@ -586,7 +717,7 @@ export class TutorialManager {
         <div class="tutorial-modal-card" style="max-width:380px;">
           <h2 style="margin:0 0 10px 0; font-size:22px; color:#38bdf8; font-weight:800;">${I18nManager.t("tutorial.basic_complete_title")}</h2>
           <p style="margin:0 0 16px 0; font-size:14px; color:#cbd5e1; line-height:1.5;">
-            ${PLATFORM.id === "crazygames" ? soloCopy().goal : I18nManager.t("tutorial.basic_complete_desc").split("<br>")[0]}
+            ${PLATFORM.features.solo ? soloCopy().goal : I18nManager.t("tutorial.basic_complete_desc").split("<br>")[0]}
           </p>
           <div style="display:flex; flex-direction:column; gap:10px;">
             <button id="btn-tutorial-start-stage" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:14px 20px; font-size:15px; font-weight:700; cursor:pointer; width:100%;">

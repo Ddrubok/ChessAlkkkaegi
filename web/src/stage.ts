@@ -127,7 +127,7 @@ export function computeStageBoardScale(
       `판 배율 스테이지 번호 ${stageNumber}가 1 이상의 정수가 아닙니다.`,
     );
   }
-  if (PLATFORM.id === "crazygames" && gameMode === "stage" && stageNumber <= 3) return 1;
+  if (PLATFORM.features.solo && gameMode === "stage" && stageNumber <= 3) return 1;
   return (gameMode === "stage" || gameMode === "weekly") && stageNumber >= 2
     ? STAGE_BOARD_SCALE
     : 1;
@@ -447,7 +447,7 @@ export function selectStageSpawnInstances(
   instances: readonly PieceInstance[],
   options: StageSpawnOptions,
 ): PieceInstance[] {
-  const opening = PLATFORM.id === "crazygames" &&
+  const opening = PLATFORM.features.solo &&
     options.gameMode === "stage" && instances === PIECE_INSTANCES
     ? getCrazyGamesOpeningStageInstances(options.stageNumber)
     : null;

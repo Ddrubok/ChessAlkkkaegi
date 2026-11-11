@@ -57,9 +57,13 @@ try {
     const results=[]; const boards=[]; let failBoard=false;
     const resetBoard=async options=>{if(failBoard)throw Error('board rejected');boards.push(options);matchRuntime.winner=null;};
     const bindings={...meta,...cards,...modes,gameModeRuntime,stageRunPoints,runCardState,metaRuntime,matchRuntime,menuRuntime,
-      PLATFORM:{id:'crazygames'},gameplay:{enter:noop},marketingRuntime:{endMatch:noop,startLocalMatch:noop},inputRuntime:{},lockInputForMatchOver:noop,
+      // This legacy suite verifies non-solo run settlement; portal draw replay
+      // has its own actual-callback suite in itch-feedback-draw-check.mjs.
+      PLATFORM:{id:'web',features:{solo:false}},gameplay:{enter:noop},marketingRuntime:{endMatch:noop,startLocalMatch:noop},inputRuntime:{},lockInputForMatchOver:noop,
       questRun:null,masteryRun:null,weeklyRun:null,turnRuntime:{},weeklyTuningSettings:{},tuningRuntime:{settings:{cardEffectScale:1}},cardTuningRuntime:{},
       setTurnGameMode:noop,setTuningGameMode:noop,setCardTuningGameMode:noop,renderMainMenu:noop,STAGE_RUN_LENGTH:10,
+      AdManager:{showBanner:noop},appendMasteryResult:noop,recentMasteryItems:[],appendQuestResult:noop,
+      questResultBaseline:{},questStorage:{},openQuestBook:noop,app:{},progressStorage:{},
       resetBoard,returnToMainMenu:async()=>{await modes.switchGameMode(gameModeRuntime,'hotseat',true);},
       showStageRunResult:(runtime,stage,payout,complete,onMenu,winner,onRestart)=>{runtime.winner=winner;results.push({stage,payout,complete,winner,copy:match.createStageRunResultCopy(stage,payout,complete,winner),onMenu,onRestart});},
       showMatchResult:(runtime,winner)=>{runtime.winner=winner;},

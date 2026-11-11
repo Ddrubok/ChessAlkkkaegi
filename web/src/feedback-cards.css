@@ -1,0 +1,23 @@
+.cg-progression .cg-card-applied {
+  color: #ffe7a3;
+  font-size: .78rem;
+}
+
+.cg-progression .match-card-choices .upgrade-card {
+  min-height: 0;
+  height: auto;
+  overflow-wrap: anywhere;
+}
+
+.cg-progression .upgrade-card-wrap {
+  min-width: 0;
+}
+
+.cg-progression .cg-card-details summary {
+  overflow-wrap: anywhere;
+}
+
+.cg-progression .match-result-panel {
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
+}

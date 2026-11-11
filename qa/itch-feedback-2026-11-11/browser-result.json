@@ -1,0 +1,38 @@
+{
+  "pass": true,
+  "checks": [
+    "successful first flick offers optional softer-shot practice",
+    "stage 1 explains three-pawn opening",
+    "Controls selects precise pull distance",
+    "Controls reset restores original distance",
+    "real 40% pointer shot completes reward-free power practice",
+    "70% shot gives power-specific retry hint",
+    "practice success/retry/exit preserves Stage 5 checkpoint, points and tutorial history",
+    "guest friendly lobby explains friend codes vs signed-in matchmaking",
+    "returning player has direct power practice entry",
+    "control choice stays inside 800x450",
+    "control choice stays inside 800x450",
+    "control choice stays inside 800x450",
+    "control choice stays inside 390x844",
+    "control choice stays inside 390x844",
+    "control choice stays inside 390x844",
+    "ordinary cards have no redundant Details; special card retains useful explanation",
+    "card UI removes incorrect weight penalty",
+    "draw UI offers same-stage replay with current upgrades",
+    "no browser page errors in tested flows"
+  ],
+  "errors": [],
+  "screenshots": [
+    "01-first-flick.png",
+    "02-controls.png",
+    "03-practice-complete.png",
+    "04-power-practice.png",
+    "05-guest-online-guide.png",
+    "controls-800x450.png",
+    "controls-390x844.png",
+    "06-upgrade-cards.png",
+    "07-upgrade-small.png",
+    "08-draw-replay.png"
+  ],
+  "externalRequestsBlocked": 0
+}

@@ -8,7 +8,7 @@ import type { Rule } from "postcss";
 
 const GITHUB_PAGES_BASE = "./";
 const PROJECT_ROOT = fileURLToPath(new URL(".", import.meta.url));
-const CRAZYGAMES_TITLE = "chessalkkagi";
+const CRAZYGAMES_TITLE = "Chess Alkkagi";
 
 interface PortableAssetDefinition {
   // 런타임 코드가 경로 대신 사용하는 안정적인 식별자다.
@@ -131,14 +131,15 @@ export default defineConfig(({ command, isPreview, mode }) => {
   const staging = mode === "staging";
   const pokiBuild = mode === "poki";
   const crazygamesBuild = mode === "crazygames";
-  const portalBuild = pokiBuild || crazygamesBuild;
+  const itchBuild = mode === "itch";
+  const portalBuild = pokiBuild || crazygamesBuild || itchBuild;
   const crazygamesNetworkEnv = new Set(["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_METERED_APP_NAME", "VITE_METERED_API_KEY"]);
   const portalEnv = portalBuild ? Object.fromEntries(
     [...new Set([
       ...Object.keys(loadEnv(mode, PROJECT_ROOT, "VITE_")),
       "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "VITE_METERED_APP_NAME",
       "VITE_METERED_API_KEY", "VITE_WEB_ADS_MODE", "VITE_ADSENSE_CLIENT_ID", "VITE_ADSENSE_SLOT_ID",
-    ])].filter((key) => crazygamesBuild ? !crazygamesNetworkEnv.has(key) : /^VITE_(?:SUPABASE|METERED|WEB_ADS|ADSENSE)/u.test(key))
+    ])].filter((key) => crazygamesBuild ? !crazygamesNetworkEnv.has(key) : itchBuild ? !/^(?:VITE_SUPABASE_URL|VITE_SUPABASE_ANON_KEY)$/u.test(key) : /^VITE_(?:SUPABASE|METERED|WEB_ADS|ADSENSE)/u.test(key))
       .map((key) => [`import.meta.env.${key}`, JSON.stringify("")]),
   ) : {};
   if (crazygamesBuild) {
@@ -146,6 +147,13 @@ export default defineConfig(({ command, isPreview, mode }) => {
     if (env.VITE_SUPABASE_URL !== "https://yoajmckkrpgvcljrffww.supabase.co"
       || !env.VITE_SUPABASE_ANON_KEY?.startsWith("sb_publishable_")) {
       throw new Error("CrazyGames crossplay requires the production Supabase URL and publishable key used by the Android app.");
+    }
+  }
+  if (itchBuild) {
+    const env = loadEnv(mode, PROJECT_ROOT, "VITE_");
+    if (env.VITE_SUPABASE_URL !== "https://yoajmckkrpgvcljrffww.supabase.co"
+      || !env.VITE_SUPABASE_ANON_KEY?.startsWith("sb_publishable_")) {
+      throw new Error("itch guest rooms require the production Supabase URL and publishable key used by the Android app.");
     }
   }
   if (staging) {
@@ -165,9 +173,12 @@ export default defineConfig(({ command, isPreview, mode }) => {
     ...(portalBuild ? {
       resolve: { alias: [
         ...(pokiBuild ? [{ find: "@supabase/supabase-js", replacement: resolve(PROJECT_ROOT, "src/poki-stubs/backend.ts") }] : []),
-        { find: /^\.\/ad-manager$/u, replacement: resolve(PROJECT_ROOT, crazygamesBuild ? "src/crazygames-stubs/ads.ts" : "src/poki-stubs/ads.ts") },
+        ...(itchBuild ? [
+          { find: /^\.\/crazygames-multiplayer$/u, replacement: resolve(PROJECT_ROOT, "src/itch-invites.ts") },
+        ] : []),
+        { find: /^\.\/ad-manager$/u, replacement: resolve(PROJECT_ROOT, crazygamesBuild || itchBuild ? "src/crazygames-stubs/ads.ts" : "src/poki-stubs/ads.ts") },
         { find: /^\.\/web-ads$/u, replacement: resolve(PROJECT_ROOT, "src/poki-stubs/web-ads.ts") },
-        ...(crazygamesBuild ? [{ find: /^\.\/poki-sdk$/u, replacement: resolve(PROJECT_ROOT, "src/crazygames-stubs/portal-lifecycle.ts") }] : []),
+        ...(crazygamesBuild || itchBuild ? [{ find: /^\.\/poki-sdk$/u, replacement: resolve(PROJECT_ROOT, itchBuild ? "src/itch-lifecycle.ts" : "src/crazygames-stubs/portal-lifecycle.ts") }] : []),
       ] },
       css: { postcss: { plugins: [{
         postcssPlugin: "portal-no-debug-styles",
@@ -190,12 +201,32 @@ export default defineConfig(({ command, isPreview, mode }) => {
         if (!id.replaceAll("\\", "/").startsWith(`${resolve(PROJECT_ROOT, "src").replaceAll("\\", "/")}/`) || !id.endsWith(".ts")) return;
         // Vite define does not replace properties of an imported binding.
         // Resolve these known feature reads before bundling so disabled imports disappear.
-        const featuresResolved = code.replace(/\bPLATFORM\.features\.(online|cloudProgress|accounts|externalLinks|debugTools)\b/gu,
-          (_match, feature: string) => String(feature === "cloudProgress" ? !pokiBuild : !portalBuild));
+        const featuresResolved = code.replace(/\bPLATFORM\.features\.(solo|online|cloudProgress|accounts|externalLinks|debugTools)\b/gu,
+          (_match, feature: string) => String(feature === "solo" ? crazygamesBuild || itchBuild : feature === "cloudProgress" ? !pokiBuild : feature === "online" ? !pokiBuild && !crazygamesBuild : feature === "accounts" ? !pokiBuild && !crazygamesBuild : !portalBuild));
         return featuresResolved.replace(/\bPLATFORM\.id\b/gu,
-          JSON.stringify(crazygamesBuild ? "crazygames" : pokiBuild ? "poki" : "web"));
+          JSON.stringify(crazygamesBuild ? "crazygames" : itchBuild ? "itch" : pokiBuild ? "poki" : "web"));
       },
-    }, ...(pokiBuild ? [{
+    }, ...(itchBuild ? [{
+      name: "itch-build",
+      transformIndexHtml: {
+        order: "pre" as const,
+        handler: (html: string) => html
+          .replace(/<!--[^]*?-->/gu, "")
+          .replace(/<html lang="[^"]*">/u, '<html lang="en">')
+          .replace(/<title>[^<]*<\/title>/u, '<title>Chess Alkkagi</title>')
+          .replace(/<meta name="description"[^>]*>/u, '<meta name="description" content="Flick chess pieces through ten solo stages or play a friend online with a room code.">')
+          .replace(/\s*<meta name="google-adsense-account"[^>]*>/u, "")
+          .replace(/\s*<link rel="preload"[^>]*>/u, "")
+          .replace(/<div class="boot-loading-card">[^]*?<div class="boot-loading-track"[^>]*><\/div>\s*<\/div>/u, '<div class="boot-loading-card"><h1>Chess Alkkagi</h1><p>Flick chess pieces through ten solo stages.</p><p id="boot-loading-phase">Loading...</p><div class="boot-loading-track" aria-hidden="true"></div></div>')
+          .replace(/\s*<script src="\.\/boot-language\.js"><\/script>/u, "")
+          .replace('src="/src/main.ts"', 'src="/src/itch-entry.ts"'),
+      },
+      writeBundle(options: { dir?: string }) {
+        const output = resolve(PROJECT_ROOT, options.dir ?? "dist-itch");
+        cpSync(resolve(PROJECT_ROOT, "public/assets"), resolve(output, "assets"), { recursive: true, filter: path => !/\.(?:md|gitkeep)$/iu.test(path) });
+        cpSync(resolve(PROJECT_ROOT, "itch-privacy.html"), resolve(output, "privacy.html"));
+      },
+    }] : []), ...(pokiBuild ? [{
       name: "poki-build",
       transformIndexHtml: {
         order: "pre" as const,
@@ -278,6 +309,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
       __BUILD_INFO__: JSON.stringify(buildInfo),
       __POKI_BUILD__: JSON.stringify(pokiBuild),
       __CRAZYGAMES_BUILD__: JSON.stringify(crazygamesBuild),
+      __ITCH_BUILD__: JSON.stringify(itchBuild),
       ...portalEnv,
       __PORTABLE_BUILD__: JSON.stringify(portableBuild),
       __PORTABLE_ASSET_URLS__: JSON.stringify(portableAssetUrls),
@@ -288,6 +320,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
     build: {
       ...(pokiBuild ? { outDir: "dist-poki", copyPublicDir: false } : {}),
       ...(crazygamesBuild ? { outDir: "dist-crazygames", copyPublicDir: false, sourcemap: false } : {}),
+      ...(itchBuild ? { outDir: "dist-itch", copyPublicDir: false, sourcemap: false } : {}),
       ...(staging ? { outDir: "dist-staging" } : {}),
       rollupOptions: {
         ...(portalBuild ? { treeshake: { manualPureFunctions: ["console.log", "console.info", "console.debug"] } } : {}),

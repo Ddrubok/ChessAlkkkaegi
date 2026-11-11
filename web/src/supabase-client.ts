@@ -5,6 +5,7 @@ const STORAGE_KEY_URL = "ca_supabase_url";
 const STORAGE_KEY_ANON = "ca_supabase_anon_key";
 const IS_STAGING = import.meta.env?.MODE === "staging";
 const IS_CRAZYGAMES = PLATFORM.id === "crazygames";
+const IS_ITCH = PLATFORM.id === "itch";
 
 export interface SupabaseConfig {
   url: string;
@@ -26,7 +27,7 @@ export function getSavedSupabaseConfig(): SupabaseConfig | null {
     : "";
 
   // Ignore previously saved production connections on the development site.
-  if (IS_STAGING || IS_CRAZYGAMES) return envUrl && envKey ? { url: envUrl, anonKey: envKey } : null;
+  if (IS_STAGING || IS_CRAZYGAMES || IS_ITCH) return envUrl && envKey ? { url: envUrl, anonKey: envKey } : null;
 
   const storageUrl = (localStorage.getItem(STORAGE_KEY_URL) || "").trim();
   const storageKey = (localStorage.getItem(STORAGE_KEY_ANON) || "").trim();
@@ -44,7 +45,7 @@ export function getSavedSupabaseConfig(): SupabaseConfig | null {
  * Supabase 설정을 LocalStorage에 저장하고 클라이언트를 재초기화한다.
  */
 export function saveSupabaseConfig(config: SupabaseConfig): SupabaseClient {
-  if (IS_STAGING || IS_CRAZYGAMES) {
+  if (IS_STAGING || IS_CRAZYGAMES || IS_ITCH) {
     const expected = getSavedSupabaseConfig();
     if (config.url.trim() !== expected?.url || config.anonKey.trim() !== expected?.anonKey) {
       throw new Error("This build uses a fixed Supabase configuration.");
@@ -74,7 +75,7 @@ export function saveSupabaseConfig(config: SupabaseConfig): SupabaseClient {
  * 저장된 설정을 지우고 클라이언트를 초기화 해제한다.
  */
 export function clearSupabaseConfig(): void {
-  if (!IS_STAGING && !IS_CRAZYGAMES) {
+  if (!IS_STAGING && !IS_CRAZYGAMES && !IS_ITCH) {
     localStorage.removeItem(STORAGE_KEY_URL);
     localStorage.removeItem(STORAGE_KEY_ANON);
   }

@@ -8,6 +8,7 @@ import { beginResultMotion, closeResultMotion } from './result-motion';
 import { PLATFORM } from './platform';
 import { presentCard, type CardPreview } from './crazygames-progression';
 import './crazygames-progression.css';
+import './feedback-cards.css';
 
 function progressionText(ko: string, en: string): string {
   return I18nManager.getLanguage() === 'ko' ? ko : en;
@@ -290,7 +291,7 @@ export function showMatchResult(
 ): void {
   gameplay.leave("match-result");
   runtime.overlay.classList.remove("weekly-result-open");
-  runtime.overlay.classList.toggle('cg-progression', PLATFORM.id === 'crazygames' && gameMode === 'stage');
+  runtime.overlay.classList.toggle('cg-progression', PLATFORM.features.solo && gameMode === 'stage');
   runtime.winner = winner;
   runtime.restarting = false;
   runtime.onRestart = onRestart;
@@ -323,7 +324,7 @@ export function showMatchResult(
     onCardSelected !== null;
   runtime.cardChoices.replaceChildren();
   runtime.cardChoices.hidden = !showsCards;
-  if (PLATFORM.id === 'crazygames' && gameMode === 'stage' && showsCards) {
+  if (PLATFORM.features.solo && gameMode === 'stage' && showsCards) {
     runtime.resultKicker.textContent = progressionText('단계 완료', 'Stage complete');
     const prompt = document.createElement('p');
     prompt.textContent = progressionText(
@@ -338,7 +339,7 @@ export function showMatchResult(
   runtime.restartButton.disabled = false;
   runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
   runtime.menuButton.hidden =
-    (showsCards && PLATFORM.id !== 'crazygames') ||
+    (showsCards && !PLATFORM.features.solo) ||
     (gameMode === "stage" && winner !== "black") ||
     (gameMode !== "stage" && gameMode !== "weekly" && gameMode !== "online") ||
     onReturnToMenu === null;
@@ -346,14 +347,18 @@ export function showMatchResult(
   runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
   if (showsCards) {
     for (const card of upgradeCards) {
-      const crazyCard = PLATFORM.id === 'crazygames' && gameMode === 'stage';
+      const crazyCard = PLATFORM.features.solo && gameMode === 'stage';
       const button = document.createElement("button");
       button.type = "button";
       button.className = "upgrade-card";
       const cardName = I18nManager.t(`cards.${card.id}_name`) || card.name;
       const cardDesc = card.id === 'giantPawn' && cardPreviews.giantPawn
-        ? progressionText('a·c·e·g열의 폰을 제외하고 남은 폰 크기 ×1.3. 각 단계 배치에 따라 감소하는 폰 수가 달라집니다.', 'Pawns on files a, c, e and g are removed; remaining pawns grow ×1.3. The number removed depends on each stage layout.')
-        : I18nManager.t(`cards.${card.id}_desc`) || card.description;
+        ? progressionText('a·c·e·g열의 폰을 제외하고 남은 폰에 크기 ×1.3 배수가 적용됩니다. 제거 수는 단계 배치에 따라 달라집니다.', 'Pawns on files a, c, e and g are removed; remaining pawns gain a ×1.3 size multiplier. The number removed depends on the stage layout.')
+        : card.id === 'weight'
+          ? progressionText('내 말의 질량이 증가합니다. 같은 파워의 목표 초기 발사 속도는 유지됩니다.', 'Your pieces gain mass. Initial launch speed at the same power stays the same.')
+          : card.id === 'force'
+            ? progressionText('같은 파워에서 목표 초기 발사 속도가 증가합니다.', 'Increases initial launch speed at the same power.')
+            : I18nManager.t(`cards.${card.id}_desc`) || card.description;
       if (crazyCard) {
         const presented = presentCard(card, I18nManager.getLanguage(), cardPreviews[card.id]);
         const top = document.createElement('span');
@@ -366,16 +371,24 @@ export function showMatchResult(
           addCardLine(button, 'cg-card-grade', presented.grade);
         }
         addCardLine(button, 'cg-card-effect', presented.effect);
-        if (presented.measuredEffect) {
+        if (presented.bonusChange) {
           addCardLine(button, 'cg-card-value', progressionText(
-            `카드 보너스 ${presented.measuredEffect}`,
-            `Card bonus ${presented.measuredEffect}`,
+            `카드 보너스 ${presented.bonusChange} (교체)`,
+            `Card bonus ${presented.bonusChange} (replaces)`,
           ));
+        }
+        for (const value of presented.appliedValues) {
+          addCardLine(button, 'cg-card-applied', value);
         }
         if (presented.tradeoff) {
           addCardLine(button, 'cg-card-tradeoff', presented.tradeoff);
         }
-        addCardLine(button, 'cg-card-scope', progressionText('이번 도전 동안', 'For this run'));
+        if (presented.noEffect) {
+          addCardLine(button, 'cg-card-tradeoff', presented.appliedValues.length > 0
+            ? progressionText('표시된 적용값은 변하지 않습니다', 'Shown applied values do not change')
+            : progressionText('현재 유효 카드 보너스는 변하지 않습니다', 'Effective card bonus does not change'));
+        }
+        addCardLine(button, 'cg-card-scope', presented.scope);
       } else {
         const title = document.createElement('strong');
         title.textContent = cardName;
@@ -425,14 +438,18 @@ export function showMatchResult(
       if (crazyCard) {
         const wrap = document.createElement('div');
         wrap.className = 'upgrade-card-wrap';
-        const details = document.createElement('details');
-        details.className = 'cg-card-details';
-        const summary = document.createElement('summary');
-        summary.textContent = progressionText('자세히', 'Details');
-        const description = document.createElement('p');
-        description.textContent = cardDesc;
-        details.append(summary, description);
-        wrap.append(button, details);
+        const presented = presentCard(card, I18nManager.getLanguage(), cardPreviews[card.id]);
+        wrap.append(button);
+        if (presented.detail && presented.detailTitle) {
+          const details = document.createElement('details');
+          details.className = 'cg-card-details';
+          const summary = document.createElement('summary');
+          summary.textContent = presented.detailTitle;
+          const description = document.createElement('p');
+          description.textContent = presented.detail;
+          details.append(summary, description);
+          wrap.append(details);
+        }
         runtime.cardChoices.append(wrap);
       } else {
         runtime.cardChoices.append(button);
@@ -507,7 +524,7 @@ export function showStageRunResult(
   onRestart: (() => Promise<void>) | null = null,
 ): void {
   gameplay.leave("stage-run-result");
-  runtime.overlay.classList.toggle('cg-progression', PLATFORM.id === 'crazygames');
+  runtime.overlay.classList.toggle('cg-progression', PLATFORM.features.solo);
   const copy = createStageRunResultCopy(
     stageNumber,
     payout,
@@ -543,6 +560,46 @@ export function showStageRunResult(
   runtime.overlay.hidden = false;
   (onRestart ? runtime.restartButton : runtime.menuButton).focus();
   beginResultMotion(runtime.overlay, `stage-end:${stageNumber}:${winner}`, runtime.winnerHeading);
+}
+
+/** Solo stalemate repeats the current stage and current upgrades without a reward. */
+export function showSoloDrawResult(
+  runtime: MatchRuntime,
+  stage: number,
+  onReplay: () => Promise<void>,
+  onMenu: () => Promise<void>,
+): void {
+  gameplay.leave("solo-draw-result");
+  runtime.overlay.classList.remove("weekly-result-open");
+  runtime.overlay.classList.toggle("cg-progression", PLATFORM.features.solo);
+  runtime.winner = "draw";
+  runtime.restarting = false;
+  runtime.onRestart = onReplay;
+  runtime.onReturnToMenu = onMenu;
+  runtime.onCardSelected = null;
+  runtime.resultKicker.hidden = false;
+  runtime.resultKicker.textContent = I18nManager.t("ingame.game_over");
+  runtime.winnerHeading.textContent = I18nManager.t("ingame.draw");
+  const message = document.createElement("p");
+  message.textContent = progressionText(
+    `무승부 · 현재 강화로 스테이지 ${stage}를 다시 플레이합니다.`,
+    `Draw · Replay Stage ${stage} with your current upgrades.`,
+  );
+  runtime.resultDetails.replaceChildren(message);
+  runtime.resultDetails.hidden = false;
+  runtime.cardChoices.replaceChildren();
+  runtime.cardChoices.hidden = true;
+  runtime.restartButton.hidden = false;
+  runtime.restartButton.disabled = false;
+  runtime.restartButton.textContent = progressionText(`스테이지 ${stage} 다시 플레이`, `Replay Stage ${stage}`);
+  runtime.menuButton.hidden = false;
+  runtime.menuButton.disabled = false;
+  runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
+  runtime.actionStatus.hidden = true;
+  runtime.actionStatus.textContent = "";
+  runtime.overlay.hidden = false;
+  runtime.restartButton.focus();
+  beginResultMotion(runtime.overlay, `solo-draw:${stage}`, runtime.winnerHeading);
 }
 
 /**

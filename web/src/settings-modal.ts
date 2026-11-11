@@ -18,6 +18,7 @@ import { mountCosmeticsSettingsPanel } from "./cosmetics-settings";
 import type { CosmeticLoadout } from "./cosmetics";
 import { getCosmeticsCopy } from "./cosmetics-copy";
 import "./cosmetics-settings.css";
+import { getMousePowerDistance, powerControlsCopy, resetMousePowerDistance, setMousePowerDistance, type MousePowerDistance } from "./power-controls";
 
 export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: () => UserProfile | null): void {
   const container = parentContainer ?? document.body;
@@ -70,7 +71,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     word-break: keep-all;
   `;
 
-  let activeTab: "sound" | "banner" | "language" = "sound";
+  let activeTab: "sound" | "banner" | "language" | "controls" = "sound";
   let closed = false;
   const motion = createPanelMotion();
   let cosmeticPanel: ReturnType<typeof mountCosmeticsSettingsPanel> | null = null;
@@ -165,6 +166,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     const currentLang = I18nManager.currentLang;
     const cosmeticsCopy = getCosmeticsCopy(currentLang);
     const effects = motionCopy();
+    const powerCopy = powerControlsCopy();
 
     card.innerHTML = `
       <!-- 헤더 -->
@@ -184,6 +186,9 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
         <button id="tab-btn-language" role="tab" aria-selected="${activeTab === 'language'}" aria-controls="settings-tab-content" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "language" ? "#2563eb" : "transparent"}; color:${activeTab === "language" ? "white" : "#94a3b8"}; white-space:nowrap;">
           ${escapeHtml(I18nManager.t("common.language"))}
         </button>
+        <button id="tab-btn-controls" role="tab" aria-selected="${activeTab === 'controls'}" aria-controls="settings-tab-content" style="flex:1; border:none; border-radius:6px; padding:10px 6px; font-size:13px; font-weight:700; cursor:pointer; background:${activeTab === "controls" ? "#2563eb" : "transparent"}; color:${activeTab === "controls" ? "white" : "#94a3b8"}; white-space:nowrap;">
+          ${escapeHtml(powerCopy.tab)}
+        </button>
       </div>
 
       <!-- 탭 본문 -->
@@ -198,7 +203,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     card.querySelector("#settings-modal-close")?.addEventListener("click", () => closeModal());
 
     // 탭 전환 이벤트
-    const tabNames = ["sound", "banner", "language"] as const;
+    const tabNames = ["sound", "banner", "language", "controls"] as const;
     tabNames.forEach((name, index) => {
       const tab = card.querySelector<HTMLButtonElement>(`#tab-btn-${name}`);
       if (!tab) return;
@@ -226,6 +231,10 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
     });
     card.querySelector("#tab-btn-language")?.addEventListener("click", () => {
       activeTab = "language";
+      render();
+    });
+    card.querySelector("#tab-btn-controls")?.addEventListener("click", () => {
+      activeTab = "controls";
       render();
     });
 
@@ -306,6 +315,14 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
           modalDraftLoadout = null;
         },
       });
+    } else if (activeTab === "controls") {
+      const selected = getMousePowerDistance();
+      content.innerHTML = `<div class="power-controls-settings"><h4>${escapeHtml(powerCopy.title)}</h4><p>${escapeHtml(powerCopy.description)}</p><div class="power-controls-choices" role="group" aria-label="${escapeHtml(powerCopy.title)}">${([180, 240, 360] as const).map((value, index) => `<button type="button" data-power-distance="${value}" aria-pressed="${selected === value}">${escapeHtml([powerCopy.short, powerCopy.standard, powerCopy.precise][index])} · ${value}px</button>`).join("")}</div><button type="button" id="settings-power-reset">${escapeHtml(powerCopy.reset)}</button></div>`;
+      content.querySelectorAll<HTMLButtonElement>("[data-power-distance]").forEach(button => button.addEventListener("click", () => {
+        setMousePowerDistance(Number(button.dataset.powerDistance) as MousePowerDistance);
+        render();
+      }));
+      content.querySelector("#settings-power-reset")?.addEventListener("click", () => { resetMousePowerDistance(); render(); });
     } else {
       // -------------------------------------------------------------
       // 3. 언어 설정 탭 (9개국 글로벌 언어 그리드)

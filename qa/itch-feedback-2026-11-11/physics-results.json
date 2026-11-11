@@ -1,0 +1,1426 @@
+{
+  "generatedAt": "2026-11-11T05:45:07.488Z",
+  "source": "live Vite-loaded project physics/turn/walls/stage modules and chess-set.meta.json; no UI import replacements",
+  "fixedStep": 0.008333333333333333,
+  "timeScale": 2,
+  "wallClockFor1SimSecond": 0.5,
+  "posture": [
+    {
+      "label": "upright",
+      "requestedAngleDeg": 0,
+      "settledAngleDeg": 0.24708,
+      "power": 0.25,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25312,
+        "y": -0.00084,
+        "z": -0.00034
+      },
+      "target": 2.75,
+      "deltaV": 2.75,
+      "initialAngular": 0,
+      "distance1s": 2.50493,
+      "distance2s": 4.45576,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 0.06093,
+            "y": -0.00112,
+            "z": -0.00017
+          },
+          "speed": 2.50476,
+          "angular": 0.00783
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 1.25181,
+            "y": -0.00117,
+            "z": -0.00025
+          },
+          "speed": 2.25952,
+          "angular": 0.01001
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 3.20264,
+            "y": -1.06917,
+            "z": 0.00444
+          },
+          "speed": 5.0647,
+          "angular": 1.37469
+        }
+      ]
+    },
+    {
+      "label": "upright",
+      "requestedAngleDeg": 0,
+      "settledAngleDeg": 0.24708,
+      "power": 0.25,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25312,
+        "y": -0.00084,
+        "z": -0.00034
+      },
+      "target": 2.75,
+      "deltaV": 2.75,
+      "initialAngular": 43.17473,
+      "distance1s": 2.58723,
+      "distance2s": 4.96586,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 0.05737,
+            "y": 0.41174,
+            "z": -0.03784
+          },
+          "speed": 4.34455,
+          "angular": 7.73671
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 1.33367,
+            "y": 0.68156,
+            "z": 0.04742
+          },
+          "speed": 3.00586,
+          "angular": 7.73671
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 3.70803,
+            "y": -0.82595,
+            "z": -0.21658
+          },
+          "speed": 5.48743,
+          "angular": 14.87491
+        }
+      ]
+    },
+    {
+      "label": "upright",
+      "requestedAngleDeg": 0,
+      "settledAngleDeg": 0.24708,
+      "power": 0.5,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25312,
+        "y": -0.00084,
+        "z": -0.00034
+      },
+      "target": 5.5,
+      "deltaV": 5.5,
+      "initialAngular": 0,
+      "distance1s": 5.24297,
+      "distance2s": 10.3083,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 1.43595,
+            "y": -0.00111,
+            "z": -0.00014
+          },
+          "speed": 5.25475,
+          "angular": 0.00327
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 3.98985,
+            "y": -0.49689,
+            "z": 0.00808
+          },
+          "speed": 6.03419,
+          "angular": 0.60702
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 9.05514,
+            "y": -8.47414,
+            "z": 0.02875
+          },
+          "speed": 13.92212,
+          "angular": 0.60702
+        }
+      ]
+    },
+    {
+      "label": "upright",
+      "requestedAngleDeg": 0,
+      "settledAngleDeg": 0.24708,
+      "power": 0.5,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25312,
+        "y": -0.00084,
+        "z": -0.00034
+      },
+      "target": 5.5,
+      "deltaV": 5.5,
+      "initialAngular": 86.34946,
+      "distance1s": 5.91031,
+      "distance2s": 11.39234,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 1.74795,
+            "y": 1.31063,
+            "z": 0.09843
+          },
+          "speed": 5.71987,
+          "angular": 61.19617
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 4.65498,
+            "y": 0.26129,
+            "z": 0.16161
+          },
+          "speed": 7.50104,
+          "angular": 61.19617
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 10.1375,
+            "y": -9.34577,
+            "z": 0.19812
+          },
+          "speed": 15.73898,
+          "angular": 61.19617
+        }
+      ]
+    },
+    {
+      "label": "upright",
+      "requestedAngleDeg": 0,
+      "settledAngleDeg": 0.24708,
+      "power": 1,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25312,
+        "y": -0.00084,
+        "z": -0.00034
+      },
+      "target": 11,
+      "deltaV": 11,
+      "initialAngular": 0,
+      "distance1s": 10.81541,
+      "distance2s": 21.58596,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 4.18041,
+            "y": -0.13911,
+            "z": -0.00338
+          },
+          "speed": 10.95955,
+          "angular": 0.39086
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 9.56229,
+            "y": -2.18198,
+            "z": -0.01295
+          },
+          "speed": 12.65759,
+          "angular": 0.39086
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 20.33282,
+            "y": -13.60409,
+            "z": -0.02961
+          },
+          "speed": 19.6156,
+          "angular": 0.39086
+        }
+      ]
+    },
+    {
+      "label": "upright",
+      "requestedAngleDeg": 0,
+      "settledAngleDeg": 0.24708,
+      "power": 1,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25312,
+        "y": -0.00084,
+        "z": -0.00034
+      },
+      "target": 11,
+      "deltaV": 11,
+      "initialAngular": 172.69892,
+      "distance1s": 11.32539,
+      "distance2s": 23.06364,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 4.64648,
+            "y": 3.96867,
+            "z": 0.1582
+          },
+          "speed": 12.47827,
+          "angular": 122.48689
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 10.07081,
+            "y": 5.32056,
+            "z": 0.18171
+          },
+          "speed": 11.43875,
+          "angular": 122.48689
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 21.80475,
+            "y": 0.29497,
+            "z": 0.51593
+          },
+          "speed": 15.01583,
+          "angular": 122.48689
+        }
+      ]
+    },
+    {
+      "label": "tilted",
+      "requestedAngleDeg": 45,
+      "settledAngleDeg": 44.99999,
+      "power": 0.25,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25291,
+        "y": 0.09622,
+        "z": 0
+      },
+      "target": 2.75,
+      "deltaV": 2.75,
+      "initialAngular": 0,
+      "distance1s": 2.56582,
+      "distance2s": 4.58888,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 0.12243,
+            "y": 0.1326,
+            "z": -0.00009
+          },
+          "speed": 2.55349,
+          "angular": 2.45064
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 1.31282,
+            "y": 0.14001,
+            "z": -0.0214
+          },
+          "speed": 2.26158,
+          "angular": 1.3421
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 3.33581,
+            "y": -0.78563,
+            "z": -0.03894
+          },
+          "speed": 4.36911,
+          "angular": 1.91789
+        }
+      ]
+    },
+    {
+      "label": "tilted",
+      "requestedAngleDeg": 45,
+      "settledAngleDeg": 44.99999,
+      "power": 0.25,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25291,
+        "y": 0.09622,
+        "z": 0
+      },
+      "target": 2.75,
+      "deltaV": 2.75,
+      "initialAngular": 32.23152,
+      "distance1s": 2.92328,
+      "distance2s": 5.64099,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": -0.11213,
+            "y": 0.65557,
+            "z": 0.00351
+          },
+          "speed": 3.04143,
+          "angular": 12.35393
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 1.66984,
+            "y": 0.25755,
+            "z": 0.05566
+          },
+          "speed": 2.70059,
+          "angular": 13.78592
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 4.38478,
+            "y": -1.97474,
+            "z": -0.19293
+          },
+          "speed": 6.93589,
+          "angular": 12.36629
+        }
+      ]
+    },
+    {
+      "label": "tilted",
+      "requestedAngleDeg": 45,
+      "settledAngleDeg": 44.99999,
+      "power": 0.5,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25291,
+        "y": 0.09622,
+        "z": 0
+      },
+      "target": 5.5,
+      "deltaV": 5.5,
+      "initialAngular": 0,
+      "distance1s": 5.33557,
+      "distance2s": 10.43296,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 1.49726,
+            "y": 0.13244,
+            "z": 0.00101
+          },
+          "speed": 5.28542,
+          "angular": 2.4549
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 4.08266,
+            "y": -0.30883,
+            "z": -0.00284
+          },
+          "speed": 5.87113,
+          "angular": 0.66818
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 9.18005,
+            "y": -8.16901,
+            "z": -0.00974
+          },
+          "speed": 13.64369,
+          "angular": 0.66818
+        }
+      ]
+    },
+    {
+      "label": "tilted",
+      "requestedAngleDeg": 45,
+      "settledAngleDeg": 44.99999,
+      "power": 0.5,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25291,
+        "y": 0.09622,
+        "z": 0
+      },
+      "target": 5.5,
+      "deltaV": 5.5,
+      "initialAngular": 64.46303,
+      "distance1s": 5.64755,
+      "distance2s": 11.73822,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 1.25216,
+            "y": 0.69181,
+            "z": 0.00431
+          },
+          "speed": 5.89626,
+          "angular": 55.62742
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 4.39464,
+            "y": 0.76823,
+            "z": 0.0092
+          },
+          "speed": 5.99143,
+          "angular": 43.41733
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 10.48527,
+            "y": -4.06118,
+            "z": 0.03238
+          },
+          "speed": 11.4709,
+          "angular": 43.41733
+        }
+      ]
+    },
+    {
+      "label": "tilted",
+      "requestedAngleDeg": 45,
+      "settledAngleDeg": 44.99999,
+      "power": 1,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25291,
+        "y": 0.09622,
+        "z": 0
+      },
+      "target": 11,
+      "deltaV": 11,
+      "initialAngular": 0,
+      "distance1s": 10.568,
+      "distance2s": 21.53532,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 4.20996,
+            "y": -0.05916,
+            "z": 0.01388
+          },
+          "speed": 10.87479,
+          "angular": 4.8249
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 9.31432,
+            "y": -1.75563,
+            "z": 0.12786
+          },
+          "speed": 12.3987,
+          "angular": 4.8249
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 20.28231,
+            "y": -12.91812,
+            "z": 0.06722
+          },
+          "speed": 19.20971,
+          "angular": 4.8249
+        }
+      ]
+    },
+    {
+      "label": "tilted",
+      "requestedAngleDeg": 45,
+      "settledAngleDeg": 44.99999,
+      "power": 1,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25291,
+        "y": 0.09622,
+        "z": 0
+      },
+      "target": 11,
+      "deltaV": 11,
+      "initialAngular": 128.92606,
+      "distance1s": 11.03837,
+      "distance2s": 22.64539,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 4.34458,
+            "y": 2.85592,
+            "z": 0.00284
+          },
+          "speed": 11.61893,
+          "angular": 109.39715
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 9.78545,
+            "y": 2.60546,
+            "z": -0.01712
+          },
+          "speed": 11.62829,
+          "angular": 109.39715
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 21.39231,
+            "y": -4.55169,
+            "z": -0.08952
+          },
+          "speed": 16.73338,
+          "angular": 109.39715
+        }
+      ]
+    },
+    {
+      "label": "prone",
+      "requestedAngleDeg": 90,
+      "settledAngleDeg": 98.3644,
+      "power": 0.25,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25465,
+        "y": 0.1394,
+        "z": -0.02861
+      },
+      "target": 2.75,
+      "deltaV": 2.75,
+      "initialAngular": 0,
+      "distance1s": 2.50428,
+      "distance2s": 4.52524,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 0.05883,
+            "y": 0.13886,
+            "z": -0.02847
+          },
+          "speed": 2.50475,
+          "angular": 0.00281
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 1.24963,
+            "y": 0.13886,
+            "z": -0.02843
+          },
+          "speed": 2.2595,
+          "angular": 0.01479
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 3.27059,
+            "y": -0.65359,
+            "z": -0.02867
+          },
+          "speed": 4.07465,
+          "angular": 1.94854
+        }
+      ]
+    },
+    {
+      "label": "prone",
+      "requestedAngleDeg": 90,
+      "settledAngleDeg": 98.3644,
+      "power": 0.25,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25465,
+        "y": 0.1394,
+        "z": -0.02861
+      },
+      "target": 2.75,
+      "deltaV": 2.75,
+      "initialAngular": 21.23583,
+      "distance1s": 2.16915,
+      "distance2s": 4.25451,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": -0.33125,
+            "y": 0.13116,
+            "z": -0.03854
+          },
+          "speed": 2.5052,
+          "angular": 2.44311
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 0.91039,
+            "y": 0.13891,
+            "z": -0.16214
+          },
+          "speed": 2.26255,
+          "angular": 0.57516
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 2.99742,
+            "y": -0.52108,
+            "z": -0.17269
+          },
+          "speed": 4.24397,
+          "angular": 1.21369
+        }
+      ]
+    },
+    {
+      "label": "prone",
+      "requestedAngleDeg": 90,
+      "settledAngleDeg": 98.3644,
+      "power": 0.5,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25465,
+        "y": 0.1394,
+        "z": -0.02861
+      },
+      "target": 5.5,
+      "deltaV": 5.5,
+      "initialAngular": 0,
+      "distance1s": 5.2743,
+      "distance2s": 10.34798,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 1.43382,
+            "y": 0.13886,
+            "z": -0.02848
+          },
+          "speed": 5.25474,
+          "angular": 0.00515
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 4.01965,
+            "y": -0.27858,
+            "z": -0.02856
+          },
+          "speed": 5.80856,
+          "angular": 0.803
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 9.09333,
+            "y": -8.0259,
+            "z": -0.02415
+          },
+          "speed": 13.52331,
+          "angular": 0.803
+        }
+      ]
+    },
+    {
+      "label": "prone",
+      "requestedAngleDeg": 90,
+      "settledAngleDeg": 98.3644,
+      "power": 0.5,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25465,
+        "y": 0.1394,
+        "z": -0.02861
+      },
+      "target": 5.5,
+      "deltaV": 5.5,
+      "initialAngular": 42.47166,
+      "distance1s": 5.03007,
+      "distance2s": 10.27731,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 1.10755,
+            "y": 0.7583,
+            "z": 0.05529
+          },
+          "speed": 5.36818,
+          "angular": 16.91677
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 3.77517,
+            "y": -0.57342,
+            "z": -0.07841
+          },
+          "speed": 7.82108,
+          "angular": 16.91677
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 9.0226,
+            "y": -11.53305,
+            "z": 0.00768
+          },
+          "speed": 16.43852,
+          "angular": 16.91677
+        }
+      ]
+    },
+    {
+      "label": "prone",
+      "requestedAngleDeg": 90,
+      "settledAngleDeg": 98.3644,
+      "power": 1,
+      "strike": "center of mass",
+      "initial": {
+        "x": -1.25465,
+        "y": 0.1394,
+        "z": -0.02861
+      },
+      "target": 11,
+      "deltaV": 11,
+      "initialAngular": 0,
+      "distance1s": 10.85628,
+      "distance2s": 21.65399,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 4.19023,
+            "y": 0.02493,
+            "z": -0.02838
+          },
+          "speed": 10.91563,
+          "angular": 0.4214
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 9.60163,
+            "y": -1.94946,
+            "z": -0.02833
+          },
+          "speed": 12.52923,
+          "angular": 0.4214
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 20.39934,
+            "y": -13.25053,
+            "z": -0.02972
+          },
+          "speed": 19.41634,
+          "angular": 0.4214
+        }
+      ]
+    },
+    {
+      "label": "prone",
+      "requestedAngleDeg": 90,
+      "settledAngleDeg": 98.3644,
+      "power": 1,
+      "strike": "upper hull vertex",
+      "initial": {
+        "x": -1.25465,
+        "y": 0.1394,
+        "z": -0.02861
+      },
+      "target": 11,
+      "deltaV": 11,
+      "initialAngular": 84.94332,
+      "distance1s": 10.57281,
+      "distance2s": 21.06458,
+      "quietAtStep": null,
+      "samples": [
+        {
+          "step": 60,
+          "position": {
+            "x": 3.71798,
+            "y": 2.4182,
+            "z": 0.03816
+          },
+          "speed": 10.90345,
+          "angular": 43.13461
+        },
+        {
+          "step": 120,
+          "position": {
+            "x": 9.31787,
+            "y": 2.58342,
+            "z": -0.10662
+          },
+          "speed": 10.95601,
+          "angular": 43.13461
+        },
+        {
+          "step": 240,
+          "position": {
+            "x": 19.80964,
+            "y": -4.86552,
+            "z": -0.13919
+          },
+          "speed": 16.33052,
+          "angular": 43.13461
+        }
+      ]
+    }
+  ],
+  "wallTests": [
+    {
+      "stageNumber": 3,
+      "variant": "breakable",
+      "count": 32,
+      "boardHalfExtent": 2.96142,
+      "wallHeight": 0.16,
+      "wallThickness": 0.08,
+      "geometryMatches": true,
+      "targetId": "wall-east-3",
+      "targetHitCount": null,
+      "targetDestroyed": true,
+      "rawContactSteps": [
+        {
+          "pass": 1,
+          "step": 8
+        },
+        {
+          "pass": 2,
+          "step": 8
+        }
+      ],
+      "contacts": [
+        {
+          "pass": 1,
+          "step": 8,
+          "hitCount": 1
+        },
+        {
+          "pass": 2,
+          "step": 8,
+          "hitCount": 2
+        }
+      ],
+      "destructions": [
+        {
+          "pass": 2,
+          "step": 8
+        }
+      ],
+      "otherDestroyed": []
+    },
+    {
+      "stageNumber": 4,
+      "variant": "breakable",
+      "count": 32,
+      "boardHalfExtent": 2.96142,
+      "wallHeight": 0.16,
+      "wallThickness": 0.08,
+      "geometryMatches": true,
+      "targetId": "wall-east-3",
+      "targetHitCount": null,
+      "targetDestroyed": true,
+      "rawContactSteps": [
+        {
+          "pass": 1,
+          "step": 8
+        },
+        {
+          "pass": 2,
+          "step": 8
+        }
+      ],
+      "contacts": [
+        {
+          "pass": 1,
+          "step": 8,
+          "hitCount": 1
+        },
+        {
+          "pass": 2,
+          "step": 8,
+          "hitCount": 2
+        }
+      ],
+      "destructions": [
+        {
+          "pass": 2,
+          "step": 8
+        }
+      ],
+      "otherDestroyed": []
+    },
+    {
+      "stageNumber": 5,
+      "variant": "breakable",
+      "count": 32,
+      "boardHalfExtent": 2.96142,
+      "wallHeight": 0.16,
+      "wallThickness": 0.08,
+      "geometryMatches": true,
+      "targetId": "wall-east-3",
+      "targetHitCount": null,
+      "targetDestroyed": true,
+      "rawContactSteps": [
+        {
+          "pass": 1,
+          "step": 8
+        },
+        {
+          "pass": 1,
+          "step": 9
+        },
+        {
+          "pass": 2,
+          "step": 8
+        }
+      ],
+      "contacts": [
+        {
+          "pass": 1,
+          "step": 8,
+          "hitCount": 1
+        },
+        {
+          "pass": 2,
+          "step": 8,
+          "hitCount": 2
+        }
+      ],
+      "destructions": [
+        {
+          "pass": 2,
+          "step": 8
+        }
+      ],
+      "otherDestroyed": []
+    },
+    {
+      "stageNumber": 6,
+      "variant": "breakable",
+      "count": 32,
+      "boardHalfExtent": 2.96142,
+      "wallHeight": 0.16,
+      "wallThickness": 0.08,
+      "geometryMatches": true,
+      "targetId": "wall-east-3",
+      "targetHitCount": null,
+      "targetDestroyed": true,
+      "rawContactSteps": [
+        {
+          "pass": 1,
+          "step": 8
+        },
+        {
+          "pass": 1,
+          "step": 9
+        },
+        {
+          "pass": 1,
+          "step": 19
+        }
+      ],
+      "contacts": [
+        {
+          "pass": 1,
+          "step": 8,
+          "hitCount": 1
+        },
+        {
+          "pass": 1,
+          "step": 19,
+          "hitCount": 2
+        }
+      ],
+      "destructions": [
+        {
+          "pass": 1,
+          "step": 19
+        }
+      ],
+      "otherDestroyed": []
+    },
+    {
+      "stageNumber": 7,
+      "variant": "indestructible",
+      "count": 4,
+      "boardHalfExtent": 2.96142,
+      "wallHeight": 0.16,
+      "wallThickness": 0.08,
+      "geometryMatches": true,
+      "targetId": "pocket-wall-east",
+      "targetHitCount": 0,
+      "targetDestroyed": false,
+      "rawContactSteps": [
+        {
+          "pass": 1,
+          "step": 8
+        },
+        {
+          "pass": 2,
+          "step": 8
+        }
+      ],
+      "contacts": [],
+      "destructions": [],
+      "otherDestroyed": []
+    },
+    {
+      "stageNumber": 8,
+      "variant": "indestructible",
+      "count": 4,
+      "boardHalfExtent": 2.96142,
+      "wallHeight": 0.16,
+      "wallThickness": 0.08,
+      "geometryMatches": true,
+      "targetId": "pocket-wall-east",
+      "targetHitCount": 0,
+      "targetDestroyed": false,
+      "rawContactSteps": [
+        {
+          "pass": 1,
+          "step": 8
+        },
+        {
+          "pass": 2,
+          "step": 8
+        }
+      ],
+      "contacts": [],
+      "destructions": [],
+      "otherDestroyed": []
+    }
+  ],
+  "boundaryTrials": [
+    {
+      "kind": "seam",
+      "start": {
+        "x": 2.44033,
+        "y": -0.0009,
+        "z": 0.00067
+      },
+      "direction": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "seamOverlap": 0.402,
+      "contacts": [
+        {
+          "step": 8,
+          "wall": "wall-east-3",
+          "hitCount": 1
+        },
+        {
+          "step": 8,
+          "wall": "wall-east-4",
+          "hitCount": 1
+        }
+      ],
+      "samples": [
+        {
+          "step": 5,
+          "position": {
+            "x": 2.66856,
+            "y": -0.00091,
+            "z": 0.00008
+          }
+        },
+        {
+          "step": 8,
+          "position": {
+            "x": 2.72923,
+            "y": 0.02595,
+            "z": -0.00517
+          }
+        },
+        {
+          "step": 10,
+          "position": {
+            "x": 2.67466,
+            "y": 0.10406,
+            "z": -0.01751
+          }
+        },
+        {
+          "step": 20,
+          "position": {
+            "x": 2.71681,
+            "y": 0.63075,
+            "z": -0.03257
+          }
+        },
+        {
+          "step": 40,
+          "position": {
+            "x": 2.96514,
+            "y": 0.50885,
+            "z": 0.05035
+          }
+        }
+      ]
+    },
+    {
+      "kind": "elevated",
+      "start": {
+        "x": 2.44091,
+        "y": -0.00093,
+        "z": -0.36997
+      },
+      "direction": {
+        "x": 0.81923,
+        "y": 0.57346,
+        "z": 0
+      },
+      "seamOverlap": 0.402,
+      "contacts": [],
+      "samples": [
+        {
+          "step": 5,
+          "position": {
+            "x": 2.62865,
+            "y": 0.12154,
+            "z": -0.36997
+          }
+        },
+        {
+          "step": 8,
+          "position": {
+            "x": 2.74129,
+            "y": 0.18685,
+            "z": -0.36997
+          }
+        },
+        {
+          "step": 10,
+          "position": {
+            "x": 2.81639,
+            "y": 0.22699,
+            "z": -0.36997
+          }
+        },
+        {
+          "step": 20,
+          "position": {
+            "x": 3.19187,
+            "y": 0.38679,
+            "z": -0.36997
+          }
+        },
+        {
+          "step": 40,
+          "position": {
+            "x": 3.94283,
+            "y": 0.50201,
+            "z": -0.36997
+          }
+        }
+      ]
+    },
+    {
+      "kind": "level",
+      "start": {
+        "x": 2.44091,
+        "y": -0.00093,
+        "z": -0.36997
+      },
+      "direction": {
+        "x": 1,
+        "y": 0,
+        "z": 0
+      },
+      "seamOverlap": 0.402,
+      "contacts": [
+        {
+          "step": 8,
+          "wall": "wall-east-3",
+          "hitCount": 1
+        }
+      ],
+      "samples": [
+        {
+          "step": 5,
+          "position": {
+            "x": 2.6689,
+            "y": -0.00093,
+            "z": -0.37072
+          }
+        },
+        {
+          "step": 8,
+          "position": {
+            "x": 2.73018,
+            "y": 0.02574,
+            "z": -0.3758
+          }
+        },
+        {
+          "step": 10,
+          "position": {
+            "x": 2.67526,
+            "y": 0.10349,
+            "z": -0.38769
+          }
+        },
+        {
+          "step": 20,
+          "position": {
+            "x": 2.72183,
+            "y": 0.62908,
+            "z": -0.39986
+          }
+        },
+        {
+          "step": 40,
+          "position": {
+            "x": 2.96135,
+            "y": 0.49689,
+            "z": -0.32143
+          }
+        }
+      ]
+    }
+  ],
+  "difficulty": [
+    {
+      "stage": 4,
+      "buffs": {
+        "weightSteps": 2,
+        "forceSteps": 1,
+        "sizeSteps": 1,
+        "pawnTier": "none"
+      },
+      "enemySize": 1.05,
+      "enemyPawnScale": 1.05,
+      "enemyWeightFraction": 0.2,
+      "enemyAiSpeed": 1.05,
+      "boardHalfExtent": 2.96142,
+      "breakableWalls": true
+    },
+    {
+      "stage": 5,
+      "buffs": {
+        "weightSteps": 2,
+        "forceSteps": 2,
+        "sizeSteps": 1,
+        "pawnTier": "rook"
+      },
+      "enemySize": 1.1,
+      "enemyPawnScale": 1.43,
+      "enemyWeightFraction": 0.2,
+      "enemyAiSpeed": 1.1,
+      "boardHalfExtent": 2.96142,
+      "breakableWalls": true
+    },
+    {
+      "stage": 6,
+      "buffs": {
+        "weightSteps": 3,
+        "forceSteps": 2,
+        "sizeSteps": 2,
+        "pawnTier": "rook"
+      },
+      "enemySize": 1.1,
+      "enemyPawnScale": 1.43,
+      "enemyWeightFraction": 0.3,
+      "enemyAiSpeed": 1.1,
+      "boardHalfExtent": 2.96142,
+      "breakableWalls": true
+    }
+  ],
+  "cardPreviews": [
+    {
+      "id": "size",
+      "grade": 1,
+      "displayed": 1.02,
+      "actual": 1.02
+    },
+    {
+      "id": "size",
+      "grade": 2,
+      "displayed": 1.04,
+      "actual": 1.04
+    },
+    {
+      "id": "size",
+      "grade": 5,
+      "displayed": 1.15,
+      "actual": 1.15
+    },
+    {
+      "id": "weight",
+      "grade": 1,
+      "displayed": 0.02879,
+      "actual": 0.02879
+    },
+    {
+      "id": "weight",
+      "grade": 2,
+      "displayed": 0.02962,
+      "actual": 0.02962
+    },
+    {
+      "id": "weight",
+      "grade": 5,
+      "displayed": 0.03565,
+      "actual": 0.03565
+    },
+    {
+      "id": "force",
+      "grade": 1,
+      "displayed": 11.55,
+      "actual": 11.55
+    },
+    {
+      "id": "force",
+      "grade": 2,
+      "displayed": 11.88,
+      "actual": 11.88
+    },
+    {
+      "id": "force",
+      "grade": 5,
+      "displayed": 14.3,
+      "actual": 14.3
+    }
+  ]
+}

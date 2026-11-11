@@ -56,9 +56,10 @@ import {
   TOUCH_PIECE_HIT_RADIUS_PIXELS,
   TOUCH_RED_DOT_HIT_RADIUS_MULTIPLIER,
 } from "./config";
-import "./input.css";
 import "./game-hud.css";
+import "./input.css";
 import { inputCancelCopy } from "./input-cancel-copy";
+import { getMousePowerDistance, powerControlsCopy, rayDistanceToRectEdge, subscribeMousePowerDistance } from "./power-controls";
 import {
   isCoarsePointerEnvironment,
   isTouchPointerEvent,
@@ -159,6 +160,8 @@ interface PointerGesture {
   candidatePieceId: string | null;
   // 조준 시작 시 viewport로 고정한 이번 드래그의 최대 세기 거리다.
   maxDragPixels: number;
+  // A settings change invalidates the whole gesture instead of changing its scale mid-pull.
+  mousePowerDistance: number;
 }
 
 export interface LaunchQueueOutcome {
@@ -246,6 +249,7 @@ export interface InputRuntime {
   cancelControlTitle?: HTMLElement;
   cancelControlHint?: HTMLElement;
   cancelFeedback?: HTMLElement;
+  reachabilityFeedback?: HTMLElement;
   isPointerOverCancel?: boolean;
 }
 
@@ -501,8 +505,9 @@ export function computeEffectiveMaxDragPixels(
   viewportHeight: number,
 ): number {
   if (!isTouchPointerEvent(event)) {
-    return MAX_DRAG_PIXELS;
+    return getMousePowerDistance();
   }
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) return MAX_DRAG_PIXELS;
   return Math.min(
     Math.max(
       viewportHeight * TOUCH_MAX_DRAG_VIEWPORT_RATIO,
@@ -510,6 +515,29 @@ export function computeEffectiveMaxDragPixels(
     ),
     MAX_DRAG_PIXELS,
   );
+}
+
+function updateReachability(runtime: InputRuntime, event: PointerEvent): void {
+  const gesture = runtime.gesture;
+  const message = runtime.reachabilityFeedback;
+  if (!gesture || !message || (gesture.source !== "classic-canvas" && gesture.source !== "red-dot")) return;
+  const maxPower = getAimMaxPower(runtime.aimRuntime.activeAim ?? {
+    isRook: runtime.aimRuntime.selectedPieceId !== null && isRookPiece(runtime.aimRuntime.selectedPieceId, runtime.physicsRuntime.pieces),
+    isBishop: runtime.aimRuntime.selectedPieceId !== null && isBishopPiece(runtime.aimRuntime.selectedPieceId, runtime.physicsRuntime.pieces),
+    hasCustomSpin: runtime.aimParametersRuntime.strikePointOverride !== null,
+  });
+  const rect = runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+  const dock = runtime.cancelControl?.hidden === false ? runtime.cancelControl.getBoundingClientRect() : null;
+  const dockTop = dock && event.clientX >= dock.left && event.clientX <= dock.right
+    ? Math.max(rect.bottom, dock.top - 0.5) : rect.bottom;
+  const bottom = Math.min(dockTop, Number.isFinite(window.innerHeight) ? window.innerHeight : dockTop);
+  const available = gesture.source === "red-dot"
+    ? Math.max(0, bottom - gesture.startY)
+    : rayDistanceToRectEdge(gesture.startX, gesture.startY,
+        event.clientX - gesture.startX, event.clientY - gesture.startY, rect);
+  message.hidden = available + 0.01 >= gesture.maxDragPixels * maxPower ||
+    (gesture.source === "classic-canvas" && event.clientX === gesture.startX && event.clientY === gesture.startY);
+  message.textContent = gesture.source === "red-dot" ? powerControlsCopy().redDotUnavailable : powerControlsCopy().unavailable;
 }
 
 /**
@@ -1065,6 +1093,7 @@ function cancelInteraction(
   const captureElement = runtime.activeCaptureElement;
   const pointerId = runtime.activePointerId;
   runtime.state = "cancel";
+  if (runtime.reachabilityFeedback) runtime.reachabilityFeedback.hidden = true;
   runtime.isPointerOverCancel = false;
   runtime.sceneRuntime.renderer.domElement.classList?.remove("is-outside-aim-release");
   if (runtime.cancelControl) {
@@ -1154,6 +1183,7 @@ function buildLaunchRequest(
  * 큐 승인 때만 선택 해제와 펄스를 실행하고 거절 때는 미리보기와 원인을 남긴다.
  */
 function commitActiveLaunch(runtime: InputRuntime): void {
+  if (runtime.state === "launch" || runtime.activePointerId === null) return;
   runtime.state = "launch";
   let request: LaunchRequest | null;
   try {
@@ -1554,6 +1584,7 @@ function handleCanvasPointerDown(
       maximumDistance: 0,
       candidatePieceId: swapTargetId,
       maxDragPixels: MAX_DRAG_PIXELS,
+      mousePowerDistance: getMousePowerDistance(),
     };
     if (isBilliardsTouch) {
       runtime.orbitTouchPointerIds.add(event.pointerId);
@@ -1587,6 +1618,7 @@ function handleCanvasPointerDown(
         maximumDistance: 0,
         candidatePieceId: selectedId,
         maxDragPixels: MAX_DRAG_PIXELS,
+        mousePowerDistance: getMousePowerDistance(),
       };
       runtime.strikeSurfacePending = null;
       runtime.sceneRuntime.controls.enabled = false;
@@ -1699,6 +1731,7 @@ function handleCanvasPointerDown(
         event,
         window.innerHeight,
       ),
+      mousePowerDistance: getMousePowerDistance(),
     };
     setAimPower(runtime.aimParametersRuntime, 0);
     canvas.setPointerCapture(event.pointerId);
@@ -1742,7 +1775,8 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectablePieceId,
-      maxDragPixels: MAX_DRAG_PIXELS,
+      maxDragPixels: computeEffectiveMaxDragPixels(event, window.innerHeight),
+      mousePowerDistance: getMousePowerDistance(),
     };
     canvas.setPointerCapture(event.pointerId);
     runtime.strategy.onAimBegin(runtime, selectablePieceId, event);
@@ -1760,6 +1794,7 @@ function handleCanvasPointerDown(
     maximumDistance: 0,
     candidatePieceId: selectablePieceId,
     maxDragPixels: MAX_DRAG_PIXELS,
+    mousePowerDistance: getMousePowerDistance(),
   };
   if (isBilliardsTouch) {
     // 카메라 터치는 OrbitControls가 pointer capture를 소유하도록 입력 런타임은 관찰만 한다.
@@ -1778,7 +1813,7 @@ function handleCanvasPointerMove(
 ): void {
   if (runtime.policy.isInputBlocked()) {
     event.preventDefault();
-    if (runtime.gesture?.source === "classic-canvas") cancelInteraction(runtime, false);
+    if (runtime.activePointerId === event.pointerId) cancelInteraction(runtime, false);
     return;
   }
   const gesture = runtime.gesture;
@@ -1825,7 +1860,9 @@ function handleCanvasPointerMove(
       runtime.aimRuntime,
       event.clientX,
       event.clientY,
+      gesture.maxDragPixels,
     );
+    updateReachability(runtime, event);
   } else if (gesture.source === "red-dot") {
     event.preventDefault();
     const overCancel = isPointerOverElement(
@@ -1860,6 +1897,7 @@ function handleCanvasPointerMove(
       ),
       maxPower,
     );
+    updateReachability(runtime, event);
     const solution = runtime.preparedStrikeSolution;
     if (solution !== null) {
       updateDirectedAim(
@@ -1903,14 +1941,18 @@ function handleCanvasPointerUp(
   }
   if (runtime.policy.isInputBlocked()) {
     event.preventDefault();
-    if (runtime.gesture?.source === "classic-canvas") cancelInteraction(runtime, false);
+    if (runtime.activePointerId === event.pointerId) cancelInteraction(runtime, false);
     return;
   }
   const gesture = runtime.gesture;
   if (
     event.pointerId !== runtime.activePointerId ||
-    gesture === null
+    gesture === null || runtime.state === "launch"
   ) {
+    return;
+  }
+  if (gesture.mousePowerDistance !== getMousePowerDistance()) {
+    cancelInteraction(runtime, false);
     return;
   }
   if (
@@ -1938,6 +1980,7 @@ function handleCanvasPointerUp(
   }
   if (gesture.source === "red-dot") {
     event.preventDefault();
+    handleCanvasPointerMove(runtime, event);
     if (
       shouldLaunchRedDotPull(
         runtime.aimParametersRuntime.normalizedPower,
@@ -1961,6 +2004,7 @@ function handleCanvasPointerUp(
   }
   if (gesture.source === "classic-canvas") {
     event.preventDefault();
+    updateAimPointer(runtime.aimRuntime, event.clientX, event.clientY, gesture.maxDragPixels);
     commitActiveLaunch(runtime);
     return;
   }
@@ -2184,6 +2228,10 @@ export function createInputRuntime(
   cancelFeedback.className = "classic-cancel-feedback";
   cancelFeedback.setAttribute("role", "status");
   cancelFeedback.hidden = true;
+  const reachabilityFeedback = document.createElement("div");
+  reachabilityFeedback.className = "aim-reachability-feedback";
+  reachabilityFeedback.setAttribute("role", "status");
+  reachabilityFeedback.hidden = true;
 
   const updateCancelControlLabels = () => {
     const isCoarse = isCoarsePointerEnvironment();
@@ -2211,7 +2259,7 @@ export function createInputRuntime(
   if (overlayContainer === null) {
     throw new Error("타점 패널을 붙일 게임 컨테이너가 없습니다.");
   }
-  overlayContainer.append(cancelControl, cancelFeedback);
+  overlayContainer.append(cancelControl, cancelFeedback, reachabilityFeedback);
   const strikePointPanel =
     createStrikePointPanel(overlayContainer);
   const kingSwapBanner = document.createElement("div");
@@ -2258,6 +2306,7 @@ export function createInputRuntime(
     cancelControlTitle,
     cancelControlHint,
     cancelFeedback,
+    reachabilityFeedback,
     isPointerOverCancel: false,
   };
 
@@ -2478,6 +2527,9 @@ export function createInputRuntime(
     cancelInputInteraction(runtime, true),
   );
   window.addEventListener("resize", () => {
+    if (runtime.activePointerId !== null) cancelInputInteraction(runtime, false);
+  });
+  subscribeMousePowerDistance(() => {
     if (runtime.activePointerId !== null) cancelInputInteraction(runtime, false);
   });
   document.addEventListener("visibilitychange", () => {

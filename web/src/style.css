@@ -1523,6 +1523,20 @@ body {
   line-height: 1.35;
 }
 
+.tutorial-itch-auth { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 8px; margin-top: 6px; pointer-events: auto; }
+.tutorial-itch-auth button { min-height: 32px; padding: 5px 10px; border-radius: 5px; border: 1px solid #60a5fa; background: #1d4ed8; color: white; font: 600 12px/1.2 system-ui, sans-serif; cursor: pointer; }
+.tutorial-itch-auth .tutorial-itch-cancel { border-color: #64748b; background: transparent; }
+.tutorial-itch-auth button:disabled { opacity: .65; cursor: wait; }
+.tutorial-itch-auth button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+.tutorial-itch-status { flex: 0 0 100%; margin: 0; color: #bfdbfe; font: 11px/1.25 system-ui, sans-serif; }
+.tutorial-itch-status:empty { display: none; }
+@media (pointer: coarse) { .tutorial-itch-auth button { min-height: 44px; } }
+@media (max-height: 500px) {
+  .tutorial-itch-auth { margin-top: 3px; }
+  .tutorial-itch-auth button { min-height: 30px; padding: 3px 8px; }
+  .tutorial-itch-status { font-size: 10px; }
+}
+
 /* 튜토리얼 팝업 모달 */
 .tutorial-modal-overlay {
   position: fixed;

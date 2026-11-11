@@ -1323,6 +1323,7 @@ export function applyPowerReadoutVisuals(
     powerReadout.textContent = `${percent}%`;
   }
   powerReadout.dataset.maxPower = `${Math.round(maxPower * 100)}%`;
+  powerReadout.dataset.powerTicks = maxPower > 1 ? "25  ·  50  ·  75  ·  100  ·  150%" : "25  ·  50  ·  75  ·  100%";
   powerReadout.dataset.baseReached = normalizedPower >= 1 ? "true" : "false";
 }
 
@@ -1499,6 +1500,7 @@ export function updateAimPointer(
   runtime: AimRuntime,
   clientX: number,
   clientY: number,
+  maxDragPixels = MAX_DRAG_PIXELS,
 ): void {
   const activeAim = runtime.activeAim;
   if (activeAim === null) {
@@ -1508,7 +1510,7 @@ export function updateAimPointer(
   const deltaX = clientX - activeAim.startX;
   const deltaY = clientY - activeAim.startY;
   const dragLength = Math.hypot(deltaX, deltaY);
-  activeAim.normalizedPower = Math.min(dragLength / MAX_DRAG_PIXELS, maxPower);
+  activeAim.normalizedPower = Math.min(dragLength / maxDragPixels, maxPower);
   if (activeAim.tracksPowerSounds) {
     updateAimPowerSounds(activeAim.normalizedPower, maxPower);
   }

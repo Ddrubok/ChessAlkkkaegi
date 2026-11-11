@@ -733,7 +733,7 @@ export function createSceneRuntime(
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): SceneRuntime {
   const scene = new Scene();
-  scene.background = new Color(PLATFORM.id === "crazygames" ? 0x24221e : 0x171410);
+  scene.background = new Color(PLATFORM.features.solo ? 0x24221e : 0x171410);
 
   const camera = new PerspectiveCamera(
     42,
@@ -752,9 +752,9 @@ export function createSceneRuntime(
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFSoftShadowMap;
   renderer.outputColorSpace = SRGBColorSpace;
-  if (PLATFORM.id === "crazygames") renderer.toneMapping = ACESFilmicToneMapping;
+  if (PLATFORM.features.solo) renderer.toneMapping = ACESFilmicToneMapping;
   renderer.domElement.className = "game-canvas";
-  if (PLATFORM.id === "crazygames") {
+  if (PLATFORM.features.solo) {
     renderer.domElement.classList.add("game-canvas-crazygames");
   }
   renderer.domElement.setAttribute("aria-label", uiText("board"));
@@ -782,7 +782,7 @@ export function createSceneRuntime(
   const hemisphere = new HemisphereLight(0xfff4df, 0x282d38, 1.65);
   scene.add(hemisphere);
 
-  const sunlight = new DirectionalLight(0xfff0d4, PLATFORM.id === "crazygames" ? 2.6 : 3.2);
+  const sunlight = new DirectionalLight(0xfff0d4, PLATFORM.features.solo ? 2.6 : 3.2);
   sunlight.position.set(
     -boardHalfExtent,
     boardHalfExtent * 2.7,
@@ -799,7 +799,7 @@ export function createSceneRuntime(
   sunlight.shadow.bias = -0.0002;
   sunlight.target.position.set(0, 0, 0);
   scene.add(sunlight, sunlight.target);
-  if (PLATFORM.id === "crazygames") {
+  if (PLATFORM.features.solo) {
     // Rear fill separates the rival silhouettes without another shadow map.
     const rim = new DirectionalLight(0xd8e5f4, 1.8);
     rim.position.set(boardHalfExtent * 1.6, boardHalfExtent * 2, boardHalfExtent * 1.8);
@@ -882,7 +882,7 @@ export function createSceneRuntime(
     metalness: 0.03,
   });
   const blackMaterial = new MeshStandardMaterial({
-    color: PLATFORM.id === "crazygames" ? 0x3b3d40 : 0x292b2f,
+    color: PLATFORM.features.solo ? 0x3b3d40 : 0x292b2f,
     roughness: 0.5,
     metalness: 0.08,
   });

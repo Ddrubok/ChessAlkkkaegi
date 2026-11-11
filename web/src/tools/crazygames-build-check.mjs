@@ -56,7 +56,7 @@ const runtime = (await Promise.all(files.filter(file => file.name.endsWith('.js'
 if (!names.has('privacy.html')) failures.push('privacy.html: missing packaged policy');
 else {
   const privacy = await readFile(join(root, 'privacy.html'), 'utf8');
-  if (!/<html lang="en">/u.test(privacy) || !/chessalkkagi Privacy Policy/u.test(privacy)) failures.push('privacy.html: English policy missing');
+  if (!/<html lang="en">/u.test(privacy) || !/Chess Alkkagi Privacy Policy/u.test(privacy)) failures.push('privacy.html: English policy missing');
   if (/<script\b|<iframe\b|<img\b|\bon\w+\s*=|https?:\/\/|google-analytics|googletagmanager|pixel/iu.test(privacy)) failures.push('privacy.html: script, tracking, or remote resource');
 }
 if (!runtime.includes('Account progress uses your CrazyGames ID. Run upgrades are saved in this browser.')
@@ -77,7 +77,7 @@ for (const match of runtime.matchAll(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z
 
 const html = await readFile(join(root, 'index.html'), 'utf8');
 if (!/<html lang="en">/u.test(html)) failures.push('index.html: English boot language missing');
-if (!/<title>chessalkkagi<\/title>/u.test(html) || !/<h1>chessalkkagi<\/h1>/u.test(html) || !/Loading…/u.test(html)) failures.push('index.html: CrazyGames title or English boot copy missing');
+if (!/<title>Chess Alkkagi<\/title>/u.test(html) || !/<h1>Chess Alkkagi<\/h1>/u.test(html) || !/Loading…/u.test(html)) failures.push('index.html: CrazyGames title or English boot copy missing');
 if (/<nav\b|google-adsense|about\.html|guide\.html|tiers\.html|updates\.html|boot-language\.js/iu.test(html)) failures.push('index.html: promotional boot content');
 for (const match of html.matchAll(/<(?:script|link|img)\b[^>]*(?:src|href)="([^"#?]+)"/gu)) {
   const path = match[1];
