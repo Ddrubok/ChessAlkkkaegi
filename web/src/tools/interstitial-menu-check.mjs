@@ -11,7 +11,7 @@ const fn = stripTypeScriptTypes(source.slice(start, source.indexOf('/**', start)
   .replace('export ', '');
 let adCalls = 0, exits = 0, menus = 0, releaseAd;
 let behavior = () => Promise.resolve(false);
-const platform = { id: 'web' };
+const platform = { id: 'web', features: { solo: false } };
 const leaves = [];
 const transition = runInNewContext(`${fn}; returnToMainMenu`, {
   PLATFORM: platform,
@@ -42,6 +42,7 @@ await transition(runtime, true);
 assert.equal(exits, 4, 'no prepared ad proceeds directly to menu');
 assert.equal(runtime.busy, false);
 platform.id = 'crazygames';
+platform.features.solo = true;
 const callsBeforePortal = adCalls;
 await transition(runtime, true);
 assert.equal(adCalls, callsBeforePortal, 'CrazyGames Basic never requests a result-menu ad');
