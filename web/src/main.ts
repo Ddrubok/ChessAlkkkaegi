@@ -13,6 +13,8 @@ import { readOpponentCosmetics } from "./banner-profile";
 import { getPlayerBannerTheme } from "./banner-theme";
 import { createPlayerBanners } from "./player-banner";
 import { uiText } from "./ui-text";
+import { createPieceIdentity } from "./piece-identity";
+import "./piece-identity.css";
 import "./style.css";
 import "./lobby.css";
 import "./hotseat-map-menu.css";
@@ -472,6 +474,7 @@ async function bootstrap(): Promise<void> {
     PIECE_INSTANCES,
     boardHalfExtent,
   );
+  const pieceIdentity = createPieceIdentity(app);
 
   loadingPhase.textContent = getRuntimeText("startup.preparing_physics");
   menuRuntime.piecePreviewServices = { renderer: sceneRuntime.renderer, assets };
@@ -2253,6 +2256,13 @@ async function bootstrap(): Promise<void> {
       (now, frameDelta) => {
         turnHud.update(now, frameDelta);
         tutorialManager.updateInputGuide(inputRuntime);
+        const selectedBinding = inputRuntime.policy.isInputBlocked() || turnRuntime.phase !== "ready"
+          ? undefined : physicsRuntime.pieces.get(aimRuntime.selectedPieceId ?? "");
+        pieceIdentity.update(selectedBinding?.instance.type ?? null, gameModeRuntime!.mode,
+          aimParametersRuntime.strikePointOverride !== null,
+          selectedBinding ? turnRuntime.kingSpecialUsed[selectedBinding.instance.side] : false,
+          turnRuntime.promotionEnabled !== false);
+        if (inputRuntime.activePointerId !== null) pieceIdentity.element.open = false;
         playerBanners.update();
         const weeklyVisible = gameModeRuntime?.mode === "weekly" && weeklyRun !== null && !isMenuBlocking(menuRuntime) && !gameModeRuntime.switching && turnRuntime.phase !== "match-over" && !weeklyRecoveryVisible;
         if (weeklyRun && weeklyVisible) {

@@ -1,0 +1,2895 @@
+{
+  "phase": "after",
+  "scope": "Local browser; test-only runtime instrumentation; scripted pointer input; no hosted account or server operations",
+  "checks": [
+    "pure click does not queue a shot",
+    "one-pixel jitter does not queue a shot",
+    "50% drag displays computed 50% power",
+    "one valid release queues exactly one shot",
+    "1366x768 Rook direction 0 reaches 150%",
+    "1366x768 Rook direction 0 release stays valid",
+    "1366x768 Rook direction 1 reaches 150%",
+    "1366x768 Rook direction 1 release stays valid",
+    "1366x768 Rook direction 2 reaches 150%",
+    "1366x768 Rook direction 2 release stays valid",
+    "camera stays fixed while pulling and holding A",
+    "power readout is not covered by cancel target",
+    "resize cancels an active power gesture",
+    "release after resize does not fire",
+    "1366x768 Rook direction 3 reaches 150%",
+    "1366x768 Rook direction 3 release stays valid",
+    "1366x768 Rook direction 4 reaches 150%",
+    "1366x768 Rook direction 4 release stays valid",
+    "1366x768 Rook direction 5 reaches 150%",
+    "1366x768 Rook direction 5 release stays valid",
+    "1366x768 Rook direction 6 reaches 150%",
+    "1366x768 Rook direction 6 release stays valid",
+    "1366x768 Rook direction 7 reaches 150%",
+    "1366x768 Rook direction 7 release stays valid",
+    "1366x768 Queen direction 0 reaches 150%",
+    "1366x768 Queen direction 0 release stays valid",
+    "1366x768 Queen direction 1 reaches 150%",
+    "1366x768 Queen direction 1 release stays valid",
+    "1366x768 Queen direction 2 reaches 150%",
+    "1366x768 Queen direction 2 release stays valid",
+    "1366x768 Queen direction 3 reaches 150%",
+    "1366x768 Queen direction 3 release stays valid",
+    "1366x768 Queen direction 4 reaches 150%",
+    "1366x768 Queen direction 4 release stays valid",
+    "1366x768 Queen direction 5 reaches 150%",
+    "1366x768 Queen direction 5 release stays valid",
+    "1366x768 Queen direction 6 reaches 150%",
+    "1366x768 Queen direction 6 release stays valid",
+    "1366x768 Queen direction 7 reaches 150%",
+    "1366x768 Queen direction 7 release stays valid",
+    "1366x768 King direction 0 reaches 100%",
+    "1366x768 King direction 0 release stays valid",
+    "1366x768 King direction 1 reaches 100%",
+    "1366x768 King direction 1 release stays valid",
+    "1366x768 King direction 2 reaches 100%",
+    "1366x768 King direction 2 release stays valid",
+    "1366x768 King direction 3 reaches 100%",
+    "1366x768 King direction 3 release stays valid",
+    "1366x768 King direction 4 reaches 100%",
+    "1366x768 King direction 4 release stays valid",
+    "1366x768 King direction 5 reaches 100%",
+    "1366x768 King direction 5 release stays valid",
+    "1366x768 King direction 6 reaches 100%",
+    "1366x768 King direction 6 release stays valid",
+    "1366x768 King direction 7 reaches 100%",
+    "1366x768 King direction 7 release stays valid",
+    "1366x768 Rook direction 0 reaches 150%",
+    "1366x768 Rook direction 0 release stays valid",
+    "1366x768 Rook direction 1 reaches 150%",
+    "1366x768 Rook direction 1 release stays valid",
+    "1366x768 Rook direction 2 reaches 150%",
+    "1366x768 Rook direction 2 release stays valid",
+    "1366x768 Rook direction 3 reaches 150%",
+    "1366x768 Rook direction 3 release stays valid",
+    "1366x768 Rook direction 4 reaches 150%",
+    "1366x768 Rook direction 4 release stays valid",
+    "1366x768 Rook direction 5 reaches 150%",
+    "1366x768 Rook direction 5 release stays valid",
+    "1366x768 Rook direction 6 reaches 150%",
+    "1366x768 Rook direction 6 release stays valid",
+    "1366x768 Rook direction 7 reaches 150%",
+    "1366x768 Rook direction 7 release stays valid",
+    "selected rook shows its actual central-strike cap",
+    "piece summary does not cover player identity or turn",
+    "native details opens without launching",
+    "settings discloses actual viewport distance",
+    "controls choice keeps keyboard focus after resize",
+    "1366x768 billiards red dot reaches 150%",
+    "1366x768 billiards release queues exactly one maximum shot",
+    "800x450 Rook direction 0 reaches 150%",
+    "800x450 Rook direction 0 release stays valid",
+    "800x450 Rook direction 1 reaches 150%",
+    "800x450 Rook direction 1 release stays valid",
+    "800x450 Rook direction 2 reaches 150%",
+    "800x450 Rook direction 2 release stays valid",
+    "camera stays fixed while pulling and holding A",
+    "power readout is not covered by cancel target",
+    "resize cancels an active power gesture",
+    "release after resize does not fire",
+    "800x450 Rook direction 3 reaches 150%",
+    "800x450 Rook direction 3 release stays valid",
+    "800x450 Rook direction 4 reaches 150%",
+    "800x450 Rook direction 4 release stays valid",
+    "800x450 Rook direction 5 reaches 150%",
+    "800x450 Rook direction 5 release stays valid",
+    "800x450 Rook direction 6 reaches 150%",
+    "800x450 Rook direction 6 release stays valid",
+    "800x450 Rook direction 7 reaches 150%",
+    "800x450 Rook direction 7 release stays valid",
+    "800x450 Queen direction 0 reaches 150%",
+    "800x450 Queen direction 0 release stays valid",
+    "800x450 Queen direction 1 reaches 150%",
+    "800x450 Queen direction 1 release stays valid",
+    "800x450 Queen direction 2 reaches 150%",
+    "800x450 Queen direction 2 release stays valid",
+    "800x450 Queen direction 3 reaches 150%",
+    "800x450 Queen direction 3 release stays valid",
+    "800x450 Queen direction 4 reaches 150%",
+    "800x450 Queen direction 4 release stays valid",
+    "800x450 Queen direction 5 reaches 150%",
+    "800x450 Queen direction 5 release stays valid",
+    "800x450 Queen direction 6 reaches 150%",
+    "800x450 Queen direction 6 release stays valid",
+    "800x450 Queen direction 7 reaches 150%",
+    "800x450 Queen direction 7 release stays valid",
+    "800x450 King direction 0 reaches 100%",
+    "800x450 King direction 0 release stays valid",
+    "800x450 King direction 1 reaches 100%",
+    "800x450 King direction 1 release stays valid",
+    "800x450 King direction 2 reaches 100%",
+    "800x450 King direction 2 release stays valid",
+    "800x450 King direction 3 reaches 100%",
+    "800x450 King direction 3 release stays valid",
+    "800x450 King direction 4 reaches 100%",
+    "800x450 King direction 4 release stays valid",
+    "800x450 King direction 5 reaches 100%",
+    "800x450 King direction 5 release stays valid",
+    "800x450 King direction 6 reaches 100%",
+    "800x450 King direction 6 release stays valid",
+    "800x450 King direction 7 reaches 100%",
+    "800x450 King direction 7 release stays valid",
+    "800x450 Rook direction 0 reaches 150%",
+    "800x450 Rook direction 0 release stays valid",
+    "800x450 Rook direction 1 reaches 150%",
+    "800x450 Rook direction 1 release stays valid",
+    "800x450 Rook direction 2 reaches 150%",
+    "800x450 Rook direction 2 release stays valid",
+    "800x450 Rook direction 3 reaches 150%",
+    "800x450 Rook direction 3 release stays valid",
+    "800x450 Rook direction 4 reaches 150%",
+    "800x450 Rook direction 4 release stays valid",
+    "800x450 Rook direction 5 reaches 150%",
+    "800x450 Rook direction 5 release stays valid",
+    "800x450 Rook direction 6 reaches 150%",
+    "800x450 Rook direction 6 release stays valid",
+    "800x450 Rook direction 7 reaches 150%",
+    "800x450 Rook direction 7 release stays valid",
+    "selected rook shows its actual central-strike cap",
+    "piece summary does not cover player identity or turn",
+    "native details opens without launching",
+    "settings discloses actual viewport distance",
+    "controls choice keeps keyboard focus after resize",
+    "800x450 billiards red dot reaches 150%",
+    "800x450 billiards release queues exactly one maximum shot",
+    "390x844 Rook direction 0 reaches 150%",
+    "390x844 Rook direction 0 release stays valid",
+    "390x844 Rook direction 1 reaches 150%",
+    "390x844 Rook direction 1 release stays valid",
+    "390x844 Rook direction 2 reaches 150%",
+    "390x844 Rook direction 2 release stays valid",
+    "camera stays fixed while pulling and holding A",
+    "power readout is not covered by cancel target",
+    "resize cancels an active power gesture",
+    "release after resize does not fire",
+    "390x844 Rook direction 3 reaches 150%",
+    "390x844 Rook direction 3 release stays valid",
+    "390x844 Rook direction 4 reaches 150%",
+    "390x844 Rook direction 4 release stays valid",
+    "390x844 Rook direction 5 reaches 150%",
+    "390x844 Rook direction 5 release stays valid",
+    "390x844 Rook direction 6 reaches 150%",
+    "390x844 Rook direction 6 release stays valid",
+    "390x844 Rook direction 7 reaches 150%",
+    "390x844 Rook direction 7 release stays valid",
+    "390x844 Queen direction 0 reaches 150%",
+    "390x844 Queen direction 0 release stays valid",
+    "390x844 Queen direction 1 reaches 150%",
+    "390x844 Queen direction 1 release stays valid",
+    "390x844 Queen direction 2 reaches 150%",
+    "390x844 Queen direction 2 release stays valid",
+    "390x844 Queen direction 3 reaches 150%",
+    "390x844 Queen direction 3 release stays valid",
+    "390x844 Queen direction 4 reaches 150%",
+    "390x844 Queen direction 4 release stays valid",
+    "390x844 Queen direction 5 reaches 150%",
+    "390x844 Queen direction 5 release stays valid",
+    "390x844 Queen direction 6 reaches 150%",
+    "390x844 Queen direction 6 release stays valid",
+    "390x844 Queen direction 7 reaches 150%",
+    "390x844 Queen direction 7 release stays valid",
+    "390x844 King direction 0 reaches 100%",
+    "390x844 King direction 0 release stays valid",
+    "390x844 King direction 1 reaches 100%",
+    "390x844 King direction 1 release stays valid",
+    "390x844 King direction 2 reaches 100%",
+    "390x844 King direction 2 release stays valid",
+    "390x844 King direction 3 reaches 100%",
+    "390x844 King direction 3 release stays valid",
+    "390x844 King direction 4 reaches 100%",
+    "390x844 King direction 4 release stays valid",
+    "390x844 King direction 5 reaches 100%",
+    "390x844 King direction 5 release stays valid",
+    "390x844 King direction 6 reaches 100%",
+    "390x844 King direction 6 release stays valid",
+    "390x844 King direction 7 reaches 100%",
+    "390x844 King direction 7 release stays valid",
+    "390x844 Rook direction 0 reaches 150%",
+    "390x844 Rook direction 0 release stays valid",
+    "390x844 Rook direction 1 reaches 150%",
+    "390x844 Rook direction 1 release stays valid",
+    "390x844 Rook direction 2 reaches 150%",
+    "390x844 Rook direction 2 release stays valid",
+    "390x844 Rook direction 3 reaches 150%",
+    "390x844 Rook direction 3 release stays valid",
+    "390x844 Rook direction 4 reaches 150%",
+    "390x844 Rook direction 4 release stays valid",
+    "390x844 Rook direction 5 reaches 150%",
+    "390x844 Rook direction 5 release stays valid",
+    "390x844 Rook direction 6 reaches 150%",
+    "390x844 Rook direction 6 release stays valid",
+    "390x844 Rook direction 7 reaches 150%",
+    "390x844 Rook direction 7 release stays valid",
+    "selected rook shows its actual central-strike cap",
+    "piece summary does not cover player identity or turn",
+    "native details opens without launching",
+    "settings discloses actual viewport distance",
+    "controls choice keeps keyboard focus after resize",
+    "390x844 billiards red dot reaches 150%",
+    "390x844 billiards release queues exactly one maximum shot",
+    "Korean controls show the effective distance",
+    "800x450 first-flick direction arrow remains visible at the effective pull distance",
+    "390x844 first-flick direction arrow remains visible at the effective pull distance",
+    "no page errors in exercised flow"
+  ],
+  "observations": [
+    {
+      "name": "one-pixel-jitter",
+      "before": {
+        "phase": "ready",
+        "side": "white",
+        "selected": null,
+        "canvas": {
+          "x": 0,
+          "y": 200.796875,
+          "width": 1366,
+          "height": 417.1875
+        },
+        "requests": []
+      },
+      "after": {
+        "phase": "ready",
+        "side": "white",
+        "selected": "white-pawn-d6",
+        "canvas": {
+          "x": 0,
+          "y": 200.796875,
+          "width": 1366,
+          "height": 417.1875
+        },
+        "requests": []
+      }
+    },
+    {
+      "name": "stage1-geometry",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "canvas": {
+        "width": 1366,
+        "height": 610
+      },
+      "pieces": [
+        {
+          "id": "white-pawn-c2",
+          "x": 603.3883572196505,
+          "y": 489.77260248721086
+        },
+        {
+          "id": "white-pawn-d2",
+          "x": 656.4775595090401,
+          "y": 489.7869101216122
+        },
+        {
+          "id": "white-pawn-f2",
+          "x": 762.6274095396931,
+          "y": 489.77531858756583
+        },
+        {
+          "id": "black-pawn-c7",
+          "x": 617.9309748538334,
+          "y": 310.4085654007117
+        },
+        {
+          "id": "black-pawn-d7",
+          "x": 661.28663123902,
+          "y": 310.45886537046044
+        },
+        {
+          "id": "black-pawn-f7",
+          "x": 748.059695846853,
+          "y": 310.4094394646209
+        }
+      ]
+    },
+    {
+      "name": "stage1-geometry",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "canvas": {
+        "width": 1280,
+        "height": 562
+      },
+      "pieces": [
+        {
+          "id": "white-pawn-c2",
+          "x": 566.6528799302354,
+          "y": 458.0003321275615
+        },
+        {
+          "id": "white-pawn-d2",
+          "x": 615.5645712198042,
+          "y": 458.0135139153214
+        },
+        {
+          "id": "white-pawn-f2",
+          "x": 713.3616461660779,
+          "y": 458.0028345019869
+        },
+        {
+          "id": "black-pawn-c7",
+          "x": 580.0511604391055,
+          "y": 292.7501864839344
+        },
+        {
+          "id": "black-pawn-d7",
+          "x": 619.9952241907038,
+          "y": 292.79652842327664
+        },
+        {
+          "id": "black-pawn-f7",
+          "x": 699.9402443703792,
+          "y": 292.75099176904416
+        }
+      ]
+    },
+    {
+      "name": "stage1-geometry",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "canvas": {
+        "width": 1920,
+        "height": 922
+      },
+      "pieces": [
+        {
+          "id": "white-pawn-c2",
+          "x": 839.668959600849,
+          "y": 696.2923598249319
+        },
+        {
+          "id": "white-pawn-d2",
+          "x": 919.911983389074,
+          "y": 696.3139854625024
+        },
+        {
+          "id": "white-pawn-f2",
+          "x": 1080.3548714681917,
+          "y": 696.2964651438291
+        },
+        {
+          "id": "black-pawn-c7",
+          "x": 861.6497685495644,
+          "y": 425.1880283597643
+        },
+        {
+          "id": "black-pawn-d7",
+          "x": 927.1807770530762,
+          "y": 425.264055527155
+        },
+        {
+          "id": "black-pawn-f7",
+          "x": 1058.3361304439318,
+          "y": 425.1893494858696
+        }
+      ]
+    },
+    {
+      "name": "stage1-geometry",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "canvas": {
+        "width": 800,
+        "height": 348
+      },
+      "pieces": [
+        {
+          "id": "white-pawn-c2",
+          "x": 354.5822103482597,
+          "y": 308.34896010745797
+        },
+        {
+          "id": "white-pawn-d2",
+          "x": 384.8691650969606,
+          "y": 308.3571224956083
+        },
+        {
+          "id": "white-pawn-f2",
+          "x": 445.42678445871013,
+          "y": 308.3505096204474
+        },
+        {
+          "id": "black-pawn-c7",
+          "x": 362.878654506777,
+          "y": 206.02324714663555
+        },
+        {
+          "id": "black-pawn-d7",
+          "x": 387.61270110029346,
+          "y": 206.05194286708235
+        },
+        {
+          "id": "black-pawn-f7",
+          "x": 437.1160232044341,
+          "y": 206.02374579293127
+        }
+      ]
+    },
+    {
+      "name": "stage1-geometry",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "canvas": {
+        "width": 390,
+        "height": 686
+      },
+      "pieces": [
+        {
+          "id": "white-pawn-c2",
+          "x": 155.10941667852288,
+          "y": 478.4914637079659
+        },
+        {
+          "id": "white-pawn-d2",
+          "x": 181.7106484342135,
+          "y": 478.4982344913292
+        },
+        {
+          "id": "white-pawn-f2",
+          "x": 234.89842250166447,
+          "y": 478.49274899842976
+        },
+        {
+          "id": "black-pawn-c7",
+          "x": 158.71906186630122,
+          "y": 384.06413618100635
+        },
+        {
+          "id": "black-pawn-d7",
+          "x": 182.8935353886459,
+          "y": 384.0936380768754
+        },
+        {
+          "id": "black-pawn-f7",
+          "x": 231.27571615472107,
+          "y": 384.06464854042656
+        }
+      ]
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.49999968634995,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.49999968634995,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.499999959561513,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.49999968634995,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.499999959561513,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.49999968634995,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.4999993979158612,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.49999968634995,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.499999959561513,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 0,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999999730410086,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 1,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999996585188958,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 2,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999999730410086,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 3,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 1,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 4,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999999730410086,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 5,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 1,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 6,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999999730410086,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 7,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999996585188958,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.4999993979158612,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.499999959561513,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.49999968634995,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.499999959561513,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.49999968634995,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "billiards-maximum",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "dot": {
+        "x": 682.931855436308,
+        "y": 338.54989068020143,
+        "d": 54.336000000000006,
+        "requests": 1
+      },
+      "actual": {
+        "source": "red-dot",
+        "power": 1.499999959561513
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.4999999633494596,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.4999988032322304,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.4999994911156398,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.4999999633494596,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.4999994911156398,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 0,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999996473809251,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 1,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999999755661083,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 2,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 1,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 3,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999999755661083,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 4,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999996473809251,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 5,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.999999503332623,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 6,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999996473809251,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 7,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.999999503332623,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.4999999633494596,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.4999990188819692,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.4999994911156398,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          7.30951190174067e-16,
+          6.628878955971807,
+          -5.968669421117858
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "billiards-maximum",
+      "viewport": {
+        "width": 800,
+        "height": 450
+      },
+      "dot": {
+        "x": 399.9674245151988,
+        "y": 219.74090195256997,
+        "d": 22.848,
+        "requests": 2
+      },
+      "actual": {
+        "source": "red-dot",
+        "power": 1.5
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.499999782326316,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.4999997042765822,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.5,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.4999997042765822,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-a1",
+        "type": "Rook"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-a1",
+        "power": 1.499999782326316,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.5,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.499999782326316,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-queen-d1",
+        "type": "Queen"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-queen-d1",
+        "power": 1.499999782326316,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 0,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.999999929357458,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 1,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999995426853597,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 2,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.999999929357458,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 3,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.9999995426853597,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 4,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.999999929357458,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 5,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 1,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 6,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 0.999999929357458,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-king-e1",
+        "type": "King"
+      },
+      "direction": 7,
+      "expectedPower": 1,
+      "actual": {
+        "id": "white-king-e1",
+        "power": 1,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 0,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 1,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 2,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 3,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.4999994701274055,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 4,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.4999994525202998,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 5,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 6,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.499999894036187,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "full-board-direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "piece": {
+        "id": "white-rook-h1",
+        "type": "Rook"
+      },
+      "direction": 7,
+      "expectedPower": 1.5,
+      "actual": {
+        "id": "white-rook-h1",
+        "power": 1.5,
+        "camera": [
+          8.450382011667626e-16,
+          7.663515736765759,
+          -6.9002605629240295
+        ],
+        "releaseInside": true,
+        "overCancel": false
+      }
+    },
+    {
+      "name": "billiards-maximum",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dot": {
+        "x": 48.6572060085537,
+        "y": 454.00875552798595,
+        "d": 34.56,
+        "requests": 3
+      },
+      "actual": {
+        "source": "red-dot",
+        "power": 1.499999894036187
+      }
+    }
+  ],
+  "pageErrors": [],
+  "blockedOrigins": [],
+  "screenshots": [
+    "01-first-flick.png",
+    "02-after-jitter.png",
+    "03-half-power-aim.png",
+    "04-first-shot-result.png",
+    "05-stage1.png",
+    "stage1-1366x768.png",
+    "stage1-1280x720.png",
+    "stage1-1920x1080.png",
+    "stage1-800x450.png",
+    "stage1-390x844.png",
+    "rook-150-1366x768.png",
+    "rook-150-1366x768.png",
+    "piece-hint-1366x768.png",
+    "controls-1366x768.png",
+    "billiards-150-1366x768.png",
+    "rook-150-800x450.png",
+    "rook-150-800x450.png",
+    "piece-hint-800x450.png",
+    "controls-800x450.png",
+    "billiards-150-800x450.png",
+    "rook-150-390x844.png",
+    "rook-150-390x844.png",
+    "piece-hint-390x844.png",
+    "controls-390x844.png",
+    "billiards-150-390x844.png",
+    "controls-ko-390x844.png",
+    "first-cue-800x450.png",
+    "first-cue-390x844.png"
+  ],
+  "sourceBefore": {
+    "input.ts": "4bd64e5204ef0596c35711455f42a408021393cc074d41eac5069ccd10dbb86d",
+    "power-controls.ts": "5ca9f3cc5eab61f8a0df1484d1d0395ec912b751b15bbe6fc5d04b72ca3a1429",
+    "scene.ts": "0e911554a7f871aed157804ac62b3a89c27a99ad697521e85a4ea3958c9a24d4",
+    "main.ts": "92e0b1d336b014409b7a3fe576c70ac6456a20a285535cb57cb7dc0490fc3e84",
+    "tutorial.ts": "b20fe00eb66b0383c736789cb0af55931630e002a0b89552b0020e0ea43ec202",
+    "settings-modal.ts": "5d24c5f109d2a18a0ac232033f2f3e98aab1f522171765f61f6011cb9b01845f",
+    "piece-identity.ts": "bb15023ed7c47321d8b24f4ceb9e4d56ca812aefbe4d7ab6092cfde797b8c856",
+    "piece-identity.css": "ca0c3380895160f2aa44a498352606723afa28e975ff5c4b95546363fd690446",
+    "crazygames-opening.css": "7df0e4a6b7ad8fa89a34d5f4e7bd72f07ad6e7c2ef6047db32dade641c183284",
+    "game-hud.css": "57f2d8be7702513f6e451bbf3cf121581c75dd5941e4603208c1a4dbb5bbdbe3"
+  },
+  "sourceAfter": {
+    "input.ts": "4bd64e5204ef0596c35711455f42a408021393cc074d41eac5069ccd10dbb86d",
+    "power-controls.ts": "5ca9f3cc5eab61f8a0df1484d1d0395ec912b751b15bbe6fc5d04b72ca3a1429",
+    "scene.ts": "0e911554a7f871aed157804ac62b3a89c27a99ad697521e85a4ea3958c9a24d4",
+    "main.ts": "92e0b1d336b014409b7a3fe576c70ac6456a20a285535cb57cb7dc0490fc3e84",
+    "tutorial.ts": "b20fe00eb66b0383c736789cb0af55931630e002a0b89552b0020e0ea43ec202",
+    "settings-modal.ts": "5d24c5f109d2a18a0ac232033f2f3e98aab1f522171765f61f6011cb9b01845f",
+    "piece-identity.ts": "bb15023ed7c47321d8b24f4ceb9e4d56ca812aefbe4d7ab6092cfde797b8c856",
+    "piece-identity.css": "ca0c3380895160f2aa44a498352606723afa28e975ff5c4b95546363fd690446",
+    "crazygames-opening.css": "7df0e4a6b7ad8fa89a34d5f4e7bd72f07ad6e7c2ef6047db32dade641c183284",
+    "game-hud.css": "57f2d8be7702513f6e451bbf3cf121581c75dd5941e4603208c1a4dbb5bbdbe3"
+  },
+  "sourcesChangedDuringRun": []
+}

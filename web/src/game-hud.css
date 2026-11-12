@@ -140,9 +140,9 @@
 }
 
 #app .aim-power-limits {
-  position: absolute;
-  right: 8px;
-  bottom: 6px;
+  position: static;
+  margin-top: 4px;
+  text-align: right;
   color: #f7f1df;
   font: 600 11px/1.2 ui-monospace, monospace;
   pointer-events: none;

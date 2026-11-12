@@ -59,7 +59,7 @@ import {
 import "./game-hud.css";
 import "./input.css";
 import { inputCancelCopy } from "./input-cancel-copy";
-import { getMousePowerDistance, powerControlsCopy, rayDistanceToRectEdge, subscribeMousePowerDistance } from "./power-controls";
+import { computeViewportPowerDistance, getMousePowerDistance, powerControlsCopy, rayDistanceToRectEdge, subscribeMousePowerDistance } from "./power-controls";
 import {
   isCoarsePointerEnvironment,
   isTouchPointerEvent,
@@ -155,6 +155,7 @@ interface PointerGesture {
     | "strike-surface";
   startX: number;
   startY: number;
+  pointerType?: string;
   maximumDistance: number;
   // 포인터 시작 때의 최근접 교차만 탭 release까지 보존한다.
   candidatePieceId: string | null;
@@ -498,23 +499,25 @@ export function getRedDotHitRadiusPixels(
 }
 
 /**
- * 터치는 현재 viewport 높이의 28%를 80~180px로 제한하고 마우스는 항상 180px를 쓴다.
+ * Keep the selected pull distance within the canvas's shared power budget.
  */
 export function computeEffectiveMaxDragPixels(
   event: Pick<ScreenSpacePointer, "pointerType">,
   viewportHeight: number,
+  viewportWidth?: number,
 ): number {
-  if (!isTouchPointerEvent(event)) {
-    return getMousePowerDistance();
-  }
-  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) return MAX_DRAG_PIXELS;
-  return Math.min(
-    Math.max(
+  const preferred = !isTouchPointerEvent(event) ? getMousePowerDistance()
+    : !Number.isFinite(viewportHeight) || viewportHeight <= 0 ? MAX_DRAG_PIXELS
+    : Math.min(Math.max(
       viewportHeight * TOUCH_MAX_DRAG_VIEWPORT_RATIO,
       TOUCH_MAX_DRAG_MIN_PIXELS,
-    ),
-    MAX_DRAG_PIXELS,
-  );
+    ), MAX_DRAG_PIXELS);
+  return viewportWidth === undefined ? preferred
+    : computeViewportPowerDistance(preferred, viewportWidth, viewportHeight);
+}
+
+function isArmedPowerDrag(gesture: PointerGesture): boolean {
+  return gesture.maximumDistance > (isTouchPointerEvent({ pointerType: gesture.pointerType ?? "mouse" }) ? 8 : 4);
 }
 
 function updateReachability(runtime: InputRuntime, event: PointerEvent): void {
@@ -1727,10 +1730,8 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectedId,
-      maxDragPixels: computeEffectiveMaxDragPixels(
-        event,
-        window.innerHeight,
-      ),
+      pointerType: event.pointerType,
+      maxDragPixels: computeEffectiveMaxDragPixels(event, canvas.getBoundingClientRect().height, canvas.getBoundingClientRect().width),
       mousePowerDistance: getMousePowerDistance(),
     };
     setAimPower(runtime.aimParametersRuntime, 0);
@@ -1775,7 +1776,8 @@ function handleCanvasPointerDown(
       startY: event.clientY,
       maximumDistance: 0,
       candidatePieceId: selectablePieceId,
-      maxDragPixels: computeEffectiveMaxDragPixels(event, window.innerHeight),
+      pointerType: event.pointerType,
+      maxDragPixels: computeEffectiveMaxDragPixels(event, canvas.getBoundingClientRect().height, canvas.getBoundingClientRect().width),
       mousePowerDistance: getMousePowerDistance(),
     };
     canvas.setPointerCapture(event.pointerId);
@@ -1982,6 +1984,7 @@ function handleCanvasPointerUp(
     event.preventDefault();
     handleCanvasPointerMove(runtime, event);
     if (
+      isArmedPowerDrag(gesture) &&
       shouldLaunchRedDotPull(
         runtime.aimParametersRuntime.normalizedPower,
       )
@@ -2004,8 +2007,10 @@ function handleCanvasPointerUp(
   }
   if (gesture.source === "classic-canvas") {
     event.preventDefault();
+    gesture.maximumDistance = Math.max(gesture.maximumDistance, Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY));
     updateAimPointer(runtime.aimRuntime, event.clientX, event.clientY, gesture.maxDragPixels);
-    commitActiveLaunch(runtime);
+    if (isArmedPowerDrag(gesture)) commitActiveLaunch(runtime);
+    else cancelInteraction(runtime, false);
     return;
   }
 
@@ -2079,9 +2084,11 @@ function integrateKeyboardCamera(
   runtime: InputRuntime,
   wallDeltaSeconds: number,
 ): void {
-  // 당구식 충전은 포인터 공전만 잠그고 이 키 적분은 계속해 당기는 동안에도 조준을 바꾸게 한다.
+  // A power drag keeps its camera basis fixed until release.
   if (
     wallDeltaSeconds <= 0 ||
+    runtime.gesture?.source === "classic-canvas" ||
+    runtime.gesture?.source === "red-dot" ||
     runtime.heldCameraKeys.size === 0 ||
     runtime.cameraTransition !== null ||
     runtime.policy.isCameraRotating() ||
@@ -2539,6 +2546,9 @@ export function createInputRuntime(
     }
   });
   sceneRuntime.onCameraFitChanged = () => {
+    if (runtime.gesture?.source === "classic-canvas" || runtime.gesture?.source === "red-dot") {
+      cancelInputInteraction(runtime, false);
+    }
     // A canvas resize can happen while aiming. Keep that view and the user's
     // orbit/zoom choice; only move a board view outward if it no longer fits.
     if (runtime.aimRuntime.selectedPieceId !== null || runtime.state === "aiming" || runtime.state === "charging") return;
@@ -2586,7 +2596,8 @@ export function updateInputRuntime(
   if (runtime.gesture?.source === "strike-surface" && !isStrikeSurfaceDragValid(runtime)) {
     endStrikeSurfaceDragLocal(runtime);
   }
-  const transition = runtime.cameraTransition;
+  const powerDragging = runtime.gesture?.source === "classic-canvas" || runtime.gesture?.source === "red-dot";
+  const transition = powerDragging ? null : runtime.cameraTransition;
   if (transition !== null) {
     const progress = Math.min(
       Math.max(0, (now - transition.startedAt) /
@@ -2699,7 +2710,7 @@ export function updateInputRuntime(
   if (aimingWithCamera) {
     try {
       refreshBilliardsPreview(runtime);
-      if (runtime.gesture?.source !== "strike-surface") updateAdaptiveCloseDistance(runtime);
+      if (!powerDragging && runtime.gesture?.source !== "strike-surface") updateAdaptiveCloseDistance(runtime);
       runtime.state =
         runtime.state === "charging"
           ? "charging"

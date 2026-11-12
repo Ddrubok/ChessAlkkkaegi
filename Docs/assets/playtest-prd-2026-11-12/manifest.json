@@ -1,0 +1,82 @@
+{
+  "revision": "1.1",
+  "date": "2026-11-12",
+  "root": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi",
+  "sources": [
+    {
+      "file": "Playtest_Feedback_2026-11-12.source.md",
+      "source": "C:/Users/DooBokWie/orca/projects/Default/reports/chess-alkkagi/Playtest_Feedback_2026-11-12.md",
+      "kind": "supplied-report-snapshot",
+      "sha256": "67f9522e4a6fa42d53f441928eee9852acc22d8abbbd752e9c5d32a21d8e6f7b"
+    },
+    {
+      "file": "REF-01-player-bottom-aim.png",
+      "source": "https://img.itch.zone/aW1nLzMyMTEyNjc5LnBuZw%3D%3D/original/D4FUmm.png",
+      "kind": "player-report-raster",
+      "sha256": "c2c8b4b1e043b4a661d9d19ce373f7e4ee4a16466089388a6971aa1d0db42e23"
+    },
+    {
+      "file": "REF-02-other-game-power.png",
+      "source": "https://img.itch.zone/aW1nLzMyMTEyNTk0LnBuZw%3D%3D/original/eUTfMa.png",
+      "kind": "other-game-reference",
+      "sha256": "d20eeb242515be7836e7833a3b2d9b9f3cdb8f71eaa771ca6c1f524ab653238b"
+    },
+    {
+      "file": "REF-03-controls.png",
+      "source": "qa/itch-feedback-2026-11-11/02-controls.png",
+      "kind": "historical-local-capture",
+      "sha256": "8e986e3d5d1302826d350d5f301b1664e6bbcb1ade216414cef3fc0f2ddc6e67"
+    },
+    {
+      "file": "REF-04-power-practice.png",
+      "source": "qa/itch-feedback-2026-11-11/04-power-practice.png",
+      "kind": "historical-local-capture",
+      "sha256": "d502d633b62c08a0c62d3680e56e24e596d4987fae8b00d03e5d5738e3176226"
+    },
+    {
+      "file": "REF-05-upgrade-fixture.png",
+      "source": "qa/itch-feedback-2026-11-11/06-upgrade-cards.png",
+      "kind": "historical-local-capture",
+      "sha256": "f726e1d70d3bf141cebd86ca9a6576f0da256d78c562a57264aa35db23297f5f"
+    },
+    {
+      "file": "REF-06-guest-online.png",
+      "source": "qa/itch-feedback-2026-11-11/05-guest-online-guide.png",
+      "kind": "historical-local-capture",
+      "sha256": "6cff65afa475b37863c1548a70223c067779a888c5f23f50e246805c4931d946"
+    },
+    {
+      "file": "WF-01-pull-release.svg",
+      "source": "authored-for-2026-11-12-prd",
+      "kind": "inferred-wireframe",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "values": "proposed-not-measured",
+      "sha256": "f7c6d7365a7e755eed00f4f28452a6cabcbbd0ecb3e39440ac7ff5bc26d947c0"
+    },
+    {
+      "file": "WF-02-piece-identity.svg",
+      "source": "authored-for-2026-11-12-prd",
+      "kind": "inferred-wireframe",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "values": "proposed-not-measured",
+      "sha256": "6397cd15e195c480edaf173eccf20d3d4aede4d3dd8aa225d94b2e6dcaa08201"
+    },
+    {
+      "file": "WF-03-online-branches.svg",
+      "source": "authored-for-2026-11-12-prd",
+      "kind": "inferred-wireframe",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "values": "proposed-not-measured",
+      "sha256": "347663a56e4559c2124d406c5931caa18974ab8e03cf473037cfd8b1ea330131"
+    }
+  ]
+}

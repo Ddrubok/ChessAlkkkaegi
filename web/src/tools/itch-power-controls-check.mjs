@@ -278,7 +278,7 @@ try {
   assert.equal(powerControls.getMousePowerDistance(), 180);
   for (const [distance, expected] of [[180, 180], [240, 240], [360, 360]]) {
     powerControls.setMousePowerDistance(distance);
-    assert.equal(input.computeEffectiveMaxDragPixels({ pointerType: 'mouse' }, 800), expected);
+    assert.equal(input.computeEffectiveMaxDragPixels({ pointerType: 'mouse' }, 800, 2000), powerControls.computeViewportPowerDistance(expected, 2000, 800));
     assert.ok(input.computeEffectiveMaxDragPixels({ pointerType: 'touch' }, 800) <= 180);
   }
   powerControls.resetMousePowerDistance();
@@ -291,15 +291,30 @@ try {
   assert.equal(input.computeRedDotPullPower(100, 100 + 180 * 1.5, 180, 1.5), 1.5);
   assert.equal(input.computeRedDotPullPower(100, 280, 180, 1.5), 1);
 
+  const canvasDistance = input.computeEffectiveMaxDragPixels({ pointerType: 'mouse' }, 400, 400);
   for (const [movePercent, releasePercent] of [[0.8, 0.4], [0.4, 0.8], [0.6, 0]]) {
     const runtime = createTestRuntime('classic');
     pointerDown(runtime, event(startX, startY));
-    pointerMove(runtime, event(startX, startY + movePercent * 180));
-    pointerUp(runtime, event(startX, startY + releasePercent * 180));
+    pointerMove(runtime, event(startX, startY + movePercent * canvasDistance));
+    pointerUp(runtime, event(startX, startY + releasePercent * canvasDistance));
     assert.equal(launchQueueCalls.length, releasePercent > 0 ? 1 : 0);
     if (releasePercent > 0) assert.ok(Math.abs(launchQueueCalls[0].normalizedPower - releasePercent) < 1e-6);
-    pointerUp(runtime, event(startX, startY + releasePercent * 180));
+    pointerUp(runtime, event(startX, startY + releasePercent * canvasDistance));
     assert.equal(launchQueueCalls.length, releasePercent > 0 ? 1 : 0, 'once-only release');
+  }
+  for (const [pointerType, threshold] of [['mouse', 4], ['touch', 8]]) {
+    const runtime = createTestRuntime('classic');
+    pointerDown(runtime, event(startX, startY, 42, pointerType));
+    pointerUp(runtime, event(startX, startY + threshold, 42, pointerType));
+    assert.equal(launchQueueCalls.length, 0, `${pointerType} click jitter`);
+    pointerDown(runtime, event(startX, startY, 43, pointerType));
+    pointerMove(runtime, event(startX, startY + threshold + 1, 43, pointerType));
+    pointerUp(runtime, event(startX, startY + 1, 43, pointerType));
+    assert.equal(launchQueueCalls.length, 1, `${pointerType} armed pull back`);
+    const releaseOnly = createTestRuntime('classic');
+    pointerDown(releaseOnly, event(startX, startY, 44, pointerType));
+    pointerUp(releaseOnly, event(startX, startY + threshold + 1, 44, pointerType));
+    assert.equal(launchQueueCalls.length, 1, `${pointerType} release only movement`);
   }
   for (const pointerType of ['mouse', 'touch']) {
     for (const [label, x, y] of [['side margin', 2, 200], ['HUD center', 200, 440], ['HUD left', 100, 440], ['HUD right', 300, 440], ['banner left', 99.99, 440], ['banner right', 300.01, 440], ['power label', 40, 440], ['outside label', 81, 440], ['canvas bottom', 200, 400], ['above cancel', 200, 479.99], ['cancel top', 200, 480], ['cancel center', 200, 520], ['below cancel', 200, 600], ['screen outside', -1, 440], ['above canvas', 200, -1]]) {
@@ -314,7 +329,7 @@ try {
     powerControls.setMousePowerDistance(distance);
     const runtime = createTestRuntime('classic');
     pointerDown(runtime, event(startX, startY));
-    assert.equal(runtime.gesture.maxDragPixels, distance);
+    assert.equal(runtime.gesture.maxDragPixels, powerControls.computeViewportPowerDistance(distance, 400, 400));
     powerControls.setMousePowerDistance(distance === 180 ? 240 : 180);
     pointerUp(runtime, event(startX, startY + 40));
     assert.equal(launchQueueCalls.length, 0, 'setting changed during gesture cancels');
@@ -334,6 +349,39 @@ try {
     assert.ok(Math.abs(launchQueueCalls[0].normalizedPower - .4) < 1e-6, 'red-dot final pointerup sample');
     pointerUp(runtime, event(startX, 100 + 180 * .4));
     assert.equal(launchQueueCalls.length, 1, 'red-dot duplicate release');
+  }
+  for (const [pointerType, threshold] of [['mouse', 4], ['touch', 8]]) {
+    const runtime = createTestRuntime('billiards');
+    runtime.aimRuntime.selectedPieceId = whitePieceMesh.name;
+    testRefreshBilliardsPreview(runtime);
+    runtime.state = 'charging';
+    runtime.activePointerId = 42;
+    runtime.activeCaptureElement = mockCanvas;
+    runtime.gesture = { source: 'red-dot', startX, startY: 100, pointerType, maximumDistance: 0,
+      candidatePieceId: whitePieceMesh.name, maxDragPixels: 180, mousePowerDistance: 180 };
+    pointerUp(runtime, event(startX, 100 + threshold, 42, pointerType));
+    assert.equal(launchQueueCalls.length, 0, `${pointerType} red-dot jitter`);
+    const armed = createTestRuntime('billiards');
+    armed.aimRuntime.selectedPieceId = whitePieceMesh.name;
+    testRefreshBilliardsPreview(armed);
+    armed.state = 'charging';
+    armed.activePointerId = 43;
+    armed.activeCaptureElement = mockCanvas;
+    armed.gesture = { source: 'red-dot', startX, startY: 100, pointerType, maximumDistance: 0,
+      candidatePieceId: whitePieceMesh.name, maxDragPixels: 180, mousePowerDistance: 180 };
+    pointerMove(armed, event(startX, 100 + threshold + 1, 43, pointerType));
+    pointerUp(armed, event(startX, 101, 43, pointerType));
+    assert.equal(launchQueueCalls.length, 1, `${pointerType} red-dot armed pull back`);
+    const releaseOnly = createTestRuntime('billiards');
+    releaseOnly.aimRuntime.selectedPieceId = whitePieceMesh.name;
+    testRefreshBilliardsPreview(releaseOnly);
+    releaseOnly.state = 'charging';
+    releaseOnly.activePointerId = 44;
+    releaseOnly.activeCaptureElement = mockCanvas;
+    releaseOnly.gesture = { source: 'red-dot', startX, startY: 100, pointerType, maximumDistance: 0,
+      candidatePieceId: whitePieceMesh.name, maxDragPixels: 180, mousePowerDistance: 180 };
+    pointerUp(releaseOnly, event(startX, 100 + threshold + 1, 44, pointerType));
+    assert.equal(launchQueueCalls.length, 1, `${pointerType} red-dot release only movement`);
   }
   powerControls.resetMousePowerDistance();
   {

@@ -1,0 +1,17 @@
+{
+  "scope": "Final compiled itch build; fresh offline browser; scripted pointer input",
+  "build": {
+    "build": "c82d1cd7e0c1-dirty-20261112063558",
+    "commit": "c82d1cd7e0c116598af7c134edaaa16f803b93d8",
+    "builtAt": "2026-11-12T06:35:58.130Z",
+    "dirty": true,
+    "mode": "itch"
+  },
+  "errors": [],
+  "checks": [
+    "real pull/release completes the first flick in compiled build",
+    "no browser page errors"
+  ],
+  "externalOrigins": [],
+  "pass": true
+}

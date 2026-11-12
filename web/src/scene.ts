@@ -28,6 +28,7 @@ import {
 } from "./board";
 import { CAMERA_PITCH_DEG, type PieceType } from "./config";
 import { PLATFORM } from "./platform";
+import { computeViewportPullReserve } from "./power-controls";
 import {
   computeBoardHoleRectangles,
   createBoardFloorLayoutKey,
@@ -221,12 +222,15 @@ function computeMinimumCameraDistance(
   camera: PerspectiveCamera,
   horizontalDirection: Vector3,
   boardHalfExtent: number,
+  canvasWidth: number,
+  canvasHeight: number,
 ): number {
   const pitch = MathUtils.degToRad(CAMERA_PITCH_DEG);
   const verticalHalfFov = MathUtils.degToRad(camera.fov / 2);
-  const horizontalHalfFov = Math.atan(
-    Math.tan(verticalHalfFov) * camera.aspect,
-  );
+  const reserve = computeViewportPullReserve(canvasWidth, canvasHeight);
+  // Fit the board into the inner viewport, leaving the same pull room on every edge.
+  const horizontalTangent = Math.tan(verticalHalfFov) * camera.aspect * (1 - 2 * reserve / canvasWidth);
+  const verticalTangent = Math.tan(verticalHalfFov) * (1 - 2 * reserve / canvasHeight);
   const right = new Vector3(
     -horizontalDirection.z,
     0,
@@ -242,8 +246,8 @@ function computeMinimumCameraDistance(
       const verticalExtent = Math.abs(alongView * Math.sin(pitch));
       requiredDistance = Math.max(
         requiredDistance,
-        horizontalExtent / Math.tan(horizontalHalfFov) - depthOffset,
-        verticalExtent / Math.tan(verticalHalfFov) - depthOffset,
+        horizontalExtent / horizontalTangent - depthOffset,
+        verticalExtent / verticalTangent - depthOffset,
       );
     }
   }
@@ -264,10 +268,15 @@ export function fitCameraToBoard(runtime: SceneRuntime): void {
   }
   horizontalDirection.normalize();
   // Fit the current view direction so the side-facing opening does not inherit the diagonal distance.
+  const viewport = runtime.renderer.domElement.getBoundingClientRect();
+  const canvasWidth = Math.max(viewport.width, 1);
+  const canvasHeight = Math.max(viewport.height, 1);
   const minimumDistance = computeMinimumCameraDistance(
     runtime.camera,
     horizontalDirection,
     runtime.boardHalfExtent,
+    canvasWidth,
+    canvasHeight,
   );
   runtime.minimumCameraDistance = minimumDistance;
   if (runtime.onCameraFitChanged !== null) {

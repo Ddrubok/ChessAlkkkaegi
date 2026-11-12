@@ -1,0 +1,69 @@
+{
+  "phase": "baseline",
+  "scope": "Local browser; test-only runtime instrumentation; scripted pointer input; no hosted account or server operations",
+  "checks": [
+    "pure click does not queue a shot",
+    "no page errors in exercised flow"
+  ],
+  "observations": [
+    {
+      "name": "one-pixel-jitter",
+      "before": {
+        "phase": "ready",
+        "side": "white",
+        "selected": null,
+        "canvas": {
+          "x": 0,
+          "y": 200.796875,
+          "width": 1366,
+          "height": 417.1875
+        },
+        "requests": []
+      },
+      "after": {
+        "phase": "settling",
+        "side": "white",
+        "selected": null,
+        "canvas": {
+          "x": 0,
+          "y": 200.796875,
+          "width": 1366,
+          "height": 417.1875
+        },
+        "requests": [
+          {
+            "pieceId": "white-pawn-d6",
+            "power": 0.013563368055555554
+          }
+        ]
+      }
+    },
+    {
+      "name": "baseline",
+      "jitterQueued": true
+    }
+  ],
+  "pageErrors": [],
+  "blockedOrigins": [],
+  "screenshots": [
+    "01-first-flick.png",
+    "02-after-jitter.png"
+  ],
+  "sourceBefore": {
+    "input.ts": "302b25e127515c5dd8c11cd6ce0c04405c7ce2c23c70a0d6b4cd798d671296ce",
+    "power-controls.ts": "80266d399a5a44fe9cf58df800dfb9f7a20aff0a167acb52e96f20caf3867a9e",
+    "scene.ts": "0e911554a7f871aed157804ac62b3a89c27a99ad697521e85a4ea3958c9a24d4",
+    "main.ts": "0fc9532f8c3428c340c907b137d1c25386b3d61b0d8e4f4e373c26c5db93b4b2",
+    "tutorial.ts": "6ba5cf33751cce110c9ade916727812026ac9cafe2ef92869a8308a4a769cda2",
+    "settings-modal.ts": "1ff01bb17faba5a3181316a77982f09b7854665b8f1083e3f2e0dc996d535ae7"
+  },
+  "sourceAfter": {
+    "input.ts": "302b25e127515c5dd8c11cd6ce0c04405c7ce2c23c70a0d6b4cd798d671296ce",
+    "power-controls.ts": "80266d399a5a44fe9cf58df800dfb9f7a20aff0a167acb52e96f20caf3867a9e",
+    "scene.ts": "0e911554a7f871aed157804ac62b3a89c27a99ad697521e85a4ea3958c9a24d4",
+    "main.ts": "0fc9532f8c3428c340c907b137d1c25386b3d61b0d8e4f4e373c26c5db93b4b2",
+    "tutorial.ts": "6ba5cf33751cce110c9ade916727812026ac9cafe2ef92869a8308a4a769cda2",
+    "settings-modal.ts": "1ff01bb17faba5a3181316a77982f09b7854665b8f1083e3f2e0dc996d535ae7"
+  },
+  "sourcesChangedDuringRun": []
+}

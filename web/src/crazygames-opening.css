@@ -6,6 +6,10 @@ body:has(.game-canvas-crazygames) #app .classic-cancel-control {
   width: 156px;
   margin: 0;
 }
+/* The left cancel target and player banners must not cover the power readout. */
+body:has(.game-canvas-crazygames) #app .aim-power[data-max-power] {
+  bottom: calc(var(--game-dock-bottom) + 96px);
+}
 body[data-solo-opening="true"] #app .input-mode-toggle { display: none; }
 body[data-solo-opening="true"] #app {
   --game-board-top: 86px;

@@ -13,11 +13,11 @@ import { I18nManager } from "./i18n";
 import { marketingRuntime } from "./marketing-runtime";
 import { getRuntimeText } from "./runtime-text";
 import { Vector3 } from "three";
-import type { InputRuntime } from "./input";
+import { computeEffectiveMaxDragPixels, type InputRuntime } from "./input";
 import { getSupabaseClient } from "./supabase-client";
 import { cancelItchAuth, startItchAuth } from "./itch-auth";
 import { feedbackCopy, isPracticePower } from "./feedback-copy";
-import { getMousePowerDistance } from "./power-controls";
+import { isCoarsePointerEnvironment } from "./input-capability";
 
 export type TutorialType = "basic" | "advanced";
 
@@ -619,11 +619,18 @@ export class TutorialManager {
     mesh.getWorldPosition(this.guidePoint).project(input.sceneRuntime.camera);
     const x = canvas.left + (this.guidePoint.x + 1) * canvas.width / 2;
     const y = canvas.top + (1 - this.guidePoint.y) * canvas.height / 2;
-    const end = Math.min(y + (this.powerPractice ? getMousePowerDistance() * 0.4 : 64), canvas.bottom - 12);
+    const guideDistance = computeEffectiveMaxDragPixels(
+      { pointerType: isCoarsePointerEnvironment() ? "touch" : "mouse" }, canvas.height, canvas.width,
+    );
+    const end = Math.min(y + (this.powerPractice ? guideDistance * 0.4 : Math.min(64, guideDistance * 0.4)), canvas.bottom - 12);
     this.gestureElement.style.display = this.guidePoint.z < -1 || this.guidePoint.z > 1 ? "none" : "block";
     const circle = this.gestureElement.querySelector("circle")!;
     circle.setAttribute("cx", String(x)); circle.setAttribute("cy", String(y));
-    this.gestureElement.querySelector("path")!.setAttribute("d", showPull && end > y + 24 ? `M ${x} ${y + 21} V ${end} m -7 -9 l 7 9 l 7 -9` : "");
+    const pullLength = Math.max(0, end - y);
+    const radius = Math.min(16, pullLength / 4);
+    const arrow = Math.min(7, pullLength / 4);
+    circle.setAttribute("r", String(showPull ? radius : 16));
+    this.gestureElement.querySelector("path")!.setAttribute("d", showPull && pullLength > 4 ? `M ${x} ${y + radius + 1} V ${end} m ${-arrow} ${-arrow} l ${arrow} ${arrow} l ${arrow} ${-arrow}` : "");
   }
 
   /**
