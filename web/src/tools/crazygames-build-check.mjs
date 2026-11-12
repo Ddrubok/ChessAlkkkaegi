@@ -26,11 +26,9 @@ for (const file of files) {
   const source = await readFile(file.path, 'utf8');
   // API signatures and endpoints, not translated UI strings that may mention a service.
   const forbidden = [
-    /supabase\.co|supabase-js|realtime\/v1|sb_publishable_|VITE_SUPABASE|createClient\(/iu,
+    /sb_secret_[A-Za-z0-9_-]{10,}|SUPABASE_SERVICE_ROLE_KEY|eohasrpzjwtzexoogwdt\.supabase\.co/iu,
     /poki-sdk|PokiSDK|game-cdn\.poki\.com|Poki commercial break/iu,
-    /crazygames-sdk|CrazyGames\.SDK|sdk\.crazygames\.com/iu,
     /googlesyndication|adsbygoogle|google-adsense|admob|doubleclick|VITE_ADSENSE|VITE_METERED/iu,
-    /stuns?:|metered\.ca|RTCPeerConnection/iu,
     /__runDeterminismProbe|__onlineSelfTest|__cgQA|__pokiSmoke|__marketingQA|tuning-panel|card-tuning-panel|debug-overlay/iu,
   ];
   for (const pattern of forbidden) if (pattern.test(source)) failures.push(`${file.name}: forbidden ${pattern}`);
@@ -39,15 +37,47 @@ for (const file of files) {
   for (const match of source.matchAll(/https?:\/\/[^\s"'<>`\\)\]}]+/gu)) {
     const url = match[0].replace(/[.,;]+$/u, '');
     if (file.name === 'assets/chess-set.meta.json' && url === 'https://polyhaven.com/a/chess_set') continue;
-    if (!new Set(['https://jcgt.org/published/0007/04/01/', 'http://www.w3.org/1999/xhtml', 'http://www.w3.org/2000/svg']).has(url)) {
+    // Metered's hostname is selected by the existing shared ICE client at runtime.
+    if (/^assets\/metered-turn-[\w-]+\.js$/u.test(file.name) && /^https:\/\/\$\{/u.test(url)
+      && source.includes('.metered.live/api/v1/turn/credentials?apiKey=')) continue;
+    if (!new Set([
+      'https://jcgt.org/published/0007/04/01/', 'http://www.w3.org/1999/xhtml', 'http://www.w3.org/2000/svg',
+      'https://sdk.crazygames.com/crazygames-sdk-v3.js', 'https://yoajmckkrpgvcljrffww.supabase.co',
+      // Supabase SDK fallback and diagnostic documentation; not game endpoints.
+      'http://localhost:9999', 'https://github.com/orgs/supabase/discussions/45715',
+      'https://github.com/supabase/supabase-js/blob/master/packages/core/realtime-js/migrations/httpsend-server-version.md',
+    ]).has(url)) {
       failures.push(`${file.name}: remote URL ${url}`);
     }
   }
 }
 
+const runtime = (await Promise.all(files.filter(file => file.name.endsWith('.js')).map(file => readFile(file.path, 'utf8')))).join('\n');
+if (!names.has('privacy.html')) failures.push('privacy.html: missing packaged policy');
+else {
+  const privacy = await readFile(join(root, 'privacy.html'), 'utf8');
+  if (!/<html lang="en">/u.test(privacy) || !/Chess Alkkagi Privacy Policy/u.test(privacy)) failures.push('privacy.html: English policy missing');
+  if (/<script\b|<iframe\b|<img\b|\bon\w+\s*=|https?:\/\/|google-analytics|googletagmanager|pixel/iu.test(privacy)) failures.push('privacy.html: script, tracking, or remote resource');
+}
+if (!runtime.includes('Account progress uses your CrazyGames ID. Run upgrades are saved in this browser.')
+  || !runtime.includes('<a href="./privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>')) {
+  failures.push('lobby: CrazyGames privacy notice or local link missing');
+}
+for (const marker of ['crazygames-sdk-v3.js', 'crazygames-auth', 'yoajmckkrpgvcljrffww.supabase.co']) {
+  if (!runtime.includes(marker)) failures.push(`missing account integration: ${marker}`);
+}
+for (const marker of ['ca-matchmaking-', 'RTCPeerConnection', 'join_friendly_room_v1']) {
+  if (runtime.includes(marker)) failures.push(`solo build retains multiplayer runtime: ${marker}`);
+}
+for (const match of runtime.matchAll(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/gu)) {
+  try {
+    if (JSON.parse(Buffer.from(match[0].split('.')[1], 'base64url').toString()).role === 'service_role') failures.push('service-role JWT in browser bundle');
+  } catch { /* Not a JWT payload. */ }
+}
+
 const html = await readFile(join(root, 'index.html'), 'utf8');
 if (!/<html lang="en">/u.test(html)) failures.push('index.html: English boot language missing');
-if (!/Chess Alkkagi/u.test(html) || !/Loading…/u.test(html)) failures.push('index.html: English boot copy missing');
+if (!/<title>Chess Alkkagi<\/title>/u.test(html) || !/<h1>Chess Alkkagi<\/h1>/u.test(html) || !/Loading…/u.test(html)) failures.push('index.html: CrazyGames title or English boot copy missing');
 if (/<nav\b|google-adsense|about\.html|guide\.html|tiers\.html|updates\.html|boot-language\.js/iu.test(html)) failures.push('index.html: promotional boot content');
 for (const match of html.matchAll(/<(?:script|link|img)\b[^>]*(?:src|href)="([^"#?]+)"/gu)) {
   const path = match[1];

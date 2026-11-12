@@ -1,4 +1,7 @@
 import { PLATFORM } from "./platform";
+import { readSoloState, writeSoloCheckpoint, soloCopy } from "./crazygames-solo";
+import { portalStoragePersistent } from "./portal-browser-guards";
+import "./crazygames-opening.css";
 import { marketingRuntime } from "./marketing-runtime";
 import { gameplay, isAdActive, loadingFinished, setBeforeAd } from "./poki-sdk";
 import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED } from "./config";
@@ -10,6 +13,8 @@ import { readOpponentCosmetics } from "./banner-profile";
 import { getPlayerBannerTheme } from "./banner-theme";
 import { createPlayerBanners } from "./player-banner";
 import { uiText } from "./ui-text";
+import { createPieceIdentity } from "./piece-identity";
+import "./piece-identity.css";
 import "./style.css";
 import "./lobby.css";
 import "./hotseat-map-menu.css";
@@ -35,7 +40,10 @@ import { getRuntimeText } from "./runtime-text";
 import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
-import { tutorialManager } from "./tutorial";
+import { getTutorialInputMode, tutorialManager } from "./tutorial";
+import { feedbackCopy } from "./feedback-copy";
+import { finalCardValues } from "./feedback-card-preview";
+import "./feedback-improvements.css";
 import { shouldStartFirstTutorial } from "./lobby-recommendation";
 import { PuzzlePhysicsTracker } from "./puzzle-physics";
 import { applyPuzzleSpawnDefinitions } from "./puzzle-spawn";
@@ -117,6 +125,7 @@ import {
   showMatchResult,
   type MatchWinner,
   showStageRunResult,
+  showSoloDrawResult,
 } from "./match";
 import {
   createMainMenu,
@@ -185,6 +194,7 @@ import type {
 import type { OnlineSelfTestRuntime } from "./tools/online-selftest";
 import { SupabaseMatchUi } from "./supabase-match-ui";
 import { SupabaseMatchmaker } from "./supabase-matchmaker";
+import { isCurrentRankedMember } from "./online-member";
 import { SocialService } from "./social-service";
 import { openChallengeReceivedModal } from "./challenge-modal";
 import { getSupabaseClient } from "./supabase-client";
@@ -284,15 +294,39 @@ async function bootstrap(): Promise<void> {
   // app을 비울 때 인라인 부트 노드를 함께 넘겨 같은 요소를 유지한다.
   app.replaceChildren(loadingPanel);
   initializeSound();
-  const progressClient = PLATFORM.id === "crazygames" ? null : getSupabaseClient();
-  if (PLATFORM.features.accounts) await initializeGoogleAuth(progressClient);
+  let portalVerifiedProfile: UserProfile | null = null;
+  if (PLATFORM.id === "crazygames") {
+    const { onIdentityChanged, getCachedUser } = await import("./crazygames-sdk");
+    const portalClient = getSupabaseClient();
+    onIdentityChanged(() => {
+      // A different portal account must never inherit an active ranked peer/session.
+      app.inert = true;
+      portalClient?.realtime.disconnect();
+      window.location.reload();
+    });
+    if (portalClient) {
+      const { signInCrazyGames } = await import("./crazygames-auth");
+      // Resolve the portal account before selecting its progress namespace.
+      // A failed exchange still lets guests start a solo game.
+      portalVerifiedProfile = await signInCrazyGames(portalClient).catch(() => null);
+    }
+    if (getCachedUser() && !portalVerifiedProfile) {
+      const notice = document.createElement("p");
+      notice.className = "solo-account-notice";
+      notice.setAttribute("role", "status");
+      notice.textContent = soloCopy().accountUnavailable;
+      document.body.append(notice);
+    }
+  }
+  const progressClient = (PLATFORM.features.accounts && PLATFORM.features.cloudProgress) || portalVerifiedProfile ? getSupabaseClient() : null;
+  if (PLATFORM.features.accounts && PLATFORM.id !== "itch") await initializeGoogleAuth(progressClient);
   const progressSession = progressClient ? await progressClient.auth.getSession() : null;
   if (progressSession?.error) throw new Error("로그인 상태를 확인하지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.");
   const sessionUser = progressSession?.data.session?.user;
   const progressOwner = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : null;
   await progressStorage.activate(progressClient, progressOwner);
-  await questStorage.activate(progressClient, progressOwner);
-  await weeklyChallengeStorage.activate(progressClient, progressOwner);
+  await questStorage.activate(PLATFORM.features.solo ? null : progressClient, progressOwner);
+  await weeklyChallengeStorage.activate(PLATFORM.features.solo ? null : progressClient, progressOwner);
   if (progressOwner && progressClient) {
     localStorage.setItem("ca_logged_in_user", "true");
     localStorage.setItem("ca_guest_user_uuid", progressOwner);
@@ -320,12 +354,28 @@ async function bootstrap(): Promise<void> {
   const metaRuntime = createMetaRuntime();
   // Capture before portal menus create their local guest profile.
   const firstTutorialCandidate = shouldStartFirstTutorial({
-    tutorialHistory: progressStorage.getItem("has_completed_tutorial"),
+    tutorialHistory: PLATFORM.features.solo && progressStorage.getItem("has_completed_tutorial") === "started"
+      ? null : progressStorage.getItem("has_completed_tutorial"),
     maxClearedStage: getMaxClearedStage(metaRuntime.storage),
-    hasPlayerProfile: hadPlayerProfileBeforeBoot,
+    hasPlayerProfile: PLATFORM.features.solo ? false : hadPlayerProfileBeforeBoot,
     hasLaunchInvite: false,
   });
+  let launchQuickIntro = PLATFORM.features.solo && firstTutorialCandidate && readSoloState(progressOwner).intro === null;
+  if (PLATFORM.features.solo) {
+    const showStorageNotice = (): void => {
+      if (portalStoragePersistent || document.querySelector(".solo-storage-notice")) return;
+      const notice = document.createElement("p");
+      notice.className = "solo-storage-notice";
+      notice.setAttribute("role", "status");
+      notice.textContent = soloCopy().noSave;
+      document.body.append(notice);
+    };
+    window.addEventListener("portal-storage-unavailable", showStorageNotice);
+    showStorageNotice();
+  }
   let tutorialInputModeBeforeStart: InputMode | null = null;
+  let launchPowerPractice = false;
+  const clearStageTip = () => app.querySelector(".feedback-stage-tip")?.remove();
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
   let selectedHotseatMapId = DEFAULT_HOTSEAT_MAP_ID;
   let startModeAction:
@@ -356,6 +406,10 @@ async function bootstrap(): Promise<void> {
       await confirmAbandonAction();
     },
   );
+  if (portalVerifiedProfile && portalVerifiedProfile.id === progressOwner) {
+    menuRuntime.verifiedPortalProfile = portalVerifiedProfile;
+    renderMainMenu(menuRuntime);
+  }
   await installAndroidBackHandler(() => {
     if (backFromDialog(menuRuntime.overlay)) return true;
     if (menuRuntime.visible) return false;
@@ -420,6 +474,7 @@ async function bootstrap(): Promise<void> {
     PIECE_INSTANCES,
     boardHalfExtent,
   );
+  const pieceIdentity = createPieceIdentity(app);
 
   loadingPhase.textContent = getRuntimeText("startup.preparing_physics");
   menuRuntime.piecePreviewServices = { renderer: sceneRuntime.renderer, assets };
@@ -775,7 +830,7 @@ async function bootstrap(): Promise<void> {
 
   const playerBanners = createPlayerBanners(app, {
     getState: () => ({
-      visible: !localBalancePreview && !isMenuBlocking(menuRuntime) && gameModeRuntime !== null && !gameModeRuntime.switching && turnRuntime.phase !== "match-over",
+      visible: !localBalancePreview && !isMenuBlocking(menuRuntime) && gameModeRuntime !== null && !gameModeRuntime.switching && turnRuntime.phase !== "match-over" && !(PLATFORM.features.solo && gameModeRuntime.mode === "stage" && gameModeRuntime.stageNumber <= 3),
       mode: gameModeRuntime?.mode ?? "hotseat", stage: gameModeRuntime?.stageNumber ?? 1,
       currentSide: turnRuntime.currentSide, mySide: onlineRuntime?.mySide ?? null,
       remaining: countRemainingPieces(turnRuntime),
@@ -800,10 +855,13 @@ async function bootstrap(): Promise<void> {
   const turnHud = createTurnHud(app, turnRuntime, {
     getGameMode: () => localBalancePreview && onlineRuntime === null ? "hotseat" : gameModeRuntime?.mode ?? "hotseat",
     getMySide: () => onlineRuntime?.mySide ?? null,
-    isMenuVisible: () => !menuRuntime.overlay.hidden,
+    isMenuVisible: () => !menuRuntime.overlay.hidden || (gameModeRuntime?.mode !== "online" && menuRuntime.confirming),
     isOnlineReady: () => onlineRuntime?.active === true,
     onTimeoutLaunch: handleTurnTimeout,
-    getTrackedObjective: () => trackedMasteryText(progressStorage),
+    hasTurnTimeLimit: () => !(PLATFORM.features.solo && gameModeRuntime?.mode === "stage" && gameModeRuntime.stageNumber <= 3),
+    getTrackedObjective: () => PLATFORM.features.solo && gameModeRuntime?.mode === "stage"
+      ? `${soloCopy().stage} ${gameModeRuntime.stageNumber}/10 · ${soloCopy().remaining}: ${countRemainingPieces(turnRuntime).black} · ${soloCopy().goal}`
+      : trackedMasteryText(progressStorage),
   });
   const weeklyHud = createWeeklyChallengeHud(app);
   let weeklyHudLanguage = I18nManager.getLanguage();
@@ -970,6 +1028,7 @@ async function bootstrap(): Promise<void> {
         const apply = () => {
           const swapped = executeKingSwap(turnRuntime, kingPieceId, targetPieceId);
           if (!swapped) return false;
+          tutorialManager.showKingSwapFollowup();
           playSoundEffect("power90");
           cancelInputInteraction(inputRuntime, true);
           selectPiece(inputRuntime, kingPieceId);
@@ -1027,6 +1086,10 @@ async function bootstrap(): Promise<void> {
           onlineRuntime !== null
           ? onlineRuntime.queueLocalLaunch(launchRequest)
           : queueTurnLaunch(turnRuntime, launchRequest);
+        if (accepted.accepted) {
+          clearStageTip();
+          if (gameMode === "tutorial") tutorialManager.recordPracticeShot(request.normalizedPower);
+        }
         if (accepted.accepted && binding?.instance.side === "white" && questRun &&
           ["stage", "tutorial", "puzzle"].includes(gameMode) && questRun.mode === gameMode) {
           if (!tuningIsDefault()) questRun.eligible = false;
@@ -1099,6 +1162,17 @@ async function bootstrap(): Promise<void> {
     () => undefined,
     () => appliedEnemyBuffStepScale,
   );
+  menuRuntime.onResumeSoloConfirm = (pausedMilliseconds) => {
+    if (gameModeRuntime?.mode === "online") return;
+    inputRuntime.lastUpdateTime = null;
+    if (aiRuntime.scheduledAt !== null) aiRuntime.scheduledAt += pausedMilliseconds;
+    if (aiRuntime.telegraph) {
+      aiRuntime.telegraph.previewAt += pausedMilliseconds;
+      if (aiRuntime.telegraph.chargeStartedAt !== null) aiRuntime.telegraph.chargeStartedAt += pausedMilliseconds;
+    }
+    if (turnRuntime.cameraRotation) turnRuntime.cameraRotation.startedAt += pausedMilliseconds;
+    if (inputRuntime.cameraTransition) inputRuntime.cameraTransition.startedAt += pausedMilliseconds;
+  };
   readsAiTelegraphActive = () =>
     isAiTelegraphActive(aiRuntime);
   const computePendingCardTuningValues = (
@@ -1230,10 +1304,15 @@ async function bootstrap(): Promise<void> {
   const resetBoard = async (
     requestedOptions?: StageSpawnOptions,
   ): Promise<void> => {
+    clearStageTip();
     const baseOptions = requestedOptions ?? {
       gameMode: gameModeRuntime?.mode ?? "hotseat",
       stageNumber: gameModeRuntime?.stageNumber ?? 1,
     };
+    if (PLATFORM.features.solo) {
+      document.body.dataset.soloOpening = String(baseOptions.gameMode === "stage" && baseOptions.stageNumber <= 3);
+    }
+    turnRuntime.promotionEnabled = !(PLATFORM.features.solo && baseOptions.gameMode === "stage" && baseOptions.stageNumber <= 3);
     // The selected ID survives resets; map state is rebuilt for every match.
     if (baseOptions.gameMode === "hotseat" && !getHotseatMap(selectedHotseatMapId)) {
       throw new Error(`Unknown hotseat map: ${selectedHotseatMapId}`);
@@ -1356,7 +1435,7 @@ async function bootstrap(): Promise<void> {
       eventId: runId,
       mode: stageOptions.gameMode,
       stageNumber: stageOptions.stageNumber,
-      eligible: !masteryNextBoardDebug && tuningIsDefault(),
+      eligible: !masteryNextBoardDebug && tuningIsDefault() && !tutorialManager.powerPractice,
       enemyFalls: new Set(), ownFalls: new Set(), playerEnemyFalls: new Set(),
       activePlayerLaunchId: null, automaticLaunchActive: false,
       banner: createBannerMatch(progressStorage.owner, stageOptions.stageNumber,
@@ -1364,7 +1443,7 @@ async function bootstrap(): Promise<void> {
         [...physicsRuntime.pieces.values()].filter(p => p.instance.side === "white").length,
         [...physicsRuntime.pieces.values()].filter(p => p.instance.side === "black").length),
     };
-    questRun = { runId: createQuestId(), mode: stageOptions.gameMode, launchOrdinal: 0, eligible: !masteryNextBoardDebug && tuningIsDefault() };
+    questRun = { runId: createQuestId(), mode: stageOptions.gameMode, launchOrdinal: 0, eligible: !masteryNextBoardDebug && tuningIsDefault() && !tutorialManager.powerPractice };
     questResultBaseline = captureQuestResultBaseline(questStorage);
     masteryNextBoardDebug = false;
     recentMasteryItems = [];
@@ -1558,6 +1637,16 @@ async function bootstrap(): Promise<void> {
           ) < 1e-9,
       });
     }
+    if (PLATFORM.features.solo && stageOptions.gameMode === "stage" && [1, 3, 7].includes(stageOptions.stageNumber)) {
+      const copy = feedbackCopy();
+      const tip = document.createElement("aside"); tip.className = "feedback-stage-tip";
+      tip.setAttribute("aria-label", I18nManager.getLanguage() === "ko" ? "단계 안내" : "Stage tip");
+      const close = document.createElement("button"); close.textContent = "×";
+      close.setAttribute("aria-label", I18nManager.t("common.close")); close.onclick = clearStageTip;
+      const text = document.createElement("span");
+      text.textContent = stageOptions.stageNumber === 1 ? copy.stageOpening : stageOptions.stageNumber === 3 ? copy.breakableWall : copy.pocketWall;
+      tip.append(close, text); app.append(tip);
+    }
     console.info(
       `[대국] 다시 시작 완료: 백 선공, 물리 ${physicsRuntime.pieces.size}/${expectedPieceCount}, 렌더 ${sceneRuntime.pieceMeshes.size}/${expectedPieceCount}, 수면 ${sleepingCount}/${expectedPieceCount}`,
     );
@@ -1642,6 +1731,14 @@ async function bootstrap(): Promise<void> {
     else resetRunCardState(runCardState);
     delete stageRunPoints.startedAtStage;
     Object.assign(stageRunPoints, nextRunPoints);
+    if (PLATFORM.features.solo && mode === "stage") {
+      const saved = readSoloState(progressStorage.owner).run;
+      if (saved && saved.stage === gameModeRuntime?.stageNumber && saved.metaPoints === metaRuntime.state.points) {
+        restoreRunCardState(runCardState, saved.cards);
+        delete stageRunPoints.startedAtStage;
+        Object.assign(stageRunPoints, saved.points);
+      }
+    }
     setTurnGameMode(turnRuntime, mode);
     turnRuntime.tuningSettings = mode === "weekly" ? weeklyTuningSettings : tuningRuntime.settings;
     setTuningGameMode(tuningRuntime, mode);
@@ -1653,6 +1750,9 @@ async function bootstrap(): Promise<void> {
     try {
       const stageNumber = gameModeRuntime?.stageNumber ?? 1;
       await resetBoard({ gameMode: mode, stageNumber });
+      if (PLATFORM.features.solo && mode === "stage") writeSoloCheckpoint(progressStorage.owner, {
+        stage: stageNumber, metaPoints: metaRuntime.state.points, cards: cloneRunCardState(runCardState), points: { ...stageRunPoints },
+      });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
       delete stageRunPoints.startedAtStage;
@@ -1710,12 +1810,17 @@ async function bootstrap(): Promise<void> {
   const renderRematchControls = (
     status: OnlineRematchStatus | null,
   ): void => {
+    if (gameModeRuntime?.mode === "online" && status?.connected && status.phase === "failed") {
+      // Board preparation may already have cleared the previous winner and overlay.
+      showDisconnectedMatchEnd(matchRuntime, () => returnToMainMenu(menuRuntime, true));
+      matchRuntime.winnerHeading.textContent = getRuntimeText("online.rematch_btn");
+    }
     rematchCancelButton.textContent = getRuntimeText("online.rematch_cancel_btn");
     rematchAcceptButton.textContent = getRuntimeText("online.rematch_accept_btn");
     rematchDeclineButton.textContent = getRuntimeText("online.rematch_decline_btn");
     const showsOnlineResult =
       gameModeRuntime?.mode === "online" &&
-      matchRuntime.winner !== null &&
+      (matchRuntime.winner !== null || !matchRuntime.overlay.hidden) &&
       status?.connected === true;
     rematchButton.hidden = true;
     rematchCancelButton.hidden = true;
@@ -1742,7 +1847,7 @@ async function bootstrap(): Promise<void> {
     } else if (status.phase === "incoming") {
       rematchAcceptButton.hidden = false;
       rematchDeclineButton.hidden = false;
-    } else if (status.phase === "declined") {
+    } else if (status.phase === "declined" || status.phase === "failed") {
       rematchButton.hidden = false;
     }
   };
@@ -1841,7 +1946,7 @@ async function bootstrap(): Promise<void> {
       );
 
       const ownKingLost = tutorialManager.isMatchStep && ![...physicsRuntime.pieces.values()].some(p =>
-        p.instance.side === "white" && p.instance.type === "King");
+        p.instance.side === "white" && (PLATFORM.features.solo && tutorialManager.tutorialType === "basic" || p.instance.type === "King"));
       if (checkResult.cleared && !ownKingLost) {
         void tutorialManager.handleStepSuccess();
       } else if (!tutorialManager.isMatchStep || ownKingLost) {
@@ -1854,6 +1959,12 @@ async function bootstrap(): Promise<void> {
     }
   };
 
+  const restartStageRun = async (): Promise<void> => {
+    if (PLATFORM.features.solo) writeSoloCheckpoint(progressStorage.owner, null);
+    // Reuse the same new-run transaction and readiness checks as the lobby.
+    await menuRuntime.onStartMode("stage", 1);
+    hideMainMenuAfterModeStart(menuRuntime);
+  };
   setMatchOverHandler(turnRuntime, (winner) => {
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
     // A settled stage can be reported again by a delayed callback; credit it once.
@@ -1866,6 +1977,20 @@ async function bootstrap(): Promise<void> {
       marketingRuntime.endMatch(winner, gameMode === "online" ? onlineRuntime?.mySide ?? "white" : "white");
     }
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
+    if (PLATFORM.features.solo && gameMode === "stage" && winner === "draw") {
+      // A draw neither clears the stage nor settles the run. Keep the exact
+      // stage-boundary state, so a retry/reload cannot reroll cards or rewards.
+      writeSoloCheckpoint(progressStorage.owner, {
+        stage: completedStage, metaPoints: metaRuntime.state.points,
+        cards: cloneRunCardState(runCardState), points: { ...stageRunPoints },
+      });
+      showSoloDrawResult(matchRuntime, completedStage, async () => {
+        await resetBoard({ gameMode: "stage", stageNumber: completedStage });
+        hideMatchResult(matchRuntime);
+        gameplay.enter("stage-draw-replay"); marketingRuntime.startLocalMatch("stage");
+      }, async () => { clearStageTip(); await returnToMainMenu(menuRuntime); });
+      return;
+    }
     if (gameMode === "weekly" && weeklyRun) {
       const runAtResult = weeklyRun;
       const resultGeneration = weeklyRunGeneration;
@@ -1978,13 +2103,14 @@ async function bootstrap(): Promise<void> {
         winner === "white" &&
         completedStage === STAGE_RUN_LENGTH;
       if (winner !== "white" || completedRun) {
+        if (PLATFORM.features.solo) writeSoloCheckpoint(progressStorage.owner, null);
         const payout = settleStageRunPoints(
           metaRuntime,
           stageRunPoints,
         );
         renderMainMenu(menuRuntime);
         menuRuntime.returnButton.hidden = true;
-        if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
+        if (!PLATFORM.features.solo) void AdManager.showBanner();
         showStageRunResult(
           matchRuntime,
           completedStage,
@@ -1992,8 +2118,9 @@ async function bootstrap(): Promise<void> {
           completedRun,
           () => returnToMainMenu(menuRuntime, true),
           winner,
+          restartStageRun,
         );
-        if (PLATFORM.id !== "crazygames") {
+        if (!PLATFORM.features.solo) {
           appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
           appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
         }
@@ -2050,6 +2177,9 @@ async function bootstrap(): Promise<void> {
                 gameMode: "stage",
                 stageNumber: nextStage,
               });
+              if (PLATFORM.features.solo) writeSoloCheckpoint(progressStorage.owner, {
+                stage: nextStage, metaPoints: metaRuntime.state.points, cards: cloneRunCardState(runCardState), points: { ...stageRunPoints },
+              });
               gameplay.enter("stage-card-next");
               marketingRuntime.startLocalMatch("stage");
             } catch (error: unknown) {
@@ -2077,9 +2207,28 @@ async function bootstrap(): Promise<void> {
       gameMode === "online"
         ? onlineRuntime?.mySide ?? null
         : null,
+      PLATFORM.features.solo && gameMode === "stage" ? Object.fromEntries(upgradeCards.map(card => {
+        const next = cloneRunCardState(runCardState);
+        applyCardPick(next, card.id, tuningRuntime.settings.cardEffectScale);
+        if (card.id === "giantPawn") {
+          const count = (cards: typeof next) => selectStageSpawnInstances(PIECE_INSTANCES, { gameMode: "stage", stageNumber: completedStage + 1, runCards: cards }).filter(p => p.side === "white" && p.type === "Pawn").length;
+          return [card.id, { pawnsLost: count(runCardState) - count(next) }];
+        }
+        if (card.id === "proneStart") return [card.id, {}];
+        const tuning = createCardEffectTuning(cardTuningRuntime.settings);
+        return [card.id, {
+          before: computeTunedGeneralCardEffect("stage", runCardState, card.id, tuningRuntime.settings.cardEffectScale, tuning),
+          after: computeTunedGeneralCardEffect("stage", next, card.id, tuningRuntime.settings.cardEffectScale, tuning),
+          appliedValues: finalCardValues(card.id, runCardState, next, {
+            gameMode: "stage", stageNumber: completedStage + 1,
+            permanentUpgrades: metaRuntime.state.upgrades,
+            cardEffectScale: tuningRuntime.settings.cardEffectScale, cardTuning: tuning,
+          }, assets.meta, physicsRuntime.pieces.values(), tuningRuntime.settings.maxLaunchSpeed, I18nManager.getLanguage() === "ko"),
+        }];
+      })) : {},
     );
-    if (gameMode === "stage" && PLATFORM.id !== "crazygames") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
-    if (gameMode === "stage" && PLATFORM.id !== "crazygames") appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
+    if (gameMode === "stage" && !PLATFORM.features.solo) appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
+    if (gameMode === "stage" && !PLATFORM.features.solo) appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
     if (gameMode === "online") {
       appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
       onlineResignButton.hidden = true;
@@ -2088,7 +2237,7 @@ async function bootstrap(): Promise<void> {
         onlineRuntime?.getRematchStatus() ?? null,
       );
     }
-    if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
+    if (!PLATFORM.features.solo) void AdManager.showBanner();
   });
   let gameLoopStarted = false;
   const ensureGameLoopStarted = (): void => {
@@ -2106,6 +2255,14 @@ async function bootstrap(): Promise<void> {
       tuningRuntime,
       (now, frameDelta) => {
         turnHud.update(now, frameDelta);
+        tutorialManager.updateInputGuide(inputRuntime);
+        const selectedBinding = inputRuntime.policy.isInputBlocked() || turnRuntime.phase !== "ready"
+          ? undefined : physicsRuntime.pieces.get(aimRuntime.selectedPieceId ?? "");
+        pieceIdentity.update(selectedBinding?.instance.type ?? null, gameModeRuntime!.mode,
+          aimParametersRuntime.strikePointOverride !== null,
+          selectedBinding ? turnRuntime.kingSpecialUsed[selectedBinding.instance.side] : false,
+          turnRuntime.promotionEnabled !== false);
+        if (inputRuntime.activePointerId !== null) pieceIdentity.element.open = false;
         playerBanners.update();
         const weeklyVisible = gameModeRuntime?.mode === "weekly" && weeklyRun !== null && !isMenuBlocking(menuRuntime) && !gameModeRuntime.switching && turnRuntime.phase !== "match-over" && !weeklyRecoveryVisible;
         if (weeklyRun && weeklyVisible) {
@@ -2147,7 +2304,7 @@ async function bootstrap(): Promise<void> {
           playerBanners.pieceRemoved(side);
         },
       },
-      () => menuRuntime.visible && !localBalancePreview && onlineRuntime === null && onlineSelfTestRuntime === null,
+      () => (menuRuntime.visible || menuRuntime.confirming) && !localBalancePreview && onlineRuntime === null && onlineSelfTestRuntime === null,
     );
     gameLoopStarted = true;
   };
@@ -2157,7 +2314,7 @@ async function bootstrap(): Promise<void> {
     tutorialType = "basic",
     mapId,
   ): Promise<void> => {
-    if (PLATFORM.id === "crazygames" && mode !== "tutorial" && mode !== "stage") return;
+    if (PLATFORM.features.solo && mode !== "tutorial" && mode !== "stage" && mode !== "online") return;
     if (!PLATFORM.features.online && mode === "online") return;
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
@@ -2166,12 +2323,16 @@ async function bootstrap(): Promise<void> {
     if (mode === "hotseat" && !getHotseatMap(nextHotseatMapId)) {
       throw new Error(`Unknown hotseat map: ${nextHotseatMapId}`);
     }
-    if (PLATFORM.id !== "crazygames") void AdManager.hideBanner();
+    if (!PLATFORM.features.solo) void AdManager.hideBanner();
     if (PLATFORM.features.online && mode === "online") {
       onlineSelfTestRuntime?.destroy();
       const { createOnlineRuntime } = await import("./online");
       const { openFriendlyLobby } = await import("./friendly-lobby");
       const { openFriendsModal } = await import("./friends-modal");
+      const portalInvite = (PLATFORM.id === "crazygames" || PLATFORM.id === "itch")
+        && (await import("./crazygames-multiplayer")).hasLaunchInvite();
+      const itchRankedMember = PLATFORM.id === "itch"
+        && await isCurrentRankedMember(getSupabaseClient(), menuRuntime.userProfile);
 
       const session = await new Promise<{
         transport: OnlineTransport;
@@ -2197,7 +2358,7 @@ async function bootstrap(): Promise<void> {
               rejoining: false, opponent: null, myProfile: null, strategyDeck: null, finishLobby: manualSession.finishLobby });
           } catch (error) { reject(error); }
         };
-        if (progressStorage.owner === null) { void openFriendly(); return; }
+        if (portalInvite || (PLATFORM.id === "itch" && !itchRankedMember) || (!PLATFORM.features.solo && progressStorage.owner === null)) { void openFriendly(); return; }
         const matchUiContainer = document.createElement("div");
         menuRuntime.overlay.appendChild(matchUiContainer);
 
@@ -2252,6 +2413,7 @@ async function bootstrap(): Promise<void> {
         // Manual/friendly P2P sessions have no ranked participants or settlement.
         if (!session.myProfile || !session.opponent) return;
         const client = getSupabaseClient();
+        if (PLATFORM.id === "itch" && !await isCurrentRankedMember(client, session.myProfile)) throw new Error("Ranked account changed. Please sign in again.");
         if (!client) throw new Error("대전 등록에 필요한 서버 연결이 없습니다.");
         await SupabaseMatchmaker.registerRankedMatch(client, {
           matchId, mode: rankedMode,
@@ -2311,7 +2473,7 @@ async function bootstrap(): Promise<void> {
             );
 
             await recordOnlineMatchSettlement(winner);
-            if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
+            if (!PLATFORM.features.solo) void AdManager.showBanner();
           },
         },
         {
@@ -2359,12 +2521,10 @@ async function bootstrap(): Promise<void> {
     if (mode === "tutorial") {
       const step = selectedStage ?? 1;
       tutorialInputModeBeforeStart ??= inputRuntime.mode;
-      tutorialManager.start(step, tutorialType);
-      if (tutorialType === "basic") {
-        switchInputMode(inputRuntime, "classic", false);
-      } else if (step === 3) {
-        switchInputMode(inputRuntime, "billiards", false);
-      }
+      tutorialManager.start(step, tutorialType, launchQuickIntro, launchPowerPractice);
+      launchQuickIntro = false;
+      launchPowerPractice = false;
+      switchInputMode(inputRuntime, getTutorialInputMode(step, tutorialType), false);
     } else {
       tutorialManager.stop();
       if (tutorialInputModeBeforeStart !== null) {
@@ -2373,6 +2533,7 @@ async function bootstrap(): Promise<void> {
       }
     }
     if (mode === "weekly" && !weeklyRun) throw new Error("Weekly challenge run is not prepared.");
+    if (PLATFORM.features.solo && mode === "stage" && (selectedStage ?? 1) <= 3) switchInputMode(inputRuntime, "classic", false);
     const previousHotseatMapId = selectedHotseatMapId;
     if (mode === "hotseat") selectedHotseatMapId = nextHotseatMapId;
     try {
@@ -2462,7 +2623,7 @@ async function bootstrap(): Promise<void> {
     try {
 
     onlineSelfTestRuntime?.destroy();
-    if (PLATFORM.id !== "crazygames") void AdManager.hideBanner();
+    if (!PLATFORM.features.solo) void AdManager.hideBanner();
     if (PLATFORM.features.online) void SocialService.updateMyStatus("in_game");
 
     const { createOnlineRuntime } = await import("./online");
@@ -2540,7 +2701,7 @@ async function bootstrap(): Promise<void> {
           renderRematchControls(onlineRuntime?.getRematchStatus() ?? null);
           await recordOnlineMatchSettlement(winner);
           if (PLATFORM.features.online) void SocialService.updateMyStatus("online");
-          if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
+          if (!PLATFORM.features.solo) void AdManager.showBanner();
         },
       },
       {
@@ -2643,6 +2804,7 @@ async function bootstrap(): Promise<void> {
     );
   });
   returnToMenuAction = async (): Promise<void> => {
+    clearStageTip();
     marketingRuntime.abortMatch("menu_exit");
     weeklyHud.element.hidden = true;
     if (gameModeRuntime === null) {
@@ -2678,7 +2840,7 @@ async function bootstrap(): Promise<void> {
     restoreLocalTuningSettings(tuningRuntime);
     await switchGameMode(gameModeRuntime, "hotseat", true);
     hideMatchResult(matchRuntime);
-    if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
+    if (!PLATFORM.features.solo) void AdManager.showBanner();
   };
   confirmAbandonAction = async (): Promise<void> => {
     if (gameModeRuntime === null) {
@@ -2693,20 +2855,23 @@ async function bootstrap(): Promise<void> {
       return;
     }
     const abandonedStage = gameModeRuntime.stageNumber;
+    if (PLATFORM.features.solo) writeSoloCheckpoint(progressStorage.owner, null);
     marketingRuntime.endMatch("black", "white", true);
     discardStageRunPoints(stageRunPoints);
     turnRuntime.phase = "match-over";
     lockInputForMatchOver(inputRuntime);
     menuRuntime.returnButton.hidden = true;
-    if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
+    if (!PLATFORM.features.solo) void AdManager.showBanner();
     showStageRunResult(
       matchRuntime,
       abandonedStage,
       0,
       false,
       () => returnToMainMenu(menuRuntime),
+      "black",
+      restartStageRun,
     );
-    if (PLATFORM.id !== "crazygames") appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, () => {
+    if (!PLATFORM.features.solo) appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, () => {
       openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });
     });
   };
@@ -2816,7 +2981,7 @@ async function bootstrap(): Promise<void> {
   const showPuzzleLibrary = async (): Promise<void> => {
     if (!progressStorage.ready) return;
     if (gameModeRuntime?.mode === "puzzle") await returnToMainMenu(menuRuntime);
-    if (PLATFORM.id !== "crazygames") await AdManager.hideBanner();
+    if (!PLATFORM.features.solo) await AdManager.hideBanner();
     puzzleUI?.showLibrary();
   };
   puzzleUI = new PuzzleUI(app, {
@@ -2840,7 +3005,7 @@ async function bootstrap(): Promise<void> {
       if (gameModeRuntime?.mode === "puzzle") void returnToMainMenu(menuRuntime).catch((error) => console.error("퍼즐 종료 실패", error));
       else {
         puzzleUI?.hide();
-        if (PLATFORM.id !== "crazygames") void AdManager.showBanner();
+        if (!PLATFORM.features.solo) void AdManager.showBanner();
       }
     },
   });
@@ -2919,6 +3084,12 @@ async function bootstrap(): Promise<void> {
     await AdManager.init();
     loadingFinished();
   }
+  if (PLATFORM.features.solo) loadingFinished();
+  menuRuntime.onOpenPowerPractice = async () => {
+    launchPowerPractice = true;
+    try { await startLobbyMode(menuRuntime, "tutorial", 1, "basic"); }
+    finally { launchPowerPractice = false; }
+  };
   setMainMenuReady(menuRuntime, true);
   marketingRuntime.ready();
   if (localBalancePreview) {
@@ -2947,20 +3118,19 @@ async function bootstrap(): Promise<void> {
           gameMode: "tutorial",
           stageNumber: nextStep,
         });
-        if (tutorialManager.tutorialType === "advanced" && nextStep === 3) {
-          switchInputMode(inputRuntime, "billiards", false);
-        }
+        switchInputMode(inputRuntime, getTutorialInputMode(nextStep, tutorialManager.tutorialType), false);
       }
     },
     async (destination) => {
-      if (destination === "stage") await startLobbyMode(menuRuntime, "stage");
+      if (destination === "stage") await startLobbyMode(menuRuntime, "stage", 1);
+      else if (destination === "power") await menuRuntime.onOpenPowerPractice?.();
       else await returnToMainMenu(menuRuntime);
     },
   );
-  if (PLATFORM.id !== "poki" && PLATFORM.id !== "crazygames") await AdManager.init();
-  if (PLATFORM.id !== "crazygames") await AdManager.showBanner();
+  if (PLATFORM.id !== "poki" && !PLATFORM.features.solo) await AdManager.init();
+  if (!PLATFORM.features.solo) await AdManager.showBanner();
 
-  if (PLATFORM.features.online) SocialService.setChallengeHandler((challenge) => {
+  if (PLATFORM.features.online && !PLATFORM.features.solo) SocialService.setChallengeHandler((challenge) => {
       if (!menuRuntime.visible || menuRuntime.busy || progressStorage.owner !== menuRuntime.userProfile?.id) return;
       openChallengeReceivedModal(challenge, {
         onAccept: (req) => {
@@ -2973,9 +3143,16 @@ async function bootstrap(): Promise<void> {
         onReject: () => {},
       });
     });
-  if (PLATFORM.features.online && menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
-  if (!localBalancePreview && firstTutorialCandidate) {
-    // Solo practice needs no server account or nickname form.
+  if (PLATFORM.features.online && !PLATFORM.features.solo && menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
+  let hasIncomingMatch = false;
+  if ((PLATFORM.id === "crazygames" || PLATFORM.id === "itch") && PLATFORM.features.online) {
+    const { prepareLaunchInvite, hasLaunchInvite } = await import("./crazygames-multiplayer");
+    await prepareLaunchInvite();
+    hasIncomingMatch = hasLaunchInvite();
+    if (hasIncomingMatch) await startLobbyMode(menuRuntime, "online");
+  }
+  if (!localBalancePreview && firstTutorialCandidate && !hasIncomingMatch && (!PLATFORM.features.solo || launchQuickIntro)) {
+    // Invite/Instant Multiplayer take precedence even after the invite is consumed.
     localStorage.setItem("ca_logged_in_user", "true");
     if (!localStorage.getItem("ca_local_nickname")) localStorage.setItem("ca_local_nickname", "Player");
     await startLobbyMode(menuRuntime, "tutorial", 1, "basic");

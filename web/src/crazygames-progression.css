@@ -1,0 +1,67 @@
+.match-result-overlay.cg-progression .match-result-panel {
+  border-color: #8a7658;
+  background: #191714;
+}
+
+.match-result-overlay.cg-progression .match-result-panel:has(.match-card-choices:not([hidden])) {
+  width: min(54rem, calc(100% - 1rem));
+}
+
+.cg-progression .match-result-details:not([hidden]) {
+  margin-top: 0;
+}
+
+.cg-progression .match-card-choices {
+  grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+  gap: .65rem;
+}
+
+.cg-progression .upgrade-card-wrap { min-width: 0; display: flex; flex-direction: column; }
+
+.cg-progression .match-card-choices .upgrade-card {
+  width: 100%;
+  flex: 1;
+  min-height: 10.5rem;
+  min-width: 0;
+  padding: .85rem;
+  place-content: stretch;
+  text-align: left;
+  border-color: #9a8053;
+  background: linear-gradient(145deg, #382e20, #201d19);
+}
+
+.cg-progression .match-card-choices .upgrade-card:hover,
+.cg-progression .match-card-choices .upgrade-card:focus-visible {
+  border-color: #ffd54a;
+  background: linear-gradient(145deg, #4c3a20, #28221a);
+}
+
+.cg-progression .match-card-choices .upgrade-card.cg-selected {
+  border-color: #ffe7a3;
+  box-shadow: inset 0 0 0 2px #ffe7a3;
+}
+
+.cg-progression .cg-card-top { display: flex; align-items: center; gap: .65rem; }
+.match-result-overlay.cg-progression .upgrade-card .cg-card-icon { font: 2.3rem/1 Georgia, serif; font-size: 2.3rem !important; color: #ffe7a3; }
+.match-result-overlay.cg-progression .upgrade-card .cg-card-copy { display: grid; gap: .35rem; font-size: 1rem !important; font-weight: 700; }
+.cg-progression .cg-card-grade,
+.cg-progression .cg-card-scope { color: #bfb3a0; font-size: .72rem; }
+.cg-progression .cg-card-effect { color: #fff0cf !important; font-size: .9rem !important; }
+.cg-progression .cg-card-tradeoff { color: #efc5a9 !important; font-size: .76rem !important; }
+.cg-progression .cg-card-value { color: #ffe7a3 !important; font-size: .85rem !important; }
+.cg-progression .cg-card-details { margin-top: .4rem; color: #d8d0c4; font-size: .75rem; text-align: left; }
+.cg-progression .cg-card-details summary { cursor: pointer; padding: .25rem .2rem; }
+.cg-progression .cg-card-details p { margin: .3rem .2rem; font-size: .76rem; line-height: 1.4; }
+
+.cg-progression .match-result-actions [data-match-menu] { font-weight: 500; }
+
+@media (max-width: 620px) {
+  .cg-progression .match-result-panel { padding: 1rem; }
+  .cg-progression .match-card-choices { grid-template-columns: 1fr; }
+  .cg-progression .match-card-choices .upgrade-card { min-height: 6.6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cg-progression .upgrade-card { transition: none; animation: none; }
+}
+.match-result-overlay.cg-progression { background: rgb(20 18 15 / 90%); }

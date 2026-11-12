@@ -1,0 +1,350 @@
+{
+  "revision": "1.1",
+  "scope": "document-only, no game execution",
+  "markdownLinks": [
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "../qa/playtest-prd-2026-11-12/RESULT-ko.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "assets/playtest-prd-2026-11-12/screen-spec.html",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "체스%20알까기%20플레이테스트%20QA%20체크리스트_2026-11-12.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "assets/playtest-prd-2026-11-12/Playtest_Feedback_2026-11-12.source.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "체스%20알까기%20itch%20플레이어%20피드백%20개선%20기획서_2026-11-11.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "../qa/itch-feedback-2026-11-11/RESULT-ko.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "assets/playtest-prd-2026-11-12/Playtest_Feedback_2026-11-12.source.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "../qa/itch-matchmaking-2026-11-10/RESULT-ko.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "assets/playtest-prd-2026-11-12/REF-01-player-bottom-aim.png",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "assets/playtest-prd-2026-11-12/WF-01-pull-release.png",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "../web/src/config.ts",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "../web/src/aim.ts",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "../web/src/input.ts",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "../web/src/turn.ts",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "assets/playtest-prd-2026-11-12/WF-02-piece-identity.png",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "assets/playtest-prd-2026-11-12/WF-03-online-branches.png",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "체스%20알까기%20플레이테스트%20QA%20체크리스트_2026-11-12.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 및 개선 기획서_2026-11-12.md",
+      "target": "../qa/playtest-prd-2026-11-12/RESULT-ko.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "체스%20알까기%20플레이테스트%20QA%20및%20개선%20기획서_2026-11-12.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../qa/itch-feedback-2026-11-11/RESULT-ko.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../qa/itch-matchmaking-2026-11-10/RESULT-ko.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../qa/playtest-prd-2026-11-12/after-2026-11-12T06-35-09-488Z/result.json",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../.orca/tasks/playtest-regression-handoff-2026-11-12.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../qa/playtest-prd-2026-11-12/baseline-2026-11-12T06-07-17-798Z/result.json",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../qa/playtest-prd-2026-11-12/after-2026-11-12T06-35-09-488Z/result.json",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../qa/playtest-prd-2026-11-12/built-2026-11-12T06-36-19-381Z/result.json",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../.orca/tasks/playtest-regression-handoff-2026-11-12.md",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../qa/playtest-prd-2026-11-12/regression/",
+      "exists": true
+    },
+    {
+      "document": "C:\\Users\\DooBokWie\\Desktop\\Project\\nhnChess\\ChessAlkkkaegi\\Docs\\체스 알까기 플레이테스트 QA 체크리스트_2026-11-12.md",
+      "target": "../.orca/tasks/playtest-input-handoff-2026-11-12.md",
+      "exists": true
+    }
+  ],
+  "sourceIntegrity": [
+    {
+      "file": "Playtest_Feedback_2026-11-12.source.md",
+      "sha256Matches": true
+    },
+    {
+      "file": "REF-01-player-bottom-aim.png",
+      "sha256Matches": true
+    },
+    {
+      "file": "REF-02-other-game-power.png",
+      "sha256Matches": true
+    },
+    {
+      "file": "REF-03-controls.png",
+      "sha256Matches": true
+    },
+    {
+      "file": "REF-04-power-practice.png",
+      "sha256Matches": true
+    },
+    {
+      "file": "REF-05-upgrade-fixture.png",
+      "sha256Matches": true
+    },
+    {
+      "file": "REF-06-guest-online.png",
+      "sha256Matches": true
+    },
+    {
+      "file": "WF-01-pull-release.svg",
+      "sha256Matches": true
+    },
+    {
+      "file": "WF-02-piece-identity.svg",
+      "sha256Matches": true
+    },
+    {
+      "file": "WF-03-online-branches.svg",
+      "sha256Matches": true
+    }
+  ],
+  "svg": [
+    {
+      "file": "WF-01-pull-release.svg",
+      "viewport": "1366x768",
+      "DPR": 1,
+      "textOverflow": []
+    },
+    {
+      "file": "WF-02-piece-identity.svg",
+      "viewport": "1366x768",
+      "DPR": 1,
+      "textOverflow": []
+    },
+    {
+      "file": "WF-03-online-branches.svg",
+      "viewport": "1366x768",
+      "DPR": 1,
+      "textOverflow": []
+    }
+  ],
+  "book": [
+    {
+      "width": 1600,
+      "viewport": 1600,
+      "scroll": 1600,
+      "images": [
+        {
+          "source": "WF-01-pull-release.svg",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "WF-02-piece-identity.svg",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "WF-03-online-branches.svg",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "REF-01-player-bottom-aim.png",
+          "width": 995,
+          "height": 555,
+          "loaded": true
+        },
+        {
+          "source": "REF-02-other-game-power.png",
+          "width": 1433,
+          "height": 745,
+          "loaded": true
+        },
+        {
+          "source": "REF-03-controls.png",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "REF-04-power-practice.png",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "REF-05-upgrade-fixture.png",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "REF-06-guest-online.png",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "images": [
+        {
+          "source": "WF-01-pull-release.svg",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "WF-02-piece-identity.svg",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "WF-03-online-branches.svg",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "REF-01-player-bottom-aim.png",
+          "width": 995,
+          "height": 555,
+          "loaded": true
+        },
+        {
+          "source": "REF-02-other-game-power.png",
+          "width": 1433,
+          "height": 745,
+          "loaded": true
+        },
+        {
+          "source": "REF-03-controls.png",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "REF-04-power-practice.png",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "REF-05-upgrade-fixture.png",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        },
+        {
+          "source": "REF-06-guest-online.png",
+          "width": 1366,
+          "height": 768,
+          "loaded": true
+        }
+      ]
+    }
+  ],
+  "workerReview": {
+    "scope": "separate static review",
+    "source": ".orca/tasks/playtest-prd-drag-revision-review-2026-11-12.md",
+    "result": "Completed static review inspected; geometry and zero-margin risks incorporated. No game execution.",
+    "transportWarnings": "Three unavailable local MCP transport messages in worker stderr; filesystem-only review completed."
+  },
+  "qaPlanning": {
+    "parentGroups": 20,
+    "initialStateSnapshotPreserved": true,
+    "executedSubscopes": 17,
+    "pendingSubscopes": 8,
+    "freshGameExecutionsDuringDocumentValidation": 0
+  }
+}

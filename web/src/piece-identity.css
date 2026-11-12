@@ -1,0 +1,25 @@
+.piece-identity {
+  position: absolute;
+  top: calc(var(--game-board-top, 54px) + 6px);
+  left: 12px;
+  z-index: 42;
+  max-width: min(250px, calc(100% - 24px));
+  padding: 8px 11px;
+  border: 1px solid #8e7946;
+  border-radius: 8px;
+  background: rgba(38, 33, 26, .96);
+  color: #f8f2e7;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.piece-identity[hidden] { display: none; }
+#app:has(.feedback-stage-tip) .piece-identity { visibility: hidden; }
+body[data-tutorial] .piece-identity { display: none; }
+.piece-identity summary { cursor: pointer; }
+.piece-identity strong { color: #ffdc86; margin-right: 8px; }
+.piece-identity p { margin: 8px 0 0; max-width: 32ch; }
+.piece-identity summary:focus-visible { outline: 2px solid #ffdc86; outline-offset: 4px; }
+@media (max-width: 600px) {
+  .piece-identity { font-size: 11px; padding: 6px 9px; }
+  .piece-identity span { display: block; }
+}

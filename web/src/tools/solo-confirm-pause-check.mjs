@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+const menu = readFileSync(new URL('../menu.ts', import.meta.url), 'utf8');
+const loop = readFileSync(new URL('../loop.ts', import.meta.url), 'utf8');
+const match = main.match(/menuRuntime\.onResumeSoloConfirm = \(pausedMilliseconds\) => \{([\s\S]*?)\n  \};/);
+assert.ok(match, 'solo resume callback must be wired');
+const resume = new Function('gameModeRuntime', 'aiRuntime', 'turnRuntime', 'inputRuntime', 'pausedMilliseconds', match[1]);
+const ai = { scheduledAt: 800, telegraph: { previewAt: 1200, chargeStartedAt: 1300 } };
+const turn = { cameraRotation: { startedAt: 1400 } };
+const input = { cameraTransition: { startedAt: 1500 }, lastUpdateTime: 500 };
+resume({ mode: 'stage' }, ai, turn, input, 24_000);
+assert.equal(input.lastUpdateTime, null, 'held camera keys must not integrate the confirmation dwell time');
+assert.deepEqual([ai.scheduledAt, ai.telegraph.previewAt, ai.telegraph.chargeStartedAt, turn.cameraRotation.startedAt, input.cameraTransition.startedAt], [24_800, 25_200, 25_300, 25_400, 25_500]);
+input.lastUpdateTime = 700;
+resume({ mode: 'online' }, ai, turn, input, 24_000);
+assert.equal(input.lastUpdateTime, 700, 'online input clock remains live');
+assert.equal(ai.scheduledAt, 24_800, 'online timing must remain live');
+assert.match(main, /isMenuVisible: \(\) => !menuRuntime\.overlay\.hidden \|\| \(gameModeRuntime\?\.mode !== "online" && menuRuntime\.confirming\)/);
+assert.match(main, /\(menuRuntime\.visible \|\| menuRuntime\.confirming\).*onlineRuntime === null/);
+assert.match(menu, /confirmOpenedAt = performance\.now\(\);[\s\S]*?gameplay\.leave\("confirm-open"\)/);
+assert.match(menu, /onResumeSoloConfirm\?\.\(performance\.now\(\) - confirmOpenedAt\);[\s\S]*?gameplay\.enter\("confirm-cancel", confirmResumeVersion\)/);
+assert.match(loop, /if \(gameModeRuntime\.mode !== "online" && !gameModeRuntime\.switching && isMenuCovered\(\)\)/);
+console.log('PASS solo confirmation pause, AI/camera resume offsets, online isolation and SDK resume wiring');

@@ -24,6 +24,16 @@ function callback(name,index) {
 }
 const resultSource=callback('setMatchOverHandler',1);
 const freshRunSource=callback('createGameModeRuntime',0);
+function initializer(name) {
+  let found;
+  function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'VariableDeclarator' && node.id.name === name) found = node.init;
+    for (const value of Object.values(node)) if (Array.isArray(value)) value.forEach(walk); else if (value && typeof value === 'object') walk(value);
+  }
+  walk(ast); assert.ok(found, name); return source.slice(found.start, found.end);
+}
+const restartSource=initializer('restartStageRun');
 const compile=(code,bindings)=>new Function(...Object.keys(bindings),`return (${code});`)(...Object.values(bindings));
 const noop=()=>{};
 try {
@@ -43,17 +53,23 @@ try {
     const runCardState=cards.createRunCardState();
     const gameModeRuntime={mode:'stage',stageNumber:drawAt,switching:false,onModeChanged:null};
     const matchRuntime={winner:null};
-    const menuRuntime={returnButton:{hidden:false}};
+    const menuRuntime={returnButton:{hidden:false},visible:true,onStartMode:async (mode,stage)=>modes.switchGameMode(gameModeRuntime,mode,true,stage)};
     const results=[]; const boards=[]; let failBoard=false;
     const resetBoard=async options=>{if(failBoard)throw Error('board rejected');boards.push(options);matchRuntime.winner=null;};
     const bindings={...meta,...cards,...modes,gameModeRuntime,stageRunPoints,runCardState,metaRuntime,matchRuntime,menuRuntime,
-      PLATFORM:{id:'crazygames'},gameplay:{enter:noop},marketingRuntime:{endMatch:noop,startLocalMatch:noop},inputRuntime:{},lockInputForMatchOver:noop,
+      // This legacy suite verifies non-solo run settlement; portal draw replay
+      // has its own actual-callback suite in itch-feedback-draw-check.mjs.
+      PLATFORM:{id:'web',features:{solo:false}},gameplay:{enter:noop},marketingRuntime:{endMatch:noop,startLocalMatch:noop},inputRuntime:{},lockInputForMatchOver:noop,
       questRun:null,masteryRun:null,weeklyRun:null,turnRuntime:{},weeklyTuningSettings:{},tuningRuntime:{settings:{cardEffectScale:1}},cardTuningRuntime:{},
       setTurnGameMode:noop,setTuningGameMode:noop,setCardTuningGameMode:noop,renderMainMenu:noop,STAGE_RUN_LENGTH:10,
+      AdManager:{showBanner:noop},appendMasteryResult:noop,recentMasteryItems:[],appendQuestResult:noop,
+      questResultBaseline:{},questStorage:{},openQuestBook:noop,app:{},progressStorage:{},
       resetBoard,returnToMainMenu:async()=>{await modes.switchGameMode(gameModeRuntime,'hotseat',true);},
-      showStageRunResult:(runtime,stage,payout,complete,onMenu,winner)=>{runtime.winner=winner;results.push({stage,payout,complete,winner,copy:match.createStageRunResultCopy(stage,payout,complete,winner),onMenu});},
+      showStageRunResult:(runtime,stage,payout,complete,onMenu,winner,onRestart)=>{runtime.winner=winner;results.push({stage,payout,complete,winner,copy:match.createStageRunResultCopy(stage,payout,complete,winner),onMenu,onRestart});},
       showMatchResult:(runtime,winner)=>{runtime.winner=winner;},
+      hideMainMenuAfterModeStart:runtime=>{runtime.visible=false;},
     };
+    bindings.restartStageRun=compile(restartSource,bindings);
     gameModeRuntime.onModeChanged=compile(freshRunSource,bindings);
     return {...bindings,results,boards,result:compile(resultSource,bindings),failBoard:value=>{failBoard=value;},writes:()=>writes};
   }
@@ -74,9 +90,10 @@ try {
     const writes=f.writes(); f.result('draw');
     assert.equal(f.results.length,1,'Duplicate result ignored');
     assert.equal(f.writes(),writes,'Duplicate result cannot save points twice');
-    await f.results[0].onMenu();
-    assert.equal(f.gameModeRuntime.mode,'hotseat');
-    await modes.switchGameMode(f.gameModeRuntime,'stage',true,1);
+    await f.results[0].onRestart();
+    assert.equal(f.menuRuntime.visible,false);
+    assert.equal(f.gameModeRuntime.mode,'stage');
+    assert.equal(f.gameModeRuntime.stageNumber,1);
     assert.deepEqual(f.runCardState,cards.createRunCardState());
     f.result('white');
     assert.equal(f.stageRunPoints.lastClearedStage,1,'Real next-run result callback clears stage one');
@@ -89,19 +106,23 @@ try {
     assert.equal(f.results[0].complete,outcome==='white');
   }
   const recovery=fixture(5,7); recovery.result('draw');
-  await recovery.results[0].onMenu();
   const before={points:recovery.metaRuntime.state.points,cards:structuredClone(recovery.runCardState),run:{...recovery.stageRunPoints}};
   recovery.failBoard(true);
-  await assert.rejects(modes.switchGameMode(recovery.gameModeRuntime,'stage',true,5),/board rejected/);
-  assert.equal(recovery.gameModeRuntime.mode,'hotseat');
+  await assert.rejects(recovery.results[0].onRestart(),/board rejected/);
+  assert.equal(recovery.menuRuntime.visible,true);
+  assert.equal(recovery.gameModeRuntime.mode,'stage');
+  assert.equal(recovery.gameModeRuntime.stageNumber,7);
   assert.equal(recovery.gameModeRuntime.switching,false);
   assert.deepEqual(recovery.stageRunPoints,before.run);
   assert.deepEqual(recovery.runCardState,before.cards);
   assert.equal(recovery.metaRuntime.state.points,before.points);
   recovery.failBoard(false);
-  await modes.switchGameMode(recovery.gameModeRuntime,'stage',true,5);
+  await recovery.results[0].onRestart();
   recovery.result('white');
-  assert.equal(recovery.stageRunPoints.lastClearedStage,5);
+  assert.equal(recovery.stageRunPoints.lastClearedStage,1);
+  const menuExit=fixture(1,3); menuExit.result('black');
+  await menuExit.results[0].onMenu();
+  assert.equal(menuExit.gameModeRuntime.mode,'hotseat');
   for(const {code} of SUPPORTED_LANGUAGES){
     I18nManager.setLanguage(code);
     const copy=match.createStageRunResultCopy(2,1,false,'draw');

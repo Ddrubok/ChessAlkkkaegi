@@ -1,0 +1,127 @@
+{
+  "boundary": "Actual dist-crazygames files, no observation/state injection; synthetic guest SDK; external HTTP/WS blocked.",
+  "browser": "157.0.4341.42",
+  "core": {
+    "firstFlick": true,
+    "firstWin": true,
+    "card": true,
+    "reloadStage": 2,
+    "forceGrade": 1,
+    "scriptedWallMs": 18473,
+    "lifecycleBeforeReload": [
+      "start",
+      "stop",
+      "start"
+    ],
+    "sdkEvents": [
+      "start"
+    ]
+  },
+  "blockedStorage": true,
+  "iframe": true,
+  "pass": true,
+  "errors": [],
+  "blocked": [],
+  "shots": [
+    {
+      "id": "built-first-flick",
+      "path": "screenshots/built-first-flick.png",
+      "description": "Final production bundle, fresh guest, automatic first-flick entry.",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "capturedAt": "2026-11-09T06:29:03.475Z"
+    },
+    {
+      "id": "built-stage1",
+      "path": "screenshots/built-stage1.png",
+      "description": "Actual intro knockout advanced to 3v3 first match.",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "capturedAt": "2026-11-09T06:29:06.796Z"
+    },
+    {
+      "id": "built-victory-cards",
+      "path": "screenshots/built-victory-cards.png",
+      "description": "Real first win and accurate card values, final production bundle.",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "capturedAt": "2026-11-09T06:29:16.448Z"
+    },
+    {
+      "id": "built-victory-cards-small",
+      "path": "screenshots/built-victory-cards-small.png",
+      "description": "821x462 DPR1, card choice screen.",
+      "viewport": {
+        "width": 821,
+        "height": 462
+      },
+      "capturedAt": "2026-11-09T06:29:16.804Z"
+    },
+    {
+      "id": "built-card-details-small",
+      "path": "screenshots/built-card-details-small.png",
+      "description": "Card details expanded and scrolled with the wheel at 821x462.",
+      "viewport": {
+        "width": 821,
+        "height": 462
+      },
+      "capturedAt": "2026-11-09T06:29:17.258Z"
+    },
+    {
+      "id": "built-stage2-small",
+      "path": "screenshots/built-stage2-small.png",
+      "description": "Selected force card starts second match.",
+      "viewport": {
+        "width": 821,
+        "height": 462
+      },
+      "capturedAt": "2026-11-09T06:29:17.692Z"
+    },
+    {
+      "id": "built-returning-lobby",
+      "path": "screenshots/built-returning-lobby.png",
+      "description": "Reload offers browser checkpoint continuation.",
+      "viewport": {
+        "width": 821,
+        "height": 462
+      },
+      "capturedAt": "2026-11-09T06:29:18.034Z"
+    },
+    {
+      "id": "built-storage-blocked",
+      "path": "screenshots/built-storage-blocked.png",
+      "description": "Initial storage getter blocked: guest play and truthful session-only warning.",
+      "viewport": {
+        "width": 821,
+        "height": 462
+      },
+      "capturedAt": "2026-11-09T06:29:20.294Z"
+    },
+    {
+      "id": "built-ko-iframe-intro",
+      "path": "screenshots/built-ko-iframe-intro.png",
+      "description": "Final bundle inside local 821x462 iframe, Korean SDK locale.",
+      "viewport": {
+        "width": 821,
+        "height": 462
+      },
+      "capturedAt": "2026-11-09T06:29:22.415Z"
+    },
+    {
+      "id": "built-ko-iframe-stage1",
+      "path": "screenshots/built-ko-iframe-stage1.png",
+      "description": "Local iframe, Korean first match.",
+      "viewport": {
+        "width": 821,
+        "height": 462
+      },
+      "capturedAt": "2026-11-09T06:29:23.034Z"
+    }
+  ]
+}

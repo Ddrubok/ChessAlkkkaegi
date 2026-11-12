@@ -128,6 +128,13 @@ try {
   const timerTextEl = findDescendantByClass(hud.element, 'turn-hud-timer-text');
   assert.ok(timerTextEl, 'Timer text element must exist in turn HUD hierarchy');
 
+  options.hasTurnTimeLimit = () => false;
+  hud.update(0, 120);
+  assert.equal(timeoutCount, 0, 'Untimed opening does not auto-fire after two minutes');
+  assert.equal(findDescendantByClass(hud.element, 'turn-hud-timer-wrap').style.display, 'none');
+  options.hasTurnTimeLimit = () => true;
+  hud.reset();
+
   // Case 1: initial20
   hud.update(0, 0);
   assert.equal(timerTextEl.textContent, '20s', 'Case initial20: initial countdown must be 20s');

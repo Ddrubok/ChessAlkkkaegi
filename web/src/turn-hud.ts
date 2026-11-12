@@ -18,6 +18,7 @@ export interface TurnHudOptions {
   isOnlineReady?: () => boolean;
   onTimeoutLaunch?: () => void;
   getTrackedObjective?: () => string | null;
+  hasTurnTimeLimit?: () => boolean;
 }
 
 const TURN_TIME_LIMIT_SECONDS = 20.0;
@@ -165,6 +166,7 @@ export function createTurnHud(
 
   const update = (_now: number, frameDelta: number): void => {
     const gameMode = options.getGameMode();
+    const timed = options.hasTurnTimeLimit?.() ?? true;
     // 경기 종료 또는 메인 메뉴가 열려있는 경우 숨김
     if (turnRuntime.phase === "match-over" || options.isMenuVisible?.() ||
       (gameMode === "online" && options.isOnlineReady?.() === false)) {
@@ -237,7 +239,8 @@ export function createTurnHud(
     }
 
     // 기초는 시간 압박 없이, 심화 마지막 대전에서 기존 제한 시간을 사용한다.
-    if (turnRuntime.phase === "ready" && (!isTutorial || (tutorialManager.tutorialType === "advanced" && tutorialManager.isMatchStep))) {
+    if (!timed) timerWrapper.style.display = "none";
+    if (timed && turnRuntime.phase === "ready" && (!isTutorial || (tutorialManager.tutorialType === "advanced" && tutorialManager.isMatchStep))) {
       remainingSeconds = Math.max(0, remainingSeconds - frameDelta);
 
       // 타임아웃 발생 처리

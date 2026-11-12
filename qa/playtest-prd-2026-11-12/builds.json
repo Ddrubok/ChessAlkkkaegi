@@ -1,0 +1,23 @@
+{
+  "itch": {
+    "build": "c82d1cd7e0c1-dirty-20261112063558",
+    "commit": "c82d1cd7e0c116598af7c134edaaa16f803b93d8",
+    "builtAt": "2026-11-12T06:35:58.130Z",
+    "dirty": true,
+    "mode": "itch"
+  },
+  "crazygames": {
+    "build": "c82d1cd7e0c1-dirty-20261112063601",
+    "commit": "c82d1cd7e0c116598af7c134edaaa16f803b93d8",
+    "builtAt": "2026-11-12T06:36:01.567Z",
+    "dirty": true,
+    "mode": "crazygames"
+  },
+  "web": {
+    "build": "c82d1cd7e0c1-dirty-20261112063605",
+    "commit": "c82d1cd7e0c116598af7c134edaaa16f803b93d8",
+    "builtAt": "2026-11-12T06:36:05.237Z",
+    "dirty": true,
+    "mode": "production"
+  }
+}

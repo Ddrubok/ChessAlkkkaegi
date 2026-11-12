@@ -1,5 +1,7 @@
 import { Capacitor } from "@capacitor/core";
+import { feedbackCopy } from "./feedback-copy";
 import { PLATFORM } from "./platform";
+import { readSoloState, soloCopy } from "./crazygames-solo";
 import type { MainMenuRuntime } from "./menu";
 import { getMaxClearedStage, type MetaRuntime } from "./meta";
 import { I18nManager } from "./i18n";
@@ -14,6 +16,7 @@ import { equippedItem, loadMasterySnapshot } from "./mastery";
 import { masteryCopy } from "./mastery-ui";
 import { weeklyChallengeCopy } from "./weekly-challenge-ui";
 import { uiPolishCopy } from "./ui-polish-copy";
+import { getFriendlyCopy } from "./friendly-copy";
 
 export const PVE_MAX_STAGE = 10;
 export const lobbyState = { profileExpanded: false, tutorialExpanded: false };
@@ -47,7 +50,7 @@ export function renderHeaderActions(nameOrOptions?: HeaderActionIcon | { showLog
   if (typeof nameOrOptions !== "string") {
     const showLogout = PLATFORM.features.accounts && nameOrOptions?.showLogout === true;
     const logout = showLogout ? `<button id="btn-logout" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.logout"))}" title="${escapeHtml(I18nManager.t("common.logout"))}">${renderHeaderActions("logout", 20)}</button>` : "";
-    return `<div class="lobby-header-actions">${logout}${PLATFORM.features.online ? `<button id="menu-ranking-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.ranking_btn"))}" title="${escapeHtml(I18nManager.t("common.ranking_btn"))}">${renderHeaderActions("trophy", 20)}</button><button id="menu-friends-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.friends_btn"))}" title="${escapeHtml(I18nManager.t("common.friends_btn"))}">${renderHeaderActions("users", 20)}</button>` : ""}<button id="menu-sound-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.settings"))}" title="${escapeHtml(I18nManager.t("common.settings"))}">${renderHeaderActions("gear", 20)}</button></div>`;
+    return `<div class="lobby-header-actions">${logout}${PLATFORM.features.online && !PLATFORM.features.solo ? `<button id="menu-ranking-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.ranking_btn"))}" title="${escapeHtml(I18nManager.t("common.ranking_btn"))}">${renderHeaderActions("trophy", 20)}</button><button id="menu-friends-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.friends_btn"))}" title="${escapeHtml(I18nManager.t("common.friends_btn"))}">${renderHeaderActions("users", 20)}</button>` : ""}<button id="menu-sound-btn" type="button" class="lobby-icon-btn" aria-label="${escapeHtml(I18nManager.t("common.settings"))}" title="${escapeHtml(I18nManager.t("common.settings"))}">${renderHeaderActions("gear", 20)}</button></div>`;
   }
   const name = nameOrOptions;
   const paths: Record<typeof name, string> = {
@@ -71,14 +74,15 @@ export function renderHeaderActions(nameOrOptions?: HeaderActionIcon | { showLog
 }
 
 export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; tutorialType: "basic" | "advanced"; stage: number; assetId: "lobbyHeroStage" | "lobbyHeroTutorial" | "lobbyAvatar"; eyebrow: string; title: string; body: string; cta: string } {
-  const basicTutorialCompleted = isBasicTutorialCompleted(readLobbyStorage("has_completed_tutorial"));
+  const solo = PLATFORM.features.solo ? readSoloState(progressStorage.owner) : null;
+  const basicTutorialCompleted = isBasicTutorialCompleted(readLobbyStorage("has_completed_tutorial")) || solo?.intro != null || (PLATFORM.features.solo && getMaxClearedStage(runtime.metaRuntime.storage) > 0);
   const picked = pickLobbyRecommendation({
     basicTutorialCompleted,
     maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage),
     maxStage: PVE_MAX_STAGE,
   });
   const recommendation = !PLATFORM.features.online && picked.kind === "online"
-    ? { kind: "stage" as const, stage: PLATFORM.id === "crazygames" ? PVE_MAX_STAGE : 1, maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage) }
+    ? { kind: "stage" as const, stage: PLATFORM.features.solo ? PVE_MAX_STAGE : 1, maxClearedStage: getMaxClearedStage(runtime.metaRuntime.storage) }
     : picked;
   if (recommendation.kind === "tutorial") {
     return {
@@ -93,19 +97,19 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     };
   }
   if (recommendation.kind === "online") {
-    const member = progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id;
+    const member = PLATFORM.id === "crazygames" || (progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id);
     return {
       mode: "online",
       tutorialType: "basic",
       stage: 1,
       assetId: "lobbyHeroTutorial",
-      eyebrow: member ? I18nManager.t("lobby.hero_eyebrow_ranked") : uiPolishCopy().rankedHint,
+      eyebrow: member ? I18nManager.t("lobby.hero_eyebrow_ranked") : PLATFORM.id === "itch" ? getFriendlyCopy('guest_code_title') : uiPolishCopy().rankedHint,
       title: member ? I18nManager.t("lobby.mode_online") : uiPolishCopy().friendlyTitle,
-      body: member ? I18nManager.t("lobby.hero_sub_online", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
+      body: member ? I18nManager.t("lobby.hero_sub_online", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : PLATFORM.id === "itch" ? getFriendlyCopy('guest_code_title') : uiPolishCopy().rankedHint,
       cta: member ? I18nManager.t("lobby.hero_cta_online") : uiPolishCopy().friendlyTitle,
     };
   }
-  const stage = recommendation.stage;
+  const stage = solo?.run?.stage ?? recommendation.stage;
   return {
     mode: "stage",
     tutorialType: "basic",
@@ -113,7 +117,7 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     assetId: "lobbyHeroStage",
     eyebrow: I18nManager.t("lobby.hero_eyebrow_continue"),
     title: I18nManager.t("lobby.hero_title_stage", { stage }),
-    body: I18nManager.t("lobby.hero_sub_stage", { cleared: getMaxClearedStage(runtime.metaRuntime.storage), max: PVE_MAX_STAGE, points: runtime.metaRuntime.state.points }),
+    body: solo?.run ? soloCopy().saved : I18nManager.t("lobby.hero_sub_stage", { cleared: getMaxClearedStage(runtime.metaRuntime.storage), max: PVE_MAX_STAGE, points: runtime.metaRuntime.state.points }),
     cta: I18nManager.t("lobby.hero_cta_stage"),
   };
 }
@@ -133,7 +137,7 @@ export function renderRecommendationCard(recommendation: ReturnType<typeof getRe
 }
 
 export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: number): string {
-  const member = progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id;
+  const member = PLATFORM.id === "crazygames" || (progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id);
   const cards = [
     { mode: "online" as const, icon: "globe" as const, label: "lobby.mode_online", status: "lobby.card_online_status", detail: "" },
     { mode: "stage" as const, icon: "flag" as const, label: "lobby.mode_stage_short", status: "lobby.card_stage_status", detail: "" },
@@ -146,11 +150,11 @@ export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: numbe
   const statusByMode: Record<LobbyMode, string> = {
     stage: I18nManager.t("lobby.card_stage_status", { cleared: maxClearedStage, max: PVE_MAX_STAGE }),
     puzzle: I18nManager.t("lobby.card_puzzle_status", { count: puzzleCount }),
-    online: member ? I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
+    online: PLATFORM.id === "itch" && !member ? feedbackCopy().guestOnlineStatus : PLATFORM.id === "crazygames" ? I18nManager.t("lobby.card_online_crazygames") : member ? I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
     hotseat: I18nManager.t("lobby.card_2p_status"),
     tutorial: "",
   };
-  const visibleCards = PLATFORM.id === "crazygames" ? cards.filter(card => card.mode === "stage") : PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online");
+  const visibleCards = PLATFORM.features.solo ? cards.filter(card => card.mode === "stage" || PLATFORM.id === "itch" && card.mode === "online") : PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online");
   return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${visibleCards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
 }
 
@@ -163,6 +167,7 @@ export function renderCommunityLink(): string {
 }
 
 export function renderFooterLinks(): string {
+  if (PLATFORM.features.solo) return `<nav class="lobby-footer" aria-label="Privacy"><span>${escapeHtml(soloCopy().revision)}<br>${escapeHtml(soloCopy().privacy)}</span><a href="./privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a></nav>`;
   if (!PLATFORM.features.externalLinks) return "";
   return `<nav class="lobby-footer" aria-label="${escapeHtml(I18nManager.t("lobby.footer_guide"))}"><a href="./guide.html">${escapeHtml(I18nManager.t("lobby.footer_guide"))}</a><a href="./updates.html">${escapeHtml(I18nManager.t("lobby.footer_updates"))}</a><a href="./privacy.html">${escapeHtml(I18nManager.t("lobby.footer_privacy"))}</a></nav>${renderCommunityLink()}`;
 }

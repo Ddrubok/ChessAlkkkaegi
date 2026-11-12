@@ -9,6 +9,7 @@ import {
 } from "three";
 import { computePieceWorldAabb, getAimMaxPower } from "./aim";
 import { CAM_PITCH_MAX, CAM_PITCH_MIN } from "./config";
+import { powerControlsCopy } from "./power-controls";
 import type { PieceBodyBinding } from "./physics";
 import type { SceneRuntime } from "./scene";
 import type { TuningRuntime } from "./tuning";
@@ -273,13 +274,14 @@ export function updateStrikePreview(
   runtime.feedback.textContent = [
     `${powerText} · ${uiText("pitch")} ${solution.cameraPitchDegrees.toFixed(1)}°`,
     `${uiText("elevation")} ${solution.elevationDegrees.toFixed(1)}°`,
+    powerControlsCopy().hint,
   ].join("\n");
   const maxPower = getAimMaxPower({
     isRook: binding.instance.type === "Rook" || binding.instance.type === "Queen",
     isBishop: binding.instance.type === "Bishop" || binding.instance.type === "Queen",
     hasCustomSpin: runtime.strikePointOverride !== null,
   });
-  runtime.powerLimits.textContent = maxPower > 1 ? "100%  ┆  150%" : "100%";
+  runtime.powerLimits.textContent = maxPower > 1 ? "25 · 50 · 75 · 100 · 150%" : "25 · 50 · 75 · 100%";
   runtime.powerLimits.dataset.overdrive = maxPower > 1 ? "true" : "false";
   runtime.powerLimits.dataset.baseReached = runtime.normalizedPower >= 1 ? "true" : "false";
   return solution;

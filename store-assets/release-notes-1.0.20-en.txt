@@ -1,0 +1,4 @@
+• Reduced accidental shots caused by tiny pointer movements.
+• Pull-and-release aiming now adapts to the screen size, including near board edges.
+• View the selected piece’s traits and current conditions.
+• Improved the readability of controls and distance settings on smaller screens.

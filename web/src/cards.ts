@@ -59,6 +59,9 @@ export interface UpgradeCard {
   category: "general" | "special";
   // 한 번 고르면 남은 런의 추첨 풀에서 빠지는 효과인지 나타낸다.
   oneShot: boolean;
+  // Display-only effective card bonus fractions; each grade replaces the previous grade.
+  cardBonusBefore?: number;
+  cardBonusAfter?: number;
 }
 
 export interface RunCardState {
@@ -102,7 +105,7 @@ export const UPGRADE_CARDS: readonly UpgradeCard[] = [
     id: "weight",
     name: "중량 강화",
     description:
-      "충돌에 덜 밀리고 장외 저항이 증가하지만 같은 힘에서 이동거리는 감소한다",
+      "말의 질량이 증가한다. 같은 파워의 목표 초기 발사 속도는 유지된다",
     category: "general",
     oneShot: false,
   },
@@ -110,14 +113,14 @@ export const UPGRADE_CARDS: readonly UpgradeCard[] = [
     id: "force",
     name: "힘 강화",
     description:
-      "이동거리와 상대를 밀어내는 힘이 증가하고 중량 증가의 이동 감소를 보완한다",
+      "같은 파워에서 말의 목표 초기 발사 속도가 증가한다",
     category: "general",
     oneShot: false,
   },
   {
     id: "giantPawn",
     name: "거대 폰",
-    description: "폰 4개를 잃고 남은 폰이 원래 크기의 1.3배가 된다",
+    description: "다음 단계에서 일부 폰이 제거되고 남은 폰에 크기 ×1.3 배수가 적용된다",
     category: "special",
     oneShot: true,
   },
@@ -447,20 +450,21 @@ function createDisplayedCard(
     card.id as GeneralCardId,
   ) + 1) as CardGrade;
   const cardId = card.id as GeneralCardId;
-  const baseEffect = computeCardGradeEffect(nextGrade, cardId);
+  const previousEffect = computeCardGradeEffect(
+    getGeneralCardGrade(state, cardId), cardId, cardEffectScale,
+  );
   const actualEffect = computeCardGradeEffect(
     nextGrade,
     cardId,
     cardEffectScale,
   );
-  const effectText =
-    Math.abs(actualEffect - baseEffect) < 1e-12
-      ? `효과 +${Math.round(actualEffect * 100)}%`
-      : `효과 +${Math.round(actualEffect * 100)}% (등급 기준 +${Math.round(baseEffect * 100)}%)`;
+  const effectText = `카드 보너스 +${Math.round(previousEffect * 100)}% → +${Math.round(actualEffect * 100)}% (교체)`;
   return {
     ...card,
     name: `${card.name} · ${CARD_GRADE_LABELS[nextGrade - 1]}`,
     description: `${card.description} · ${effectText}`,
+    cardBonusBefore: previousEffect,
+    cardBonusAfter: actualEffect,
   };
 }
 

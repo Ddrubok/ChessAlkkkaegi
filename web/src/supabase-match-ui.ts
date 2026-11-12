@@ -28,6 +28,10 @@ import type { PiecePreviewServices } from "./piece-preview-renderer";
 import type { PieceType } from "./config";
 import { escapeHtml } from "./html";
 import { formatTier, renderTierBadge } from "./tier-view";
+import { signInCrazyGames } from "./crazygames-auth";
+import { getCachedUser, isSdkAvailable, onIdentityChanged } from "./crazygames-sdk";
+import { isCurrentRankedMember } from "./online-member";
+import { feedbackCopy } from "./feedback-copy";
 
 export interface SupabaseMatchUiCallbacks {
   onMatchStarted: (
@@ -57,6 +61,8 @@ export class SupabaseMatchUi {
   private unbindModal: (() => void) | null = null;
   private disposed = false;
   private renderVersion = 0;
+  private crazyGamesUserId: string | null = null;
+  private unsubscribeCrazyGamesIdentity: (() => void) | null = null;
 
   constructor(container: HTMLElement, callbacks: SupabaseMatchUiCallbacks, initialProfile: UserProfile | null = null, private readonly previewServices: PiecePreviewServices | null = null) {
     this.container = container;
@@ -68,6 +74,15 @@ export class SupabaseMatchUi {
         void this.renderLobby();
       }
     });
+    if (__CRAZYGAMES_BUILD__) {
+      this.unsubscribeCrazyGamesIdentity = onIdentityChanged(() => {
+        if (this.disposed) return;
+        this.profile = null;
+        this.crazyGamesUserId = null;
+        this.cancelSearch();
+        if (this.renderVersion > 0) void this.renderLobby();
+      });
+    }
   }
 
   /**
@@ -80,6 +95,12 @@ export class SupabaseMatchUi {
     this.unbindModal?.(); this.unbindModal = null;
     this.container.innerHTML = "";
     this.client = getSupabaseClient();
+    if (__CRAZYGAMES_BUILD__) {
+      this.profile = null;
+      this.crazyGamesUserId = null;
+      this.userEmail = null;
+      this.cancelSearch();
+    }
 
     const root = document.createElement("div");
     root.className = "supabase-match-lobby piece-stat-modal";
@@ -135,13 +156,38 @@ export class SupabaseMatchUi {
 
     // Supabase 설정 미등록 시 설정 안내 폼 표시
     if (!this.client) {
-      this.renderConfigForm(card);
+      if (__CRAZYGAMES_BUILD__ || __ITCH_BUILD__) {
+        this.renderCrazyGamesNotice(card, "Online service is unavailable. Please try again.");
+      } else {
+        this.renderConfigForm(card);
+      }
       attach();
       return;
     }
 
     // 계정 상태 바 (이메일 로그인 vs 게스트)
-    this.userEmail = await getSessionEmail(this.client);
+    let crazyGamesError = false;
+    if (__CRAZYGAMES_BUILD__) {
+      try {
+        const profile = await signInCrazyGames(this.client, false);
+        if (this.disposed || version !== this.renderVersion) return;
+        this.profile = profile;
+        this.crazyGamesUserId = profile ? getCachedUser()?.__dangerousUserId ?? null : null;
+        crazyGamesError = !profile && !!getCachedUser();
+      } catch (error) {
+        if (this.disposed || version !== this.renderVersion) return;
+        console.error("CrazyGames sign-in failed:", error);
+        this.profile = null;
+        this.crazyGamesUserId = null;
+        crazyGamesError = true;
+      }
+    } else {
+      this.userEmail = __ITCH_BUILD__ ? null : await getSessionEmail(this.client);
+      if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+        if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+        return;
+      }
+    }
     if (this.disposed || version !== this.renderVersion) return;
     const authBar = document.createElement("div");
     authBar.style.cssText = `
@@ -155,7 +201,37 @@ export class SupabaseMatchUi {
       font-size: 13px;
     `;
 
-    if (this.userEmail) {
+    if (__CRAZYGAMES_BUILD__) {
+      const cachedUser = this.profile ? getCachedUser() : null;
+      const name = cachedUser?.username || this.profile?.nickname;
+      const label = document.createElement("div");
+      label.style.cssText = `color:${name ? "#38bdf8" : "#94a3b8"}; font-weight:600;`;
+      label.textContent = name || "CrazyGames guest";
+      authBar.appendChild(label);
+      if (!this.profile) {
+        const signInBtn = document.createElement("button");
+        signInBtn.textContent = crazyGamesError ? "Retry" : "CrazyGames login";
+        signInBtn.style.cssText = "background:#3b82f6; color:white; border:0; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:600; cursor:pointer;";
+        signInBtn.onclick = async () => {
+          if (!this.client) return;
+          signInBtn.disabled = true;
+          try {
+            await signInCrazyGames(this.client, true);
+            // Complete the loading lifecycle if the SDK was unavailable at boot.
+            await (await import("./crazygames-stubs/portal-lifecycle")).init();
+          } catch (error) {
+            console.error("CrazyGames sign-in failed:", error);
+          }
+          if (!this.disposed && version === this.renderVersion) await this.renderLobby();
+        };
+        authBar.appendChild(signInBtn);
+      }
+    } else if (__ITCH_BUILD__ && this.profile) {
+      const label = document.createElement("div");
+      label.style.cssText = "color:#38bdf8; font-weight:600;";
+      label.textContent = this.profile.nickname;
+      authBar.appendChild(label);
+    } else if (this.userEmail) {
       authBar.innerHTML = `
         <div style="color:#38bdf8; font-weight:600;">
           ${escapeHtml(this.userEmail)}
@@ -210,26 +286,48 @@ export class SupabaseMatchUi {
     profileSection.innerHTML = `<div style="color:#94a3b8; font-size:14px; text-align:center;">${I18nManager.t("online.loading_profile")}</div>`;
     card.appendChild(profileSection);
 
-    try {
-      this.profile = await getOrCreateUserProfile(this.client);
-      if (this.disposed || version !== this.renderVersion) return;
-      this.renderProfileCard(profileSection, this.profile);
-
-    } catch (err: any) {
+    if (__CRAZYGAMES_BUILD__) {
       if (this.profile) {
         this.renderProfileCard(profileSection, this.profile);
       } else {
-        profileSection.innerHTML = `
-          <div style="color:#f87171; font-size:13px; text-align:center;">
-            ${I18nManager.t("online.server_error", { error: escapeHtml(I18nManager.t("online.server_error_fallback")) })}
-          </div>
-        `;
+        profileSection.innerHTML = `<div style="color:${crazyGamesError ? "#f87171" : "#94a3b8"}; font-size:13px; text-align:center;">${crazyGamesError ? "CrazyGames login failed. Please retry." : isSdkAvailable() ? "Log in with CrazyGames to play ranked matches." : "CrazyGames login is unavailable. Please retry."}</div>`;
+      }
+    } else {
+      try {
+        this.profile = await getOrCreateUserProfile(this.client);
+        if (this.disposed || version !== this.renderVersion) return;
+        if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+          if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+          return;
+        }
+        if (__ITCH_BUILD__) {
+          const label = authBar.querySelector("div");
+          if (label) label.textContent = this.profile.nickname;
+        }
+        this.renderProfileCard(profileSection, this.profile);
+      } catch (err: any) {
+        if (__ITCH_BUILD__) {
+          if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+          return;
+        }
+        if (this.profile) {
+          this.renderProfileCard(profileSection, this.profile);
+        } else {
+          profileSection.innerHTML = `
+            <div style="color:#f87171; font-size:13px; text-align:center;">
+              ${I18nManager.t("online.server_error", { error: escapeHtml(I18nManager.t("online.server_error_fallback")) })}
+            </div>
+          `;
+        }
       }
     }
 
     if (this.disposed || version !== this.renderVersion) return;
 
     // 클래식 vs 전략 랭크 탭
+    const guide = document.createElement("p"); guide.className = "feedback-online-guide";
+    guide.textContent = feedbackCopy().onlineMember;
+    card.append(guide);
     const modeTabs = document.createElement("div");
     modeTabs.style.cssText = "display:flex; gap:8px; background:#0f172a; padding:4px; border-radius:8px;";
     
@@ -279,13 +377,16 @@ export class SupabaseMatchUi {
         `;
         searchBtn.onclick = () => {
           if (this.profile && this.client) {
-            this.openMatchingModal(card, null, "classic");
+            void this.openMatchingModal(card, null, "classic");
           }
         };
+        if (__CRAZYGAMES_BUILD__ && !this.profile) searchBtn.disabled = true;
         actionContainer.appendChild(searchBtn);
       } else {
-        this.workbench = new PieceStatWorkbench(adapter, { selectedPiece: this.selectedPiece, previewServices: this.previewServices });
-        actionContainer.append(this.workbench.element);
+        if (!__CRAZYGAMES_BUILD__ || this.profile) {
+          this.workbench = new PieceStatWorkbench(adapter, { selectedPiece: this.selectedPiece, previewServices: this.previewServices });
+          actionContainer.append(this.workbench.element);
+        }
       }
 
       const manualBtn = document.createElement("button");
@@ -315,6 +416,17 @@ export class SupabaseMatchUi {
     attach();
   }
 
+  private renderCrazyGamesNotice(container: HTMLElement, message: string): void {
+    const notice = document.createElement("div");
+    notice.style.cssText = "color:#f87171; font-size:13px; text-align:center; padding:16px;";
+    notice.textContent = message;
+    const retry = document.createElement("button");
+    retry.textContent = "Retry";
+    retry.style.cssText = "display:block; margin:12px auto 0; padding:8px 16px; cursor:pointer;";
+    retry.onclick = () => { void this.renderLobby(); };
+    container.append(notice, retry);
+  }
+
   /**
    * 프로필 카드 렌더링 및 닉네임 수정
    */
@@ -328,25 +440,43 @@ export class SupabaseMatchUi {
     nameWrapper.style.cssText = "display:flex; align-items:center; gap:8px;";
 
     const nickDisplay = document.createElement("span");
-    nickDisplay.textContent = profile.nickname;
+    nickDisplay.textContent = __CRAZYGAMES_BUILD__ ? getCachedUser()?.username || profile.nickname : profile.nickname;
     nickDisplay.style.cssText = "font-size:17px; font-weight:700; color:#f1f5f9;";
 
-    const editBtn = document.createElement("button");
-    editBtn.textContent = "✎";
-    editBtn.title = I18nManager.t("online.edit_nickname_title");
-    editBtn.style.cssText = "background:transparent; border:none; color:#60a5fa; cursor:pointer; font-size:14px;";
-    editBtn.onclick = async () => {
-      if (this.client) {
-        openNicknameDialog(this.client, profile, name => {
-          profile.nickname = name;
-          SocialService.init(profile);
-          this.renderProfileCard(container, profile);
-        });
+    if (__CRAZYGAMES_BUILD__) {
+      const avatarUrl = getCachedUser()?.profilePictureUrl;
+      if (avatarUrl) {
+        try {
+          const url = new URL(avatarUrl);
+          if (url.protocol === "https:" && !url.username && !url.password) {
+            const avatar = document.createElement("img");
+            avatar.src = url.href;
+            avatar.alt = "";
+            avatar.referrerPolicy = "no-referrer";
+            avatar.style.cssText = "width:32px; height:32px; border-radius:50%; object-fit:cover;";
+            nameWrapper.appendChild(avatar);
+          }
+        } catch { /* Ignore invalid avatar URLs. */ }
       }
-    };
+    }
 
     nameWrapper.appendChild(nickDisplay);
-    nameWrapper.appendChild(editBtn);
+    if (!__CRAZYGAMES_BUILD__) {
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "✎";
+      editBtn.title = I18nManager.t("online.edit_nickname_title");
+      editBtn.style.cssText = "background:transparent; border:none; color:#60a5fa; cursor:pointer; font-size:14px;";
+      editBtn.onclick = async () => {
+        if (this.client) {
+          openNicknameDialog(this.client, profile, name => {
+            profile.nickname = name;
+            SocialService.init(profile);
+            this.renderProfileCard(container, profile);
+          });
+        }
+      };
+      nameWrapper.appendChild(editBtn);
+    }
 
     topRow.appendChild(nameWrapper);
 
@@ -379,10 +509,48 @@ export class SupabaseMatchUi {
   ): Promise<void> {
     if (!this.client || !this.profile) return;
 
-    try {
-      this.profile = await getOrCreateUserProfile(this.client);
-    } catch {}
-    if (this.disposed || !parentCard.isConnected || parentCard.querySelector(".matching-modal-overlay")) return;
+    const version = this.renderVersion;
+    if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+      if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+      return;
+    }
+    if (__CRAZYGAMES_BUILD__) {
+      const previousId = this.profile.id;
+      const previousCrazyGamesId = this.crazyGamesUserId;
+      try {
+        const verifiedProfile = await signInCrazyGames(this.client, false);
+        if (this.disposed || version !== this.renderVersion) return;
+        const currentCrazyGamesId = getCachedUser()?.__dangerousUserId ?? null;
+        if (!verifiedProfile || !currentCrazyGamesId || verifiedProfile.id !== previousId || currentCrazyGamesId !== previousCrazyGamesId) {
+          this.profile = null;
+          this.crazyGamesUserId = null;
+          this.cancelSearch();
+          if (!this.disposed && version === this.renderVersion) void this.renderLobby();
+          return;
+        }
+        this.profile = verifiedProfile;
+      } catch (error) {
+        if (this.disposed || version !== this.renderVersion) return;
+        console.error("CrazyGames ranked authentication failed:", error);
+        this.profile = null;
+        this.crazyGamesUserId = null;
+        this.cancelSearch();
+        if (!this.disposed && version === this.renderVersion) void this.renderLobby();
+        return;
+      }
+    } else {
+      try {
+        this.profile = await getOrCreateUserProfile(this.client);
+      } catch {
+        if (__ITCH_BUILD__ && !this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+        if (__ITCH_BUILD__) return;
+      }
+    }
+    if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+      if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
+      return;
+    }
+    if (this.disposed || version !== this.renderVersion || !parentCard.isConnected || parentCard.querySelector(".matching-modal-overlay")) return;
 
     const modalOverlay = document.createElement("div");
     modalOverlay.className = "matching-modal-overlay";
@@ -447,6 +615,13 @@ export class SupabaseMatchUi {
     void matcher.startMatching(
       (status: MatchmakingStatus) => {
         if (this.matchmaker !== matcher || this.disposed) return;
+        if (__CRAZYGAMES_BUILD__ && getCachedUser()?.__dangerousUserId !== this.crazyGamesUserId) {
+          this.profile = null;
+          this.crazyGamesUserId = null;
+          this.cancelSearch();
+          if (!this.disposed) void this.renderLobby();
+          return;
+        }
         const timerEl = modalOverlay.querySelector<HTMLElement>("#matching-timer");
         const rangeEl = modalOverlay.querySelector<HTMLElement>("#matching-range");
         const waitersEl = modalOverlay.querySelector<HTMLElement>("#matching-waiters");
@@ -464,7 +639,9 @@ export class SupabaseMatchUi {
               ? I18nManager.t("online.waiting_players", { count })
               : I18nManager.t("online.waiting_players_unknown");
             if (waitersEl.textContent !== label) waitersEl.textContent = label;
-            hintEl.textContent = I18nManager.t("online.waiting_players_hint");
+            hintEl.textContent = count === 0 && status.phase === "searching"
+              ? feedbackCopy().searchingEmpty(modeName)
+              : feedbackCopy().separateQueues;
           } else {
             waitersEl.style.display = "none";
             waitersEl.textContent = "";
@@ -484,6 +661,16 @@ export class SupabaseMatchUi {
       },
       async (transport, mySide, matchId, opponent) => {
         if (this.matchmaker !== matcher || this.disposed) { transport.close(); return; }
+        if (__ITCH_BUILD__ && !await isCurrentRankedMember(this.client, this.profile)) {
+          transport.close();
+          this.cancelSearch();
+          if (!this.disposed) { this.destroy(); this.callbacks.onClose(); }
+          return;
+        }
+        if (__CRAZYGAMES_BUILD__ && (this.disposed || version !== this.renderVersion || !this.profile || getCachedUser()?.__dangerousUserId !== this.crazyGamesUserId)) {
+          transport.close();
+          return;
+        }
         this.matchmaker = null;
         const oppEl = modalOverlay.querySelector("#matching-opponent");
         const sideStr = mySide === "white" ? I18nManager.t("ingame.turn_white") : I18nManager.t("ingame.turn_black");
@@ -497,6 +684,7 @@ export class SupabaseMatchUi {
       },
       (error) => {
         if (this.matchmaker !== matcher || this.disposed) return;
+        if (__CRAZYGAMES_BUILD__ && (this.disposed || version !== this.renderVersion)) return;
         console.error(error);
         alert(I18nManager.t("online.match_failed", { error: I18nManager.t("online.server_error_fallback") }));
         closeMatching();
@@ -512,7 +700,7 @@ export class SupabaseMatchUi {
   public destroy(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.disposeWorkbench(); this.unsubscribeLanguage();
+    this.disposeWorkbench(); this.unsubscribeLanguage(); this.unsubscribeCrazyGamesIdentity?.();
     this.unbindModal?.(); this.unbindModal = null;
   }
 
@@ -527,6 +715,7 @@ export class SupabaseMatchUi {
    * 이메일 회원가입 및 로그인 모달
    */
   private openAuthModal(parentCard: HTMLElement): void {
+    if (__CRAZYGAMES_BUILD__ || __ITCH_BUILD__) return;
     if (!this.client) return;
 
     let mode: "signin" | "signup" = "signup";
@@ -599,7 +788,7 @@ export class SupabaseMatchUi {
       });
 
       const submitBtn = modalOverlay.querySelector("#auth-submit-btn") as HTMLButtonElement;
-      appendGoogleSignIn(modalOverlay);
+      if (!__ITCH_BUILD__) appendGoogleSignIn(modalOverlay);
       submitBtn?.addEventListener("click", async () => {
         if (!this.client) return;
         const email = (modalOverlay.querySelector("#auth-email") as HTMLInputElement)?.value.trim();
@@ -645,6 +834,7 @@ export class SupabaseMatchUi {
    * Supabase URL 및 Anon Key 설정 폼
    */
   private renderConfigForm(container: HTMLElement): void {
+    if (__CRAZYGAMES_BUILD__ || __ITCH_BUILD__) return;
     container.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:14px;">
         <div style="font-size:18px; font-weight:700; color:#f8fafc;">${I18nManager.t("online.config_title")}</div>

@@ -1,0 +1,63 @@
+/* Opening candidate: keep the wooden board, give the objective the top row. */
+body:has(.game-canvas-crazygames) { background: #24221e; }
+body:has(.game-canvas-crazygames) #app .classic-cancel-control {
+  left: 12px;
+  right: auto;
+  width: 156px;
+  margin: 0;
+}
+/* The left cancel target and player banners must not cover the power readout. */
+body:has(.game-canvas-crazygames) #app .aim-power[data-max-power] {
+  bottom: calc(var(--game-dock-bottom) + 96px);
+}
+body[data-solo-opening="true"] #app .input-mode-toggle { display: none; }
+body[data-solo-opening="true"] #app {
+  --game-board-top: 86px;
+  --game-hud-height: 72px;
+  --game-dock-bottom: 12px;
+}
+body[data-solo-opening="true"] #app .turn-hud-container {
+  top: 12px;
+  width: min(560px, calc(100% - 160px));
+  height: auto;
+  gap: 6px;
+}
+body[data-solo-opening="true"] #app .mastery-hud-objective {
+  position: static;
+  max-width: 100%;
+  color: #f5e6c8;
+  background: #29251eee;
+  border: 1px solid #78613f;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+#app:has(> .game-canvas-crazygames) .lobby-modes { grid-template-columns: 1fr; }
+body:has(.game-canvas-crazygames) .tutorial-coach-card {
+  background: #29251ef5;
+  border-color: #987b4c;
+  border-radius: 8px;
+}
+body:has(.game-canvas-crazygames) .tutorial-step-title { color: #ffe1a0; display: block; }
+.solo-storage-notice, .solo-account-notice {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10001;
+  margin: 0;
+  padding: 5px 10px;
+  color: #fff2d6;
+  background: #643b16;
+  font: 12px/1.35 system-ui, sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+.solo-storage-notice ~ .solo-account-notice, body:has(.solo-storage-notice) .solo-account-notice { bottom: 42px; }
+@media (max-height: 510px) {
+  body[data-solo-opening="true"] #app { --game-board-top: 78px; --game-hud-height: 38px; }
+  body[data-solo-opening="true"] #app .turn-hud-container { width: calc(100% - 150px); top: 8px; gap: 3px; }
+  body[data-solo-opening="true"] #app .mastery-hud-objective { padding: 4px 8px; }
+}

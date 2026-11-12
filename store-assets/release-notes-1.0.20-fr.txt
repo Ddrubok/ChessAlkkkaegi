@@ -1,0 +1,4 @@
+• Réduction des tirs accidentels causés par de très petits mouvements.
+• La visée par glisser-relâcher s’adapte à la taille de l’écran, même près des bords du plateau.
+• Affichage des caractéristiques et des conditions actuelles de la pièce sélectionnée.
+• Meilleure lisibilité des commandes et des réglages de distance sur les petits écrans.

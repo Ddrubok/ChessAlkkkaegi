@@ -1,5 +1,6 @@
 import { uiText } from "./ui-text";
 import {
+  ACESFilmicToneMapping,
   BoxGeometry,
   CanvasTexture,
   Color,
@@ -27,6 +28,7 @@ import {
 } from "./board";
 import { CAMERA_PITCH_DEG, type PieceType } from "./config";
 import { PLATFORM } from "./platform";
+import { computeViewportPullReserve } from "./power-controls";
 import {
   computeBoardHoleRectangles,
   createBoardFloorLayoutKey,
@@ -220,12 +222,15 @@ function computeMinimumCameraDistance(
   camera: PerspectiveCamera,
   horizontalDirection: Vector3,
   boardHalfExtent: number,
+  canvasWidth: number,
+  canvasHeight: number,
 ): number {
   const pitch = MathUtils.degToRad(CAMERA_PITCH_DEG);
   const verticalHalfFov = MathUtils.degToRad(camera.fov / 2);
-  const horizontalHalfFov = Math.atan(
-    Math.tan(verticalHalfFov) * camera.aspect,
-  );
+  const reserve = computeViewportPullReserve(canvasWidth, canvasHeight);
+  // Fit the board into the inner viewport, leaving the same pull room on every edge.
+  const horizontalTangent = Math.tan(verticalHalfFov) * camera.aspect * (1 - 2 * reserve / canvasWidth);
+  const verticalTangent = Math.tan(verticalHalfFov) * (1 - 2 * reserve / canvasHeight);
   const right = new Vector3(
     -horizontalDirection.z,
     0,
@@ -241,8 +246,8 @@ function computeMinimumCameraDistance(
       const verticalExtent = Math.abs(alongView * Math.sin(pitch));
       requiredDistance = Math.max(
         requiredDistance,
-        horizontalExtent / Math.tan(horizontalHalfFov) - depthOffset,
-        verticalExtent / Math.tan(verticalHalfFov) - depthOffset,
+        horizontalExtent / horizontalTangent - depthOffset,
+        verticalExtent / verticalTangent - depthOffset,
       );
     }
   }
@@ -263,10 +268,15 @@ export function fitCameraToBoard(runtime: SceneRuntime): void {
   }
   horizontalDirection.normalize();
   // Fit the current view direction so the side-facing opening does not inherit the diagonal distance.
+  const viewport = runtime.renderer.domElement.getBoundingClientRect();
+  const canvasWidth = Math.max(viewport.width, 1);
+  const canvasHeight = Math.max(viewport.height, 1);
   const minimumDistance = computeMinimumCameraDistance(
     runtime.camera,
     horizontalDirection,
     runtime.boardHalfExtent,
+    canvasWidth,
+    canvasHeight,
   );
   runtime.minimumCameraDistance = minimumDistance;
   if (runtime.onCameraFitChanged !== null) {
@@ -732,7 +742,7 @@ export function createSceneRuntime(
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): SceneRuntime {
   const scene = new Scene();
-  scene.background = new Color(0x171410);
+  scene.background = new Color(PLATFORM.features.solo ? 0x24221e : 0x171410);
 
   const camera = new PerspectiveCamera(
     42,
@@ -751,8 +761,9 @@ export function createSceneRuntime(
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFSoftShadowMap;
   renderer.outputColorSpace = SRGBColorSpace;
+  if (PLATFORM.features.solo) renderer.toneMapping = ACESFilmicToneMapping;
   renderer.domElement.className = "game-canvas";
-  if (PLATFORM.id === "crazygames") {
+  if (PLATFORM.features.solo) {
     renderer.domElement.classList.add("game-canvas-crazygames");
   }
   renderer.domElement.setAttribute("aria-label", uiText("board"));
@@ -780,7 +791,7 @@ export function createSceneRuntime(
   const hemisphere = new HemisphereLight(0xfff4df, 0x282d38, 1.65);
   scene.add(hemisphere);
 
-  const sunlight = new DirectionalLight(0xfff0d4, 3.2);
+  const sunlight = new DirectionalLight(0xfff0d4, PLATFORM.features.solo ? 2.6 : 3.2);
   sunlight.position.set(
     -boardHalfExtent,
     boardHalfExtent * 2.7,
@@ -797,6 +808,12 @@ export function createSceneRuntime(
   sunlight.shadow.bias = -0.0002;
   sunlight.target.position.set(0, 0, 0);
   scene.add(sunlight, sunlight.target);
+  if (PLATFORM.features.solo) {
+    // Rear fill separates the rival silhouettes without another shadow map.
+    const rim = new DirectionalLight(0xd8e5f4, 1.8);
+    rim.position.set(boardHalfExtent * 1.6, boardHalfExtent * 2, boardHalfExtent * 1.8);
+    scene.add(rim);
+  }
 
   const board = createBoardMeshes(
     boardHalfExtent,
@@ -874,7 +891,7 @@ export function createSceneRuntime(
     metalness: 0.03,
   });
   const blackMaterial = new MeshStandardMaterial({
-    color: 0x292b2f,
+    color: PLATFORM.features.solo ? 0x3b3d40 : 0x292b2f,
     roughness: 0.5,
     metalness: 0.08,
   });

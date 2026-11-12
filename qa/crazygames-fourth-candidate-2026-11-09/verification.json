@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-09T06:19:08.157Z",
+  "boundary": "Local automated checks. RPC tests are mocks, not portal/cloud certification.",
+  "results": [
+    {
+      "name": "solo",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "timer",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "card-copy",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "opening-physics",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "cancel-input",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "progress-isolation",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "name": "gameplay-regression",
+      "exitCode": 0,
+      "error": null
+    }
+  ]
+}

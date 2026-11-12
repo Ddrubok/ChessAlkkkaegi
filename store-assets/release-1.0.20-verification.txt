@@ -1,0 +1,37 @@
+체스 알까기 1.0.20 빌드 준비 결과 — 2026-11-13
+
+Android AAB
+- 업로드 파일: store-assets/ChessAlkkagi-1.0.20-vc21.aab
+- versionName 1.0.20 / versionCode 21 / com.chessalkkagi.app
+- 크기: 11,620,890 bytes
+- SHA256: fda5ed02f26ce20701cd50869933712a8ebb6661ed474113f407a0530034aab1
+- 이전 1.0.19와 동일한 업로드 서명 인증서, release 빌드.
+- minSdk 24 / targetSdk 36. bundletool validate 및 JAR 서명 검증 통과.
+- 포함된 production 웹 파일 106개가 새 dist와 바이트 단위로 일치.
+- 기존 AAPT 설정으로 .gitkeep와 홍보 이미지 2개 제외. Capacitor 기본 cordova 파일 2개 포함.
+- 개발 서버 URL·서명 키·환경 설정 비밀 파일은 앱에 포함하지 않음.
+
+itch.io HTML5
+- 업로드 ZIP: store-assets/itch-1.0.20/ChessAlkkagi-itch-1.0.20.zip
+- 업로드 폴더: store-assets/itch-1.0.20/game/
+- 크기: 3,676,410 bytes / 압축 해제 7,038,251 bytes / 104개 파일
+- SHA256: fb2253a042f0122aca693aaa6c3ea4da0a114eb87443a6f5b006b211b80587fc
+- ZIP 루트 index.html, 상대 자산 경로, 대소문자·크기·파일별 해시 일치.
+- 환경 파일·소스·소스맵·서명 키가 없는 배포 파일만 패키징.
+- 새 오프라인 Edge 세션에서 실제 첫 샷 당김·놓기, Stage 1 진입과 새로고침 복원 확인. 페이지 오류 없음.
+- 실제 로그인·온라인 대전·전체 승리/카드 선택 흐름은 이번 릴리스 검증 범위 밖.
+
+패치노트
+- 한국어: store-assets/release-notes-1.0.20-ko.txt
+- 영어: store-assets/release-notes-1.0.20-en.txt
+- 일본어: store-assets/release-notes-1.0.20-ja.txt
+- 프랑스어: store-assets/release-notes-1.0.20-fr.txt
+- Play Console 붙여넣기용 합본: store-assets/release-notes-1.0.20-multilingual.txt
+- 언어별 4개 항목, 각 500자 미만. 합본과 개별 파일 내용 일치 확인.
+
+출처·범위
+- 소스: develop c2649005f455600e44ffedb583e2cd12b4e4b888.
+- .orca/builds/release-1.0.20-2026-11-13 분리 폴더에서 빌드.
+- 버전 지정과 Capacitor 동기화에 따른 build-info dirty=true. 원래 작업 폴더의 앱 소스·버전·스토어 설명 변경은 보존.
+- 상세 명세: qa/release-1.0.20-2026-11-13/verified-artifacts.json.
+- 실제 Android 기기 설치, Play Console 업로드, itch.io 업로드, Git 커밋·푸시는 수행하지 않음.

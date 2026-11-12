@@ -256,7 +256,7 @@ export class SupabaseMatchmaker {
   private errorCallback: ((error: Error) => void) | null = null;
   private isCancelled = false;
   private attempt = 0;
-  private pendingIceCandidates: RTCIceCandidateInit[] = [];
+  private pendingIceCandidates: { matchId: string; candidate: RTCIceCandidateInit }[] = [];
   private isConnectionEstablished = false;
   private signalingTimeoutTimer: number | null = null;
   private offerRetryTimer: number | null = null;
@@ -480,6 +480,8 @@ export class SupabaseMatchmaker {
     this.clearSignalingTimeout();
     this.clearRetryTimers();
     this.setupGuestPromise = null;
+    this.processingOffer = false;
+    this.processingAnswer = false;
     if (this.dataChannel) {
       try { this.dataChannel.close(); } catch {}
       this.dataChannel = null;
@@ -508,10 +510,23 @@ export class SupabaseMatchmaker {
    * 시그널링 메시지 수신 핸들러
    */
   private async handleIncomingSignal(signal: SignalMessage): Promise<void> {
-    if (this.isCancelled || !signal || !signal.toId) return;
+    if (this.isCancelled || !signal || !signal.toId || !signal.fromId) return;
     const attempt = this.attempt;
     if (signal.toId.toLowerCase() !== this.user.id.toLowerCase()) return;
-    if (this.friendlyRoom && (signal.matchId !== this.activeMatchId || signal.fromId !== this.opponentProfile?.id)) return;
+    const samePeer = signal.fromId.toLowerCase() === this.opponentProfile?.id.toLowerCase();
+    if (this.friendlyRoom && (signal.matchId !== this.activeMatchId || !samePeer)) return;
+    // A selected queue host can gather ICE before its offer reveals the match ID.
+    if (signal.type === "ice" && samePeer && !this.isHost && !this.friendlyRoom &&
+        (!this.activeMatchId || this.activeMatchId.startsWith("pending-"))) {
+      if (signal.candidate) this.pendingIceCandidates.push({ matchId: signal.matchId, candidate: signal.candidate });
+      return;
+    }
+    if (signal.type !== "offer" && signal.type !== "match-proposal" &&
+        (signal.matchId !== this.activeMatchId || !samePeer)) return;
+    if (signal.type === "offer" && !this.friendlyRoom) {
+      if (this.isHost || !samePeer ||
+          (this.activeMatchId && !this.activeMatchId.startsWith("pending-") && signal.matchId !== this.activeMatchId)) return;
+    }
 
     console.log(`[Matchmaker Signal Received] ${signal.type} from ${signal.fromId}`);
 
@@ -554,36 +569,40 @@ export class SupabaseMatchmaker {
             return;
           }
           this.processingOffer = true;
+          let pc: RTCPeerConnection | null = null;
           try {
           await this.setupGuestWebRTC(signal.fromId, signal.matchId);
           if (this.isCancelled || attempt !== this.attempt || this.activeMatchId !== signal.matchId) return;
 
-          if (this.peerConnection) {
+          pc = this.peerConnection;
+          if (pc) {
             this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_sending_answer"));
-            await this.peerConnection.setRemoteDescription(new RTCSessionDescription({
+            await pc.setRemoteDescription(new RTCSessionDescription({
               type: "offer",
               sdp: signal.sdp,
             }));
-            if (this.isCancelled || attempt !== this.attempt) return;
+            if (this.isCancelled || attempt !== this.attempt || this.activeMatchId !== signal.matchId || this.peerConnection !== pc) return;
 
             // 버퍼링된 조기 ICE Candidate 적용
             await this.flushPendingIceCandidates();
-            if (this.isCancelled || attempt !== this.attempt) return;
+            if (this.isCancelled || attempt !== this.attempt || this.activeMatchId !== signal.matchId || this.peerConnection !== pc) return;
 
-            const answer = await this.peerConnection.createAnswer();
-            if (this.isCancelled || attempt !== this.attempt) return;
-            await this.peerConnection.setLocalDescription(answer);
-            if (this.isCancelled || attempt !== this.attempt) return;
+            const answer = await pc.createAnswer();
+            if (this.isCancelled || attempt !== this.attempt || this.activeMatchId !== signal.matchId || this.peerConnection !== pc) return;
+            await pc.setLocalDescription(answer);
+            if (this.isCancelled || attempt !== this.attempt || this.activeMatchId !== signal.matchId || this.peerConnection !== pc) return;
 
             await this.sendSignal({
               type: "answer",
-              matchId: this.activeMatchId || signal.matchId,
+              matchId: signal.matchId,
               fromId: this.user.id,
               toId: signal.fromId,
               sdp: answer.sdp || "",
             });
           }
-          } finally { this.processingOffer = false; }
+          } finally {
+            if (attempt === this.attempt && this.activeMatchId === signal.matchId && this.peerConnection === pc) this.processingOffer = false;
+          }
         }
       } else if (signal.type === "answer") {
         if (this.offerRetryTimer !== null) {
@@ -592,19 +611,22 @@ export class SupabaseMatchmaker {
         }
 
         if (this.isHost && this.peerConnection) {
-          if (this.processingAnswer || this.peerConnection.remoteDescription?.type === "answer") return;
+          const pc = this.peerConnection;
+          if (this.processingAnswer || pc.remoteDescription?.type === "answer") return;
           this.processingAnswer = true;
           try {
           this.updateStatus("signaling", getRuntimeText("matchmaking.signaling_confirming"));
-          await this.peerConnection.setRemoteDescription(new RTCSessionDescription({
+          await pc.setRemoteDescription(new RTCSessionDescription({
             type: "answer",
             sdp: signal.sdp,
           }));
-          if (this.isCancelled || attempt !== this.attempt) return;
+          if (this.isCancelled || attempt !== this.attempt || this.activeMatchId !== signal.matchId || this.peerConnection !== pc) return;
 
           // 버퍼링된 조기 ICE Candidate 적용
           await this.flushPendingIceCandidates();
-          } finally { this.processingAnswer = false; }
+          } finally {
+            if (attempt === this.attempt && this.activeMatchId === signal.matchId && this.peerConnection === pc) this.processingAnswer = false;
+          }
         }
       } else if (signal.type === "ice") {
         if (signal.candidate) {
@@ -616,7 +638,7 @@ export class SupabaseMatchmaker {
             }
           } else {
             // remoteDescription 설정 전이면 큐에 보관
-            this.pendingIceCandidates.push(signal.candidate);
+            this.pendingIceCandidates.push({ matchId: signal.matchId, candidate: signal.candidate });
           }
         }
       }
@@ -630,10 +652,10 @@ export class SupabaseMatchmaker {
     const pc = this.peerConnection;
     const attempt = this.attempt;
     while (attempt === this.attempt && this.peerConnection === pc && this.pendingIceCandidates.length > 0) {
-      const cand = this.pendingIceCandidates.shift();
-      if (cand) {
+      const pending = this.pendingIceCandidates.shift();
+      if (pending?.matchId === this.activeMatchId) {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(cand));
+          await pc.addIceCandidate(new RTCIceCandidate(pending.candidate));
         } catch (e) {
           console.warn("지연된 ICE 후보 추가 실패:", e);
         }
@@ -957,6 +979,8 @@ export class SupabaseMatchmaker {
     this.clearSignalingTimeout();
     this.clearRetryTimers();
     this.setupGuestPromise = null;
+    this.processingOffer = false;
+    this.processingAnswer = false;
     if (this.evalTimer !== null) {
       clearInterval(this.evalTimer);
       this.evalTimer = null;

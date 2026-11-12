@@ -1,7 +1,11 @@
 import { installPortalBrowserGuards } from "./portal-browser-guards";
 
 installPortalBrowserGuards();
-// Basic has no SDK locale. Use English without saving an inferred preference.
-const { I18nManager } = await import("./i18n");
-I18nManager.init("en");
+const { init } = await import("./crazygames-stubs/portal-lifecycle");
+await init();
+const { I18nManager, normalizeLanguage } = await import("./i18n");
+const { getSdk } = await import("./crazygames-sdk");
+let sdkLocale: unknown;
+try { sdkLocale = getSdk()?.user.systemInfo?.locale; } catch { /* SDK unavailable. */ }
+I18nManager.init(normalizeLanguage(sdkLocale) || "en");
 await import("./main");

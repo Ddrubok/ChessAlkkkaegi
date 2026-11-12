@@ -5,6 +5,21 @@ import type { GameMode } from "./game-mode";
 import type { CardId, UpgradeCard } from "./cards";
 import { I18nManager } from "./i18n";
 import { beginResultMotion, closeResultMotion } from './result-motion';
+import { PLATFORM } from './platform';
+import { presentCard, type CardPreview } from './crazygames-progression';
+import './crazygames-progression.css';
+import './feedback-cards.css';
+
+function progressionText(ko: string, en: string): string {
+  return I18nManager.getLanguage() === 'ko' ? ko : en;
+}
+
+function addCardLine(parent: HTMLElement, className: string, value: string): void {
+  const line = document.createElement('span');
+  line.className = className;
+  line.textContent = value;
+  parent.append(line);
+}
 
 export interface RemainingPieceCounts {
   // 판에 남아 있는 백 말 수다.
@@ -50,7 +65,7 @@ export interface StageRunResultCopy {
   heading: string;
   // 획득 포인트 또는 완주 안내를 순서대로 표시하는 본문 문구다.
   detailLines: readonly string[];
-  // 런 종료 뒤 선택 가능한 유일한 메인 메뉴 이동 버튼 문구다.
+  // 런 종료 뒤 메인 메뉴 이동 버튼 문구다.
   buttonLabel: string;
 }
 
@@ -223,14 +238,14 @@ export function createMatchRuntime(
     } else if (event.code === "Tab") {
       event.preventDefault();
       const focusableButtons = [
-        ...overlay.querySelectorAll<HTMLButtonElement>("button"),
+        ...overlay.querySelectorAll<HTMLElement>("button, summary"),
       ].filter(
-        (button) => !button.closest("[hidden]") && !button.disabled && button.getClientRects().length > 0,
+        (element) => !element.closest("[hidden]") && !(element instanceof HTMLButtonElement && element.disabled) && element.getClientRects().length > 0,
       );
       if (focusableButtons.length > 0) {
         event.preventDefault();
         const currentIndex = focusableButtons.indexOf(
-          document.activeElement as HTMLButtonElement,
+          document.activeElement as HTMLElement,
         );
         const direction = event.shiftKey ? -1 : 1;
         const nextIndex =
@@ -272,9 +287,11 @@ export function showMatchResult(
   onCardSelected: ((cardId: CardId) => Promise<void>) | null = null,
   onReturnToMenu: (() => Promise<void>) | null = null,
   localSide: PieceSide | null = null,
+  cardPreviews: Partial<Record<CardId, CardPreview>> = {},
 ): void {
   gameplay.leave("match-result");
   runtime.overlay.classList.remove("weekly-result-open");
+  runtime.overlay.classList.toggle('cg-progression', PLATFORM.features.solo && gameMode === 'stage');
   runtime.winner = winner;
   runtime.restarting = false;
   runtime.onRestart = onRestart;
@@ -307,12 +324,22 @@ export function showMatchResult(
     onCardSelected !== null;
   runtime.cardChoices.replaceChildren();
   runtime.cardChoices.hidden = !showsCards;
+  if (PLATFORM.features.solo && gameMode === 'stage' && showsCards) {
+    runtime.resultKicker.textContent = progressionText('단계 완료', 'Stage complete');
+    const prompt = document.createElement('p');
+    prompt.textContent = progressionText(
+      `스테이지 ${stageNumber} 완료 · 강화 하나를 고르면 다음 경기로 이동합니다`,
+      `Stage ${stageNumber} clear · Choose one upgrade for the next match`,
+    );
+    runtime.resultDetails.replaceChildren(prompt);
+    runtime.resultDetails.hidden = false;
+  }
   runtime.restartButton.hidden =
     showsCards || gameMode === "online" || gameMode === "weekly";
   runtime.restartButton.disabled = false;
   runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
   runtime.menuButton.hidden =
-    showsCards ||
+    (showsCards && !PLATFORM.features.solo) ||
     (gameMode === "stage" && winner !== "black") ||
     (gameMode !== "stage" && gameMode !== "weekly" && gameMode !== "online") ||
     onReturnToMenu === null;
@@ -320,20 +347,61 @@ export function showMatchResult(
   runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
   if (showsCards) {
     for (const card of upgradeCards) {
+      const crazyCard = PLATFORM.features.solo && gameMode === 'stage';
       const button = document.createElement("button");
       button.type = "button";
       button.className = "upgrade-card";
       const cardName = I18nManager.t(`cards.${card.id}_name`) || card.name;
-      const cardDesc = I18nManager.t(`cards.${card.id}_desc`) || card.description;
-      button.innerHTML = `
-        <strong>${cardName}</strong>
-        <span>${cardDesc}</span>
-      `;
+      const cardDesc = card.id === 'giantPawn' && cardPreviews.giantPawn
+        ? progressionText('a·c·e·g열의 폰을 제외하고 남은 폰에 크기 ×1.3 배수가 적용됩니다. 제거 수는 단계 배치에 따라 달라집니다.', 'Pawns on files a, c, e and g are removed; remaining pawns gain a ×1.3 size multiplier. The number removed depends on the stage layout.')
+        : card.id === 'weight'
+          ? progressionText('내 말의 질량이 증가합니다. 같은 파워의 목표 초기 발사 속도는 유지됩니다.', 'Your pieces gain mass. Initial launch speed at the same power stays the same.')
+          : card.id === 'force'
+            ? progressionText('같은 파워에서 목표 초기 발사 속도가 증가합니다.', 'Increases initial launch speed at the same power.')
+            : I18nManager.t(`cards.${card.id}_desc`) || card.description;
+      if (crazyCard) {
+        const presented = presentCard(card, I18nManager.getLanguage(), cardPreviews[card.id]);
+        const top = document.createElement('span');
+        top.className = 'cg-card-top';
+        addCardLine(top, 'cg-card-icon', presented.icon);
+        top.firstElementChild?.setAttribute('aria-hidden', 'true');
+        addCardLine(top, 'cg-card-copy', cardName);
+        button.append(top);
+        if (presented.grade && I18nManager.getLanguage() === 'ko') {
+          addCardLine(button, 'cg-card-grade', presented.grade);
+        }
+        addCardLine(button, 'cg-card-effect', presented.effect);
+        if (presented.bonusChange) {
+          addCardLine(button, 'cg-card-value', progressionText(
+            `카드 보너스 ${presented.bonusChange} (교체)`,
+            `Card bonus ${presented.bonusChange} (replaces)`,
+          ));
+        }
+        for (const value of presented.appliedValues) {
+          addCardLine(button, 'cg-card-applied', value);
+        }
+        if (presented.tradeoff) {
+          addCardLine(button, 'cg-card-tradeoff', presented.tradeoff);
+        }
+        if (presented.noEffect) {
+          addCardLine(button, 'cg-card-tradeoff', presented.appliedValues.length > 0
+            ? progressionText('표시된 적용값은 변하지 않습니다', 'Shown applied values do not change')
+            : progressionText('현재 유효 카드 보너스는 변하지 않습니다', 'Effective card bonus does not change'));
+        }
+        addCardLine(button, 'cg-card-scope', presented.scope);
+      } else {
+        const title = document.createElement('strong');
+        title.textContent = cardName;
+        const description = document.createElement('span');
+        description.textContent = cardDesc;
+        button.append(title, description);
+      }
       button.addEventListener("click", () => {
         if (runtime.restarting || runtime.onCardSelected === null) {
           return;
         }
         runtime.restarting = true;
+        button.classList.add('cg-selected');
         for (const cardButton of runtime.cardChoices.querySelectorAll(
           "button",
         )) {
@@ -346,6 +414,7 @@ export function showMatchResult(
           () => {
             runtime.winner = null;
             runtime.restarting = false;
+            button.classList.remove('cg-selected');
             closeResultMotion(runtime.overlay);
             runtime.overlay.hidden = true;
           },
@@ -366,7 +435,25 @@ export function showMatchResult(
           },
         );
       });
-      runtime.cardChoices.append(button);
+      if (crazyCard) {
+        const wrap = document.createElement('div');
+        wrap.className = 'upgrade-card-wrap';
+        const presented = presentCard(card, I18nManager.getLanguage(), cardPreviews[card.id]);
+        wrap.append(button);
+        if (presented.detail && presented.detailTitle) {
+          const details = document.createElement('details');
+          details.className = 'cg-card-details';
+          const summary = document.createElement('summary');
+          summary.textContent = presented.detailTitle;
+          const description = document.createElement('p');
+          description.textContent = presented.detail;
+          details.append(summary, description);
+          wrap.append(details);
+        }
+        runtime.cardChoices.append(wrap);
+      } else {
+        runtime.cardChoices.append(button);
+      }
     }
   }
   runtime.actionStatus.hidden = true;
@@ -425,7 +512,7 @@ export function createStageRunResultCopy(
 }
 
 /**
- * 끝난 스테이지 런은 카드나 다시 시작 없이 정산 문구와 메인 이동 한 동작만 표시한다.
+ * 정산된 런은 새 런 시작과 메인 이동을 제공한다. 보상은 여기서 재정산하지 않는다.
  */
 export function showStageRunResult(
   runtime: MatchRuntime,
@@ -434,8 +521,10 @@ export function showStageRunResult(
   completed: boolean,
   onReturnToMenu: () => Promise<void>,
   winner: MatchWinner = completed ? "white" : "black",
+  onRestart: (() => Promise<void>) | null = null,
 ): void {
   gameplay.leave("stage-run-result");
+  runtime.overlay.classList.toggle('cg-progression', PLATFORM.features.solo);
   const copy = createStageRunResultCopy(
     stageNumber,
     payout,
@@ -446,6 +535,7 @@ export function showStageRunResult(
   runtime.restarting = false;
   runtime.onCardSelected = null;
   runtime.onReturnToMenu = onReturnToMenu;
+  if (onRestart) runtime.onRestart = onRestart;
   runtime.resultKicker.hidden = copy.kicker === null;
   runtime.resultKicker.textContent = copy.kicker ?? "";
   runtime.winnerHeading.textContent = copy.heading;
@@ -459,7 +549,8 @@ export function showStageRunResult(
   runtime.resultDetails.hidden = false;
   runtime.cardChoices.replaceChildren();
   runtime.cardChoices.hidden = true;
-  runtime.restartButton.hidden = true;
+  runtime.restartButton.hidden = onRestart === null;
+  runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
   runtime.restartButton.disabled = false;
   runtime.menuButton.hidden = false;
   runtime.menuButton.disabled = false;
@@ -467,8 +558,48 @@ export function showStageRunResult(
   runtime.actionStatus.hidden = true;
   runtime.actionStatus.textContent = "";
   runtime.overlay.hidden = false;
-  runtime.menuButton.focus();
+  (onRestart ? runtime.restartButton : runtime.menuButton).focus();
   beginResultMotion(runtime.overlay, `stage-end:${stageNumber}:${winner}`, runtime.winnerHeading);
+}
+
+/** Solo stalemate repeats the current stage and current upgrades without a reward. */
+export function showSoloDrawResult(
+  runtime: MatchRuntime,
+  stage: number,
+  onReplay: () => Promise<void>,
+  onMenu: () => Promise<void>,
+): void {
+  gameplay.leave("solo-draw-result");
+  runtime.overlay.classList.remove("weekly-result-open");
+  runtime.overlay.classList.toggle("cg-progression", PLATFORM.features.solo);
+  runtime.winner = "draw";
+  runtime.restarting = false;
+  runtime.onRestart = onReplay;
+  runtime.onReturnToMenu = onMenu;
+  runtime.onCardSelected = null;
+  runtime.resultKicker.hidden = false;
+  runtime.resultKicker.textContent = I18nManager.t("ingame.game_over");
+  runtime.winnerHeading.textContent = I18nManager.t("ingame.draw");
+  const message = document.createElement("p");
+  message.textContent = progressionText(
+    `무승부 · 현재 강화로 스테이지 ${stage}를 다시 플레이합니다.`,
+    `Draw · Replay Stage ${stage} with your current upgrades.`,
+  );
+  runtime.resultDetails.replaceChildren(message);
+  runtime.resultDetails.hidden = false;
+  runtime.cardChoices.replaceChildren();
+  runtime.cardChoices.hidden = true;
+  runtime.restartButton.hidden = false;
+  runtime.restartButton.disabled = false;
+  runtime.restartButton.textContent = progressionText(`스테이지 ${stage} 다시 플레이`, `Replay Stage ${stage}`);
+  runtime.menuButton.hidden = false;
+  runtime.menuButton.disabled = false;
+  runtime.menuButton.textContent = I18nManager.t("ingame.menu_btn");
+  runtime.actionStatus.hidden = true;
+  runtime.actionStatus.textContent = "";
+  runtime.overlay.hidden = false;
+  runtime.restartButton.focus();
+  beginResultMotion(runtime.overlay, `solo-draw:${stage}`, runtime.winnerHeading);
 }
 
 /**
@@ -479,6 +610,7 @@ export function showDisconnectedMatchEnd(
   onReturnToMenu: () => Promise<void>,
 ): void {
   closeResultMotion(runtime.overlay);
+  runtime.overlay.classList.remove('cg-progression');
   runtime.winner = null;
   runtime.restarting = false;
   runtime.onCardSelected = null;
@@ -507,6 +639,7 @@ export function showDisconnectedMatchEnd(
  */
 export function hideMatchResult(runtime: MatchRuntime): void {
   closeResultMotion(runtime.overlay);
+  runtime.overlay.classList.remove('cg-progression');
   runtime.overlay.classList.remove("weekly-result-open");
   runtime.overlay.hidden = true;
   runtime.winner = null;

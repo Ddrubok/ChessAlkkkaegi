@@ -3,6 +3,8 @@
  * (https://www.metered.ca/ 무료 50GB 플랜 지원)
  */
 
+import { PLATFORM } from "./platform";
+
 export interface MeteredCredentialsResponse {
   urls: string | string[];
   username?: string;
@@ -26,6 +28,9 @@ export const DEFAULT_METERED_API_KEY = "ee6b69bf97699b897c7b29bbcdc2620a4c04";
  * Metered 설정값 가져오기 (환경 변수, LocalStorage, 또는 기본 설정)
  */
 export function getMeteredConfig(): { appName: string; apiKey: string } {
+  // The itch embed always uses the same production relay configuration as web.
+  // Ignore local overrides that could point a distributed build elsewhere.
+  if (PLATFORM.id === "itch") return { appName: DEFAULT_METERED_APP_NAME, apiKey: DEFAULT_METERED_API_KEY };
   const envAppName = (import.meta as any).env?.VITE_METERED_APP_NAME || "";
   const envApiKey = (import.meta as any).env?.VITE_METERED_API_KEY || "";
 

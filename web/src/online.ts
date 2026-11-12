@@ -914,6 +914,7 @@ export function createOnlineRuntime(
   let outgoingRematchOfferId: string | null = null;
   let incomingRematchOfferId: string | null = null;
   let rematchPreparationId: string | null = null;
+  const failedRematchIds = new Set<string>();
   let rematchStatus: OnlineRematchStatus = {
     phase: "idle",
     offerId: null,
@@ -1499,6 +1500,23 @@ export function createOnlineRuntime(
   };
 
   // 새 표준 보드를 준비한 뒤 기록·복구 상태를 비우고 턴 0 ready 해시 교환을 시작한다.
+  const failRematch = (offerId: string, nextMatchId: string, message: string): void => {
+    if (rematchPreparationId !== nextMatchId || rematchStatus.phase !== "starting") return;
+    failedRematchIds.add(nextMatchId);
+    rematchPreparationId = null;
+    runtime.active = false;
+    runtime.localReady = false;
+    runtime.remoteReady = false;
+    localReadyHash = null;
+    remoteReadyHash = null;
+    turnRuntime.phase = "match-over";
+    turnRuntime.sceneRuntime.controls.enabled = false;
+    setRematchStatus({ phase: "failed", offerId, message });
+    if (transportConnected) {
+      currentTransport.send({ kind: "rematch", action: "cancel", offerId } satisfies OnlineRematchMessage);
+    }
+  };
+
   const beginRematch = (offerId: string): void => {
     const nextMatchId = deriveRematchMatchId(offerId);
     if (
@@ -1554,10 +1572,18 @@ export function createOnlineRuntime(
     pendingWork = pendingWork
       .then(async () => {
         await prepareRematch(nextMatchId);
+        if (rematchPreparationId !== nextMatchId) {
+          if (rematchStatus.phase === "failed") {
+            turnRuntime.phase = "match-over";
+            turnRuntime.sceneRuntime.controls.enabled = false;
+          }
+          return;
+        }
         alignTurnCameraToPerspective(turnRuntime, mySide);
         const state = await capturePhysicsStateHash(
           turnRuntime.physicsRuntime,
         );
+        if (rematchPreparationId !== nextMatchId) return;
         localReadyHash = state.sha256;
         runtime.localReady = true;
         sendReady(performance.now());
@@ -1567,15 +1593,7 @@ export function createOnlineRuntime(
       .catch((error: unknown) => {
         const failure =
           error instanceof Error ? error : new Error(String(error));
-        rematchPreparationId = null;
-        runtime.active = false;
-        turnRuntime.phase = "match-over";
-        turnRuntime.sceneRuntime.controls.enabled = false;
-        setRematchStatus({
-          phase: "failed",
-          offerId,
-          message: getRuntimeText("online.rematch_failed_start", { reason: uiText("connectionHelp") }),
-        });
+        failRematch(offerId, nextMatchId, getRuntimeText("online.rematch_failed_start", { reason: uiText("connectionHelp") }));
         console.error(failure.stack ?? failure.message);
       });
   };
@@ -1628,12 +1646,7 @@ export function createOnlineRuntime(
       if (rematchPreparationId !== null) {
         const failedOfferId =
           rematchStatus.offerId ?? outgoingRematchOfferId;
-        rematchPreparationId = null;
-        setRematchStatus({
-          phase: "failed",
-          offerId: failedOfferId,
-          message: getRuntimeText("online.rematch_failed_hash_mismatch"),
-        });
+        failRematch(failedOfferId ?? "", rematchPreparationId, getRuntimeText("online.rematch_failed_hash_mismatch"));
       }
       console.error(failure.stack ?? failure.message);
       return;
@@ -1862,6 +1875,7 @@ export function createOnlineRuntime(
       const message = parseOnlineMessage(payload);
       switch (message.kind) {
         case "ready": {
+          if (failedRematchIds.has(message.matchId)) return;
           if (
             sessionEnded &&
             rematchPreparationId === null
@@ -2219,6 +2233,11 @@ export function createOnlineRuntime(
           return;
         }
         case "rematch": {
+          if (message.action === "cancel" && rematchPreparationId !== null &&
+              rematchStatus.offerId === message.offerId) {
+            failRematch(message.offerId, rematchPreparationId, getRuntimeText("online.rematch_failed_start", { reason: uiText("connectionHelp") }));
+            return;
+          }
           if (
             runtime.matchId ===
               deriveRematchMatchId(message.offerId)
@@ -2267,8 +2286,7 @@ export function createOnlineRuntime(
           }
           if (message.action === "accept") {
             if (
-              outgoingRematchOfferId === null &&
-              rematchPreparationId === null
+              message.offerId !== outgoingRematchOfferId
             ) {
               throw new Error(
                 "보내지 않은 재대결 요청의 수락이 도착했습니다.",
