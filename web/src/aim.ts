@@ -35,6 +35,7 @@ import {
   ROOK_SPIN_MAX_POWER,
 } from "./config";
 import type { PieceBodyBinding } from "./physics";
+import { powerAtPullDistance } from "./power-controls";
 import type { SceneRuntime } from "./scene";
 import {
   resetAimPowerSounds,
@@ -1501,6 +1502,7 @@ export function updateAimPointer(
   clientX: number,
   clientY: number,
   maxDragPixels = MAX_DRAG_PIXELS,
+  powerExponent = 1,
 ): void {
   const activeAim = runtime.activeAim;
   if (activeAim === null) {
@@ -1510,7 +1512,7 @@ export function updateAimPointer(
   const deltaX = clientX - activeAim.startX;
   const deltaY = clientY - activeAim.startY;
   const dragLength = Math.hypot(deltaX, deltaY);
-  activeAim.normalizedPower = Math.min(dragLength / maxDragPixels, maxPower);
+  activeAim.normalizedPower = powerAtPullDistance(dragLength, maxDragPixels, maxPower, powerExponent);
   if (activeAim.tracksPowerSounds) {
     updateAimPowerSounds(activeAim.normalizedPower, maxPower);
   }

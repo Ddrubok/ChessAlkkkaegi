@@ -1,0 +1,2496 @@
+{
+  "source": {
+    "pitch": 48,
+    "fov": 42,
+    "fitMargin": 1.06,
+    "reserveFraction": 0.18,
+    "budgetFraction": 0.8,
+    "cellSize": 0.536003,
+    "border": 0.25,
+    "boardHalfExtent": 2.2780127500000003
+  },
+  "notes": [
+    "Geometry uses board corners at y=0 and sampled piece centers at ranks 1,2,4,6,7,8/files a,d,h. Piece hulls, red dots, HUD occlusion and live release are not measured.",
+    "Clearance is the minimum Euclidean distance to any canvas edge for board corners and sampled piece centers; all-direction guarantee for these samples requires pull <= clearance."
+  ],
+  "cases": [
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        248
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0.18,
+      "reserve": 44.64,
+      "existingD": 23.808000000000003,
+      "distance": 8.920036483754606,
+      "boardBBox": {
+        "left": 300.5010995454942,
+        "right": 499.4989004545058,
+        "top": 71.64073861508824,
+        "bottom": 197.94209301345626,
+        "width": 198.99780090901163,
+        "height": 126.30135439836802
+      },
+      "boardHeightFraction": 0.5092796548321291,
+      "boardAreaBBoxFraction": 0.12668191419911773,
+      "sampledPieceYRange": [
+        79.74071708931854,
+        182.75644772764403
+      ],
+      "sampledPieceVerticalReachUpperBound": 72.49213468083725,
+      "boardCornerClearance": 50.05790698654374,
+      "sampledPieceCenterClearance": 65.24355227235597,
+      "sampledMinClearance": 50.05790698654374,
+      "safe150Distance": 50.05790698654374,
+      "safeLinearD": 33.371937991029164,
+      "safeQuadraticD": 40.8721099029111,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 40.8721099029111,
+          "required150": 50.05790698654374,
+          "r30": 22.386576566654693
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        248
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0.16,
+      "reserve": 39.68,
+      "existingD": 21.162666666666667,
+      "distance": 8.490372298584498,
+      "boardBBox": {
+        "left": 294.3640629435656,
+        "right": 505.6359370564344,
+        "top": 69.39434197357161,
+        "bottom": 202.5028000079448,
+        "width": 211.27187411286877,
+        "height": 133.1084580343732
+      },
+      "boardHeightFraction": 0.5367276533644081,
+      "boardAreaBBoxFraction": 0.14174432151812585,
+      "sampledPieceYRange": [
+        77.78942672515683,
+        186.24577394149003
+      ],
+      "sampledPieceVerticalReachUpperBound": 69.7718263918334,
+      "boardCornerClearance": 45.49719999205519,
+      "sampledPieceCenterClearance": 61.75422605850997,
+      "sampledMinClearance": 45.49719999205519,
+      "safe150Distance": 45.49719999205519,
+      "safeLinearD": 30.331466661370126,
+      "safeQuadraticD": 37.148308235298025,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 37.148308235298025,
+          "required150": 45.49719999205519,
+          "r30": 20.346966393627657
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        248
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 6.290491670513538,
+      "boardBBox": {
+        "left": 245.60692409828624,
+        "right": 554.3930759017138,
+        "top": 54.022708539225874,
+        "bottom": 238.73641544589708,
+        "width": 308.7861518034276,
+        "height": 184.7137069066712
+      },
+      "boardHeightFraction": 0.7448133343010935,
+      "boardAreaBBoxFraction": 0.28748505413839315,
+      "sampledPieceYRange": [
+        64.31730839721492,
+        213.4409978044568
+      ],
+      "sampledPieceVerticalReachUpperBound": 49.43815529637905,
+      "boardCornerClearance": 9.26358455410292,
+      "sampledPieceCenterClearance": 34.5590021955432,
+      "sampledMinClearance": 9.26358455410292,
+      "safe150Distance": 9.26358455410292,
+      "safeLinearD": 6.1757230360686135,
+      "safeQuadraticD": 7.563685115559928,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 7.563685115559928,
+          "required150": 9.26358455410292,
+          "r30": 4.142800955658242
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        248
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0.18,
+      "reserve": 44.64,
+      "existingD": 23.808000000000003,
+      "distance": 12.61483657218858,
+      "boardBBox": {
+        "left": 317.503831036097,
+        "right": 482.49616896390296,
+        "top": 71.6407386150883,
+        "bottom": 197.9420930134563,
+        "width": 164.99233792780598,
+        "height": 126.30135439836799
+      },
+      "boardHeightFraction": 0.509279654832129,
+      "boardAreaBBoxFraction": 0.10503405113727378,
+      "sampledPieceYRange": [
+        79.7407170893186,
+        182.75644772764403
+      ],
+      "sampledPieceVerticalReachUpperBound": 72.49213468083728,
+      "boardCornerClearance": 50.05790698654371,
+      "sampledPieceCenterClearance": 65.24355227235597,
+      "sampledMinClearance": 50.05790698654371,
+      "safe150Distance": 50.05790698654371,
+      "safeLinearD": 33.37193799102914,
+      "safeQuadraticD": 40.87210990291108,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 40.87210990291108,
+          "required150": 50.05790698654371,
+          "r30": 22.386576566654682
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        248
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0.16,
+      "reserve": 39.68,
+      "existingD": 21.162666666666667,
+      "distance": 12.007199654255027,
+      "boardBBox": {
+        "left": 313.3290259779678,
+        "right": 486.6709740220323,
+        "top": 69.39434197357167,
+        "bottom": 202.5028000079449,
+        "width": 173.3419480440645,
+        "height": 133.10845803437323
+      },
+      "boardHeightFraction": 0.5367276533644082,
+      "boardAreaBBoxFraction": 0.11629677125413238,
+      "sampledPieceYRange": [
+        77.7894267251569,
+        186.2457739414901
+      ],
+      "sampledPieceVerticalReachUpperBound": 69.7718263918334,
+      "boardCornerClearance": 45.4971999920551,
+      "sampledPieceCenterClearance": 61.754226058509886,
+      "sampledMinClearance": 45.4971999920551,
+      "safe150Distance": 45.4971999920551,
+      "safeLinearD": 30.33146666137007,
+      "safeQuadraticD": 37.14830823529796,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 37.14830823529796,
+          "required150": 45.4971999920551,
+          "r30": 20.34696639362762
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        248
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 8.896098634435235,
+      "boardBBox": {
+        "left": 283.0188679245283,
+        "right": 516.9811320754717,
+        "top": 54.02270853922598,
+        "bottom": 238.7364154458972,
+        "width": 233.96226415094338,
+        "height": 184.7137069066712
+      },
+      "boardHeightFraction": 0.7448133343010935,
+      "boardAreaBBoxFraction": 0.2178227675786217,
+      "sampledPieceYRange": [
+        64.31730839721506,
+        213.4409978044569
+      ],
+      "sampledPieceVerticalReachUpperBound": 49.43815529637908,
+      "boardCornerClearance": 9.263584554102806,
+      "sampledPieceCenterClearance": 34.55900219554309,
+      "sampledMinClearance": 9.263584554102806,
+      "safe150Distance": 9.263584554102806,
+      "safeLinearD": 6.175723036068537,
+      "safeQuadraticD": 7.563685115559835,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 7.563685115559835,
+          "required150": 9.263584554102806,
+          "r30": 4.14280095565819
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        238
+      ],
+      "kind": "short landscape banners 100+112",
+      "view": "front",
+      "reserveFraction": 0.18,
+      "reserve": 42.839999999999996,
+      "existingD": 22.848,
+      "distance": 8.920036483754606,
+      "boardBBox": {
+        "left": 304.51315198317593,
+        "right": 495.48684801682407,
+        "top": 68.75199915480243,
+        "bottom": 189.96055700484916,
+        "width": 190.97369603364814,
+        "height": 121.20855785004673
+      },
+      "boardHeightFraction": 0.5092796548321291,
+      "boardAreaBBoxFraction": 0.12157377249754034,
+      "sampledPieceYRange": [
+        76.5253655937815,
+        175.38723612572292
+      ],
+      "sampledPieceVerticalReachUpperBound": 69.5690647340293,
+      "boardCornerClearance": 48.039442995150836,
+      "sampledPieceCenterClearance": 62.61276387427708,
+      "sampledMinClearance": 48.039442995150836,
+      "safe150Distance": 48.039442995150836,
+      "safeLinearD": 32.02629533010056,
+      "safeQuadraticD": 39.224040955213056,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 39.224040955213056,
+          "required150": 48.039442995150836,
+          "r30": 21.48389202767667
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        238
+      ],
+      "kind": "short landscape banners 100+112",
+      "view": "front",
+      "reserveFraction": 0.16,
+      "reserve": 38.08,
+      "existingD": 20.30933333333333,
+      "distance": 8.490372298584498,
+      "boardBBox": {
+        "left": 298.6235765345509,
+        "right": 501.3764234654491,
+        "top": 66.59618302302438,
+        "bottom": 194.3373645237535,
+        "width": 202.75284693089816,
+        "height": 127.74118150072913
+      },
+      "boardHeightFraction": 0.5367276533644081,
+      "boardAreaBBoxFraction": 0.1360288246827175,
+      "sampledPieceYRange": [
+        74.65275629269082,
+        178.73586370191381
+      ],
+      "sampledPieceVerticalReachUpperBound": 66.95844629538851,
+      "boardCornerClearance": 43.66263547624649,
+      "sampledPieceCenterClearance": 59.264136298086186,
+      "sampledMinClearance": 43.66263547624649,
+      "safe150Distance": 43.66263547624649,
+      "safeLinearD": 29.108423650830996,
+      "safeQuadraticD": 35.6503925806489,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 35.6503925806489,
+          "required150": 43.66263547624649,
+          "r30": 19.526524200336212
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        238
+      ],
+      "kind": "short landscape banners 100+112",
+      "view": "front",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 6.290491670513538,
+      "boardBBox": {
+        "left": 251.83245135238766,
+        "right": 548.1675486476123,
+        "top": 51.84437351748289,
+        "bottom": 229.1099470811432,
+        "width": 296.3350972952246,
+        "height": 177.2655735636603
+      },
+      "boardHeightFraction": 0.7448133343010936,
+      "boardAreaBBoxFraction": 0.27589291485861905,
+      "sampledPieceYRange": [
+        61.72386854248851,
+        204.8345059575029
+      ],
+      "sampledPieceVerticalReachUpperBound": 47.4446812924928,
+      "boardCornerClearance": 8.89005291885681,
+      "sampledPieceCenterClearance": 33.1654940424971,
+      "sampledMinClearance": 8.89005291885681,
+      "safe150Distance": 8.89005291885681,
+      "safeLinearD": 5.92670194590454,
+      "safeQuadraticD": 7.258697812513137,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 7.258697812513137,
+          "required150": 8.89005291885681,
+          "r30": 3.97575253002685
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        238
+      ],
+      "kind": "short landscape banners 100+112",
+      "view": "diagonal",
+      "reserveFraction": 0.18,
+      "reserve": 42.839999999999996,
+      "existingD": 22.848,
+      "distance": 12.61483657218858,
+      "boardBBox": {
+        "left": 320.8302894620608,
+        "right": 479.16971053793907,
+        "top": 68.75199915480248,
+        "bottom": 189.9605570048492,
+        "width": 158.33942107587825,
+        "height": 121.20855785004672
+      },
+      "boardHeightFraction": 0.5092796548321291,
+      "boardAreaBBoxFraction": 0.10079880713980302,
+      "sampledPieceYRange": [
+        76.52536559378154,
+        175.38723612572292
+      ],
+      "sampledPieceVerticalReachUpperBound": 69.56906473402931,
+      "boardCornerClearance": 48.03944299515081,
+      "sampledPieceCenterClearance": 62.61276387427708,
+      "sampledMinClearance": 48.03944299515081,
+      "safe150Distance": 48.03944299515081,
+      "safeLinearD": 32.02629533010054,
+      "safeQuadraticD": 39.224040955213034,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 39.224040955213034,
+          "required150": 48.03944299515081,
+          "r30": 21.48389202767666
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        238
+      ],
+      "kind": "short landscape banners 100+112",
+      "view": "diagonal",
+      "reserveFraction": 0.16,
+      "reserve": 38.08,
+      "existingD": 20.30933333333333,
+      "distance": 12.007199654255027,
+      "boardBBox": {
+        "left": 316.8238233175659,
+        "right": 483.1761766824341,
+        "top": 66.59618302302442,
+        "bottom": 194.33736452375356,
+        "width": 166.35235336486824,
+        "height": 127.74118150072914
+      },
+      "boardHeightFraction": 0.5367276533644082,
+      "boardAreaBBoxFraction": 0.11160738531646566,
+      "sampledPieceYRange": [
+        74.6527562926909,
+        178.7358637019139
+      ],
+      "sampledPieceVerticalReachUpperBound": 66.9584462953885,
+      "boardCornerClearance": 43.662635476246436,
+      "sampledPieceCenterClearance": 59.2641362980861,
+      "sampledMinClearance": 43.662635476246436,
+      "safe150Distance": 43.662635476246436,
+      "safeLinearD": 29.108423650830957,
+      "safeQuadraticD": 35.650392580648855,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 35.650392580648855,
+          "required150": 43.662635476246436,
+          "r30": 19.526524200336187
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        238
+      ],
+      "kind": "short landscape banners 100+112",
+      "view": "diagonal",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 8.896098634435235,
+      "boardBBox": {
+        "left": 287.73584905660385,
+        "right": 512.2641509433962,
+        "top": 51.844373517483,
+        "bottom": 229.10994708114328,
+        "width": 224.52830188679235,
+        "height": 177.26557356366027
+      },
+      "boardHeightFraction": 0.7448133343010935,
+      "boardAreaBBoxFraction": 0.2090395914665804,
+      "sampledPieceYRange": [
+        61.723868542488646,
+        204.834505957503
+      ],
+      "sampledPieceVerticalReachUpperBound": 47.44468129249282,
+      "boardCornerClearance": 8.890052918856725,
+      "sampledPieceCenterClearance": 33.16549404249699,
+      "sampledMinClearance": 8.890052918856725,
+      "safe150Distance": 8.890052918856725,
+      "safeLinearD": 5.926701945904483,
+      "safeQuadraticD": 7.258697812513067,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 7.258697812513067,
+          "required150": 8.890052918856725,
+          "r30": 3.9757525300268117
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        566
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0.18,
+      "reserve": 101.88,
+      "existingD": 54.336000000000006,
+      "distance": 8.920036483754606,
+      "boardBBox": {
+        "left": 455.91783202721666,
+        "right": 910.0821679727833,
+        "top": 163.5026534521772,
+        "bottom": 451.75493808716226,
+        "width": 454.1643359455666,
+        "height": 288.252284634985
+      },
+      "boardHeightFraction": 0.509279654832129,
+      "boardAreaBBoxFraction": 0.16932405288976665,
+      "sampledPieceYRange": [
+        181.98889464739634,
+        417.097376668736
+      ],
+      "sampledPieceVerticalReachUpperBound": 165.44575898933016,
+      "boardCornerClearance": 114.24506191283774,
+      "sampledPieceCenterClearance": 148.902623331264,
+      "sampledMinClearance": 114.24506191283774,
+      "safe150Distance": 114.24506191283774,
+      "safeLinearD": 76.1633746085585,
+      "safeQuadraticD": 93.2807024397084,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 93.2807024397084,
+          "required150": 114.24506191283774,
+          "r30": 51.091944906155476
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        566
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0.16,
+      "reserve": 90.56,
+      "existingD": 48.29866666666667,
+      "distance": 8.490372298584498,
+      "boardBBox": {
+        "left": 441.9115307502345,
+        "right": 924.0884692497655,
+        "top": 158.37579660097393,
+        "bottom": 462.1636484052289,
+        "width": 482.176938499531,
+        "height": 303.78785180425496
+      },
+      "boardHeightFraction": 0.5367276533644081,
+      "boardAreaBBoxFraction": 0.18945658616931754,
+      "sampledPieceYRange": [
+        177.53554647757565,
+        425.06091956001353
+      ],
+      "sampledPieceVerticalReachUpperBound": 159.23731345878105,
+      "boardCornerClearance": 103.83635159477109,
+      "sampledPieceCenterClearance": 140.93908043998647,
+      "sampledMinClearance": 103.83635159477109,
+      "safe150Distance": 103.83635159477109,
+      "safeLinearD": 69.22423439651406,
+      "safeQuadraticD": 84.78202605313983,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 84.78202605313983,
+          "required150": 103.83635159477109,
+          "r30": 46.43702814029537
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        566
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 6.290491670513538,
+      "boardBBox": {
+        "left": 330.6351574178629,
+        "right": 1035.364842582137,
+        "top": 123.29376223065259,
+        "bottom": 544.8581094450716,
+        "width": 704.7296851642741,
+        "height": 421.564347214419
+      },
+      "boardHeightFraction": 0.7448133343010936,
+      "boardAreaBBoxFraction": 0.38425480716556587,
+      "sampledPieceYRange": [
+        146.7886957775147,
+        487.12743853759093
+      ],
+      "sampledPieceVerticalReachUpperBound": 112.83062861996189,
+      "boardCornerClearance": 21.14189055492841,
+      "sampledPieceCenterClearance": 78.87256146240907,
+      "sampledMinClearance": 21.14189055492841,
+      "safe150Distance": 21.14189055492841,
+      "safeLinearD": 14.094593703285605,
+      "safeQuadraticD": 17.262281352447232,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 17.262281352447232,
+          "required150": 21.14189055492841,
+          "r30": 9.454940890736134
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        566
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0.18,
+      "reserve": 101.88,
+      "existingD": 54.336000000000006,
+      "distance": 12.61483657218858,
+      "boardBBox": {
+        "left": 494.72245309044723,
+        "right": 871.2775469095527,
+        "top": 163.50265345217733,
+        "bottom": 451.7549380871623,
+        "width": 376.5550938191055,
+        "height": 288.252284634985
+      },
+      "boardHeightFraction": 0.509279654832129,
+      "boardAreaBBoxFraction": 0.14038934714895607,
+      "sampledPieceYRange": [
+        181.98889464739645,
+        417.097376668736
+      ],
+      "sampledPieceVerticalReachUpperBound": 165.44575898933022,
+      "boardCornerClearance": 114.24506191283768,
+      "sampledPieceCenterClearance": 148.902623331264,
+      "sampledMinClearance": 114.24506191283768,
+      "safe150Distance": 114.24506191283768,
+      "safeLinearD": 76.16337460855846,
+      "safeQuadraticD": 93.28070243970835,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 93.28070243970835,
+          "required150": 114.24506191283768,
+          "r30": 51.09194490615544
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        566
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0.16,
+      "reserve": 90.56,
+      "existingD": 48.29866666666667,
+      "distance": 12.007199654255027,
+      "boardBBox": {
+        "left": 485.1944705787491,
+        "right": 880.805529421251,
+        "top": 158.37579660097407,
+        "bottom": 462.1636484052291,
+        "width": 395.6110588425019,
+        "height": 303.787851804255
+      },
+      "boardHeightFraction": 0.5367276533644082,
+      "boardAreaBBoxFraction": 0.1554431883290958,
+      "sampledPieceYRange": [
+        177.53554647757582,
+        425.0609195600137
+      ],
+      "sampledPieceVerticalReachUpperBound": 159.23731345878105,
+      "boardCornerClearance": 103.83635159477092,
+      "sampledPieceCenterClearance": 140.9390804399863,
+      "sampledMinClearance": 103.83635159477092,
+      "safe150Distance": 103.83635159477092,
+      "safeLinearD": 69.22423439651395,
+      "safeQuadraticD": 84.78202605313969,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 84.78202605313969,
+          "required150": 103.83635159477092,
+          "r30": 46.43702814029529
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        566
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 8.896098634435235,
+      "boardBBox": {
+        "left": 416.01886792452837,
+        "right": 949.9811320754717,
+        "top": 123.29376223065285,
+        "bottom": 544.8581094450718,
+        "width": 533.9622641509434,
+        "height": 421.56434721441894
+      },
+      "boardHeightFraction": 0.7448133343010935,
+      "boardAreaBBoxFraction": 0.29114364154701716,
+      "sampledPieceYRange": [
+        146.78869577751502,
+        487.12743853759116
+      ],
+      "sampledPieceVerticalReachUpperBound": 112.83062861996194,
+      "boardCornerClearance": 21.14189055492818,
+      "sampledPieceCenterClearance": 78.87256146240884,
+      "sampledMinClearance": 21.14189055492818,
+      "safe150Distance": 21.14189055492818,
+      "safeLinearD": 14.094593703285454,
+      "safeQuadraticD": 17.262281352447047,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 17.262281352447047,
+          "required150": 21.14189055492818,
+          "r30": 9.454940890736033
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        878
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0.18,
+      "reserve": 158.04,
+      "existingD": 84.288,
+      "distance": 8.920036483754606,
+      "boardBBox": {
+        "left": 607.7417959715481,
+        "right": 1312.258204028452,
+        "top": 253.63132461309468,
+        "bottom": 700.778861555704,
+        "width": 704.5164080569039,
+        "height": 447.14753694260935
+      },
+      "boardHeightFraction": 0.5092796548321291,
+      "boardAreaBBoxFraction": 0.18687285058270386,
+      "sampledPieceYRange": [
+        282.3078613081519,
+        647.0167786486753
+      ],
+      "sampledPieceVerticalReachUpperBound": 256.6455413297383,
+      "boardCornerClearance": 177.221138444296,
+      "sampledPieceCenterClearance": 230.9832213513247,
+      "sampledMinClearance": 177.221138444296,
+      "safe150Distance": 177.221138444296,
+      "safeLinearD": 118.14742562953067,
+      "safeQuadraticD": 144.70045360788689,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 144.70045360788689,
+          "required150": 177.221138444296,
+          "r30": 79.25570252226944
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        878
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0.16,
+      "reserve": 140.48,
+      "existingD": 74.92266666666667,
+      "distance": 8.490372298584498,
+      "boardBBox": {
+        "left": 586.0147067114946,
+        "right": 1333.9852932885055,
+        "top": 245.6783558580479,
+        "bottom": 716.9252355119982,
+        "width": 747.970586577011,
+        "height": 471.24687965395026
+      },
+      "boardHeightFraction": 0.5367276533644081,
+      "boardAreaBBoxFraction": 0.20909192589535358,
+      "sampledPieceYRange": [
+        275.3996639705149,
+        659.3701190347913
+      ],
+      "sampledPieceVerticalReachUpperBound": 247.0147724678618,
+      "boardCornerClearance": 161.07476448800185,
+      "sampledPieceCenterClearance": 218.6298809652087,
+      "sampledMinClearance": 161.07476448800185,
+      "safe150Distance": 161.07476448800185,
+      "safeLinearD": 107.38317632533456,
+      "safeQuadraticD": 131.51699447819223,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 131.51699447819223,
+          "required150": 161.07476448800185,
+          "r30": 72.03482457098825
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        878
+      ],
+      "kind": "base HUD 54+148",
+      "view": "front",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 6.290491670513538,
+      "boardBBox": {
+        "left": 413.39870708990054,
+        "right": 1506.6012929100993,
+        "top": 191.25781490903353,
+        "bottom": 845.2039224253938,
+        "width": 1093.2025858201987,
+        "height": 653.9461075163603
+      },
+      "boardHeightFraction": 0.7448133343010936,
+      "boardAreaBBoxFraction": 0.4240790953183957,
+      "sampledPieceYRange": [
+        227.70401924497864,
+        755.6499841625526
+      ],
+      "sampledPieceVerticalReachUpperBound": 175.027017541213,
+      "boardCornerClearance": 32.796077574606215,
+      "sampledPieceCenterClearance": 122.35001583744736,
+      "sampledMinClearance": 32.796077574606215,
+      "safe150Distance": 32.796077574606215,
+      "safeLinearD": 21.864051716404145,
+      "safeQuadraticD": 26.777885207506447,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 26.777885207506447,
+          "required150": 32.796077574606215,
+          "r30": 14.666851770435185
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        878
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0.18,
+      "reserve": 158.04,
+      "existingD": 84.288,
+      "distance": 12.61483657218858,
+      "boardBBox": {
+        "left": 667.9369502003758,
+        "right": 1252.063049799624,
+        "top": 253.63132461309488,
+        "bottom": 700.7788615557041,
+        "width": 584.1260995992482,
+        "height": 447.14753694260924
+      },
+      "boardHeightFraction": 0.509279654832129,
+      "boardAreaBBoxFraction": 0.15493934290747025,
+      "sampledPieceYRange": [
+        282.3078613081521,
+        647.0167786486753
+      ],
+      "sampledPieceVerticalReachUpperBound": 256.6455413297384,
+      "boardCornerClearance": 177.2211384442959,
+      "sampledPieceCenterClearance": 230.9832213513247,
+      "sampledMinClearance": 177.2211384442959,
+      "safe150Distance": 177.2211384442959,
+      "safeLinearD": 118.14742562953059,
+      "safeQuadraticD": 144.7004536078868,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 144.7004536078868,
+          "required150": 177.2211384442959,
+          "r30": 79.25570252226939
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        878
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0.16,
+      "reserve": 140.48,
+      "existingD": 74.92266666666667,
+      "distance": 12.007199654255027,
+      "boardBBox": {
+        "left": 653.1567935832893,
+        "right": 1266.843206416711,
+        "top": 245.6783558580481,
+        "bottom": 716.9252355119985,
+        "width": 613.6864128334216,
+        "height": 471.2468796539504
+      },
+      "boardHeightFraction": 0.5367276533644082,
+      "boardAreaBBoxFraction": 0.17155336888630407,
+      "sampledPieceYRange": [
+        275.3996639705151,
+        659.3701190347916
+      ],
+      "sampledPieceVerticalReachUpperBound": 247.01477246786175,
+      "boardCornerClearance": 161.0747644880015,
+      "sampledPieceCenterClearance": 218.62988096520837,
+      "sampledMinClearance": 161.0747644880015,
+      "safe150Distance": 161.0747644880015,
+      "safeLinearD": 107.38317632533433,
+      "safeQuadraticD": 131.51699447819195,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 131.51699447819195,
+          "required150": 161.0747644880015,
+          "r30": 72.03482457098809
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        878
+      ],
+      "kind": "base HUD 54+148",
+      "view": "diagonal",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 8.896098634435235,
+      "boardBBox": {
+        "left": 545.8490566037736,
+        "right": 1374.1509433962265,
+        "top": 191.25781490903393,
+        "bottom": 845.2039224253941,
+        "width": 828.3018867924528,
+        "height": 653.9461075163601
+      },
+      "boardHeightFraction": 0.7448133343010935,
+      "boardAreaBBoxFraction": 0.32131785943217384,
+      "sampledPieceYRange": [
+        227.70401924497912,
+        755.6499841625531
+      ],
+      "sampledPieceVerticalReachUpperBound": 175.027017541213,
+      "boardCornerClearance": 32.796077574605874,
+      "sampledPieceCenterClearance": 122.3500158374469,
+      "sampledMinClearance": 32.796077574605874,
+      "safe150Distance": 32.796077574605874,
+      "safeLinearD": 21.864051716403917,
+      "safeQuadraticD": 26.77788520750617,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 26.77788520750617,
+          "required150": 32.796077574605874,
+          "r30": 14.666851770435034
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        450
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0.18,
+      "reserve": 81,
+      "existingD": 43.199999999999996,
+      "distance": 8.920036483754606,
+      "boardBBox": {
+        "left": 219.4576403043242,
+        "right": 580.5423596956758,
+        "top": 129.99327571286173,
+        "bottom": 359.1691203873198,
+        "width": 361.08471939135165,
+        "height": 229.1758446744581
+      },
+      "boardHeightFraction": 0.5092796548321291,
+      "boardAreaBBoxFraction": 0.22986637657097972,
+      "sampledPieceYRange": [
+        144.6908172991667,
+        331.6145220864509
+      ],
+      "sampledPieceVerticalReachUpperBound": 131.53814760635788,
+      "boardCornerClearance": 90.83087961268018,
+      "sampledPieceCenterClearance": 118.3854779135491,
+      "sampledMinClearance": 90.83087961268018,
+      "safe150Distance": 90.83087961268018,
+      "safeLinearD": 60.553919741786785,
+      "safeQuadraticD": 74.16310264641128,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 74.16310264641128,
+          "required150": 90.83087961268018,
+          "r30": 40.62080425401054
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        450
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0.16,
+      "reserve": 72,
+      "existingD": 38.4,
+      "distance": 8.490372298584498,
+      "boardBBox": {
+        "left": 208.32188840566346,
+        "right": 591.6781115943365,
+        "top": 125.91715277462592,
+        "bottom": 367.44459678860954,
+        "width": 383.3562231886731,
+        "height": 241.52744401398363
+      },
+      "boardHeightFraction": 0.5367276533644081,
+      "boardAreaBBoxFraction": 0.2571973575933735,
+      "sampledPieceYRange": [
+        141.15016946097006,
+        337.9459607809295
+      ],
+      "sampledPieceVerticalReachUpperBound": 126.60210434002028,
+      "boardCornerClearance": 82.55540321139046,
+      "sampledPieceCenterClearance": 112.05403921907049,
+      "sampledMinClearance": 82.55540321139046,
+      "safe150Distance": 82.55540321139046,
+      "safeLinearD": 55.036935474260304,
+      "safeQuadraticD": 67.40620445921013,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 67.40620445921013,
+          "required150": 82.55540321139046,
+          "r30": 36.9198986981147
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        450
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 6.290491670513538,
+      "boardBBox": {
+        "left": 119.85127356543872,
+        "right": 680.1487264345612,
+        "top": 98.02507597843405,
+        "bottom": 433.19107641392617,
+        "width": 560.2974528691225,
+        "height": 335.16600043549215
+      },
+      "boardHeightFraction": 0.7448133343010936,
+      "boardAreaBBoxFraction": 0.5216462675898262,
+      "sampledPieceYRange": [
+        116.70479346268837,
+        387.2921331129256
+      ],
+      "sampledPieceVerticalReachUpperBound": 89.70633017488137,
+      "boardCornerClearance": 16.80892358607383,
+      "sampledPieceCenterClearance": 62.707866887074374,
+      "sampledMinClearance": 16.80892358607383,
+      "safe150Distance": 16.80892358607383,
+      "safeLinearD": 11.205949057382554,
+      "safeQuadraticD": 13.724428637104696,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 13.724428637104696,
+          "required150": 16.80892358607383,
+          "r30": 7.517179153412124
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        450
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0.18,
+      "reserve": 81,
+      "existingD": 43.199999999999996,
+      "distance": 12.61483657218858,
+      "boardBBox": {
+        "left": 250.30937083162766,
+        "right": 549.6906291683723,
+        "top": 129.99327571286184,
+        "bottom": 359.1691203873199,
+        "width": 299.3812583367446,
+        "height": 229.17584467445803
+      },
+      "boardHeightFraction": 0.509279654832129,
+      "boardAreaBBoxFraction": 0.19058597988618214,
+      "sampledPieceYRange": [
+        144.6908172991668,
+        331.6145220864509
+      ],
+      "sampledPieceVerticalReachUpperBound": 131.53814760635794,
+      "boardCornerClearance": 90.83087961268012,
+      "sampledPieceCenterClearance": 118.3854779135491,
+      "sampledMinClearance": 90.83087961268012,
+      "safe150Distance": 90.83087961268012,
+      "safeLinearD": 60.55391974178675,
+      "safeQuadraticD": 74.16310264641122,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 74.16310264641122,
+          "required150": 90.83087961268012,
+          "r30": 40.6208042540105
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        450
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0.16,
+      "reserve": 72,
+      "existingD": 38.4,
+      "distance": 12.007199654255027,
+      "boardBBox": {
+        "left": 242.73411971808673,
+        "right": 557.2658802819134,
+        "top": 125.91715277462602,
+        "bottom": 367.4445967886097,
+        "width": 314.53176056382665,
+        "height": 241.5274440139837
+      },
+      "boardHeightFraction": 0.5367276533644082,
+      "boardAreaBBoxFraction": 0.21102236719499828,
+      "sampledPieceYRange": [
+        141.15016946097018,
+        337.9459607809296
+      ],
+      "sampledPieceVerticalReachUpperBound": 126.60210434002028,
+      "boardCornerClearance": 82.55540321139028,
+      "sampledPieceCenterClearance": 112.05403921907038,
+      "sampledMinClearance": 82.55540321139028,
+      "safe150Distance": 82.55540321139028,
+      "safeLinearD": 55.03693547426019,
+      "safeQuadraticD": 67.40620445920999,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 67.40620445920999,
+          "required150": 82.55540321139028,
+          "r30": 36.91989869811462
+        }
+      }
+    },
+    {
+      "viewport": [
+        800,
+        450
+      ],
+      "canvas": [
+        800,
+        450
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 8.896098634435235,
+      "boardBBox": {
+        "left": 187.7358490566038,
+        "right": 612.2641509433962,
+        "top": 98.02507597843424,
+        "bottom": 433.1910764139264,
+        "width": 424.5283018867924,
+        "height": 335.16600043549215
+      },
+      "boardHeightFraction": 0.7448133343010936,
+      "boardAreaBBoxFraction": 0.39524292504185393,
+      "sampledPieceYRange": [
+        116.70479346268861,
+        387.29213311292585
+      ],
+      "sampledPieceVerticalReachUpperBound": 89.70633017488137,
+      "boardCornerClearance": 16.808923586073604,
+      "sampledPieceCenterClearance": 62.70786688707415,
+      "sampledMinClearance": 16.808923586073604,
+      "safe150Distance": 16.808923586073604,
+      "safeLinearD": 11.205949057382403,
+      "safeQuadraticD": 13.724428637104511,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 13.724428637104511,
+          "required150": 16.808923586073604,
+          "r30": 7.517179153412023
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        768
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0.18,
+      "reserve": 138.24,
+      "existingD": 73.72800000000001,
+      "distance": 8.920036483754608,
+      "boardBBox": {
+        "left": 374.87437278604676,
+        "right": 991.1256272139532,
+        "top": 221.8551905499507,
+        "bottom": 612.9819654610257,
+        "width": 616.2512544279064,
+        "height": 391.12677491107496
+      },
+      "boardHeightFraction": 0.5092796548321289,
+      "boardAreaBBoxFraction": 0.22975419190696234,
+      "sampledPieceYRange": [
+        246.9389948572445,
+        565.9554510275426
+      ],
+      "sampledPieceVerticalReachUpperBound": 224.49177191485094,
+      "boardCornerClearance": 155.01803453897435,
+      "sampledPieceCenterClearance": 202.0445489724574,
+      "sampledMinClearance": 155.01803453897435,
+      "safe150Distance": 155.01803453897435,
+      "safeLinearD": 103.34535635931623,
+      "safeQuadraticD": 126.5716951832087,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 126.5716951832087,
+          "required150": 155.01803453897435,
+          "r30": 69.32617259351139
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        768
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0.16,
+      "reserve": 122.88,
+      "existingD": 65.536,
+      "distance": 8.490372298584498,
+      "boardBBox": {
+        "left": 355.8693562123324,
+        "right": 1010.1306437876676,
+        "top": 214.89860740202823,
+        "bottom": 627.1054451858936,
+        "width": 654.2612875753352,
+        "height": 412.20683778386535
+      },
+      "boardHeightFraction": 0.536727653364408,
+      "boardAreaBBoxFraction": 0.2570718342368124,
+      "sampledPieceYRange": [
+        240.89628921338888,
+        576.761106399453
+      ],
+      "sampledPieceVerticalReachUpperBound": 216.06759140696795,
+      "boardCornerClearance": 140.8945548141064,
+      "sampledPieceCenterClearance": 191.23889360054704,
+      "sampledMinClearance": 140.8945548141064,
+      "safe150Distance": 140.8945548141064,
+      "safeLinearD": 93.92970320940428,
+      "safeQuadraticD": 115.03992227705199,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 115.03992227705199,
+          "required150": 140.8945548141064,
+          "r30": 63.00996044478244
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        768
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 6.290491670513538,
+      "boardBBox": {
+        "left": 204.87950688501545,
+        "right": 1161.1204931149846,
+        "top": 167.29612966986076,
+        "bottom": 739.3127704131007,
+        "width": 956.2409862299692,
+        "height": 572.0166407432399
+      },
+      "boardHeightFraction": 0.7448133343010936,
+      "boardAreaBBoxFraction": 0.5213916818076937,
+      "sampledPieceYRange": [
+        199.17618084298815,
+        660.9785738460598
+      ],
+      "sampledPieceVerticalReachUpperBound": 153.09880349846418,
+      "boardCornerClearance": 28.68722958689932,
+      "sampledPieceCenterClearance": 107.02142615394018,
+      "sampledMinClearance": 28.68722958689932,
+      "safe150Distance": 28.68722958689932,
+      "safeLinearD": 19.124819724599547,
+      "safeQuadraticD": 23.423024873992,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 23.423024873992,
+          "required150": 28.68722958689932,
+          "r30": 12.829319088490017
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        768
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0.18,
+      "reserve": 138.24,
+      "existingD": 73.72800000000001,
+      "distance": 12.614836572188583,
+      "boardBBox": {
+        "left": 427.5279928859781,
+        "right": 938.4720071140221,
+        "top": 221.85519054995103,
+        "bottom": 612.981965461026,
+        "width": 510.94401422804395,
+        "height": 391.12677491107496
+      },
+      "boardHeightFraction": 0.5092796548321289,
+      "boardAreaBBoxFraction": 0.19049296574275298,
+      "sampledPieceYRange": [
+        246.93899485724475,
+        565.955451027543
+      ],
+      "sampledPieceVerticalReachUpperBound": 224.49177191485091,
+      "boardCornerClearance": 155.018034538974,
+      "sampledPieceCenterClearance": 202.04454897245705,
+      "sampledMinClearance": 155.018034538974,
+      "safe150Distance": 155.018034538974,
+      "safeLinearD": 103.345356359316,
+      "safeQuadraticD": 126.57169518320843,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 126.57169518320843,
+          "required150": 155.018034538974,
+          "r30": 69.32617259351123
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        768
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0.16,
+      "reserve": 122.88,
+      "existingD": 65.536,
+      "distance": 12.007199654255027,
+      "boardBBox": {
+        "left": 414.5995643188681,
+        "right": 951.400435681132,
+        "top": 214.8986074020284,
+        "bottom": 627.1054451858939,
+        "width": 536.8008713622639,
+        "height": 412.2068377838655
+      },
+      "boardHeightFraction": 0.5367276533644082,
+      "boardAreaBBoxFraction": 0.21091937921686493,
+      "sampledPieceYRange": [
+        240.89628921338908,
+        576.7611063994532
+      ],
+      "sampledPieceVerticalReachUpperBound": 216.06759140696795,
+      "boardCornerClearance": 140.89455481410607,
+      "sampledPieceCenterClearance": 191.23889360054682,
+      "sampledMinClearance": 140.89455481410607,
+      "safe150Distance": 140.89455481410607,
+      "safeLinearD": 93.92970320940405,
+      "safeQuadraticD": 115.0399222770517,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 115.0399222770517,
+          "required150": 140.89455481410607,
+          "r30": 63.00996044478229
+        }
+      }
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "canvas": [
+        1366,
+        768
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 8.896098634435235,
+      "boardBBox": {
+        "left": 320.73584905660385,
+        "right": 1045.2641509433963,
+        "top": 167.2961296698611,
+        "bottom": 739.312770413101,
+        "width": 724.5283018867924,
+        "height": 572.0166407432399
+      },
+      "boardHeightFraction": 0.7448133343010936,
+      "boardAreaBBoxFraction": 0.39505002951962753,
+      "sampledPieceYRange": [
+        199.17618084298857,
+        660.97857384606
+      ],
+      "sampledPieceVerticalReachUpperBound": 153.09880349846426,
+      "boardCornerClearance": 28.68722958689898,
+      "sampledPieceCenterClearance": 107.02142615393996,
+      "sampledMinClearance": 28.68722958689898,
+      "safe150Distance": 28.68722958689898,
+      "safeLinearD": 19.12481972459932,
+      "safeQuadraticD": 23.42302487399172,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 23.42302487399172,
+          "required150": 28.68722958689898,
+          "r30": 12.829319088489866
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        1080
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0.18,
+      "reserve": 194.4,
+      "existingD": 103.68,
+      "distance": 8.920036483754606,
+      "boardBBox": {
+        "left": 526.6983367303781,
+        "right": 1393.301663269622,
+        "top": 311.98386171086815,
+        "bottom": 862.0058889295676,
+        "width": 866.6033265392439,
+        "height": 550.0220272186995
+      },
+      "boardHeightFraction": 0.5092796548321291,
+      "boardAreaBBoxFraction": 0.22986637657097972,
+      "sampledPieceYRange": [
+        347.25796151800006,
+        795.8748530074821
+      ],
+      "sampledPieceVerticalReachUpperBound": 315.691554255259,
+      "boardCornerClearance": 217.99411107043238,
+      "sampledPieceCenterClearance": 284.1251469925179,
+      "sampledMinClearance": 217.99411107043238,
+      "safe150Distance": 217.99411107043238,
+      "safeLinearD": 145.32940738028825,
+      "safeQuadraticD": 177.991446351387,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 177.991446351387,
+          "required150": 217.99411107043238,
+          "r30": 97.48993020962524
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        1080
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0.16,
+      "reserve": 172.8,
+      "existingD": 92.16000000000001,
+      "distance": 8.490372298584498,
+      "boardBBox": {
+        "left": 499.9725321735923,
+        "right": 1420.0274678264077,
+        "top": 302.2011666591022,
+        "bottom": 881.8670322926629,
+        "width": 920.0549356528154,
+        "height": 579.6658656335607
+      },
+      "boardHeightFraction": 0.536727653364408,
+      "boardAreaBBoxFraction": 0.2571973575933734,
+      "sampledPieceYRange": [
+        338.7604067063281,
+        811.0703058742307
+      ],
+      "sampledPieceVerticalReachUpperBound": 303.8450504160487,
+      "boardCornerClearance": 198.13296770733712,
+      "sampledPieceCenterClearance": 268.9296941257693,
+      "sampledMinClearance": 198.13296770733712,
+      "safe150Distance": 198.13296770733712,
+      "safeLinearD": 132.08864513822473,
+      "safeQuadraticD": 161.77489070210433,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 161.77489070210433,
+          "required150": 198.13296770733712,
+          "r30": 88.60775687547529
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        1080
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "front",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 6.290491670513538,
+      "boardBBox": {
+        "left": 287.64305655705294,
+        "right": 1632.356943442947,
+        "top": 235.2601823482417,
+        "bottom": 1039.6585833934228,
+        "width": 1344.7138868858942,
+        "height": 804.3984010451811
+      },
+      "boardHeightFraction": 0.7448133343010936,
+      "boardAreaBBoxFraction": 0.5216462675898264,
+      "sampledPieceYRange": [
+        280.0915043104521,
+        929.5011194710215
+      ],
+      "sampledPieceVerticalReachUpperBound": 215.29519241971525,
+      "boardCornerClearance": 40.34141660657724,
+      "sampledPieceCenterClearance": 150.49888052897848,
+      "sampledMinClearance": 40.34141660657724,
+      "safe150Distance": 40.34141660657724,
+      "safeLinearD": 26.89427773771816,
+      "safeQuadraticD": 32.93862872905131,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 32.93862872905131,
+          "required150": 40.34141660657724,
+          "r30": 18.04122996818912
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        1080
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0.18,
+      "reserve": 194.4,
+      "existingD": 103.68,
+      "distance": 12.61483657218858,
+      "boardBBox": {
+        "left": 600.7424899959063,
+        "right": 1319.2575100040933,
+        "top": 311.9838617108684,
+        "bottom": 862.0058889295677,
+        "width": 718.515020008187,
+        "height": 550.0220272186993
+      },
+      "boardHeightFraction": 0.509279654832129,
+      "boardAreaBBoxFraction": 0.19058597988618217,
+      "sampledPieceYRange": [
+        347.2579615180003,
+        795.8748530074821
+      ],
+      "sampledPieceVerticalReachUpperBound": 315.6915542552591,
+      "boardCornerClearance": 217.99411107043227,
+      "sampledPieceCenterClearance": 284.1251469925179,
+      "sampledMinClearance": 217.99411107043227,
+      "safe150Distance": 217.99411107043227,
+      "safeLinearD": 145.3294073802882,
+      "safeQuadraticD": 177.9914463513869,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 177.9914463513869,
+          "required150": 217.99411107043227,
+          "r30": 97.4899302096252
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        1080
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0.16,
+      "reserve": 172.8,
+      "existingD": 92.16000000000001,
+      "distance": 12.007199654255027,
+      "boardBBox": {
+        "left": 582.5618873234082,
+        "right": 1337.438112676592,
+        "top": 302.20116665910246,
+        "bottom": 881.8670322926633,
+        "width": 754.8762253531838,
+        "height": 579.6658656335609
+      },
+      "boardHeightFraction": 0.5367276533644082,
+      "boardAreaBBoxFraction": 0.2110223671949982,
+      "sampledPieceYRange": [
+        338.7604067063284,
+        811.0703058742312
+      ],
+      "sampledPieceVerticalReachUpperBound": 303.8450504160486,
+      "boardCornerClearance": 198.13296770733666,
+      "sampledPieceCenterClearance": 268.92969412576883,
+      "sampledMinClearance": 198.13296770733666,
+      "safe150Distance": 198.13296770733666,
+      "safeLinearD": 132.08864513822445,
+      "safeQuadraticD": 161.77489070210396,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 161.77489070210396,
+          "required150": 198.13296770733666,
+          "r30": 88.60775687547509
+        }
+      }
+    },
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "canvas": [
+        1920,
+        1080
+      ],
+      "kind": "full canvas hypothetical",
+      "view": "diagonal",
+      "reserveFraction": 0,
+      "reserve": 0,
+      "existingD": 0,
+      "distance": 8.896098634435235,
+      "boardBBox": {
+        "left": 450.56603773584914,
+        "right": 1469.433962264151,
+        "top": 235.26018234824218,
+        "bottom": 1039.6585833934232,
+        "width": 1018.8679245283018,
+        "height": 804.398401045181
+      },
+      "boardHeightFraction": 0.7448133343010935,
+      "boardAreaBBoxFraction": 0.3952429250418539,
+      "sampledPieceYRange": [
+        280.0915043104527,
+        929.501119471022
+      ],
+      "sampledPieceVerticalReachUpperBound": 215.29519241971536,
+      "boardCornerClearance": 40.341416606576786,
+      "sampledPieceCenterClearance": 150.49888052897802,
+      "sampledMinClearance": 40.341416606576786,
+      "safe150Distance": 40.341416606576786,
+      "safeLinearD": 26.894277737717857,
+      "safeQuadraticD": 32.93862872905093,
+      "candidates": {
+        "linear180": {
+          "required150": 270,
+          "reachable": false,
+          "r30": 54
+        },
+        "linear240": {
+          "required150": 360,
+          "reachable": false,
+          "r30": 72
+        },
+        "quadratic180": {
+          "required150": 220.45407685048602,
+          "reachable": false,
+          "r30": 98.59006035092989
+        },
+        "scaledQuadratic": {
+          "D": 32.93862872905093,
+          "required150": 40.341416606576786,
+          "r30": 18.041229968188915
+        }
+      }
+    }
+  ]
+}

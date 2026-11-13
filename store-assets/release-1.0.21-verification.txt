@@ -1,0 +1,46 @@
+Chess Alkkagi 1.0.21 — review build
+Prepared: 2026-11-14 KST
+Status: built and structurally verified; review approval pending.
+
+Artifact: store-assets/ChessAlkkagi-1.0.21-vc22.aab
+Version name: 1.0.21
+Version code: 22
+Application ID: com.chessalkkagi.app
+Minimum SDK: 24
+Target SDK: 36
+Bytes: 11621375
+SHA-256: ca2eabde3654a9c5c8c1a54e0bdab063a9f5a72fc29bd935da642494d4e3aef6
+
+Source: develop 9745744600c6da7996b4c96ae45dac6e0230a558
+Build ID: 9745744600c6-dirty-20261113153305
+Isolated checkout: C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/release-1.0.21-review
+The isolated checkout changes Android release metadata to 1.0.21/22.
+Capacitor sync rewrites generated dependency paths to the existing node_modules junction target.
+Game runtime source matches the develop commit. Existing root working changes were not packaged.
+
+Validation:
+- Production web TypeScript/build and prebuild checks passed.
+- Capacitor Android sync passed.
+- Gradle :app:bundleRelease passed.
+- Bundletool validate passed; manifest version/package/SDK checked.
+- AAB signature verified and upload certificate matches the previous 1.0.20 AAB.
+- Upload certificate SHA-256: 27ead35ed4895efafb71930aacf7244917880a511f0afd4a1df0abd51b19243c
+- All 106 expected packaged web files match the production dist byte for byte.
+- Existing AAPT exclusions: assets/.gitkeep and two store promo PNGs.
+- Capacitor adds cordova.js and cordova_plugins.js.
+- No local environment files, signing properties, or keystore included in the AAB.
+- No development server URL configured.
+
+Patch notes:
+store-assets/release-notes-1.0.21-ko.txt
+store-assets/release-notes-1.0.21-en.txt
+store-assets/release-notes-1.0.21-ja.txt
+store-assets/release-notes-1.0.21-fr.txt
+store-assets/release-notes-1.0.21-multilingual.txt
+Each locale has four bullets and fewer than 500 Unicode characters.
+
+Evidence: qa/release-1.0.21-2026-11-14/verified-artifacts.json
+Build and bundle verification scripts/logs: qa/release-1.0.21-2026-11-14/android/
+No physical device install or store review performed by this build task.
+No Google Play upload, main update, Git push, or itch.io upload performed.
+Per user instruction, main and itch.io publication waits for review approval.

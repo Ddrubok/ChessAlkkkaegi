@@ -290,17 +290,35 @@ try {
   assert.ok(powerControls.rayDistanceToRectEdge(200, 200, 1, 1, rect) > 280);
   assert.equal(input.computeRedDotPullPower(100, 100 + 180 * 1.5, 180, 1.5), 1.5);
   assert.equal(input.computeRedDotPullPower(100, 280, 180, 1.5), 1);
+  assert.equal(input.computeRedDotPullPower(100, 100 + 180 * .3, 180, 1.5, 2), .09);
+  assert.equal(input.computeRedDotPullPower(100, 100 + 180, 180, 1.5, 2), 1);
+  assert.equal(input.computeRedDotPullPower(100, 100 + 180 * Math.sqrt(1.5), 180, 1.5, 2), 1.5);
+  assert.equal(input.computeRedDotPullPower(100, 100 + 180 * .3, 180, 1.5, 1), .3);
+  assert.equal(input.computeEffectiveMaxDragPixels({ pointerType: 'touch' }, 400, 400), 38.4);
+  assert.ok(input.computeEffectiveMaxDragPixels({ pointerType: 'mouse' }, 400, 400) > 38.4);
 
   const canvasDistance = input.computeEffectiveMaxDragPixels({ pointerType: 'mouse' }, 400, 400);
-  for (const [movePercent, releasePercent] of [[0.8, 0.4], [0.4, 0.8], [0.6, 0]]) {
+  for (const [movePercent, releasePercent] of [[0.8, 0.3], [0.4, 1], [0.6, 0]]) {
     const runtime = createTestRuntime('classic');
     pointerDown(runtime, event(startX, startY));
+    assert.equal(runtime.gesture.powerExponent, powerControls.MOUSE_POWER_EXPONENT);
     pointerMove(runtime, event(startX, startY + movePercent * canvasDistance));
+    assert.ok(Math.abs(runtime.aimRuntime.activeAim.normalizedPower - movePercent ** powerControls.MOUSE_POWER_EXPONENT) < 1e-6);
     pointerUp(runtime, event(startX, startY + releasePercent * canvasDistance));
     assert.equal(launchQueueCalls.length, releasePercent > 0 ? 1 : 0);
-    if (releasePercent > 0) assert.ok(Math.abs(launchQueueCalls[0].normalizedPower - releasePercent) < 1e-6);
+    if (releasePercent > 0) assert.ok(Math.abs(launchQueueCalls[0].normalizedPower - releasePercent ** powerControls.MOUSE_POWER_EXPONENT) < 1e-6);
     pointerUp(runtime, event(startX, startY + releasePercent * canvasDistance));
     assert.equal(launchQueueCalls.length, releasePercent > 0 ? 1 : 0, 'once-only release');
+  }
+  {
+    const runtime = createTestRuntime('classic');
+    pointerDown(runtime, event(startX, startY, 45, 'touch'));
+    const touchDistance = runtime.gesture.maxDragPixels;
+    assert.equal(runtime.gesture.powerExponent, 1);
+    pointerMove(runtime, event(startX, startY + touchDistance * .3, 45, 'touch'));
+    assert.ok(Math.abs(runtime.aimRuntime.activeAim.normalizedPower - .3) < 1e-6);
+    pointerUp(runtime, event(startX, startY + touchDistance * .4, 45, 'touch'));
+    assert.ok(Math.abs(launchQueueCalls[0].normalizedPower - .4) < 1e-6);
   }
   for (const [pointerType, threshold] of [['mouse', 4], ['touch', 8]]) {
     const runtime = createTestRuntime('classic');
@@ -350,6 +368,21 @@ try {
     pointerUp(runtime, event(startX, 100 + 180 * .4));
     assert.equal(launchQueueCalls.length, 1, 'red-dot duplicate release');
   }
+  {
+    const runtime = createTestRuntime('billiards');
+    runtime.aimRuntime.selectedPieceId = whitePieceMesh.name;
+    testRefreshBilliardsPreview(runtime);
+    runtime.state = 'charging';
+    runtime.activePointerId = 42;
+    runtime.activeCaptureElement = mockCanvas;
+    runtime.gesture = { source: 'red-dot', startX, startY: 100, pointerType: 'mouse', powerExponent: 2, maximumDistance: 0,
+      candidatePieceId: whitePieceMesh.name, maxDragPixels: 180, mousePowerDistance: 180 };
+    pointerMove(runtime, event(startX, 100 + 180 * .8));
+    assert.ok(Math.abs(runtime.aimParametersRuntime.normalizedPower - .64) < 1e-6);
+    pointerUp(runtime, event(startX, 100 + 180 * .3));
+    assert.equal(launchQueueCalls.length, 1);
+    assert.ok(Math.abs(launchQueueCalls[0].normalizedPower - .09) < 1e-6, 'mouse red-dot final sample');
+  }
   for (const [pointerType, threshold] of [['mouse', 4], ['touch', 8]]) {
     const runtime = createTestRuntime('billiards');
     runtime.aimRuntime.selectedPieceId = whitePieceMesh.name;
@@ -396,7 +429,7 @@ try {
     input.testUpdateReachability(runtime,event(200,300));
     assert.equal(runtime.reachabilityFeedback.hidden,true,'a valid dock column can extend the pull range');
   }
-  console.log('itch power controls: presets, touch, direction edge, 150%, final classic/red-dot release, duplicate release, setting change passed');
+  console.log('itch power controls: precision mouse, linear touch, final classic/red-dot release, duplicate release, setting change passed');
 } finally {
   await vite.close();
 }

@@ -254,6 +254,37 @@ function computeMinimumCameraDistance(
   return requiredDistance * CAMERA_FIT_MARGIN;
 }
 
+/** Vertical projection offset as a fraction of the viewport height. */
+export function computeBoardProjectionOffset(camera: PerspectiveCamera, boardHalfExtent: number, boardTop = 0): number {
+  const projection = camera.clone();
+  projection.clearViewOffset();
+  projection.updateMatrixWorld(true);
+  let minY = Infinity, maxY = -Infinity;
+  for (const x of [-boardHalfExtent, boardHalfExtent]) {
+    for (const z of [-boardHalfExtent, boardHalfExtent]) {
+      const y = new Vector3(x, boardTop, z).project(projection).y;
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  // Keep headroom for tall far-side pieces as well as pull room below the board.
+  return -(minY + maxY) / 4 - 0.035;
+}
+
+/** Frame the board and its tall pieces without changing the board-center zoom pivot. */
+export function centerBoardProjection(runtime: SceneRuntime): void {
+  const { camera, controls, renderer, boardHalfExtent, boardTop } = runtime;
+  camera.clearViewOffset();
+  // Free billiards and strike close-ups keep their existing centered projection.
+  if (Math.abs(controls.maxPolarAngle - controls.minPolarAngle) > 1e-8 ||
+      controls.target.lengthSq() > 1e-8 ||
+      controls.minDistance < runtime.minimumCameraDistance - 1e-8) return;
+  const { width, height } = renderer.domElement.getBoundingClientRect();
+  if (width <= 0 || height <= 0) return;
+  camera.updateMatrixWorld(true);
+  camera.setViewOffset(width, height, 0, computeBoardProjectionOffset(camera, boardHalfExtent, boardTop) * height, width, height);
+}
+
 /**
  * 카메라를 고정 피치로 다시 놓고 현재 화면에서 필요한 거리와 줌 한계를 갱신한다.
  */
@@ -281,6 +312,7 @@ export function fitCameraToBoard(runtime: SceneRuntime): void {
   runtime.minimumCameraDistance = minimumDistance;
   if (runtime.onCameraFitChanged !== null) {
     runtime.onCameraFitChanged();
+    centerBoardProjection(runtime);
     return;
   }
   runtime.controls.minDistance = minimumDistance;
@@ -302,6 +334,7 @@ export function fitCameraToBoard(runtime: SceneRuntime): void {
   );
   runtime.camera.lookAt(runtime.controls.target);
   runtime.controls.update();
+  centerBoardProjection(runtime);
 }
 
 /**

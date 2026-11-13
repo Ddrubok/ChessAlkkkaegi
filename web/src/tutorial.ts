@@ -14,6 +14,7 @@ import { marketingRuntime } from "./marketing-runtime";
 import { getRuntimeText } from "./runtime-text";
 import { Vector3 } from "three";
 import { computeEffectiveMaxDragPixels, type InputRuntime } from "./input";
+import { MOUSE_POWER_EXPONENT, pullDistanceForPower } from "./power-controls";
 import { getSupabaseClient } from "./supabase-client";
 import { cancelItchAuth, startItchAuth } from "./itch-auth";
 import { feedbackCopy, isPracticePower } from "./feedback-copy";
@@ -619,10 +620,11 @@ export class TutorialManager {
     mesh.getWorldPosition(this.guidePoint).project(input.sceneRuntime.camera);
     const x = canvas.left + (this.guidePoint.x + 1) * canvas.width / 2;
     const y = canvas.top + (1 - this.guidePoint.y) * canvas.height / 2;
+    const isTouch = isCoarsePointerEnvironment();
     const guideDistance = computeEffectiveMaxDragPixels(
-      { pointerType: isCoarsePointerEnvironment() ? "touch" : "mouse" }, canvas.height, canvas.width,
+      { pointerType: isTouch ? "touch" : "mouse" }, canvas.height, canvas.width,
     );
-    const end = Math.min(y + (this.powerPractice ? guideDistance * 0.4 : Math.min(64, guideDistance * 0.4)), canvas.bottom - 12);
+    const end = Math.min(y + pullDistanceForPower(0.4, guideDistance, isTouch ? 1 : MOUSE_POWER_EXPONENT), canvas.bottom - 12);
     this.gestureElement.style.display = this.guidePoint.z < -1 || this.guidePoint.z > 1 ? "none" : "block";
     const circle = this.gestureElement.querySelector("circle")!;
     circle.setAttribute("cx", String(x)); circle.setAttribute("cy", String(y));

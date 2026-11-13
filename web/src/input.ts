@@ -59,13 +59,15 @@ import {
 import "./game-hud.css";
 import "./input.css";
 import { inputCancelCopy } from "./input-cancel-copy";
-import { computeViewportPowerDistance, getMousePowerDistance, powerControlsCopy, rayDistanceToRectEdge, subscribeMousePowerDistance } from "./power-controls";
+import { computeViewportPowerDistance, getMousePowerDistance, MOUSE_POWER_EXPONENT, powerAtPullDistance, powerControlsCopy, pullDistanceForPower, rayDistanceToRectEdge, subscribeMousePowerDistance } from "./power-controls";
 import {
   isCoarsePointerEnvironment,
   isTouchPointerEvent,
 } from "./input-capability";
 import type { PhysicsRuntime } from "./physics";
 import {
+  centerBoardProjection,
+  computeBoardProjectionOffset,
   hideAimOccluders,
   restoreHiddenPieceMeshes,
   type SceneRuntime,
@@ -144,6 +146,8 @@ interface CameraTransition {
   maxDistance: number;
   minPolarAngle: number;
   maxPolarAngle: number;
+  fromProjectionOffset: number;
+  toProjectionOffset: number;
 }
 
 interface PointerGesture {
@@ -156,6 +160,7 @@ interface PointerGesture {
   startX: number;
   startY: number;
   pointerType?: string;
+  powerExponent?: number;
   maximumDistance: number;
   // 포인터 시작 때의 최근접 교차만 탭 release까지 보존한다.
   candidatePieceId: string | null;
@@ -512,7 +517,9 @@ export function computeEffectiveMaxDragPixels(
       viewportHeight * TOUCH_MAX_DRAG_VIEWPORT_RATIO,
       TOUCH_MAX_DRAG_MIN_PIXELS,
     ), MAX_DRAG_PIXELS);
-  return viewportWidth === undefined ? preferred
+  if (viewportWidth === undefined) return preferred;
+  return isTouchPointerEvent(event)
+    ? Math.min(preferred, Math.max(0, Math.min(viewportWidth, viewportHeight)) * 0.096)
     : computeViewportPowerDistance(preferred, viewportWidth, viewportHeight);
 }
 
@@ -538,7 +545,7 @@ function updateReachability(runtime: InputRuntime, event: PointerEvent): void {
     ? Math.max(0, bottom - gesture.startY)
     : rayDistanceToRectEdge(gesture.startX, gesture.startY,
         event.clientX - gesture.startX, event.clientY - gesture.startY, rect);
-  message.hidden = available + 0.01 >= gesture.maxDragPixels * maxPower ||
+  message.hidden = available + 0.01 >= pullDistanceForPower(maxPower, gesture.maxDragPixels, gesture.powerExponent ?? 1) ||
     (gesture.source === "classic-canvas" && event.clientX === gesture.startX && event.clientY === gesture.startY);
   message.textContent = gesture.source === "red-dot" ? powerControlsCopy().redDotUnavailable : powerControlsCopy().unavailable;
 }
@@ -551,13 +558,10 @@ export function computeRedDotPullPower(
   currentY: number,
   maxDragPixels = MAX_DRAG_PIXELS,
   maxPower = 1.0,
+  powerExponent = 1,
 ): number {
   const downwardPixels = Math.max(currentY - startY, 0);
-  const normalizedPower = downwardPixels / maxDragPixels;
-  // 시작 좌표와 소수 거리의 덧셈 오차로 최대점이 maxPower - eps인 경우를 보정한다.
-  return normalizedPower >= maxPower - Number.EPSILON
-    ? maxPower
-    : Math.min(normalizedPower, maxPower);
+  return powerAtPullDistance(downwardPixels, maxDragPixels, maxPower, powerExponent);
 }
 
 /**
@@ -749,20 +753,23 @@ function beginCameraRestore(
       ? wholeBoardDistance
       : adaptiveDistance ?? CAM_MIN_DISTANCE;
   runtime.adaptiveCloseDistance = adaptiveDistance;
+  const toSpherical = new Spherical(desiredRadius * strikeZoom, desiredPhi, fromSpherical.theta);
+  const targetCamera = camera.clone();
+  targetCamera.position.setFromSpherical(toSpherical).add(toTarget);
+  targetCamera.lookAt(toTarget);
   runtime.cameraTransition = {
     startedAt: performance.now(),
     fromTarget,
     toTarget,
     fromSpherical,
-    toSpherical: new Spherical(
-      desiredRadius * strikeZoom,
-      desiredPhi,
-      fromSpherical.theta,
-    ),
+    toSpherical,
     minDistance,
     maxDistance,
     minPolarAngle,
     maxPolarAngle,
+    fromProjectionOffset: camera.view?.enabled ? camera.view.offsetY / camera.view.fullHeight : 0,
+    toProjectionOffset: policy.mode === "classic" && !runtime.strikeMode
+      ? computeBoardProjectionOffset(targetCamera, runtime.sceneRuntime.boardHalfExtent, runtime.sceneRuntime.boardTop) : 0,
   };
   controls.enabled = false;
 }
@@ -1731,6 +1738,7 @@ function handleCanvasPointerDown(
       maximumDistance: 0,
       candidatePieceId: selectedId,
       pointerType: event.pointerType,
+      powerExponent: isTouchPointerEvent(event) ? 1 : MOUSE_POWER_EXPONENT,
       maxDragPixels: computeEffectiveMaxDragPixels(event, canvas.getBoundingClientRect().height, canvas.getBoundingClientRect().width),
       mousePowerDistance: getMousePowerDistance(),
     };
@@ -1777,6 +1785,7 @@ function handleCanvasPointerDown(
       maximumDistance: 0,
       candidatePieceId: selectablePieceId,
       pointerType: event.pointerType,
+      powerExponent: isTouchPointerEvent(event) ? 1 : MOUSE_POWER_EXPONENT,
       maxDragPixels: computeEffectiveMaxDragPixels(event, canvas.getBoundingClientRect().height, canvas.getBoundingClientRect().width),
       mousePowerDistance: getMousePowerDistance(),
     };
@@ -1863,6 +1872,7 @@ function handleCanvasPointerMove(
       event.clientX,
       event.clientY,
       gesture.maxDragPixels,
+      gesture.powerExponent ?? 1,
     );
     updateReachability(runtime, event);
   } else if (gesture.source === "red-dot") {
@@ -1896,6 +1906,7 @@ function handleCanvasPointerMove(
         event.clientY,
         gesture.maxDragPixels,
         maxPower,
+        gesture.powerExponent ?? 1,
       ),
       maxPower,
     );
@@ -2008,7 +2019,7 @@ function handleCanvasPointerUp(
   if (gesture.source === "classic-canvas") {
     event.preventDefault();
     gesture.maximumDistance = Math.max(gesture.maximumDistance, Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY));
-    updateAimPointer(runtime.aimRuntime, event.clientX, event.clientY, gesture.maxDragPixels);
+    updateAimPointer(runtime.aimRuntime, event.clientX, event.clientY, gesture.maxDragPixels, gesture.powerExponent ?? 1);
     if (isArmedPowerDrag(gesture)) commitActiveLaunch(runtime);
     else cancelInteraction(runtime, false);
     return;
@@ -2634,6 +2645,12 @@ export function updateInputRuntime(
     runtime.sceneRuntime.camera.lookAt(
       runtime.sceneRuntime.controls.target,
     );
+    const camera = runtime.sceneRuntime.camera;
+    const viewport = runtime.sceneRuntime.renderer.domElement.getBoundingClientRect();
+    const offset = MathUtils.lerp(transition.fromProjectionOffset ?? 0, transition.toProjectionOffset ?? 0, eased);
+    if (Math.abs(offset) > 1e-8 && viewport.width > 0 && viewport.height > 0) {
+      camera.setViewOffset(viewport.width, viewport.height, 0, offset * viewport.height, viewport.width, viewport.height);
+    } else camera.clearViewOffset();
     if (progress >= 1) {
       runtime.sceneRuntime.controls.minDistance =
         transition.minDistance;
@@ -2644,6 +2661,7 @@ export function updateInputRuntime(
       runtime.sceneRuntime.controls.maxPolarAngle =
         transition.maxPolarAngle;
       runtime.cameraTransition = null;
+      centerBoardProjection(runtime.sceneRuntime);
     }
   }
 
