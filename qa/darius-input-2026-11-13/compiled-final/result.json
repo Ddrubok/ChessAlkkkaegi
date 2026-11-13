@@ -1,0 +1,17 @@
+{
+  "scope": "Compiled itch build, no runtime instrumentation or SDK mocks; fresh local Edge context",
+  "errors": [],
+  "deniedOrigins": [],
+  "checks": [
+    "real compiled tutorial cue pull/release reaches first-flick completion",
+    "stage1 renders at baseline-matched sizes; no page errors or test instrumentation"
+  ],
+  "build": {
+    "build": "c2649005f455-dirty-20261113032944",
+    "commit": "c2649005f455600e44ffedb583e2cd12b4e4b888",
+    "builtAt": "2026-11-13T03:29:44.353Z",
+    "dirty": true,
+    "mode": "itch"
+  },
+  "pass": true
+}

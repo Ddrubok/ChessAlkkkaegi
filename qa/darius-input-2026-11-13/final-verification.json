@@ -1,0 +1,45 @@
+{
+  "documentLinks": "pass",
+  "runtimeAssertions": 468,
+  "runtimeSourceStable": true,
+  "precisionTargets": [
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "role": "central",
+      "radius": 80.82198623344925,
+      "met": true
+    },
+    {
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "role": "near-corner",
+      "radius": 80.82198623344925,
+      "met": true
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "role": "central",
+      "radius": 52.10164488397754,
+      "met": true
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "role": "near-corner",
+      "radius": 52.10164488397754,
+      "met": true
+    }
+  ],
+  "compiledPass": true,
+  "limitations": "Human feel, physical devices, live online and all maps/poses not certified."
+}

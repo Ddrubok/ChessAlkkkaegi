@@ -1,0 +1,14 @@
+{
+  "scope": "document validation only; no runtime or player test",
+  "missingLocalLinks": [],
+  "image": {
+    "width": 1917,
+    "height": 1032
+  },
+  "examples": {
+    "capAt768": 73.72800000000001,
+    "capAt1080": 103.68,
+    "quadratic180at30": 98.59006035092989,
+    "quadratic180at150": 220.45407685048602
+  }
+}
