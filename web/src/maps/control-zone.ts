@@ -88,12 +88,22 @@ export function beginControlZoneTurn(turn: TurnRuntime): void {
 export function consumeControlZoneLaunch(turn: TurnRuntime, pieceId: string): number {
   const map = turn.physicsRuntime.hotseatMap, entry = map ? states.get(map) : undefined;
   if (turn.gameMode !== "hotseat" || turn.physicsRuntime.gameMode !== "hotseat" || !entry || !map?.definition.controlZone) return 1;
-  const state = entry.state;
   validateControlZoneBonus(turn);
-  const multiplier = state.turnNumber === turn.turnNumber && state.side === turn.currentSide
-    && entry.state.status === "bonus" && state.beneficiaryId === pieceId ? map.definition.controlZone.speedMultiplier : 1;
+  const multiplier = peekControlZoneLaunchMultiplier(turn, pieceId);
   expireControlZoneBonus(turn);
   return multiplier;
+}
+
+/** Inspect the current grant without consuming it or changing the display. */
+export function peekControlZoneLaunchMultiplier(turn: TurnRuntime, pieceId: string): number {
+  const map = turn.physicsRuntime.hotseatMap, entry = map ? states.get(map) : undefined;
+  if (turn.gameMode !== "hotseat" || turn.physicsRuntime.gameMode !== "hotseat" || !entry || !map?.definition.controlZone) return 1;
+  const state = entry.state;
+  return state.turnNumber === turn.turnNumber && state.side === turn.currentSide
+    && state.status === "bonus" && state.beneficiaryId === pieceId
+    && entry.beneficiary?.instance.side === turn.currentSide
+    && turn.physicsRuntime.pieces.get(pieceId) === entry.beneficiary
+    ? map.definition.controlZone.speedMultiplier : 1;
 }
 
 /** A removed or replaced/promoted body cannot inherit a stale grant. */

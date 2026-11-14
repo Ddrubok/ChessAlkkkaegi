@@ -64,6 +64,18 @@ try {
   assert.equal(state(initial).status, 'empty');
   const single = await create([['white-pawn-center', 0, 0]]);
   assert.equal(state(single).status, 'bonus'); assert.equal(state(single).beneficiaryId, 'white-pawn-center');
+  const grantBeforePreview = JSON.stringify(state(single));
+  const worldBeforePreview = single.runtime.world.takeSnapshot();
+  for (let i = 0; i < 10; i++) {
+    assert.equal(zone.peekControlZoneLaunchMultiplier(single.t, 'white-pawn-center'), definition.controlZone.speedMultiplier);
+    assert.equal(zone.peekControlZoneLaunchMultiplier(single.t, 'white-rook'), 1);
+  }
+  assert.equal(JSON.stringify(state(single)), grantBeforePreview, 'preview never consumes or updates the grant');
+  assert.deepEqual(single.runtime.world.takeSnapshot(), worldBeforePreview, 'preview never mutates physics');
+  const beneficiary = single.runtime.pieces.get('white-pawn-center');
+  single.runtime.pieces.delete('white-pawn-center');
+  assert.equal(zone.peekControlZoneLaunchMultiplier(single.t, 'white-pawn-center'), 1, 'removed body cannot preview a stale grant');
+  single.runtime.pieces.set('white-pawn-center', beneficiary);
   const contested = await create([['white-pawn-center', -.12, 0], ['black-pawn-center', .12, 0]]);
   assert.equal(state(contested).status, 'contested'); assert.equal(state(contested).beneficiaryId, null);
   const enemy = await create([['black-pawn-center', 0, 0]]);

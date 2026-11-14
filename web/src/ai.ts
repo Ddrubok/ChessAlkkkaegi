@@ -1,7 +1,8 @@
-import { MathUtils, Vector3 } from "three";
+import { Box3, MathUtils, Vector3 } from "three";
 import {
   beginDirectedAim,
   cancelAim,
+  computePieceWorldAabb,
   selectAimPiece,
   setAimApplicationPoint,
   updateDirectedAim,
@@ -19,6 +20,7 @@ import type { GameMode } from "./game-mode";
 import type { PieceSide } from "./layout";
 import type { PhysicsRuntime } from "./physics";
 import type { SceneRuntime } from "./scene";
+import { planKnightShot, type KnightAiBody } from "./knight-ai";
 import {
   computeStageAiSpeedMultiplier,
   computeStageBoardHalfExtent,
@@ -67,6 +69,8 @@ export interface AiDecisionOverrides {
 }
 
 export interface AiTelegraph {
+  // Freeze the same stage multiplier for candidate evaluation, preview and launch.
+  speedMultiplier: number;
   // 순수 결정 함수가 한 번 만든 뒤 표시와 실제 발사가 함께 쓰는 원본 결정이다.
   decision: AiDecision;
   // 미리보기와 발사 요청에 같은 객체 값으로 전달하는 실제 수평 단위 방향이다.
@@ -475,6 +479,54 @@ function collectAiPiecePositions(
   });
 }
 
+/** Refine only a stage-selected Knight; every estimate reads the current pose without stepping the world. */
+function refineKnightDecision(runtime: AiRuntime, decision: AiDecision, speedMultiplier: number): AiDecision {
+  const physics = runtime.physicsRuntime;
+  if (physics.pieces.get(decision.pieceId)?.instance.type !== "Knight") return decision;
+  const bodies: KnightAiBody[] = [];
+  for (const binding of [...physics.pieces.values()].sort((a, b) => a.instance.id < b.instance.id ? -1 : a.instance.id > b.instance.id ? 1 : 0)) {
+    const mesh = runtime.sceneRuntime.pieceMeshes.get(binding.instance.id);
+    if (mesh) bodies.push({ id: binding.instance.id, side: binding.instance.side,
+      bounds: computePieceWorldAabb(binding, mesh) });
+  }
+  const source = bodies.find(body => body.id === decision.pieceId);
+  if (!source) return decision;
+  const targets = bodies.filter(body => body.side === "white");
+  const alternativeTarget = decideAiShot(collectAiPiecePositions(physics).filter(piece => piece.id === source.id
+    || (piece.side === "white" && piece.id !== decision.targetPieceId)), runtime.cellSize,
+    runtime.shotCounter, runtime.getStageNumber(), runtime.getDecisionOverrides())?.targetPieceId;
+  const rank = (id: string) => id === decision.targetPieceId ? 0 : id === alternativeTarget ? 1 : 2;
+  targets.sort((a, b) => rank(a.id) - rank(b.id));
+  const obstacles: Box3[] = [];
+  for (const { definition: wall } of physics.breakableWalls.values()) {
+    const center = new Vector3(wall.center.x, wall.center.y, wall.center.z);
+    const half = new Vector3(wall.halfExtents.x, wall.halfExtents.y, wall.halfExtents.z);
+    obstacles.push(new Box3(center.clone().sub(half), center.clone().add(half)));
+  }
+  for (const { definition: obstacle } of physics.pinballObstacles.values()) {
+    const center = new Vector3(obstacle.center.x, obstacle.center.y, obstacle.center.z);
+    const half = new Vector3(obstacle.radius, obstacle.halfHeight, obstacle.radius);
+    obstacles.push(new Box3(center.clone().sub(half), center.clone().add(half)));
+  }
+  const shot = planKnightShot({ source, targets, bodies, obstacles, holes: physics.boardHoleRectangles,
+    boardHalfExtent: physics.boardHalfExtent, boardTop: physics.boardTop,
+    gameMode: runtime.getGameMode(), maxLaunchSpeed: runtime.turnRuntime.tuningSettings.maxLaunchSpeed,
+    speedMultiplier, variationDegrees: decision.variationDegrees,
+    maximumPower: runtime.getDecisionOverrides()?.maximumPower ?? AI_BASE_POWER_MAX });
+  if (!shot) return decision;
+  if (!shot.predictedContact) {
+    const otherPieces = collectAiPiecePositions(physics).filter(piece => piece.side !== "black"
+      || physics.pieces.get(piece.id)?.instance.type !== "Knight");
+    const alternative = decideAiShot(otherPieces, runtime.cellSize, runtime.shotCounter,
+      runtime.getStageNumber(), runtime.getDecisionOverrides());
+    if (alternative) return alternative;
+  }
+  const target = physics.pieces.get(shot.targetPieceId)?.body.translation();
+  const position = physics.pieces.get(decision.pieceId)!.body.translation();
+  return { ...decision, targetPieceId: shot.targetPieceId, direction: shot.direction, power: shot.power,
+    distance: target ? Math.hypot(target.x - position.x, target.z - position.z) : decision.distance };
+}
+
 /**
  * 순수 결정 결과와 현재 자세의 실제 방향·적용점을 한 번 묶어 표시와 발사가 공유하게 한다.
  */
@@ -482,7 +534,11 @@ function prepareAiTelegraph(
   runtime: AiRuntime,
   previewAt: number,
 ): AiTelegraph | null {
-  const decision = decideAiShot(
+  const speedMultiplier = computeStageAiSpeedMultiplier({
+    gameMode: runtime.getGameMode(), stageNumber: runtime.getStageNumber(),
+    enemyBuffStepScale: runtime.getEnemyBuffStepScale(),
+  });
+  let decision = decideAiShot(
     collectAiPiecePositions(runtime.physicsRuntime),
     runtime.cellSize,
     runtime.shotCounter,
@@ -492,6 +548,7 @@ function prepareAiTelegraph(
   if (decision === null) {
     return null;
   }
+  decision = refineKnightDecision(runtime, decision, speedMultiplier);
   const binding = runtime.physicsRuntime.pieces.get(decision.pieceId);
   const mesh = runtime.sceneRuntime.pieceMeshes.get(decision.pieceId);
   if (binding === undefined || mesh === undefined) {
@@ -513,6 +570,7 @@ function prepareAiTelegraph(
     runtime.turnRuntime.tuningSettings.strikeHeightRatio,
   );
   return {
+    speedMultiplier,
     decision,
     direction,
     applicationPoint,
@@ -529,12 +587,7 @@ function queuePreparedAiTelegraph(
   telegraph: AiTelegraph,
 ): boolean {
   const { decision, direction, applicationPoint } = telegraph;
-  const speedMultiplier = computeStageAiSpeedMultiplier({
-    gameMode: runtime.getGameMode(),
-    stageNumber: runtime.getStageNumber(),
-    enemyBuffStepScale:
-      runtime.getEnemyBuffStepScale(),
-  });
+  const speedMultiplier = telegraph.speedMultiplier;
   const outcome = queueTurnLaunch(runtime.turnRuntime, {
     pieceId: decision.pieceId,
     direction,

@@ -1,0 +1,1316 @@
+{
+  "scope": "Fixed physical fixtures, no human players. No terrain gimmicks; stage affects AI bias/speed only. Tipped/raised snapshots are intentionally frozen.",
+  "perturbation": "power-",
+  "sources": {
+    "ai.ts": "a982375ebf61509f4b2a21aa5ee2292823adf5f11f7d343db4c5c33fde021fa9",
+    "launch.ts": "846c6bc5e037731e2cbf535ceb2ee93419767a1babfbb306cdcb186d974d419c",
+    "knight-ai.ts": "05469cfcf650a619b3d17d29a4a38c16f8e1d6607a0d752f5a214aa70351ed86"
+  },
+  "summary": {
+    "cases": 48,
+    "hits": 43,
+    "selfOut": 30,
+    "targetOut": 30,
+    "forced": 0,
+    "p95DecisionMs": 1.2249999999994543,
+    "worldUnchanged": true
+  },
+  "results": [
+    {
+      "stage": 1,
+      "layout": "close",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.06325797751048078,
+          0,
+          -0.9979972085538535
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 9.44590000000062,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 286,
+      "initialVelocity": {
+        "x": 0.11174801737070084,
+        "y": 3.7883665561676025,
+        "z": -1.763006329536438
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "middle",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.0726188890436677,
+        "direction": [
+          0.06372678910122077,
+          0,
+          -0.9979673824082873
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 1.2249999999994543,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 390,
+      "initialVelocity": {
+        "x": 0.12591460347175598,
+        "y": 4.23722505569458,
+        "z": -1.9718343019485474
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "far",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.32370707900114626,
+        "direction": [
+          0.0637846332667163,
+          0,
+          -0.9979636869941865
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 1.8051000000004933,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 332,
+      "initialVelocity": {
+        "x": 0.1721898764371872,
+        "y": 5.789206027984619,
+        "z": -2.694053888320923
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "east",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.07136874206322909,
+        "direction": [
+          -0.006107660337608868,
+          0,
+          -0.9999813480686531
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 1.1957000000002154,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 387,
+      "initialVelocity": {
+        "x": -0.012045817449688911,
+        "y": 4.229497909545898,
+        "z": -1.9722105264663696
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "west",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.07153935964994881,
+        "direction": [
+          0.06382797182682569,
+          0,
+          -0.9979609160746097
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 1.1873999999997977,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 364,
+      "initialVelocity": {
+        "x": 0.12591592967510223,
+        "y": 4.2305521965026855,
+        "z": -1.9687165021896362
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "north",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.06473405325878141,
+          0,
+          0.9979025515293011
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.7647999999999229,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 455,
+      "initialVelocity": {
+        "x": -0.11435557156801224,
+        "y": 3.7883665561676025,
+        "z": 1.7628390789031982
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "south",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.06522707097423659,
+          0,
+          -0.9978704471083019
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.7744999999995343,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 437,
+      "initialVelocity": {
+        "x": 0.11522650718688965,
+        "y": 3.7883665561676025,
+        "z": -1.762782335281372
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "tipped",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.050447353326349,
+        "direction": [
+          0.06362071722999124,
+          0,
+          -0.9979741501357344
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.69629999999961,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 520,
+      "initialVelocity": {
+        "x": 0.12163940072059631,
+        "y": 4.10018253326416,
+        "z": -1.9080733060836792
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "lying",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.08,
+        "direction": [
+          0.06362071722999124,
+          0,
+          -0.9979741501357344
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 1.1486999999997352,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 425,
+      "initialVelocity": {
+        "x": 0.12705852091312408,
+        "y": 4.282847881317139,
+        "z": -1.9930789470672607
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "raised",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.06360963153447853,
+          0,
+          -0.9979748567855045
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.42480000000068685,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 483,
+      "initialVelocity": {
+        "x": 0.11236923187971115,
+        "y": 3.7883665561676025,
+        "z": -1.7629667520523071
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "friendly-blocker",
+      "request": {
+        "pieceId": "black-pawn-d7",
+        "power": 0.6327041391542336,
+        "direction": [
+          0.06387212585951488,
+          0,
+          -0.9979580910730603
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.4497000000001208,
+      "hit": false,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 219,
+      "initialVelocity": {
+        "x": 0.44453373551368713,
+        "y": 0,
+        "z": -6.945534706115723
+      }
+    },
+    {
+      "stage": 1,
+      "layout": "corner",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.612888581820063,
+        "direction": [
+          -0.7109467293819932,
+          0,
+          -0.7032458659537553
+        ],
+        "speedMultiplier": 1
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.30979999999999563,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 380,
+      "initialVelocity": {
+        "x": -2.511807680130005,
+        "y": 7.576642036437988,
+        "z": -2.484600305557251
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "close",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.03251378053889768,
+          0,
+          -0.9994712872689583
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.2620999999999185,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 277,
+      "initialVelocity": {
+        "x": -0.06030888110399246,
+        "y": 3.9777848720550537,
+        "z": -1.8538908958435059
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "middle",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.032044265918660116,
+          0,
+          -0.9994864506443969
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.299300000000585,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 444,
+      "initialVelocity": {
+        "x": -0.05943799391388893,
+        "y": 3.9777848720550537,
+        "z": -1.8539189100265503
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "far",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.278630397819832,
+        "direction": [
+          -0.03198633354392248,
+          0,
+          -0.9994883063179963
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.626299999999901,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 345,
+      "initialVelocity": {
+        "x": -0.08630264550447464,
+        "y": 5.7861151695251465,
+        "z": -2.6967291831970215
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "east",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.03210876257858054,
+          0,
+          -0.9994843807512315
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.3306000000002314,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 417,
+      "initialVelocity": {
+        "x": -0.059557631611824036,
+        "y": 3.9777848720550537,
+        "z": -1.8539150953292847
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "west",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.031942928683783824,
+          0,
+          -0.999489694447673
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.42739999999957945,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 436,
+      "initialVelocity": {
+        "x": -0.05925002694129944,
+        "y": 3.9777848720550537,
+        "z": -1.8539249897003174
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "north",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.03103541970723596,
+          0,
+          0.9995182853372898
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.2691999999997279,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 428,
+      "initialVelocity": {
+        "x": 0.05756671726703644,
+        "y": 3.9777848720550537,
+        "z": 1.8539780378341675
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "south",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.03054159203076088,
+          0,
+          -0.9995334967654795
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.2118000000000393,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 411,
+      "initialVelocity": {
+        "x": -0.05665072798728943,
+        "y": 3.9777848720550537,
+        "z": -1.8540061712265015
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "tipped",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.03215049870697071,
+          0,
+          -0.9994830390921564
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.34099999999943975,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 366,
+      "initialVelocity": {
+        "x": -0.059635043144226074,
+        "y": 3.9777848720550537,
+        "z": -1.853912591934204
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "lying",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.05476935507309016,
+        "direction": [
+          -0.03215049870697071,
+          0,
+          -0.9994830390921564
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.2860000000000582,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 462,
+      "initialVelocity": {
+        "x": -0.06496406346559525,
+        "y": 4.333241939544678,
+        "z": -2.0195791721343994
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "raised",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.03216160115760768,
+          0,
+          -0.9994826818964795
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.30869999999958964,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 455,
+      "initialVelocity": {
+        "x": -0.05965563654899597,
+        "y": 3.9777848720550537,
+        "z": -1.8539118766784668
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "friendly-blocker",
+      "request": {
+        "pieceId": "black-pawn-d7",
+        "power": 0.6327041391542336,
+        "direction": [
+          -0.031898706917607135,
+          0,
+          -0.9994911067623288
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.16229999999995925,
+      "hit": false,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 216,
+      "initialVelocity": {
+        "x": -0.23310722410678864,
+        "y": 0,
+        "z": -7.304014205932617
+      }
+    },
+    {
+      "stage": 4,
+      "layout": "corner",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.728746120872771,
+          0,
+          -0.6847839741939706
+        ],
+        "speedMultiplier": 1.05
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.3044999999992797,
+      "hit": false,
+      "sourceSurvived": true,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 594,
+      "initialVelocity": {
+        "x": -1.351730465888977,
+        "y": 3.9777848720550537,
+        "z": -1.2701863050460815
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "close",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.04768575758775445,
+          0,
+          -0.9988623871801771
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.4356999999999971,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 259,
+      "initialVelocity": {
+        "x": 0.09687485545873642,
+        "y": 4.356621265411377,
+        "z": -2.029214859008789
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "middle",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.04815497732247863,
+          0,
+          -0.9988398761358458
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.3967000000002372,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 383,
+      "initialVelocity": {
+        "x": 0.09782808274030685,
+        "y": 4.356621265411377,
+        "z": -2.0291690826416016
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "far",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.20023616967841615,
+        "direction": [
+          0.048212872085689314,
+          0,
+          -0.9988370832949932
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.400300000000243,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 300,
+      "initialVelocity": {
+        "x": 0.12994466722011566,
+        "y": 5.779934406280518,
+        "z": -2.6920933723449707
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "east",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.021702388089000223,
+          0,
+          -0.999764475439708
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.20159999999941647,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 410,
+      "initialVelocity": {
+        "x": -0.04408896341919899,
+        "y": 4.356621265411377,
+        "z": -2.0310475826263428
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "west",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.048256248589508145,
+          0,
+          -0.9988349886102649
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.29359999999996944,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 392,
+      "initialVelocity": {
+        "x": 0.09803382307291031,
+        "y": 4.356621265411377,
+        "z": -2.0291593074798584
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "north",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.04916313006220358,
+          0,
+          0.9987907621932068
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.1710000000002765,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 383,
+      "initialVelocity": {
+        "x": -0.09987617284059525,
+        "y": 4.356621265411377,
+        "z": 2.029069423675537
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "south",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.04965658850910317,
+          0,
+          -0.9987663506634762
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.16110000000026048,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 389,
+      "initialVelocity": {
+        "x": 0.10087864845991135,
+        "y": 4.356621265411377,
+        "z": -2.029019832611084
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "tipped",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.04804881280398332,
+          0,
+          -0.9988449887685915
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.25860000000011496,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 301,
+      "initialVelocity": {
+        "x": 0.0976124033331871,
+        "y": 4.356621265411377,
+        "z": -2.029179573059082
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "lying",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.04804881280398332,
+          0,
+          -0.9988449887685915
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.21820000000025175,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 429,
+      "initialVelocity": {
+        "x": 0.0976124033331871,
+        "y": 4.356621265411377,
+        "z": -2.029179573059082
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "raised",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.04803771743598587,
+          0,
+          -0.998845522442555
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.36520000000018626,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 482,
+      "initialVelocity": {
+        "x": 0.09758986532688141,
+        "y": 4.356621265411377,
+        "z": -2.0291807651519775
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "friendly-blocker",
+      "request": {
+        "pieceId": "black-pawn-d7",
+        "power": 0.6327041391542336,
+        "direction": [
+          0.0483004413101775,
+          0,
+          -0.9988328525680572
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.08469999999942956,
+      "hit": false,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 177,
+      "initialVelocity": {
+        "x": 0.386582612991333,
+        "y": 0,
+        "z": -7.994365692138672
+      }
+    },
+    {
+      "stage": 7,
+      "layout": "corner",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.4516983460426916,
+        "direction": [
+          -0.7218279179040582,
+          0,
+          -0.6920725806837693
+        ],
+        "speedMultiplier": 1.15
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.19030000000020664,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 371,
+      "initialVelocity": {
+        "x": -2.547130584716797,
+        "y": 7.567370414733887,
+        "z": -2.4421324729919434
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "close",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.0003634718563978675,
+          0,
+          -0.9999999339441027
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.18590000000040163,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 265,
+      "initialVelocity": {
+        "x": -0.000770506972912699,
+        "y": 4.546039581298828,
+        "z": -2.1198530197143555
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "middle",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.00010628755321780373,
+          0,
+          -0.9999999943514781
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.2543000000005122,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 472,
+      "initialVelocity": {
+        "x": 0.00022531399736180902,
+        "y": 4.546039581298828,
+        "z": -2.1198530197143555
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "far",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.16593869486654667,
+        "direction": [
+          0.0001642496400140554,
+          0,
+          -0.999999986511028
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.411099999999351,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 334,
+      "initialVelocity": {
+        "x": 0.0004424534854479134,
+        "y": 5.776844024658203,
+        "z": -2.69378662109375
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "east",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.000041757687451711015,
+          0,
+          -0.9999999991281479
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.25680000000011205,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 375,
+      "initialVelocity": {
+        "x": 0.00008852016617311165,
+        "y": 4.546039581298828,
+        "z": -2.1198532581329346
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "west",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.00020767669059819222,
+          0,
+          -0.9999999784351961
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.236800000000585,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 480,
+      "initialVelocity": {
+        "x": 0.0004402440972626209,
+        "y": 4.546039581298828,
+        "z": -2.1198530197143555
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "north",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.0011156357318413196,
+          0,
+          0.9999993776782634
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.14069999999992433,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 356,
+      "initialVelocity": {
+        "x": -0.002364983782172203,
+        "y": 4.546039581298828,
+        "z": 2.11985182762146
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "south",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0.001609697173714796,
+          0,
+          -0.9999987044366654
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.16790000000037253,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 344,
+      "initialVelocity": {
+        "x": 0.003412321675568819,
+        "y": 4.546039581298828,
+        "z": -2.1198503971099854
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "tipped",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0,
+          0,
+          -1
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.5866000000005442,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 336,
+      "initialVelocity": {
+        "x": 0,
+        "y": 4.546039581298828,
+        "z": -2.1198532581329346
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "lying",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          0,
+          0,
+          -1
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.5151000000005297,
+      "hit": true,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 443,
+      "initialVelocity": {
+        "x": 0,
+        "y": 4.546039581298828,
+        "z": -2.1198532581329346
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "raised",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0,
+        "direction": [
+          -0.0000111081951231593,
+          0,
+          -0.9999999999383041
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.4036999999998443,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": true,
+      "forced": false,
+      "settled": true,
+      "steps": 326,
+      "initialVelocity": {
+        "x": -0.000023547741875518113,
+        "y": 4.546039581298828,
+        "z": -2.1198532581329346
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "friendly-blocker",
+      "request": {
+        "pieceId": "black-pawn-d7",
+        "power": 0.6327041391542336,
+        "direction": [
+          0.0002519210024710054,
+          0,
+          -0.9999999682679039
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.11959999999999127,
+      "hit": false,
+      "sourceSurvived": true,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 205,
+      "initialVelocity": {
+        "x": 0.002103967359289527,
+        "y": 0,
+        "z": -8.351694107055664
+      }
+    },
+    {
+      "stage": 10,
+      "layout": "corner",
+      "request": {
+        "pieceId": "black-knight-b8",
+        "power": 0.4069232805489773,
+        "direction": [
+          -0.7066087346587937,
+          0,
+          -0.7076044771649616
+        ],
+        "speedMultiplier": 1.2
+      },
+      "worldUnchanged": true,
+      "decisionMs": 0.4158000000006723,
+      "hit": true,
+      "sourceSurvived": false,
+      "targetSurvived": false,
+      "forced": false,
+      "settled": true,
+      "steps": 382,
+      "initialVelocity": {
+        "x": -2.492408037185669,
+        "y": 7.5642805099487305,
+        "z": -2.495920419692993
+      }
+    }
+  ]
+}

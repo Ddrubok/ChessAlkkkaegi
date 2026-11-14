@@ -6,10 +6,10 @@ import {
 } from "./ai";
 import { clearLaunchMotion, confirmLaunchFeedback, updateAimVisuals, type AimRuntime } from "./aim";
 import { createImpactFeedback } from "./impact-feedback";
+import { peekControlZoneLaunchMultiplier } from "./maps/control-zone";
 import type { PieceSide } from "./layout";
 import {
   FIXED_STEP,
-  getMaxLaunchSpeed,
   MAX_FRAME_DELTA,
   MAX_STEPS_PER_FRAME,
   PIECE_TYPES,
@@ -353,6 +353,17 @@ export function startGameLoop(
   /**
    * 실제 렌더 프레임마다 필요한 fixed step만 진행하고 최신 물리 자세를 화면에 반영한다.
    */
+  const knightPreviewLaunch = () => {
+    const pieceId = aimRuntime.activeAim?.pieceId;
+    const telegraph = aiRuntime.telegraph;
+    return {
+      gameMode: turnRuntime.gameMode,
+      maxLaunchSpeed: tuningRuntime.settings.maxLaunchSpeed,
+      speedMultiplier: pieceId && telegraph?.decision.pieceId === pieceId ? telegraph.speedMultiplier : 1,
+      controlMultiplier: pieceId ? peekControlZoneLaunchMultiplier(turnRuntime, pieceId) : 1,
+    };
+  };
+
   const frame = (now: number): void => {
     // Only the offline main menu may suspend the board. Online clocks and peers keep running.
     if (gameModeRuntime.mode !== "online" && !gameModeRuntime.switching && isMenuCovered()) {
@@ -363,7 +374,7 @@ export function startGameLoop(
         updateFrameCallbacks(now, 0);
         updateInputRuntime(inputRuntime, now);
         updateAimVisuals(aimRuntime, physicsRuntime.pieces, now,
-          getMaxLaunchSpeed(turnRuntime.gameMode, "Knight", tuningRuntime.settings.maxLaunchSpeed));
+          knightPreviewLaunch());
       }
       const canvas = sceneRuntime.renderer.domElement;
       if (!menuPaused || canvas.width !== menuCanvasWidth || canvas.height !== menuCanvasHeight) {
@@ -403,7 +414,7 @@ export function startGameLoop(
       }
       updateAimVisuals(
         aimRuntime, physicsRuntime.pieces, now,
-        getMaxLaunchSpeed(turnRuntime.gameMode, "Knight", tuningRuntime.settings.maxLaunchSpeed),
+        knightPreviewLaunch(),
       );
       collectMetrics(
         sceneRuntime,
@@ -526,7 +537,7 @@ export function startGameLoop(
     }
     updateAimVisuals(
       aimRuntime, physicsRuntime.pieces, now,
-      getMaxLaunchSpeed(turnRuntime.gameMode, "Knight", tuningRuntime.settings.maxLaunchSpeed),
+      knightPreviewLaunch(),
     );
     const metrics = collectMetrics(
       sceneRuntime,

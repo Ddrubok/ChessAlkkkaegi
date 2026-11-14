@@ -35,6 +35,7 @@ import {
   ROOK_SPIN_MAX_POWER,
 } from "./config";
 import type { PieceBodyBinding } from "./physics";
+import { computeLaunchKinematics, type LaunchKinematicsOptions } from "./launch";
 import { powerAtPullDistance } from "./power-controls";
 import type { SceneRuntime } from "./scene";
 import {
@@ -502,23 +503,26 @@ function sampleGuideCurveRange(
 }
 
 /**
- * 나이트의 실제 발사 세기와 방향에 따른 물리 포물선 궤적 표본점들을 계산한다.
- * 세기에 따른 실제 도달 거리 및 착지 지점까지 호를 그리며, 세기가 0일 때도 35% 기본 미리보기를 제공한다.
+ * 공통 초기 속도의 충돌 전 포물선 표본을 그린다. 회전·바운스 이후의 착지를 보장하지 않는다.
+ * 세기가 0일 때도 나이트의 설정된 최소 도약 속도를 반영한다.
  */
+type KnightPreviewLaunch = Pick<LaunchKinematicsOptions,
+  "gameMode" | "maxLaunchSpeed" | "speedMultiplier" | "controlMultiplier">;
+
 export function computeKnightTrajectoryPoints(
   start: Vector3,
   direction: Vector3,
   normalizedPower: number,
   pointCount: number,
-  maxLaunchSpeed = MAX_LAUNCH_SPEED,
+  maxLaunchSpeed: number | KnightPreviewLaunch = MAX_LAUNCH_SPEED,
 ): GuideCurvePoint[] {
   assertFiniteGuideVector("나이트 탄도 시작점", start);
-  const power = computeKnightEffectivePower(normalizedPower);
-  const launchSpeed = power * maxLaunchSpeed;
-  const initialVelocity = direction
-    .clone()
-    .normalize()
-    .multiplyScalar(launchSpeed);
+  const initialVelocity = typeof maxLaunchSpeed === "number"
+    ? direction.clone().normalize().multiplyScalar(computeKnightEffectivePower(normalizedPower) * maxLaunchSpeed)
+    : (() => {
+      const launch = computeLaunchKinematics({ ...maxLaunchSpeed, pieceType: "Knight", normalizedPower, direction });
+      return launch.direction.multiplyScalar(launch.targetSpeed);
+    })();
 
   const deltaY = start.y - GUIDE_GROUND_Y;
   const vy = initialVelocity.y;
@@ -1745,7 +1749,7 @@ export function updateAimVisuals(
   runtime: AimRuntime,
   bindings: ReadonlyMap<string, PieceBodyBinding>,
   now: number,
-  knightMaxLaunchSpeed = MAX_LAUNCH_SPEED,
+  knightMaxLaunchSpeed: number | KnightPreviewLaunch = MAX_LAUNCH_SPEED,
 ): void {
   const selectedId = runtime.selectedPieceId;
   if (selectedId !== null) {

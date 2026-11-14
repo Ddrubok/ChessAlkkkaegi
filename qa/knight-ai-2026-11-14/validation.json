@@ -1,0 +1,70 @@
+{
+  "before": {
+    "cases": 48,
+    "hits": 12,
+    "selfOut": 45,
+    "targetOut": 3,
+    "forced": 0,
+    "p95DecisionMs": 0.36189999999987776,
+    "worldUnchanged": true
+  },
+  "after": {
+    "cases": 48,
+    "hits": 44,
+    "selfOut": 28,
+    "targetOut": 31,
+    "forced": 0,
+    "p95DecisionMs": 0.7919999999999163,
+    "worldUnchanged": true
+  },
+  "fixedStateRepeat": "passed",
+  "lifecycle": {
+    "worldUnchangedDuringPreparation": true,
+    "frozenTelegraphMatchesQueuedRequest": true,
+    "cancelled": true,
+    "reentered": true
+  },
+  "sensitivity": [
+    {
+      "change": "angle+",
+      "cases": 48,
+      "hits": 44,
+      "selfOut": 31,
+      "targetOut": 32,
+      "forced": 0,
+      "p95DecisionMs": 1.4762000000000626,
+      "worldUnchanged": true
+    },
+    {
+      "change": "angle-",
+      "cases": 48,
+      "hits": 44,
+      "selfOut": 31,
+      "targetOut": 31,
+      "forced": 0,
+      "p95DecisionMs": 1.488800000000083,
+      "worldUnchanged": true
+    },
+    {
+      "change": "power+",
+      "cases": 48,
+      "hits": 44,
+      "selfOut": 33,
+      "targetOut": 30,
+      "forced": 0,
+      "p95DecisionMs": 1.5591999999996915,
+      "worldUnchanged": true
+    },
+    {
+      "change": "power-",
+      "cases": 48,
+      "hits": 43,
+      "selfOut": 30,
+      "targetOut": 30,
+      "forced": 0,
+      "p95DecisionMs": 1.2249999999994543,
+      "worldUnchanged": true
+    }
+  ],
+  "scope": "Fixed fixtures only; no claim of human difficulty, native performance, full-game determinism or post-collision safety."
+}

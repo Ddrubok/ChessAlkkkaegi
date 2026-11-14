@@ -5,11 +5,8 @@ import {
   BISHOP_DEFLECTION_IMPULSE_FACTOR,
   BISHOP_SPIN_TORQUE_MULTIPLIER,
   CAMERA_PITCH_DEG,
-  computeKnightEffectivePower,
-  getMaxLaunchSpeed,
   FALL_OUT_Y,
   isPieceInOpponentEndZone,
-  KNIGHT_LAUNCH_ANGLE,
   MAX_SETTLE_SECONDS,
   PROMOTION_PIECE_CHOICES,
   REST_ANGULAR_EPS,
@@ -19,6 +16,7 @@ import {
   type PieceType,
 } from "./config";
 import type { LaunchRequest } from "./aim";
+import { computeLaunchKinematics } from "./launch";
 import type { GameMode } from "./game-mode";
 import type { PieceSide } from "./layout";
 import {
@@ -43,7 +41,7 @@ import type { RuntimeTuningSettings } from "./tuning";
 import { areHotseatObjectsAtRest, collectHotseatGroundedIds, removeFallenHotseatObjects, settleHotseatObjects } from "./maps/hotseat-map-runtime";
 import { clearAppliedHotseatLaunch, commitSettledHotseatTerrain, noteAppliedHotseatLaunch, resetCollapsingFloorTurn } from "./maps/collapsing-floor";
 import { afterHotseatBridgeStep, beforeHotseatBridgeStep } from "./maps/breakable-bridge";
-import { beginControlZoneTurn, consumeControlZoneLaunch, expireControlZoneBonus, resetControlZoneTurn, validateControlZoneBonus } from "./maps/control-zone";
+import { beginControlZoneTurn, consumeControlZoneLaunch, expireControlZoneBonus, peekControlZoneLaunchMultiplier, resetControlZoneTurn, validateControlZoneBonus } from "./maps/control-zone";
 
 export type TurnPhase =
   | "settling"
@@ -766,43 +764,17 @@ function applyPendingLaunchImpulse(runtime: TurnRuntime): boolean {
   const preLaunchRotation = binding.body.rotation();
   const applicationPoint = request.applicationPoint;
   const speedMultiplier = request.speedMultiplier ?? 1;
-  if (!Number.isFinite(speedMultiplier) || speedMultiplier <= 0) {
-    throw new Error(
-      `발사 속도 배수 ${speedMultiplier}가 유한한 양수가 아닙니다.`,
-    );
-  }
-  const effectivePower =
-    binding.instance.type === "Knight"
-      ? computeKnightEffectivePower(request.normalizedPower)
-      : request.normalizedPower;
-  const controlMultiplier = consumeControlZoneLaunch(runtime, request.pieceId);
-  const targetSpeed =
-    effectivePower *
-    getMaxLaunchSpeed(
-      runtime.gameMode,
-      binding.instance.type,
-      runtime.tuningSettings.maxLaunchSpeed,
-    ) *
-    speedMultiplier * controlMultiplier;
-
-  let launchDirection = request.direction.clone();
-  if (binding.instance.type === "Knight" && launchDirection.y < 0.2) {
-    const horiz = new Vector3(launchDirection.x, 0, launchDirection.z);
-    if (horiz.lengthSq() > 1e-12) {
-      horiz.normalize();
-    } else {
-      horiz.set(0, 0, 1);
-    }
-    const cosAngle = Math.cos(KNIGHT_LAUNCH_ANGLE);
-    const sinAngle = Math.sin(KNIGHT_LAUNCH_ANGLE);
-    launchDirection.set(
-      horiz.x * cosAngle,
-      sinAngle,
-      horiz.z * cosAngle,
-    ).normalize();
-  } else {
-    launchDirection.normalize();
-  }
+  const controlMultiplier = peekControlZoneLaunchMultiplier(runtime, request.pieceId);
+  const { direction: launchDirection, targetSpeed } = computeLaunchKinematics({
+    gameMode: runtime.gameMode,
+    pieceType: binding.instance.type,
+    normalizedPower: request.normalizedPower,
+    direction: request.direction,
+    maxLaunchSpeed: runtime.tuningSettings.maxLaunchSpeed,
+    speedMultiplier,
+    controlMultiplier,
+  });
+  consumeControlZoneLaunch(runtime, request.pieceId);
 
   const impulseMagnitude = binding.body.mass() * targetSpeed;
   const impulse = {

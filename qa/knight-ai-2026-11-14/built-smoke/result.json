@@ -1,0 +1,16 @@
+{
+  "pageErrors": [],
+  "deniedOrigins": [],
+  "states": [
+    {
+      "width": 1366,
+      "height": 768,
+      "stageVisible": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "stageVisible": true
+    }
+  ]
+}
