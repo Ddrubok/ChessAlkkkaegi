@@ -49,6 +49,8 @@ import { lobbyLayoutCopy } from "./lobby-layout-copy";
 import { openHotseatMapMenu } from "./hotseat-map-menu";
 import { DEFAULT_HOTSEAT_MAP_ID } from "./maps/map-catalog";
 import { feedbackCopy } from "./feedback-copy";
+import type { SoloRun } from "./solo-run";
+import { soloRunText } from "./solo-run-copy";
 
 function openLogoutConfirm(runtime: MainMenuRuntime): void {
   if (runtime.overlay.querySelector(".lobby-logout-confirm")) return;
@@ -111,6 +113,7 @@ export async function startLobbyMode(
   mode: LobbyMode,
   selectedStage = getInitialStage(runtime.metaRuntime.storage),
   tutorialType: "basic" | "advanced" = "basic",
+  newSoloRun = false,
 ): Promise<void> {
   if (runtime.busy || !runtime.ready || !progressStorage.ready) return;
   if (PLATFORM.features.solo && mode !== "tutorial" && mode !== "stage" && mode !== "online") return;
@@ -122,7 +125,8 @@ export async function startLobbyMode(
   runtime.busy = true;
   renderMainMenu(runtime);
   try {
-    if (mode === "tutorial") await runtime.onStartMode("tutorial", 1, tutorialType);
+    if (mode === "stage" && newSoloRun && runtime.onStartNewSoloRun) await runtime.onStartNewSoloRun(selectedStage);
+    else if (mode === "tutorial") await runtime.onStartMode("tutorial", 1, tutorialType);
     else if (mode === "stage") await runtime.onStartMode("stage", selectedStage);
     else await runtime.onStartMode(mode);
     hideMainMenuAfterModeStart(runtime);
@@ -142,6 +146,9 @@ export async function startLobbyMode(
 }
 
 export interface MainMenuRuntime {
+  getSoloRun?: () => SoloRun | null;
+  onStartNewSoloRun?: (stage: number) => Promise<void>;
+  onEndSoloRun?: () => Promise<void>;
   overlay: HTMLElement;
   returnButton: HTMLButtonElement;
   confirmOverlay: HTMLElement;
@@ -320,7 +327,8 @@ export function openPveLobbyModal(
 
       startBox.querySelector("#pve-start-btn")?.addEventListener("click", async () => {
         close();
-        await onStartStage(selectedStage);
+        if (PLATFORM.id === "itch" && runtime.onStartNewSoloRun) await startLobbyMode(runtime, "stage", selectedStage, "basic", true);
+        else await onStartStage(selectedStage);
       });
     } else {
       workbench = new PieceStatWorkbench(adapter, {
@@ -860,6 +868,16 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       void startLobbyMode(runtime, recommendation.mode, recommendation.stage, recommendation.tutorialType);
     }
   });
+  const soloRun = PLATFORM.id === "itch" ? runtime.getSoloRun?.() : null;
+  if (soloRun && soloRun.phase !== "ended") {
+    const end = document.createElement("button"); end.type = "button";
+    end.dataset.soloRunEnd = ""; end.textContent = soloRunText("endRun");
+    end.addEventListener("click", () => { void runtime.onEndSoloRun?.().catch(error => {
+      const status = panel.querySelector<HTMLElement>("[data-menu-status]");
+      if (status) status.textContent = error instanceof Error ? error.message : soloRunText("settlementPending");
+    }); });
+    panel.querySelector(".lobby-hero-content > div")?.append(end);
+  }
 
   const puzzleButton = panel.querySelector<HTMLButtonElement>("#menu-puzzle-btn");
   if (puzzleButton) {
@@ -1010,8 +1028,12 @@ export function createMainMenu(
     onConfirmAbandon,
   };
 
+  const retryStage = (): boolean => PLATFORM.id === "itch" && runtime.isStageMatch?.() === true
+    && !!runtime.getSoloRun?.() && runtime.getSoloRun?.()?.phase !== "ended";
+  const confirmLabel = (): string => retryStage() ? soloRunText("endRun") : I18nManager.t(abandonConfirmKey());
   const abandonDescription = (): string => {
     const points = runtime.getPendingStagePoints?.() ?? 0;
+    if (retryStage()) return soloRunText("endDescription", { points });
     return points > 0
       ? I18nManager.t("ingame.abandon_stage_points_desc", { points })
       : I18nManager.t("ingame.abandon_desc");
@@ -1023,14 +1045,14 @@ export function createMainMenu(
   I18nManager.subscribe(() => {
     returnButton.textContent = I18nManager.t("ingame.menu_btn");
     const confirmH1 = confirmOverlay.querySelector("#menu-confirm-title");
-    if (confirmH1) confirmH1.textContent = I18nManager.t(runtime.canForfeitRound?.() ? "ingame.friendly_confirm_title" : "ingame.abandon_title");
+    if (confirmH1) confirmH1.textContent = retryStage() ? soloRunText("endTitle") : I18nManager.t(runtime.canForfeitRound?.() ? "ingame.friendly_confirm_title" : "ingame.abandon_title");
     const confirmDesc = confirmOverlay.querySelector("#menu-confirm-desc");
     if (confirmDesc) confirmDesc.textContent = runtime.canForfeitRound?.() ? I18nManager.t("ingame.friendly_forfeit_desc") : abandonDescription();
     const cancelBtn = confirmOverlay.querySelector("[data-menu-cancel]");
     if (cancelBtn) cancelBtn.textContent = I18nManager.t("ingame.continue_btn");
     const confirmBtn = confirmOverlay.querySelector("[data-menu-confirm]");
-    if (confirmBtn) confirmBtn.textContent = I18nManager.t(abandonConfirmKey());
-    forfeitButton.textContent = I18nManager.t("ingame.friendly_forfeit_btn");
+    if (confirmBtn) confirmBtn.textContent = confirmLabel();
+    forfeitButton.textContent = retryStage() ? soloRunText("menu") : I18nManager.t("ingame.friendly_forfeit_btn");
 
     if (runtime.visible) {
       renderMainMenu(runtime);
@@ -1070,9 +1092,12 @@ export function createMainMenu(
         "#menu-confirm-title",
       );
     const canForfeit = runtime.canForfeitRound?.() === true;
-    forfeitButton.hidden = !canForfeit;
-    confirmButton.textContent = I18nManager.t(abandonConfirmKey());
-    if (heading !== null) heading.textContent = I18nManager.t(canForfeit ? "ingame.friendly_confirm_title" : "ingame.abandon_title");
+    if (retryStage()) confirmOverlay.dataset.soloRunConfirm = "";
+    else delete confirmOverlay.dataset.soloRunConfirm;
+    forfeitButton.hidden = !canForfeit && !retryStage();
+    forfeitButton.textContent = retryStage() ? soloRunText("menu") : I18nManager.t("ingame.friendly_forfeit_btn");
+    confirmButton.textContent = confirmLabel();
+    if (heading !== null) heading.textContent = retryStage() ? soloRunText("endTitle") : I18nManager.t(canForfeit ? "ingame.friendly_confirm_title" : "ingame.abandon_title");
     const desc =
       confirmOverlay.querySelector<HTMLParagraphElement>(
         "#menu-confirm-desc",
@@ -1084,7 +1109,7 @@ export function createMainMenu(
     confirmOpenedAt = performance.now();
     confirmResumeVersion = gameplay.leave("confirm-open");
     runtime.confirmOverlay.hidden = false;
-    confirmButton.focus();
+    (retryStage() ? cancelButton : confirmButton).focus();
   });
   cancelButton.addEventListener("click", () => {
     if (!runtime.confirming || cancelButton.disabled) return;
@@ -1097,6 +1122,11 @@ export function createMainMenu(
     confirmResumeVersion = null;
   });
   forfeitButton.addEventListener("click", () => {
+    if (retryStage() && !runtime.busy) {
+      forfeitButton.disabled = true;
+      void returnToMainMenu(runtime).finally(() => { forfeitButton.disabled = false; });
+      return;
+    }
     if (runtime.busy || !runtime.canForfeitRound?.() || !runtime.onForfeitRound) return;
     forfeitButton.disabled = true;
     confirmButton.disabled = true;

@@ -3,9 +3,9 @@ import { presentCard } from '../crazygames-progression.ts';
 
 const cases = [
   ['size', '상대 공격에도 더 잘 맞음'],
-  ['weight', '같은 힘에서 이동거리 감소'],
+  ['weight', '같은 파워의 목표 초기 발사 속도는 유지'],
   ['force', null],
-  ['giantPawn', '폰 4개를 잃음'],
+  ['giantPawn', '다음 단계에서 일부 폰 제거'],
   ['proneStart', null],
 ];
 
@@ -23,16 +23,16 @@ for (const [id, tradeoff] of cases) {
   assert.equal(ko.tradeoff, tradeoff);
   if (id === 'size') {
     assert.equal(ko.grade, '중급');
-    assert.equal(ko.measuredEffect, '+20%');
-  } else {
-    assert.equal(ko.measuredEffect, null);
   }
+  assert.equal(ko.bonusChange, null, 'description text must not invent a measured bonus');
 }
 
 const weeklyCard = { id: 'force', name: '힘 강화', description: '이동거리 증가', category: 'general', oneShot: false };
-assert.equal(presentCard(weeklyCard, 'en').measuredEffect, null);
+assert.equal(presentCard(weeklyCard, 'en').bonusChange, null);
 assert.equal(presentCard(weeklyCard, 'fr').effect, presentCard(weeklyCard, 'en').effect);
-assert.equal(presentCard(weeklyCard, 'en', { before: .1, after: .2 }).measuredEffect, '+10% → +20%');
+assert.equal(presentCard(weeklyCard, 'en', { before: .1, after: .2 }).bonusChange, '+10% → +20%');
 const giant = {id:'giantPawn', name:'Giant Pawn', description:'', category:'special', oneShot:true};
-assert.equal(presentCard(giant, 'en', {pawnsLost:1}).tradeoff, 'Next match: lose 1 pawn');
-console.log('CrazyGames card presentation: 5 cards, real value parsing, fallback OK');
+assert.equal(presentCard(giant, 'en', {pawnsLost:1}).tradeoff, '1 pawn removed next stage');
+const measured=presentCard(weeklyCard,'en',{appliedValues:[{piece:'Pawn',stat:'speed',before:4,after:5,unit:'m/s'}]});
+assert.ok(measured.appliedValues[0].includes('4m/s → 5m/s'));
+console.log('CrazyGames card presentation: 5 cards, supplied bonuses/applied values, actual pawn loss, fallback OK');

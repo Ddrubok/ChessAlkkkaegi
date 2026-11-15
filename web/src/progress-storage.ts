@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MASTERY_PROGRESS_KEY, MASTERY_REWARDS_KEY, MASTERY_PREFERENCES_KEY, MASTERY_KEYS, mergeMasteryValue, reconcileMasteryValues, validateMasteryValues } from "./mastery.ts";
 import { getRuntimeText, type RuntimeTextKey } from "./runtime-text.ts";
+import { portalStoragePersistent } from "./portal-browser-guards";
 
 // Offline/client-authored sync data: validated shape and account ownership do
 // not prove earned progress. Never use these values to authorize ranked scores.
@@ -16,7 +17,28 @@ type Snapshot = { data: ProgressData; revision: number; dirty: boolean; base?: P
 // Keep new fields away from older clients with strict cache parsers.
 const CACHE_PREFIX = "ca_account_progress_v4:";
 const GUEST_META_KEY = "ca_guest_meta_v1";
+const GUEST_META_V2_KEY = "ca_guest_meta_v2";
 const GUEST_META_KEYS = ["chessAlkkagi.meta.points", "chessAlkkagi.meta.upgrades", "has_completed_tutorial", "has_completed_adv_tutorial"] as const;
+const SOLO_RUN_ID = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32})$/i;
+type SoloSettlementInput = { settlementId: string; runId: string; rulesVersion: string; startStage: number; lastClearedStage: number };
+type SoloReceipt = SoloSettlementInput & { payout: number };
+type GuestMeta = { schemaVersion: 2; data: ProgressData; settlements: Record<string, SoloReceipt> };
+const unconfirmedPortalStore = (store: LocalStore): boolean => typeof window !== "undefined"
+  && store === window.localStorage && !portalStoragePersistent;
+
+function soloPayout(input: SoloSettlementInput): number | null {
+  if (!SOLO_RUN_ID.test(input.runId) || input.settlementId !== `solo-v1:${input.runId}`
+    || input.rulesVersion !== "itch-retry-v1" || !Number.isInteger(input.startStage)
+    || input.startStage < 1 || input.startStage > 10 || !Number.isInteger(input.lastClearedStage)
+    || input.lastClearedStage < input.startStage - 1 || input.lastClearedStage > 10) return null;
+  return (input.lastClearedStage * (input.lastClearedStage + 1) - (input.startStage - 1) * input.startStage) / 2;
+}
+
+function sameSoloSettlement(a: SoloReceipt, b: SoloSettlementInput): boolean {
+  return a.settlementId === b.settlementId && a.runId === b.runId
+    && a.rulesVersion === b.rulesVersion && a.startStage === b.startStage
+    && a.lastClearedStage === b.lastClearedStage && a.payout === soloPayout(b);
+}
 const LEGACY_CACHE_PREFIXES = ["ca_account_progress_v3:", "ca_account_progress_v1:"] as const;
 const MASTERY_CAPABILITY = "mastery-v1";
 const BANNERS_CAPABILITY = "banners-v1";
@@ -320,12 +342,13 @@ export class AccountProgressStorage {
   private generation = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private saving: Promise<boolean> | null = null;
+  private soloSettlementPending: string | null = null;
   private claimQueue: Promise<void> = Promise.resolve();
   private unsafeCacheRaw: string | null = null;
   private lastCapabilityProbe = 0;
   private listeners = new Set<(reset: boolean) => void>();
 
-  private guestMeta(local: LocalStore): ProgressData {
+  private guestMetaV1(local: LocalStore): ProgressData {
     const raw = local.getItem(GUEST_META_KEY);
     if (raw !== null) {
       const data = JSON.parse(raw) as unknown;
@@ -340,6 +363,24 @@ export class AccountProgressStorage {
       if (value !== null) data[key] = value;
     }
     return data;
+  }
+
+  private guestMeta(local: LocalStore): GuestMeta {
+    const raw = local.getItem(GUEST_META_V2_KEY);
+    if (raw === null) return { schemaVersion: 2, data: this.guestMetaV1(local), settlements: {} };
+    const value = JSON.parse(raw) as Partial<GuestMeta> | null;
+    if (!value || typeof value !== "object" || Array.isArray(value)
+      || Object.keys(value).some(key => !["schemaVersion", "data", "settlements"].includes(key))
+      || value.schemaVersion !== 2 || !value.settlements || typeof value.settlements !== "object"
+      || Array.isArray(value.settlements)) throw new Error("Invalid guest meta envelope");
+    const data = readData(value.data);
+    if (Object.keys(data).some(key => !(GUEST_META_KEYS as readonly string[]).includes(key))) throw new Error("Invalid guest meta data");
+    for (const [id, receipt] of Object.entries(value.settlements)) {
+      if (!receipt || typeof receipt !== "object" || Array.isArray(receipt)
+        || Object.keys(receipt).sort().join(",") !== "lastClearedStage,payout,rulesVersion,runId,settlementId,startStage"
+        || receipt.settlementId !== id || receipt.payout !== soloPayout(receipt)) throw new Error("Invalid guest receipt");
+    }
+    return { schemaVersion: 2, data, settlements: value.settlements };
   }
 
   claimGuestTutorialReward(type: "basic" | "advanced"): "granted" | "repeat" | "pending" {
@@ -409,6 +450,130 @@ export class AccountProgressStorage {
     }
   }
 
+  async lookupSoloRunSettlement(settlementId: string): Promise<{ status: "paid" | "unpaid" | "pending"; payout?: number }> {
+    if (!/^solo-v1:(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32})$/i.test(settlementId)) return { status: "pending" };
+    if (!this.owner) {
+      try {
+        const local = this.local();
+        if (!local) return { status: "pending" };
+        const receipt = this.guestMeta(local).settlements[settlementId];
+        return receipt ? unconfirmedPortalStore(local) ? { status: "pending" } : { status: "paid", payout: receipt.payout } : { status: "unpaid" };
+      } catch { return { status: "pending" }; }
+    }
+    if (!this.client || !this.ready || this.conflict || this.unsafeData) return { status: "pending" };
+    const owner = this.owner, generation = this.generation;
+    if (this.saving) await this.saving;
+    if (owner !== this.owner || generation !== this.generation || this.conflict || !this.ready) return { status: "pending" };
+    const beforeBase = { ...(this.snapshot.base ?? this.snapshot.data) }, beforeRevision = this.snapshot.revision;
+    try {
+      const { data, error } = await this.request(this.client, "lookup_solo_run_settlement", {
+        p_expected_user_id: owner, p_settlement_id: settlementId,
+      });
+      if (error || owner !== this.owner || generation !== this.generation) return { status: "pending" };
+      const result = data as { status?: unknown; payout?: unknown; data?: unknown; revision?: unknown } | null;
+      if (result?.status === "unpaid") {
+        if (this.soloSettlementPending === settlementId) this.soloSettlementPending = null;
+        return { status: "unpaid" };
+      }
+      if (result?.status === "paid" && Number.isInteger(result.payout) && (result.payout as number) >= 0 && (result.payout as number) <= 55) {
+        const remote = readSnapshot({ data: result.data, revision: result.revision });
+        if (remote.revision >= this.snapshot.revision) {
+          const base = this.snapshot.revision === beforeRevision ? beforeBase : this.snapshot.base ?? beforeBase;
+          const merged = { ...remote.data };
+          for (const [key, value] of Object.entries(this.snapshot.data)) {
+            if (value === base[key]) continue;
+            if (key === "chessAlkkagi.meta.points") merged[key] = String(Number(remote.data[key] ?? "0") + Number(value) - Number(base[key] ?? "0"));
+            else if (key !== "has_completed_tutorial" && key !== "has_completed_adv_tutorial") merged[key] = value;
+          }
+          readData(merged);
+          this.snapshot = { data: merged, revision: remote.revision, base: { ...remote.data }, dirty: !equalData(merged, remote.data) };
+          this.persist(); this.notify();
+        }
+        if (this.soloSettlementPending === settlementId) this.soloSettlementPending = null;
+        if (this.snapshot.dirty && !await this.flush()) return { status: "pending" };
+        if (owner !== this.owner || generation !== this.generation) return { status: "pending" };
+        return { status: "paid", payout: result.payout as number };
+      }
+    } catch {}
+    return { status: "pending" };
+  }
+
+  settleSoloRun(input: SoloSettlementInput): Promise<{ status: "paid" | "pending" | "conflict"; payout?: number }> {
+    const payout = soloPayout(input);
+    if (payout === null) return Promise.resolve({ status: "conflict" });
+    if (!this.owner) {
+      try {
+        if (!this.ready) return Promise.resolve({ status: "pending" });
+        const local = this.local();
+        if (!local) return Promise.resolve({ status: "pending" });
+        if (unconfirmedPortalStore(local)) return Promise.resolve({ status: "pending" });
+        const envelope = this.guestMeta(local);
+        const existing = envelope.settlements[input.settlementId];
+        if (existing) return Promise.resolve(sameSoloSettlement(existing, input)
+          ? { status: "paid", payout: existing.payout } : { status: "conflict" });
+        const points = Number(envelope.data["chessAlkkagi.meta.points"]);
+        if (!Number.isSafeInteger(points) || points < 0 || !envelope.data["chessAlkkagi.meta.upgrades"]
+          || points > Number.MAX_SAFE_INTEGER - payout) return Promise.resolve({ status: "pending" });
+        const next: GuestMeta = {
+          schemaVersion: 2,
+          data: { ...envelope.data, "chessAlkkagi.meta.points": String(points + payout) },
+          settlements: { ...envelope.settlements, [input.settlementId]: { ...input, payout } },
+        };
+        readData(next.data);
+        local.setItem(GUEST_META_V2_KEY, JSON.stringify(next));
+        if (unconfirmedPortalStore(local)) return Promise.resolve({ status: "pending" });
+        this.notify();
+        return Promise.resolve({ status: "paid", payout });
+      } catch { return Promise.resolve({ status: "pending" }); }
+    }
+    const owner = this.owner, generation = this.generation;
+    const result = this.claimQueue.then(() => owner === this.owner && generation === this.generation
+      ? this.settleSoloRunOnce(input) : { status: "pending" as const });
+    this.claimQueue = result.then(() => {}, () => {});
+    return result;
+  }
+
+  private async settleSoloRunOnce(input: SoloSettlementInput): Promise<{ status: "paid" | "pending" | "conflict"; payout?: number }> {
+    if (!this.owner || !this.client || !this.ready || this.conflict || this.unsafeData) return { status: "pending" };
+    const owner = this.owner, generation = this.generation;
+    if (this.soloSettlementPending && (await this.lookupSoloRunSettlement(this.soloSettlementPending)).status === "pending") return { status: "pending" };
+    if (!await this.flush() || generation !== this.generation || owner !== this.owner) return { status: "pending" };
+    const before = { ...this.snapshot.data }, beforeRevision = this.snapshot.revision;
+    this.soloSettlementPending = input.settlementId;
+    try {
+      const { data, error } = await this.request(this.client, "settle_solo_run", {
+        p_expected_user_id: owner, p_settlement_id: input.settlementId, p_run_id: input.runId,
+        p_rules_version: input.rulesVersion, p_start_stage: input.startStage,
+        p_last_cleared_stage: input.lastClearedStage,
+      });
+      if (error || generation !== this.generation || owner !== this.owner) return { status: "pending" };
+      const result = data as { status?: unknown; payout?: unknown; data?: unknown; revision?: unknown } | null;
+      if (result?.status === "conflict") { this.soloSettlementPending = null; return { status: "conflict" }; }
+      if (result?.status !== "paid" || !Number.isInteger(result.payout)
+        || (result.payout as number) !== soloPayout(input)) return { status: "pending" };
+      const remote = readSnapshot({ data: result.data, revision: result.revision });
+      if (this.conflict || !this.ready) return { status: "pending" };
+      if (remote.revision < this.snapshot.revision) { this.soloSettlementPending = null; return { status: "paid", payout: result.payout as number }; }
+      const localBase = this.snapshot.revision === beforeRevision ? before : (this.snapshot.base ?? before);
+      const merged = { ...remote.data };
+      for (const [key, value] of Object.entries(this.snapshot.data)) {
+        if (value === localBase[key]) continue;
+        if (key === "chessAlkkagi.meta.points") {
+          const delta = Number(value) - Number(localBase[key] ?? "0");
+          merged[key] = String(Number(remote.data[key] ?? "0") + delta);
+        } else if (key !== "has_completed_tutorial" && key !== "has_completed_adv_tutorial") merged[key] = value;
+      }
+      readData(merged);
+      this.snapshot = { data: merged, revision: remote.revision, base: { ...remote.data }, dirty: !equalData(merged, remote.data) };
+      this.persist();
+      this.notify();
+      this.soloSettlementPending = null;
+      if (this.snapshot.dirty && !await this.flush()) return { status: "pending" };
+      if (generation !== this.generation || owner !== this.owner) return { status: "pending" };
+      return { status: "paid", payout: result.payout as number };
+    } catch { return { status: "pending" }; }
+  }
+
   private local: () => LocalStore | null;
   constructor(local: () => LocalStore | null = browserStorage) {
     this.local = local;
@@ -458,7 +623,7 @@ export class AccountProgressStorage {
       try {
         const local = this.local();
         if (!local) return null;
-        return this.guestMeta(local)[key] ?? null;
+        return this.guestMeta(local).data[key] ?? null;
       } catch { return null; }
     }
     return this.readLocal(key);
@@ -479,9 +644,13 @@ export class AccountProgressStorage {
       if (!local) throw new Error("Guest storage unavailable");
       const guestValues = Object.fromEntries(Object.entries(values).filter(([key]) => (GUEST_META_KEYS as readonly string[]).includes(key)));
       if (Object.keys(guestValues).length) {
-        const next = { ...this.guestMeta(local), ...guestValues };
+        const envelope = this.guestMeta(local);
+        const next = { ...envelope.data, ...guestValues };
         readData(next);
-        local.setItem(GUEST_META_KEY, JSON.stringify(next));
+        // Keep the legacy atomic guest record until a settlement needs receipts.
+        // Once migrated, every meta write stays in the versioned envelope.
+        if (local.getItem(GUEST_META_V2_KEY) === null) local.setItem(GUEST_META_KEY, JSON.stringify(next));
+        else local.setItem(GUEST_META_V2_KEY, JSON.stringify({ ...envelope, data: next }));
         // Keep the direct-read lobby completion flag in sync when possible.
         for (const key of ["has_completed_tutorial", "has_completed_adv_tutorial"]) {
           if (key in guestValues) try { local.setItem(key, next[key]); } catch {}
@@ -536,6 +705,7 @@ export class AccountProgressStorage {
     this.claimQueue = Promise.resolve();
     clearTimeout(this.timer);
     this.saving = null;
+    this.soloSettlementPending = null;
     this.client = client;
     this.owner = owner;
     this.conflict = false;
@@ -561,8 +731,8 @@ export class AccountProgressStorage {
       // Repair the legacy lobby flag after a committed record whose mirror write failed.
       try {
         const local = this.local();
-        if (local && local.getItem(GUEST_META_KEY) !== null) {
-          const meta = this.guestMeta(local);
+        if (local && (local.getItem(GUEST_META_V2_KEY) !== null || local.getItem(GUEST_META_KEY) !== null)) {
+          const meta = this.guestMeta(local).data;
           for (const key of ["has_completed_tutorial", "has_completed_adv_tutorial"]) {
             if (meta[key] && local.getItem(key) !== meta[key]) local.setItem(key, meta[key]);
           }
@@ -693,6 +863,7 @@ export class AccountProgressStorage {
   }
 
   flush(): Promise<boolean> {
+    if (this.soloSettlementPending) return Promise.resolve(false);
     if (this.saving) return this.saving;
     if (!this.owner || !this.snapshot.dirty) return Promise.resolve(this.ready);
     if (!this.client || !this.ready || this.conflict) return Promise.resolve(false);

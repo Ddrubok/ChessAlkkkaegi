@@ -1,0 +1,7 @@
+[data-solo-run-end] { background: none; border: 0; padding: 8px 0; color: inherit; font: inherit; font-size: .85em; text-decoration: underline; cursor: pointer; }
+[data-solo-run-end]:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.match-result-overlay:is([data-solo-run-state], [data-solo-run-confirm]) .match-result-panel { box-sizing: border-box; max-height: calc(100dvh - 2.5rem); overflow-y: auto; }
+@media (max-width: 1024px) {
+  .match-result-overlay:is([data-solo-run-state], [data-solo-run-confirm]) .match-result-panel { max-height: calc(100dvh - 1.25rem - 60px); }
+}
+.menu-confirm-overlay[data-solo-run-confirm] .match-result-actions { flex-wrap: wrap; }

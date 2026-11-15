@@ -1,7 +1,13 @@
 import { PLATFORM } from "./platform";
 import { readSoloState, writeSoloCheckpoint, soloCopy } from "./crazygames-solo";
-import { portalStoragePersistent } from "./portal-browser-guards";
+import { createSoloRun, readSoloRun, saveSoloRun, replaceInvalidSoloRun, recordSoloRunResult, chooseSoloRunCard,
+  retrySoloRun, readySoloRun, endSoloRun, finishSoloRun, soloRunPayout, type SoloRun } from "./solo-run";
+import { soloRunText } from "./solo-run-copy";
+import { showSoloRunState, confirmSoloRunEnd } from "./solo-run-ui";
+import { claimSoloRunTab } from "./solo-run-lock";
+import { portalStoragePersistent, reportPortalStorageUnavailable } from "./portal-browser-guards";
 import "./crazygames-opening.css";
+import "./solo-run.css";
 import { marketingRuntime } from "./marketing-runtime";
 import { gameplay, isAdActive, loadingFinished, setBeforeAd } from "./poki-sdk";
 import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED } from "./config";
@@ -146,6 +152,7 @@ import {
   discardStageRunPoints,
   recordStageRunClear,
   saveMaxClearedStage,
+  saveMetaState,
   settleStageRunPoints,
   shouldOfferStageClearCards,
 } from "./meta";
@@ -325,6 +332,16 @@ async function bootstrap(): Promise<void> {
   const sessionUser = progressSession?.data.session?.user;
   const progressOwner = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : null;
   await progressStorage.activate(progressClient, progressOwner);
+  if (PLATFORM.id === "itch" && !await claimSoloRunTab(progressOwner)) {
+    const panel = document.createElement("section"); panel.className = "main-menu-overlay";
+    const body = document.createElement("div"); body.className = "main-menu-panel";
+    const message = document.createElement("p"); message.setAttribute("role", "status");
+    message.textContent = soloRunText(navigator.locks ? "conflict" : "lockUnavailable");
+    const reload = document.createElement("button"); reload.type = "button";
+    reload.textContent = I18nManager.t("tier.retry"); reload.onclick = () => window.location.reload();
+    body.append(message, reload); panel.append(body); app.replaceChildren(panel);
+    loadingPanel.remove(); loadingFinished(); reload.focus(); return;
+  }
   await questStorage.activate(PLATFORM.features.solo ? null : progressClient, progressOwner);
   await weeklyChallengeStorage.activate(PLATFORM.features.solo ? null : progressClient, progressOwner);
   if (progressOwner && progressClient) {
@@ -352,6 +369,8 @@ async function bootstrap(): Promise<void> {
     else { void questStorage.retry(); void weeklyChallengeStorage.refresh(); }
   });
   const metaRuntime = createMetaRuntime();
+  if (PLATFORM.id === "itch" && progressStorage.getItem("chessAlkkagi.meta.points") === null
+    && progressStorage.getItem("chessAlkkagi.meta.upgrades") === null) saveMetaState(metaRuntime);
   // Capture before portal menus create their local guest profile.
   const firstTutorialCandidate = shouldStartFirstTutorial({
     tutorialHistory: PLATFORM.features.solo && progressStorage.getItem("has_completed_tutorial") === "started"
@@ -379,7 +398,7 @@ async function bootstrap(): Promise<void> {
   let activeOnlineMatchMode: "classic" | "strategy" = "classic";
   let selectedHotseatMapId = DEFAULT_HOTSEAT_MAP_ID;
   let startModeAction:
-    | ((mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced", mapId?: string) => Promise<void>)
+    | ((mode: GameMode, selectedStage?: number, tutorialType?: "basic" | "advanced", mapId?: string, newSoloRun?: boolean) => Promise<void>)
     | null = null;
   let returnToMenuAction: (() => Promise<void>) | null = null;
   let confirmAbandonAction: (() => Promise<void>) | null = null;
@@ -527,11 +546,45 @@ async function bootstrap(): Promise<void> {
   let weeklyRunOwner: string | null = null;
   let weeklySavePending = false, weeklySaveError = false;
   const stageRunPoints = createStageRunPointState();
+  const soloLoaded = PLATFORM.id === "itch" ? readSoloRun(progressStorage.owner) : null;
+  let soloRun: SoloRun | null = soloLoaded?.run ?? null;
+  let soloSaved = soloLoaded?.issue !== "storage";
+  let soloLookupPending = false;
+  let soloLastShot: { ownOut: number; enemyOut: number; forced: boolean; byAI: boolean } | undefined;
+  let soloActionPending = false;
+  let soloReadNotice: HTMLElement | null = null;
+  if (soloLoaded?.issue === "invalid" || soloLoaded?.migrated && soloLoaded.issue !== "storage") {
+    soloReadNotice = document.createElement("p");
+    soloReadNotice.className = "solo-storage-notice"; soloReadNotice.setAttribute("role", "status");
+    soloReadNotice.textContent = soloRunText(soloLoaded.issue === "invalid" ? "invalidSave" : "migrated");
+    document.body.append(soloReadNotice);
+  }
+  const currentSoloRun = (): SoloRun | null => soloRun;
+  menuRuntime.getSoloRun = currentSoloRun;
+  menuRuntime.onStartNewSoloRun = stage => startModeAction!("stage", stage, "basic", undefined, true);
+  const commitSoloRun = (next: SoloRun): void => {
+    if (next.owner !== progressStorage.owner) throw new Error(soloRunText("conflict"));
+    soloRun = next;
+    soloSaved = saveSoloRun(next) && portalStoragePersistent;
+    if (!soloSaved && next.revision === 0 && soloLoaded?.issue === "invalid") soloSaved = replaceInvalidSoloRun(next) && portalStoragePersistent;
+    if (soloSaved && next.revision === 0) { soloReadNotice?.remove(); soloReadNotice = null; }
+    if (!soloSaved) {
+      reportPortalStorageUnavailable();
+      const notice = document.querySelector<HTMLElement>(".solo-storage-notice");
+      if (notice) notice.textContent = soloRunText("sessionOnly");
+    }
+  };
+  const restoreSoloBoundary = (): void => {
+    if (!soloRun) return;
+    restoreRunCardState(runCardState, soloRun.cards);
+    delete stageRunPoints.startedAtStage;
+    Object.assign(stageRunPoints, soloRun.points);
+  };
   let replayDevelopmentRuntime: ReplayDevelopmentRuntime | null =
     null;
   let gameModeRuntime: GameModeRuntime | null = null;
   menuRuntime.isStageMatch = () => gameModeRuntime?.mode === "stage";
-  menuRuntime.getPendingStagePoints = () => gameModeRuntime?.mode === "stage"
+  menuRuntime.getPendingStagePoints = () => PLATFORM.id === "itch" && soloRun && soloRun.phase !== "ended" ? soloRunPayout(soloRun) : gameModeRuntime?.mode === "stage"
     ? computeStageRunPayout(stageRunPoints.lastClearedStage) - computeStageRunPayout((stageRunPoints.startedAtStage ?? 1) - 1)
     : 0;
   let puzzleInputBlocked = false;
@@ -1304,6 +1357,7 @@ async function bootstrap(): Promise<void> {
   const resetBoard = async (
     requestedOptions?: StageSpawnOptions,
   ): Promise<void> => {
+    soloLastShot = undefined;
     clearStageTip();
     const baseOptions = requestedOptions ?? {
       gameMode: gameModeRuntime?.mode ?? "hotseat",
@@ -1429,7 +1483,8 @@ async function bootstrap(): Promise<void> {
     resetTurnRuntime(turnRuntime);
     turnHud.reset();
     playerBanners.resetFeedback();
-    const runId = typeof crypto !== "undefined" && "randomUUID" in crypto
+    const runId = PLATFORM.id === "itch" && stageOptions.gameMode === "stage" && soloRun
+      ? `solo-clear:${soloRun.runId}:${stageOptions.stageNumber}` : typeof crypto !== "undefined" && "randomUUID" in crypto
       ? `match-${crypto.randomUUID()}` : `match-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     masteryRun = {
       eventId: runId,
@@ -1731,7 +1786,9 @@ async function bootstrap(): Promise<void> {
     else resetRunCardState(runCardState);
     delete stageRunPoints.startedAtStage;
     Object.assign(stageRunPoints, nextRunPoints);
-    if (PLATFORM.features.solo && mode === "stage") {
+    if (PLATFORM.id === "itch" && mode === "stage" && soloRun) {
+      restoreSoloBoundary();
+    } else if (PLATFORM.features.solo && mode === "stage") {
       const saved = readSoloState(progressStorage.owner).run;
       if (saved && saved.stage === gameModeRuntime?.stageNumber && saved.metaPoints === metaRuntime.state.points) {
         restoreRunCardState(runCardState, saved.cards);
@@ -1750,7 +1807,7 @@ async function bootstrap(): Promise<void> {
     try {
       const stageNumber = gameModeRuntime?.stageNumber ?? 1;
       await resetBoard({ gameMode: mode, stageNumber });
-      if (PLATFORM.features.solo && mode === "stage") writeSoloCheckpoint(progressStorage.owner, {
+      if (PLATFORM.features.solo && PLATFORM.id !== "itch" && mode === "stage") writeSoloCheckpoint(progressStorage.owner, {
         stage: stageNumber, metaPoints: metaRuntime.state.points, cards: cloneRunCardState(runCardState), points: { ...stageRunPoints },
       });
     } catch (error: unknown) {
@@ -1892,6 +1949,11 @@ async function bootstrap(): Promise<void> {
   });
 
   turnRuntime.onMasterySettlement = (evidence) => {
+    if (PLATFORM.id === "itch" && gameModeRuntime?.mode === "stage" && soloRun?.phase === "stage-ready" && turnRuntime.lastLaunchInitialSpeed > 0) {
+      soloLastShot = { ownOut: evidence.removedPieces.filter(p => p.side === "white").length,
+        enemyOut: evidence.removedPieces.filter(p => p.side === "black").length, forced: evidence.forced,
+        byAI: evidence.launchingSide === "black" };
+    }
     const run = masteryRun;
     if (!run || run.mode !== (gameModeRuntime?.mode ?? "hotseat")) return;
     if (!tuningIsDefault()) run.eligible = false;
@@ -1959,6 +2021,118 @@ async function bootstrap(): Promise<void> {
     }
   };
 
+  let soloConfirmedPayout: number | undefined;
+  const presentSoloRun = (): void => {
+    if (!soloRun) return;
+    clearStageTip();
+    if (menuRuntime.visible) hideMainMenuAfterModeStart(menuRuntime);
+    turnRuntime.phase = "match-over";
+    lockInputForMatchOver(inputRuntime);
+    if (soloRun.phase === "awaiting-card") {
+      const run = soloRun;
+      const offered = drawUpgradeCards(run.stage, run.cards, tuningRuntime.settings.cardEffectScale);
+      const cards = run.offer!.choices.map(id => offered.find(card => card.id === id) ?? UPGRADE_CARDS.find(card => card.id === id)!).filter(Boolean);
+      showMatchResult(matchRuntime, "white", "stage", run.stage, async () => {}, cards, async cardId => {
+        if (!soloRun || soloRun.runId !== run.runId || soloRun.phase !== "awaiting-card") return;
+        commitSoloRun(chooseSoloRunCard(soloRun, cardId, tuningRuntime.settings.cardEffectScale));
+        await prepareSoloRunBoard();
+      }, () => returnToMainMenu(menuRuntime));
+      matchRuntime.overlay.dataset.soloRunState = run.phase;
+      matchRuntime.menuButton.hidden = false;
+      matchRuntime.menuButton.textContent = soloRunText("menu");
+    } else {
+      showSoloRunState(matchRuntime, soloRun, async () => {
+        if (soloLookupPending) await resumeSoloRun();
+        else if (soloRun?.phase === "ending") await settleSoloRun();
+        else await prepareSoloRunBoard();
+      }, () => returnToMainMenu(menuRuntime), countRemainingPieces(turnRuntime), soloConfirmedPayout);
+      if (soloLookupPending) {
+        matchRuntime.winnerHeading.textContent = soloRunText("settlementPending");
+        matchRuntime.restartButton.textContent = soloRunText("settlementRetry");
+      }
+    }
+    if (!soloSaved) {
+      matchRuntime.actionStatus.hidden = false;
+      matchRuntime.actionStatus.textContent = soloRunText("sessionOnly");
+    }
+  };
+  const prepareSoloRunBoard = async (): Promise<void> => {
+    if (!soloRun || soloActionPending || soloRun.owner !== progressStorage.owner) return;
+    soloActionPending = true;
+    try {
+      if (soloRun.phase === "stage-result") commitSoloRun(retrySoloRun(soloRun));
+      if (soloRun.phase !== "stage-ready" && soloRun.phase !== "preparing-stage") return;
+      const run = soloRun;
+      restoreSoloBoundary();
+      setStageNumber(gameModeRuntime!, run.stage);
+      await resetBoard({ gameMode: "stage", stageNumber: run.stage });
+      if (soloRun.runId !== run.runId || soloRun.revision !== run.revision || run.owner !== progressStorage.owner) return;
+      if (run.phase === "preparing-stage") commitSoloRun(readySoloRun(run));
+      else commitSoloRun(run);
+      hideMatchResult(matchRuntime);
+      gameplay.enter("solo-stage-retry"); marketingRuntime.startLocalMatch("stage");
+    } catch (error) {
+      presentSoloRun();
+      matchRuntime.actionStatus.hidden = false;
+      matchRuntime.actionStatus.textContent = soloRunText("prepareFailed");
+      throw error;
+    } finally { soloActionPending = false; }
+  };
+  const settleSoloRun = async (): Promise<void> => {
+    if (!soloRun || soloActionPending || soloRun.owner !== progressStorage.owner) return;
+    soloActionPending = true;
+    try {
+      if (soloRun.phase !== "ending") commitSoloRun(endSoloRun(soloRun));
+      const run = soloRun;
+      // A failed migration/end write must not create a fresh credit on each reload.
+      if (!soloSaved) { presentSoloRun(); return; }
+      const result = await progressStorage.settleSoloRun({ settlementId: run.settlementId, runId: run.runId,
+        rulesVersion: run.rulesVersion, startStage: run.startStage, lastClearedStage: run.points.lastClearedStage });
+      if (!soloRun || soloRun.runId !== run.runId || run.owner !== progressStorage.owner) return;
+      if (result.status === "paid") {
+        soloConfirmedPayout = result.payout;
+        commitSoloRun(finishSoloRun(run));
+        metaRuntime.state = loadMetaState(metaRuntime.storage);
+        renderMainMenu(menuRuntime);
+      }
+      presentSoloRun();
+      if (result.status === "conflict") {
+        matchRuntime.actionStatus.hidden = false;
+        matchRuntime.actionStatus.textContent = soloRunText("conflict");
+      }
+    } finally { soloActionPending = false; }
+  };
+  const resumeSoloRun = async (): Promise<void> => {
+    if (!soloRun || soloRun.owner !== progressStorage.owner) return;
+    const run = soloRun;
+    const receipt = await progressStorage.lookupSoloRunSettlement(run.settlementId);
+    if (!soloRun || run.runId !== soloRun.runId || run.owner !== progressStorage.owner) return;
+    soloLookupPending = receipt.status === "pending";
+    if (receipt.status === "paid") {
+      soloConfirmedPayout = receipt.payout;
+      if (run.phase !== "ended") commitSoloRun(finishSoloRun(run.phase === "ending" ? run : endSoloRun(run)));
+      metaRuntime.state = loadMetaState(metaRuntime.storage);
+      presentSoloRun(); return;
+    }
+    if (soloLookupPending) { presentSoloRun(); return; }
+    if (run.phase === "ending") await settleSoloRun();
+    else if (run.phase === "preparing-stage") await prepareSoloRunBoard();
+    else if (run.phase === "stage-result" || run.phase === "awaiting-card" || run.phase === "ended") presentSoloRun();
+  };
+  menuRuntime.onEndSoloRun = async () => {
+    if (!soloRun || soloRun.phase === "ended") return;
+    const openedAt = performance.now();
+    menuRuntime.confirming = true;
+    const confirmed = await confirmSoloRunEnd(app, soloRunPayout(soloRun));
+    menuRuntime.confirming = false;
+    menuRuntime.onResumeSoloConfirm?.(performance.now() - openedAt);
+    if (!confirmed) return;
+    await settleSoloRun();
+    if (currentSoloRun()?.phase === "ended") await returnToMainMenu(menuRuntime);
+  };
+  I18nManager.subscribe(() => {
+    if (PLATFORM.id === "itch" && soloRun && !matchRuntime.overlay.hidden && !matchRuntime.restarting) presentSoloRun();
+  });
   const restartStageRun = async (): Promise<void> => {
     if (PLATFORM.features.solo) writeSoloCheckpoint(progressStorage.owner, null);
     // Reuse the same new-run transaction and readiness checks as the lobby.
@@ -1977,7 +2151,16 @@ async function bootstrap(): Promise<void> {
       marketingRuntime.endMatch(winner, gameMode === "online" ? onlineRuntime?.mySide ?? "white" : "white");
     }
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
-    if (PLATFORM.features.solo && gameMode === "stage" && winner === "draw") {
+    if (PLATFORM.id === "itch" && gameMode === "stage" && soloRun && winner !== "white") {
+      if (soloRun.phase !== "stage-ready") return;
+      const next = recordSoloRunResult(soloRun, winner, undefined, soloLastShot);
+      const remaining = countRemainingPieces(turnRuntime);
+      if (next.result) Object.assign(next.result, { observed: !!soloLastShot, byAI: soloLastShot?.byAI ?? false,
+        remainingOwn: remaining.white, remainingEnemy: remaining.black });
+      commitSoloRun(next);
+      presentSoloRun(); return;
+    }
+    if (PLATFORM.features.solo && PLATFORM.id !== "itch" && gameMode === "stage" && winner === "draw") {
       // A draw neither clears the stage nor settles the run. Keep the exact
       // stage-boundary state, so a retry/reload cannot reroll cards or rewards.
       writeSoloCheckpoint(progressStorage.owner, {
@@ -2076,7 +2259,7 @@ async function bootstrap(): Promise<void> {
       if (!tuningIsDefault()) questRun.eligible = false;
       if (questRun.eligible) {
         const context = questStorage.captureContext();
-        if (context) questStorage.enqueue(makePveWinEvent(questRun.runId, completedStage, context.periods, context.occurredAt));
+        if (context) questStorage.enqueue(makePveWinEvent(PLATFORM.id === "itch" && soloRun ? soloRun.runId : questRun.runId, completedStage, context.periods, context.occurredAt));
       }
     }
     if (gameMode === "stage" && winner === "white" && masteryRun) {
@@ -2094,6 +2277,17 @@ async function bootstrap(): Promise<void> {
       finishBannerMatch(progressStorage, masteryRun.banner, masteryRun.eventId, gameMode === "stage" && winner === "white");
     }
     const openAllMastery = () => openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });
+    if (PLATFORM.id === "itch" && gameMode === "stage" && soloRun) {
+      if (soloRun.phase !== "stage-ready") return;
+      const choices = completedStage < 10 ? drawUpgradeCards(completedStage, runCardState,
+        tuningRuntime.settings.cardEffectScale).map(card => card.id) : undefined;
+      commitSoloRun(recordSoloRunResult(soloRun, winner, choices, soloLastShot));
+      restoreSoloBoundary();
+      saveMaxClearedStage(metaRuntime.storage, completedStage);
+      if (currentSoloRun()?.phase === "ending") void settleSoloRun();
+      else presentSoloRun();
+      return;
+    }
     if (gameMode === "stage") {
       if (winner === "white") {
         recordStageRunClear(stageRunPoints, completedStage);
@@ -2313,11 +2507,31 @@ async function bootstrap(): Promise<void> {
     selectedStage,
     tutorialType = "basic",
     mapId,
+    newSoloRun = false,
   ): Promise<void> => {
     if (PLATFORM.features.solo && mode !== "tutorial" && mode !== "stage" && mode !== "online") return;
     if (!PLATFORM.features.online && mode === "online") return;
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
+    }
+    if (PLATFORM.id === "itch" && mode === "stage") {
+      if (soloActionPending) throw new Error(soloRunText("preparing"));
+      if (soloRun?.phase === "ending") {
+        await resumeSoloRun();
+        if (!newSoloRun) return;
+        if (currentSoloRun()?.phase !== "ended") return;
+      }
+      if (soloRun && soloRun.phase !== "ended" && (newSoloRun || soloRun.stage !== (selectedStage ?? soloRun.stage))) {
+        const confirmed = await confirmSoloRunEnd(app, soloRunPayout(soloRun));
+        if (!confirmed) throw new DOMException("Cancelled", "AbortError");
+        await settleSoloRun();
+        if (currentSoloRun()?.phase !== "ended") return;
+      }
+      if (!soloRun || soloRun.phase === "ended") {
+        soloConfirmedPayout = undefined;
+        commitSoloRun(createSoloRun(progressStorage.owner, selectedStage ?? 1));
+      }
+      selectedStage = currentSoloRun()!.stage;
     }
     const nextHotseatMapId = mapId ?? selectedHotseatMapId;
     if (mode === "hotseat" && !getHotseatMap(nextHotseatMapId)) {
@@ -2544,6 +2758,7 @@ async function bootstrap(): Promise<void> {
     }
     ensureGameLoopStarted();
     marketingRuntime.startLocalMatch(mode);
+    if (PLATFORM.id === "itch" && mode === "stage") await resumeSoloRun();
     if (!awaitingWeeklyCard) gameplay.enter("mode-start");
   };
 
@@ -2810,6 +3025,12 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
+    if (PLATFORM.id === "itch" && gameModeRuntime.mode === "stage" && soloRun) {
+      commitSoloRun(soloRun);
+      resetAiMatch(aiRuntime);
+      lockInputForMatchOver(inputRuntime);
+      turnRuntime.phase = "match-over";
+    }
     if (PLATFORM.features.online) void SocialService.updateMyStatus("online");
     if (gameModeRuntime.mode === "weekly") {
       weeklyRunGeneration += 1;
@@ -2845,6 +3066,11 @@ async function bootstrap(): Promise<void> {
   confirmAbandonAction = async (): Promise<void> => {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
+    }
+    if (PLATFORM.id === "itch" && gameModeRuntime.mode === "stage" && soloRun) {
+      await settleSoloRun();
+      if (soloRun.phase === "ended") await returnToMainMenu(menuRuntime);
+      return;
     }
     tutorialManager.stop();
     if (gameModeRuntime.mode === "online" && onlineRuntime) {

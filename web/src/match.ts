@@ -31,6 +31,8 @@ export interface RemainingPieceCounts {
 export type MatchWinner = PieceSide | "draw";
 
 export interface MatchRuntime {
+  // An old async action must not close a newer recovery/result presentation.
+  presentationVersion?: number;
   // 게임 입력 위에 놓여 결과 확인 전까지 포인터를 차단하는 전체 화면 요소다.
   overlay: HTMLElement;
   // 결과 종류를 제목 위의 작은 문구로 구분하는 요소다.
@@ -159,12 +161,14 @@ export function createMatchRuntime(
       return;
     }
     runtime.restarting = true;
+    const presentation = runtime.presentationVersion;
     restartButton.disabled = true;
     restartButton.textContent = uiText("preparing");
     actionStatus.hidden = true;
     menuButton.disabled = true;
     void Promise.resolve().then(() => runtime.onRestart()).then(
       () => {
+        if (runtime.presentationVersion !== presentation) return;
         runtime.winner = null;
         runtime.restarting = false;
         restartButton.disabled = false;
@@ -174,6 +178,7 @@ export function createMatchRuntime(
         overlay.hidden = true;
       },
       (error: unknown) => {
+        if (runtime.presentationVersion !== presentation) return;
         const fullError =
           error instanceof Error
             ? (error.stack ?? error.message)
@@ -196,6 +201,7 @@ export function createMatchRuntime(
       return;
     }
     runtime.restarting = true;
+    const presentation = runtime.presentationVersion;
     restartButton.disabled = true;
     menuButton.disabled = true;
     menuButton.textContent = uiText("moving");
@@ -203,6 +209,7 @@ export function createMatchRuntime(
     const returnToMenu = runtime.onReturnToMenu;
     void Promise.resolve().then(returnToMenu).then(
       () => {
+        if (runtime.presentationVersion !== presentation) return;
         runtime.winner = null;
         runtime.restarting = false;
         restartButton.disabled = false;
@@ -213,6 +220,7 @@ export function createMatchRuntime(
         overlay.hidden = true;
       },
       (error: unknown) => {
+        if (runtime.presentationVersion !== presentation) return;
         const fullError =
           error instanceof Error
             ? (error.stack ?? error.message)
@@ -231,6 +239,7 @@ export function createMatchRuntime(
   overlay.addEventListener("keydown", (event) => {
     if (event.code === "Escape") {
       event.preventDefault();
+      if (overlay.dataset.soloRunState && !menuButton.disabled && !menuButton.hidden) { menuButton.click(); return; }
       const firstCard =
         cardChoices.querySelector<HTMLButtonElement>("button");
       const target = firstCard ?? (restartButton.hidden ? menuButton : restartButton);
@@ -264,6 +273,7 @@ export function createMatchRuntime(
   });
   container.append(overlay);
   I18nManager.subscribe(() => {
+    if (runtime.overlay.dataset.soloRunState) return;
     if (!runtime.restartButton.hidden) {
       runtime.restartButton.textContent = I18nManager.t("ingame.restart_btn");
     }
@@ -290,6 +300,8 @@ export function showMatchResult(
   cardPreviews: Partial<Record<CardId, CardPreview>> = {},
 ): void {
   gameplay.leave("match-result");
+  runtime.presentationVersion = (runtime.presentationVersion ?? 0) + 1;
+  delete runtime.overlay.dataset.soloRunState;
   runtime.overlay.classList.remove("weekly-result-open");
   runtime.overlay.classList.toggle('cg-progression', PLATFORM.features.solo && gameMode === 'stage');
   runtime.winner = winner;
@@ -401,6 +413,7 @@ export function showMatchResult(
           return;
         }
         runtime.restarting = true;
+        const presentation = runtime.presentationVersion;
         button.classList.add('cg-selected');
         for (const cardButton of runtime.cardChoices.querySelectorAll(
           "button",
@@ -412,6 +425,7 @@ export function showMatchResult(
         const selectCard = runtime.onCardSelected;
         void Promise.resolve().then(() => selectCard(card.id)).then(
           () => {
+            if (runtime.presentationVersion !== presentation) return;
             runtime.winner = null;
             runtime.restarting = false;
             button.classList.remove('cg-selected');
@@ -419,6 +433,7 @@ export function showMatchResult(
             runtime.overlay.hidden = true;
           },
           (error: unknown) => {
+            if (runtime.presentationVersion !== presentation) return;
             const fullError =
               error instanceof Error
                 ? (error.stack ?? error.message)
@@ -523,6 +538,8 @@ export function showStageRunResult(
   winner: MatchWinner = completed ? "white" : "black",
   onRestart: (() => Promise<void>) | null = null,
 ): void {
+  runtime.presentationVersion = (runtime.presentationVersion ?? 0) + 1;
+  delete runtime.overlay.dataset.soloRunState;
   gameplay.leave("stage-run-result");
   runtime.overlay.classList.toggle('cg-progression', PLATFORM.features.solo);
   const copy = createStageRunResultCopy(
@@ -569,6 +586,8 @@ export function showSoloDrawResult(
   onReplay: () => Promise<void>,
   onMenu: () => Promise<void>,
 ): void {
+  runtime.presentationVersion = (runtime.presentationVersion ?? 0) + 1;
+  delete runtime.overlay.dataset.soloRunState;
   gameplay.leave("solo-draw-result");
   runtime.overlay.classList.remove("weekly-result-open");
   runtime.overlay.classList.toggle("cg-progression", PLATFORM.features.solo);
@@ -609,6 +628,8 @@ export function showDisconnectedMatchEnd(
   runtime: MatchRuntime,
   onReturnToMenu: () => Promise<void>,
 ): void {
+  runtime.presentationVersion = (runtime.presentationVersion ?? 0) + 1;
+  delete runtime.overlay.dataset.soloRunState;
   closeResultMotion(runtime.overlay);
   runtime.overlay.classList.remove('cg-progression');
   runtime.winner = null;
@@ -638,6 +659,8 @@ export function showDisconnectedMatchEnd(
  * 메뉴 복귀 뒤 이전 결과 화면이 다음 대전 위에 다시 나타나지 않도록 상태와 DOM을 닫는다.
  */
 export function hideMatchResult(runtime: MatchRuntime): void {
+  runtime.presentationVersion = (runtime.presentationVersion ?? 0) + 1;
+  delete runtime.overlay.dataset.soloRunState;
   closeResultMotion(runtime.overlay);
   runtime.overlay.classList.remove('cg-progression');
   runtime.overlay.classList.remove("weekly-result-open");
