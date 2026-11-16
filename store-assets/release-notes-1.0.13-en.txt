@@ -1,0 +1,3 @@
+• Improved strike-point controls so tapping outside or using the Aim button keeps your set strike point and smoothly returns to aiming.
+• Fixed controls to the bottom of the screen to preserve board visibility and improve touch usability on small and landscape screens.
+• Fixed an issue where the camera briefly zoomed in too close when returning from strike-point editing to aiming.

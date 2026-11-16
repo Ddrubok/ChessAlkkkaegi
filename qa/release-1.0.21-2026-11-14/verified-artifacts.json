@@ -1,0 +1,62 @@
+{
+  "version": "1.0.21",
+  "status": "prepared for review; not published",
+  "locales": {
+    "ko-KR": {
+      "file": "store-assets/release-notes-1.0.21-ko.txt",
+      "characters": 193,
+      "bullets": 4
+    },
+    "en-US": {
+      "file": "store-assets/release-notes-1.0.21-en.txt",
+      "characters": 369,
+      "bullets": 4
+    },
+    "ja-JP": {
+      "file": "store-assets/release-notes-1.0.21-ja.txt",
+      "characters": 170,
+      "bullets": 4
+    },
+    "fr-FR": {
+      "file": "store-assets/release-notes-1.0.21-fr.txt",
+      "characters": 450,
+      "bullets": 4
+    }
+  },
+  "android": {
+    "versionName": "1.0.21",
+    "versionCode": 22,
+    "applicationId": "com.chessalkkagi.app",
+    "minSdk": 24,
+    "targetSdk": 36,
+    "certificateSha256": "27ead35ed4895efafb71930aacf7244917880a511f0afd4a1df0abd51b19243c",
+    "matchesPreviousCertificate": true,
+    "buildInfo": {
+      "build": "9745744600c6-dirty-20261113153305",
+      "commit": "9745744600c6da7996b4c96ae45dac6e0230a558",
+      "builtAt": "2026-11-13T15:33:05.194Z",
+      "dirty": true,
+      "mode": "production"
+    },
+    "bundletoolValidate": true,
+    "aabSignatureVerified": true,
+    "webFilesMatched": 106,
+    "existingAaptExclusions": [
+      "assets/.gitkeep",
+      "store-assets/feature-graphic-1024x500.png",
+      "store-assets/icon-512.png"
+    ],
+    "capacitorAddedFiles": [
+      "cordova.js",
+      "cordova_plugins.js"
+    ],
+    "artifact": "store-assets/ChessAlkkagi-1.0.21-vc22.aab",
+    "bytes": 11621375,
+    "sha256": "ca2eabde3654a9c5c8c1a54e0bdab063a9f5a72fc29bd935da642494d4e3aef6",
+    "deviceInstallPerformed": false,
+    "storeUploadPerformed": false
+  },
+  "reviewPassed": false,
+  "mainUpdated": false,
+  "itchUploaded": false
+}

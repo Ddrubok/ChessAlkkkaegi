@@ -1,0 +1,62 @@
+Version: 1.0.13 (versionCode 14)
+Package: com.chessalkkagi.app
+Date: 2026-10-10
+Source: develop at e6e6e3943b395a3efc4d0373af2c886c8fd305eb plus Android version bump
+Previous local release: 1.0.12 (13)
+
+AAB: store-assets/ChessAlkkagi-1.0.13-vc14.aab
+Size: 13,669,158 bytes
+AAB SHA256: 6849F9B0FE9E6E13F4189DE059ACE0E12D4D7310CF7BA6637E60CF7EB93BD573
+Signing certificate SHA256: 27EAD35ED4895EFAFB71930AACF7244917880A511F0AFD4A1DF0ABD51B19243C
+
+Build and artifact verification:
+- npm run build: passed (balance CSV validation, TypeScript, Vite production build).
+- VITE_AD_TEST_MODE=false and NODE_ENV=production were explicitly set for the web build.
+- npx cap sync android: passed; copied web/dist, not dist-staging.
+- Gradle bundleRelease: passed, including lintVitalRelease and signReleaseBundle.
+- JAVA_HOME was set for this build session to C:/Program Files/Android/Android Studio/jbr because the inherited system path no longer exists.
+- AAB protobuf AndroidManifest checked using cached Android aapt2-proto/protobuf libraries: package, versionName 1.0.13 and versionCode 14 confirmed.
+- Every non-META-INF AAB payload entry verified cryptographically using Java JarFile; no unsigned payload entries.
+- Signing certificate matches previous 1.0.12 AAB and its recorded certificate fingerprint.
+- jarsigner -verify: jar verified. The existing upload certificate is self-signed and has no timestamp; jarsigner reported the corresponding trust/timestamp warnings.
+- All 109 non-hidden web/dist files match their packaged AAB entries byte for byte. Hidden placeholder files are intentionally excluded by Android packaging.
+- Packaged production backend URL/public key and all 3 production AdMob unit IDs match local production config; values not included in this report.
+- Packaged ad test flag is false; development backend URL and browser test observation hook are absent.
+- Packaged register_ranked_match RPC and allowBackup=false retained.
+
+Automated checks run by coordinator:
+- node src/tools/touch-input-headless-check.mjs: passed.
+- node src/tools/classic-cancel-check.mjs: passed.
+- node src/tools/selection-check.mjs: passed.
+- npm run check:regressions: passed, including auth, gameplay, online/rematches, i18n, selection, banners and timer checks.
+- npm run check:ads: passed. Simulated ad load failures in test output are expected test cases.
+- node src/tools/strike-hud-browser-check.mjs: all 8 conditions passed.
+  Korean: 320x568, 360x800, 390x844, 667x375, 844x390 touch emulation; 1280x800 mouse.
+  German: 360x800 and 667x375 layout/touch-target checks.
+  Verified fixed bottom controls, strike apply/reset, selection, camera orbit/zoom return, launch, turn change, cancellation and re-entry as applicable.
+  Browser evidence: .orca/release-1.0.13-browser/browser-results.json
+
+Release notes:
+- store-assets/release-notes-1.0.13-ko.txt (ko-KR): 175 characters after trimming.
+- store-assets/release-notes-1.0.13-en.txt (en-US): 383 characters after trimming.
+- store-assets/release-notes-1.0.13-ja.txt (ja-JP): 150 characters after trimming.
+- store-assets/release-notes-1.0.13-fr.txt (fr-FR): 403 characters after trimming.
+- store-assets/release-notes-1.0.13-multilingual.txt: identical contents in ko-KR/en-US/ja-JP/fr-FR locale blocks.
+- All 5 files validated as UTF-8 without BOM; each locale is below 500 characters.
+- Notes cover only changes since 150c7ad: strike-point apply gestures, fixed bottom HUD/board visibility, camera zoom bounce correction.
+
+Build logs:
+- .orca/release-1.0.13-web-build.log
+- .orca/release-1.0.13-capacitor-sync.log
+- .orca/release-1.0.13-android-build.log
+- .orca/release-1.0.13-regressions.log
+- .orca/release-1.0.13-ads.log
+- .orca/release-1.0.13-browser.log
+- .orca/release-1.0.13-artifact-verification.log
+- .orca/release-1.0.13-jarsigner.log
+
+Limits:
+- Physical Android device/WebView, actual device safe-area/gesture navigation, native ads and native sign-in smoke tests: not performed.
+- Play Console highest uploaded versionCode: not checked; local previous maximum was 13.
+- Play upload/review/rollout, web deployment and backend migrations: not performed.
+- Existing Vite chunk/static-dynamic import and Gradle deprecation warnings remain; required checks passed.

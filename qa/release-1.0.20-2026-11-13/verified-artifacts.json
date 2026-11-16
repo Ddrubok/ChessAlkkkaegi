@@ -1,0 +1,82 @@
+{
+    "release":  "1.0.20",
+    "versionCode":  21,
+    "sourceCommit":  "c2649005f455600e44ffedb583e2cd12b4e4b888",
+    "android":  {
+                    "versionName":  "1.0.20",
+                    "versionCode":  21,
+                    "applicationId":  "com.chessalkkagi.app",
+                    "minSdk":  24,
+                    "targetSdk":  36,
+                    "certificateSha256":  "27ead35ed4895efafb71930aacf7244917880a511f0afd4a1df0abd51b19243c",
+                    "matchesPreviousCertificate":  true,
+                    "buildInfo":  {
+                                      "build":  "c2649005f455-dirty-20261112162407",
+                                      "commit":  "c2649005f455600e44ffedb583e2cd12b4e4b888",
+                                      "builtAt":  "2026-11-12T16:24:07.346Z",
+                                      "dirty":  true,
+                                      "mode":  "production"
+                                  },
+                    "bundletoolValidate":  true,
+                    "aabSignatureVerified":  true,
+                    "webFilesMatched":  106,
+                    "existingAaptExclusions":  [
+                                                   "assets/.gitkeep",
+                                                   "store-assets/feature-graphic-1024x500.png",
+                                                   "store-assets/icon-512.png"
+                                               ],
+                    "capacitorAddedFiles":  [
+                                                "cordova.js",
+                                                "cordova_plugins.js"
+                                            ],
+                    "artifact":  "store-assets/ChessAlkkagi-1.0.20-vc21.aab",
+                    "bytes":  11620890,
+                    "sha256":  "fda5ed02f26ce20701cd50869933712a8ebb6661ed474113f407a0530034aab1",
+                    "deviceInstallPerformed":  false,
+                    "storeUploadPerformed":  false
+                },
+    "itch":  {
+                 "artifact":  "store-assets/itch-1.0.20/ChessAlkkagi-itch-1.0.20.zip",
+                 "folder":  "store-assets/itch-1.0.20/game",
+                 "bytes":  3676410,
+                 "sha256":  "fb2253a042f0122aca693aaa6c3ea4da0a114eb87443a6f5b006b211b80587fc",
+                 "filesMatched":  104,
+                 "uncompressedBytes":  7038251,
+                 "indexAtRoot":  true,
+                 "copyAndZipByteIdentical":  true,
+                 "buildInfo":  {
+                                   "build":  "c2649005f455-dirty-20261112162407",
+                                   "commit":  "c2649005f455600e44ffedb583e2cd12b4e4b888",
+                                   "builtAt":  "2026-11-12T16:24:07.346Z",
+                                   "dirty":  true,
+                                   "mode":  "itch"
+                               },
+                 "builtBrowserSmoke":  true,
+                 "builtFirstShotSmoke":  true,
+                 "firstShotEvidence":  "qa/release-1.0.20-2026-11-13/itch/first-shot-2026-11-12T16-30-22-441Z/result.json"
+             },
+    "releaseNotes":  [
+                         {
+                             "locale":  "ko-KR",
+                             "path":  "store-assets/release-notes-1.0.20-ko.txt",
+                             "characters":  159
+                         },
+                         {
+                             "locale":  "en-US",
+                             "path":  "store-assets/release-notes-1.0.20-en.txt",
+                             "characters":  285
+                         },
+                         {
+                             "locale":  "ja-JP",
+                             "path":  "store-assets/release-notes-1.0.20-ja.txt",
+                             "characters":  129
+                         },
+                         {
+                             "locale":  "fr-FR",
+                             "path":  "store-assets/release-notes-1.0.20-fr.txt",
+                             "characters":  342
+                         }
+                     ],
+    "publicUploadsPerformed":  false,
+    "deviceInstallPerformed":  false
+}

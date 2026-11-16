@@ -1,0 +1,3 @@
+• Aiming tension sounds now respond to your pull, and the available power limit (100% or 150%) is easier to see.
+• The bowstring snaps back when a shot launches. Collisions have clearer sound and a brief camera recoil.
+• Confirmed ring-outs distinguish your pieces from your opponent's, and remaining piece counts are shown.

@@ -1,0 +1,4 @@
+• La puissance monte plus doucement au début d’un tir à la souris, pour mieux doser les tirs faibles. Le contrôle tactile conserve sa réponse habituelle.
+• Le cadrage a été ajusté pour afficher le plateau un peu plus grand.
+• Les mouvements de caméra sont plus fluides lors des changements de mode et des réglages du point d’impact.
+• Le guide du tutoriel et la distance de tir réelle affichée dans les réglages correspondent aux commandes actuelles.

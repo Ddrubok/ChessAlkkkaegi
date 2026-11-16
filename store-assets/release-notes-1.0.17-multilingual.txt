@@ -1,0 +1,23 @@
+<ko-KR>
+• 조준 중 장력 소리가 당기는 힘에 반응하고, 가능한 최대 힘(100% 또는 150%)이 더 잘 보입니다.
+• 실제 발사 순간 활시위가 되돌아오며, 충돌 소리와 짧은 화면 반동을 다듬었습니다.
+• 말이 장외로 나간 것이 확인되면 내 말과 상대 말을 구분해 알려 주고, 남은 말 수를 표시합니다.
+</ko-KR>
+
+<en-US>
+• Aiming tension sounds now respond to your pull, and the available power limit (100% or 150%) is easier to see.
+• The bowstring snaps back when a shot launches. Collisions have clearer sound and a brief camera recoil.
+• Confirmed ring-outs distinguish your pieces from your opponent's, and remaining piece counts are shown.
+</en-US>
+
+<ja-JP>
+• 狙いをつける間、引く強さに応じて張り詰める音が変わり、最大パワー（100%または150%）も見やすくなりました。
+• 実際に発射した瞬間に弦が戻ります。衝突音と短い画面の反動も調整しました。
+• 駒が場外に出たことを確認してから、自分と相手のどちらの駒かを知らせ、残りの駒数を表示します。
+</ja-JP>
+
+<fr-FR>
+• Pendant la visée, le son de tension suit la force du tir et la limite disponible (100 % ou 150 %) est plus lisible.
+• La corde revient au moment du tir. Les sons d'impact et le bref recul de la caméra ont été ajustés.
+• Une fois la sortie du plateau confirmée, le jeu indique si la pièce est à vous ou à l'adversaire et affiche le nombre de pièces restantes.
+</fr-FR>

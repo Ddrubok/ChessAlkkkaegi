@@ -1,0 +1,14 @@
+{
+    "version":  "1.0.21",
+    "versionCode":  22,
+    "reviewApprovedByUser":  true,
+    "approvalRecordedUtc":  "2026-11-13T16:43:44.1127411Z",
+    "approvedSource":  "9745744600c6da7996b4c96ae45dac6e0230a558",
+    "approvedAabSha256":  "ca2eabde3654a9c5c8c1a54e0bdab063a9f5a72fc29bd935da642494d4e3aef6",
+    "scope":  [
+                  "main promotion",
+                  "existing itch.io HTML channel update"
+              ],
+    "nativeStoreUploadPerformed":  false,
+    "preparationRecord":  "verified-artifacts.json preserves its pre-review state"
+}

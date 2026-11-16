@@ -1,0 +1,4 @@
+• Ajustement du point d'impact par glissement sur le panneau d'aperçu et directement sur la pièce 3D.
+• Maintien du zoom après sélection du point, et retour à la visée via un appui dans le vide ou le bouton Viser en conservant le réglage.
+• Commandes fixées en bas de l'écran pour préserver la visibilité de l'échiquier et la maniabilité sur petits écrans et en paysage.
+• Correction d'un sursaut de zoom de la caméra lors du retour de l'édition du point d'impact vers la visée.

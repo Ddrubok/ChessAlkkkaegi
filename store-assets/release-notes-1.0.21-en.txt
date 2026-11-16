@@ -1,0 +1,4 @@
+• Mouse pull power now rises more gently at the start, making soft shots easier to adjust. Touch controls keep their previous response.
+• Adjusted the framing so the board appears slightly larger.
+• Smoothed camera movement during mode changes and strike point adjustments.
+• Aligned the tutorial pull guide and displayed actual pull distance with the current controls.

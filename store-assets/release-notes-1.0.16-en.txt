@@ -1,0 +1,4 @@
+• First play is clearer, with a quicker path into practice and more readable match info on small screens.
+• Stage restarts and online matchmaking cancellation are more reliable.
+• Friendly matches have clearer forfeit and leave choices, plus an easier rematch flow.
+• Earn 100P the first time you complete the Basic tutorial and 100P for Advanced. Replays award no extra points.

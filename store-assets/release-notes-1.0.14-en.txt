@@ -1,0 +1,4 @@
+• Enabled dragging on both the preview panel and 3D piece to adjust the strike point.
+• Preserved strike-editing zoom after choosing a point, with blank taps or the Aim button retaining the strike point when returning to aiming.
+• Fixed controls to the bottom of the screen to preserve board visibility and touch usability on small and landscape displays.
+• Fixed camera zoom bounce when returning from strike-point editing to aiming.
