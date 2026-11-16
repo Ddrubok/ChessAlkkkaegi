@@ -1,0 +1,54 @@
+Chess Alkkagi 1.0.22 — review build
+Prepared: 2026-11-16 KST
+Status: built and verified locally; review approval and publication pending.
+
+Android AAB
+Artifact: store-assets/ChessAlkkagi-1.0.22-vc23.aab
+Version name: 1.0.22
+Version code: 23
+Application ID: com.chessalkkagi.app
+Minimum SDK: 24
+Target SDK: 36
+Bytes: 11632814
+SHA-256: 7d0f57a96c81a62b6d2c0b96f9c87fea9cb485732836f1df46bce22b8a37b2f5
+Signed: verified; same upload certificate as 1.0.21.
+Certificate SHA-256: 27ead35ed4895efafb71930aacf7244917880a511f0afd4a1df0abd51b19243c
+Bundletool validation: passed
+Packaged production web files matched byte for byte: 108
+No physical Android installation/upgrade or Play upload performed.
+
+Source
+Commit: 4be6cefa67aaf77ead7bcc4cad7a26df2cf6202b
+Isolated checkout: C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/release-1.0.22-review
+Only tracked differences: Android 1.0.22/23 metadata and generated Capacitor dependency paths.
+Build provenance says dirty because of these metadata/sync changes.
+Existing root store-description and puzzle-result changes were not packaged.
+No .env, signing properties or keystore files are included in the AAB.
+No development server URL is configured in the packaged Capacitor config.
+
+itch review artifact — NOT UPLOADED
+Folder: store-assets/itch-1.0.22/html
+ZIP: store-assets/itch-1.0.22/ChessAlkkagi-itch-1.0.22.zip
+ZIP bytes: 3689646
+ZIP SHA-256: 3ae33b04a87736bf12d0492e97cf6375a549471b95543b8c7d0b1d0a44bd9480
+Files: 104; unpacked bytes: 7083529; index.html is at ZIP root.
+Artifact checks, private/dev-hook exclusion and copied-file hashes passed.
+Compiled first-flick to Stage 1 smoke passed at 1366x768 and 390x844.
+This is browser smoke, not Android device or live-account validation.
+Future existing channel: ddurubok/chess-alkkagi:html
+
+Patch notes
+Android: store-assets/release-notes-1.0.22-{ko,en,ja,fr}.txt
+Play combined: store-assets/release-notes-1.0.22-multilingual.txt
+itch: store-assets/itch-1.0.22/PATCH-NOTES-multilingual.md
+Android locale characters: ko 166, en 307, ja 149, fr 332.
+Each Android locale has four bullets and fewer than 500 Unicode characters.
+Android notes do not claim itch-only retries. Experimental balance values are not public changes.
+
+Publication gates
+- User review and later explicit publish instruction.
+- Apply/verify the solo settlement SQL and real-account behavior before public itch publication.
+- Known UI findings remain; they are not claimed fixed in these notes.
+No main update, Git push, DB migration, itch upload or Google Play upload performed.
+Evidence: qa/release-1.0.22-2026-11-16/verified-artifacts.json
+Review handoff: qa/release-1.0.22-2026-11-16/REVIEW-HANDOFF-ko.md

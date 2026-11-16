@@ -1,0 +1,4 @@
+• L'IA du Cavalier en mode étapes estime mieux les obstacles et le point de chute avant de tirer.
+• L'IA du Cavalier compare aussi des tirs moins puissants.
+• Le guide de trajectoire du Cavalier reflète mieux la vitesse et l'angle réels du tir.
+• Une action tardive d'un ancien écran de résultat ne remplace plus un résultat récent.

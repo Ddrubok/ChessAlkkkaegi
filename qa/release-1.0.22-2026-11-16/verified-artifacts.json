@@ -1,0 +1,126 @@
+{
+  "version": "1.0.22",
+  "versionCode": 23,
+  "status": "prepared-for-review-not-published",
+  "sourceCommit": "4be6cefa67aaf77ead7bcc4cad7a26df2cf6202b",
+  "isolatedCheckout": "C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/release-1.0.22-review",
+  "sourceDifferences": [
+    "Android 1.0.22/23 metadata",
+    "Capacitor generated dependency junction paths"
+  ],
+  "locales": {
+    "ko-KR": {
+      "file": "store-assets/release-notes-1.0.22-ko.txt",
+      "characters": 166,
+      "bullets": 4
+    },
+    "en-US": {
+      "file": "store-assets/release-notes-1.0.22-en.txt",
+      "characters": 307,
+      "bullets": 4
+    },
+    "ja-JP": {
+      "file": "store-assets/release-notes-1.0.22-ja.txt",
+      "characters": 149,
+      "bullets": 4
+    },
+    "fr-FR": {
+      "file": "store-assets/release-notes-1.0.22-fr.txt",
+      "characters": 332,
+      "bullets": 4
+    }
+  },
+  "android": {
+    "versionName": "1.0.22",
+    "versionCode": 23,
+    "applicationId": "com.chessalkkagi.app",
+    "minSdk": 24,
+    "targetSdk": 36,
+    "certificateSha256": "27ead35ed4895efafb71930aacf7244917880a511f0afd4a1df0abd51b19243c",
+    "matchesPreviousCertificate": true,
+    "buildInfo": {
+      "build": "4be6cefa67aa-dirty-20261115155522",
+      "commit": "4be6cefa67aaf77ead7bcc4cad7a26df2cf6202b",
+      "builtAt": "2026-11-15T15:55:22.609Z",
+      "dirty": true,
+      "mode": "production"
+    },
+    "bundletoolValidate": true,
+    "aabSignatureVerified": true,
+    "webFilesMatched": 108,
+    "existingAaptExclusions": [
+      "assets/.gitkeep",
+      "store-assets/feature-graphic-1024x500.png",
+      "store-assets/icon-512.png"
+    ],
+    "capacitorAddedFiles": [
+      "cordova.js",
+      "cordova_plugins.js"
+    ],
+    "artifact": "store-assets/ChessAlkkagi-1.0.22-vc23.aab",
+    "bytes": 11632814,
+    "sha256": "7d0f57a96c81a62b6d2c0b96f9c87fea9cb485732836f1df46bce22b8a37b2f5",
+    "deviceInstallPerformed": false,
+    "storeUploadPerformed": false
+  },
+  "itch": {
+    "folder": "store-assets/itch-1.0.22/html",
+    "zip": "store-assets/itch-1.0.22/ChessAlkkagi-itch-1.0.22.zip",
+    "bytes": 3689646,
+    "sha256": "3ae33b04a87736bf12d0492e97cf6375a549471b95543b8c7d0b1d0a44bd9480",
+    "fileCount": 104,
+    "totalBytes": 7083529,
+    "buildInfo": {
+      "build": "4be6cefa67aa-dirty-20261115155645",
+      "commit": "4be6cefa67aaf77ead7bcc4cad7a26df2cf6202b",
+      "builtAt": "2026-11-15T15:56:45.942Z",
+      "dirty": true,
+      "mode": "itch"
+    },
+    "artifactCheck": true,
+    "devHooksAbsent": true,
+    "compiledSmoke": {
+      "pageErrors": [],
+      "deniedOrigins": [],
+      "states": [
+        {
+          "width": 1366,
+          "height": 768,
+          "stageVisible": true
+        },
+        {
+          "width": 390,
+          "height": 844,
+          "stageVisible": true
+        }
+      ]
+    },
+    "targetAfterPublishRequest": "ddurubok/chess-alkkagi:html",
+    "uploadPerformed": false
+  },
+  "platformScope": {
+    "android": "Knight AI, launch guide and result action completion guard; no itch-only retry claims",
+    "itch": "Same-stage retries, run/card boundaries, explicit end/settlement, Knight changes",
+    "balanceTrials": "developer tools only; public defaults unchanged"
+  },
+  "reviewPassed": false,
+  "mainUpdated": false,
+  "itchUploaded": false,
+  "googlePlayUploaded": false,
+  "productionDatabaseChanged": false,
+  "publicationGates": [
+    "User review and explicit publish request",
+    "Apply/verify solo settlement SQL and real account checks before public itch release"
+  ],
+  "untested": [
+    "Physical Android install/upgrade",
+    "Actual Play review",
+    "Live account settlement",
+    "All languages/layouts and touch"
+  ],
+  "knownUiIssues": [
+    "Orientation board framing",
+    "Opening tip overlaps objective",
+    "Billiards cancel/elevation overlap"
+  ]
+}

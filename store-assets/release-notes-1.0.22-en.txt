@@ -1,0 +1,4 @@
+• Improved stage Knight AI shot selection with obstacle and landing estimates.
+• Knight AI now considers lower-power shots among its candidates.
+• The Knight trajectory guide more closely follows the actual launch speed and angle.
+• Fixed delayed actions from an old result screen overriding a newer result.

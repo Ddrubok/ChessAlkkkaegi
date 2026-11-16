@@ -1,0 +1,24 @@
+<ko-KR>
+• 스테이지 나이트 AI가 장애물과 착지 위치를 살펴 샷을 고르도록 개선했습니다.
+• 나이트 AI가 약한 샷도 후보로 비교하도록 조정했습니다.
+• 나이트 궤적 안내가 실제 발사 속도와 각도를 더 일관되게 반영합니다.
+• 이전 결과 화면의 늦은 작업 완료가 새 결과 화면을 덮지 않도록 수정했습니다.
+</ko-KR>
+<en-US>
+• Improved stage Knight AI shot selection with obstacle and landing estimates.
+• Knight AI now considers lower-power shots among its candidates.
+• The Knight trajectory guide more closely follows the actual launch speed and angle.
+• Fixed delayed actions from an old result screen overriding a newer result.
+</en-US>
+<ja-JP>
+• ステージのナイトAIが障害物と着地点を見積もってショットを選ぶよう改善しました。
+• ナイトAIが弱いショットも候補として比較するようにしました。
+• ナイトの軌道ガイドに実際の発射速度と角度をより正確に反映しました。
+• 古い結果画面の処理完了が新しい結果画面を上書きする問題を修正しました。
+</ja-JP>
+<fr-FR>
+• L'IA du Cavalier en mode étapes estime mieux les obstacles et le point de chute avant de tirer.
+• L'IA du Cavalier compare aussi des tirs moins puissants.
+• Le guide de trajectoire du Cavalier reflète mieux la vitesse et l'angle réels du tir.
+• Une action tardive d'un ancien écran de résultat ne remplace plus un résultat récent.
+</fr-FR>
