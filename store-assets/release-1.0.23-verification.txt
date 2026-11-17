@@ -1,0 +1,52 @@
+Chess Alkkagi 1.0.23 (24)
+Prepared: 2026-11-17 KST
+Status: signed release AAB built and verified locally. No Google Play upload.
+
+Android AAB
+Artifact: store-assets/ChessAlkkagi-1.0.23-vc24.aab
+Version name: 1.0.23
+Version code: 24
+Application ID: com.chessalkkagi.app
+Bytes: 11634007
+SHA-256: 5454cf73567c4b0b4ce44c1af6d5a21138e10b9641abc6c2ef98daa2b6443efb
+Bundletool validate: passed
+Jarsigner verification: passed (self-signed upload certificate warnings expected).
+Upload certificate: same as 1.0.22.
+Certificate SHA-256: 27ead35ed4895efafb71930aacf7244917880a511f0afd4a1df0abd51b19243c
+Packaged production web files: 108, byte-for-byte hash match to web/dist.
+Additional Capacitor generated files: cordova.js, cordova_plugins.js; hashes verified.
+Expected Android asset exclusions: assets/.gitkeep and two store promotional images.
+Production backend reference verified; staging backend and development server excluded.
+No .env, signing properties or keystore files packaged.
+Physical Android installation/upgrade: not tested. Google Play: not uploaded.
+
+Source and checks
+Source commit: bacf8787188ae360f13d3ccb05428714e5cad103
+Develop base: 4be6cefa67aaf77ead7bcc4cad7a26df2cf6202b
+Isolated checkout: C:/Users/DooBokWie/orca/workspaces/ChessAlkkkaegi/develop-online-fix-1.0.23
+The eight repaired source files exactly match the earlier verified main-based QA candidate.
+check:regressions passed again from the develop integration checkout.
+Production npm build, Capacitor sync, Gradle bundleRelease and git diff --check passed.
+Build provenance dirty=true reflects local untracked QA records. Tracked release source was committed before building.
+Capacitor dependency paths generated from the local dependency junction are not committed.
+Existing root store-description and puzzle-result changes were excluded from this source and bundle.
+
+Changes
+- Restore missing physics bodies and meshes during authoritative online snapshot recovery.
+- Confirm online outcomes after authority checks; refresh restored selection and board UI.
+- Reject stale match/turn recovery and stop callbacks after closing a session.
+- Show an actionable end-match screen when synchronization cannot recover.
+
+Patch notes
+store-assets/release-notes-1.0.23-{ko,en,ja,fr}.txt
+store-assets/release-notes-1.0.23-multilingual.txt
+Three bullets per locale; each locale is under 500 Unicode characters.
+
+QA boundary
+Real staging two-tab play covered King100%, White Queen150%, Black Bishop100%, resignation and rematch16/16.
+Missing-piece recovery and terminal/stale/error paths were tested with deterministic automated fault injection.
+The original natural physics divergence did not recur in the live retest; its root cause is not claimed fixed.
+Ranked live-account/server settlement, independent devices and production gameplay were not tested.
+Detailed prior evidence remains in the local main-human-qa-2026-11-17 checkout:
+qa/online-recovery-fix-2026-11-17/REPORT-ko.md
+Build evidence: qa/release-1.0.23-2026-11-17/android/verified-artifact.json
