@@ -1,0 +1,20 @@
+<ko-KR>
+• 온라인 대국 화면이 서로 다를 때 누락된 기물을 복원하도록 개선했습니다.
+• 복구 후 차례와 대국 결과 처리를 바로잡고, 오래된 복구 정보가 현재 대국에 적용되지 않도록 했습니다.
+• 동기화에 실패하면 대국을 종료하고 다음에 할 일을 안내합니다.
+</ko-KR>
+<en-US>
+• Improved online recovery to restore missing pieces when players' boards differ.
+• Corrected turn and match result handling, and prevented stale recovery data from affecting the current match.
+• If sync fails, the match ends with clear guidance on what to do next.
+</en-US>
+<ja-JP>
+• オンライン対局で盤面が食い違った際、欠けた駒を復元するよう改善しました。
+• 復旧後の手番と対局結果の処理を修正し、古い復旧データが現在の対局に反映されないようにしました。
+• 同期に失敗した場合は対局を終了し、次の操作を案内します。
+</ja-JP>
+<fr-FR>
+• La récupération en ligne restaure les pièces manquantes quand les plateaux des joueurs divergent.
+• Correction du tour et du résultat après récupération ; les anciennes données de récupération n'affectent plus la partie en cours.
+• Si la synchronisation échoue, la partie se termine avec des indications sur la suite.
+</fr-FR>

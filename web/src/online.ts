@@ -17,6 +17,9 @@ import {
   ROOK_MAX_OVERDRIVE_POWER,
 } from "./config";
 import type { PieceSide } from "./layout";
+import { createPieceBody } from "./physics";
+import { restorePieceMesh } from "./scene";
+import { determineMatchWinner, type MatchWinner } from "./match";
 import {
   createPeerLink,
   type PeerDisconnectCause,
@@ -33,6 +36,7 @@ import {
   alignTurnCameraToPerspective,
   applyPendingLaunchBeforeStep,
   canSelectTurnPiece,
+  countRemainingPieces,
   queueTurnLaunch,
   setLaunchAcceptedHandler,
   setTurnCameraPerspectiveSide,
@@ -67,6 +71,7 @@ export interface OnlineTurnMessage
 }
 
 export interface OnlineTurnHashMessage {
+  matchId?: string;
   // 방장 권위 상태와 참가자 상태를 대조하는 정착 해시 메시지다.
   kind: "turnHash";
   // 0부터 증가하는 완료 턴 번호다.
@@ -76,6 +81,7 @@ export interface OnlineTurnHashMessage {
 }
 
 export interface OnlineStateRequestMessage {
+  matchId?: string;
   // 참가자가 불일치 턴의 방장 스냅샷을 요청하는 메시지다.
   kind: "stateRequest";
   // 불일치가 확인된 완료 턴 번호다.
@@ -92,6 +98,7 @@ export interface OnlineSnapshotPiece {
 }
 
 export interface OnlineStateSnapshotMessage {
+  matchId?: string;
   // 방장이 권위 상태를 참가자에게 보내는 복구 메시지다.
   kind: "stateSnapshot";
   // 스냅샷이 나타내는 완료 턴 번호다.
@@ -208,6 +215,8 @@ export interface OnlineTransport {
 }
 
 export interface OnlineRuntimeHooks {
+  onProtocolError?: (error: Error) => void;
+  onStateRestored?: () => void;
   // 연결이 끊기면 입력 차단 화면을 열도록 게임 화면에 알린다.
   onDisconnected?: (cause: PeerDisconnectCause) => void;
   // 기권 진영이 확정되면 기존 결과 화면을 열도록 알린다.
@@ -562,6 +571,7 @@ export function parseOnlineMessage(
       }
       return {
         kind: "turnHash",
+        ...(source.matchId === undefined ? {} : { matchId: parseMatchId(source.matchId, "turnHash") }),
         turnIndex: source.turnIndex,
         hash: source.hash,
       };
@@ -576,6 +586,7 @@ export function parseOnlineMessage(
       }
       return {
         kind: "stateRequest",
+        ...(source.matchId === undefined ? {} : { matchId: parseMatchId(source.matchId, "stateRequest") }),
         turnIndex: source.turnIndex,
       };
     }
@@ -608,6 +619,7 @@ export function parseOnlineMessage(
       );
       return {
         kind: "stateSnapshot",
+        ...(source.matchId === undefined ? {} : { matchId: parseMatchId(source.matchId, "stateSnapshot") }),
         turnIndex: source.turnIndex,
         pieces,
       };
@@ -747,21 +759,22 @@ export function applyOnlineStateSnapshot(
   turnRuntime: TurnRuntime,
   snapshot: OnlineStateSnapshotMessage,
 ): void {
+  const physics = turnRuntime.physicsRuntime;
+  const scene = turnRuntime.sceneRuntime;
+  const snapshotIdSet = new Set<string>();
+  for (const piece of snapshot.pieces) {
+    if (snapshotIdSet.has(piece.id) || !physics.pieceTemplates.has(piece.id)) {
+      throw new Error(`Unknown or duplicate online snapshot piece: ${piece.id}`);
+    }
+    snapshotIdSet.add(piece.id);
+  }
   turnRuntime.feedbackResetSerial += 1;
-  const preservesMatchOver =
-    turnRuntime.phase === "match-over";
   const currentIds = [...turnRuntime.physicsRuntime.pieces.keys()].sort();
-  const snapshotIds = snapshot.pieces
-    .map((piece) => piece.id)
-    .sort();
-  const snapshotIdSet = new Set(snapshotIds);
-  const missingLocalIds = snapshotIds.filter(
-    (id) => !turnRuntime.physicsRuntime.pieces.has(id),
-  );
-  if (missingLocalIds.length > 0) {
-    throw new Error(
-      `온라인 스냅샷에 로컬에서 복원할 수 없는 말이 있습니다: ${missingLocalIds.join(",")}`,
-    );
+  for (const piece of snapshot.pieces) {
+    if (physics.pieces.has(piece.id)) continue;
+    const instance = physics.pieceTemplates.get(piece.id)!;
+    createPieceBody(physics, instance, physics.recoveryMeta, physics.recoverySpawnOptions);
+    restorePieceMesh(scene, instance);
   }
   // 새 게스트의 초기 32말 중 방장 대국에서 이미 낙하한 말은 권위 스냅샷 적용 전에 제거한다.
   for (const pieceId of currentIds) {
@@ -840,11 +853,9 @@ export function applyOnlineStateSnapshot(
   turnRuntime.settleSeconds = 0;
   turnRuntime.ccdPieceId = null;
   turnRuntime.cameraRotation = null;
-  turnRuntime.phase = preservesMatchOver
-    ? "match-over"
-    : "ready";
-  turnRuntime.sceneRuntime.controls.enabled =
-    !preservesMatchOver;
+  const winner = determineMatchWinner(countRemainingPieces(turnRuntime), turnRuntime.currentSide);
+  turnRuntime.phase = winner === null ? "ready" : "match-over";
+  turnRuntime.sceneRuntime.controls.enabled = winner === null;
 }
 
 /**
@@ -879,6 +890,11 @@ export function createOnlineRuntime(
   let remoteLaunchTurnIndex: number | null = null;
   let previousLaunchHandler = turnRuntime.onLaunchAccepted;
   let previousSettledHandler = turnRuntime.onTurnSettled;
+  let previousMatchOverHandler = turnRuntime.onMatchOver;
+  let matchOverHandler: ((winner: MatchWinner) => void) | null = null;
+  let confirmedWinner: MatchWinner | null = null;
+  let turnGeneration = 0;
+  let recoveryVerifying = false;
   let launchHandler:
     | ((
         request: TurnLaunchRequest,
@@ -894,6 +910,8 @@ export function createOnlineRuntime(
   let pendingWork = Promise.resolve();
   let transportConnected = true;
   let sessionEnded = false;
+  let protocolFailed = false;
+  let closed = false;
   let rejoiningSession = false;
   let replayingResumeTail = false;
   let replayTurnIndex: number | null = null;
@@ -904,6 +922,14 @@ export function createOnlineRuntime(
   const hostSnapshots =
     new Map<number, OnlineStateSnapshotMessage>();
   const requestedSnapshots = new Set<number>();
+  const confirmTerminalBoard = (turnIndex: number): void => {
+    if (protocolFailed || sessionEnded || confirmedWinner !== null ||
+        runtime.activeTurn !== null || runtime.nextTurnIndex !== turnIndex + 1) return;
+    const winner = determineMatchWinner(countRemainingPieces(turnRuntime), turnRuntime.currentSide);
+    if (winner === null || turnRuntime.phase !== "match-over") return;
+    confirmedWinner = winner;
+    previousMatchOverHandler?.(winner);
+  };
   let awaitingResumeSnapshot = false;
   let resumeReplayMatched = false;
   let resumeTargetTurnIndex: number | null = null;
@@ -1027,6 +1053,8 @@ export function createOnlineRuntime(
     lastHashComparison: null,
 
     startMatch(startOptions: OnlineStartOptions = {}): void {
+      if (closed) throw new Error("Online runtime is closed.");
+      if (protocolFailed) throw new Error("Online runtime stopped after a protocol error.");
       if (hooksAttached) {
         throw new Error("온라인 대국 턴 후크가 이미 연결됐습니다.");
       }
@@ -1035,6 +1063,11 @@ export function createOnlineRuntime(
       hooksAttached = true;
       previousLaunchHandler = turnRuntime.onLaunchAccepted;
       previousSettledHandler = turnRuntime.onTurnSettled;
+      previousMatchOverHandler = turnRuntime.onMatchOver;
+      matchOverHandler = () => {
+        // Only an authoritative hash or verified recovery can publish a result.
+      };
+      turnRuntime.onMatchOver = matchOverHandler;
       launchHandler = (request, side) => {
         if (!replayingResumeTail) {
           previousLaunchHandler?.(request, side);
@@ -1058,6 +1091,7 @@ export function createOnlineRuntime(
           side,
           origin: launchOrigin,
         };
+        turnGeneration += 1;
         if (!replayingResumeTail && launchOrigin === "local" && localLaunchSource === "player") {
           options.onLocalLaunchAccepted?.({ matchId: runtime.matchId, turnIndex, pieceId: request.pieceId, side });
         }
@@ -1104,6 +1138,8 @@ export function createOnlineRuntime(
         if (replayingResumeTail) {
           return;
         }
+        const settledMatchId = runtime.matchId;
+        const settledGeneration = turnGeneration;
         const statePromise = capturePhysicsStateHash(
           turnRuntime.physicsRuntime,
         );
@@ -1115,11 +1151,15 @@ export function createOnlineRuntime(
           : null;
         pendingWork = pendingWork.then(async () => {
           const state = await statePromise;
+          if (runtime.matchId !== settledMatchId || turnGeneration !== settledGeneration ||
+              runtime.nextTurnIndex !== completedTurn.turnIndex + 1 || runtime.activeTurn !== null) return;
           localHashes.set(completedTurn.turnIndex, state.sha256);
           if (isHost && snapshot !== null) {
             hostSnapshots.set(completedTurn.turnIndex, snapshot);
+            confirmTerminalBoard(completedTurn.turnIndex);
             const message: OnlineTurnHashMessage = {
               kind: "turnHash",
+              matchId: settledMatchId,
               turnIndex: completedTurn.turnIndex,
               hash: state.sha256,
             };
@@ -1160,6 +1200,7 @@ export function createOnlineRuntime(
     },
 
     waitUntilReady(): Promise<void> {
+      if (protocolFailed) return Promise.reject(new Error("Online runtime stopped after a protocol error."));
       if (compatibilityFailure !== null) return Promise.reject(compatibilityFailure);
       if (runtime.active) {
         return Promise.resolve();
@@ -1172,7 +1213,7 @@ export function createOnlineRuntime(
 
     shouldStepPhysics(): boolean {
       return (
-        turnRuntime.pendingLaunch !== null ||
+        (!recoveryVerifying && turnRuntime.pendingLaunch !== null) ||
         turnRuntime.phase === "settling"
       );
     },
@@ -1200,7 +1241,7 @@ export function createOnlineRuntime(
         pendingWork = pendingWork.then(sendResumeState);
       }
       const remote = runtime.remoteTelegraph;
-      if (remote === null || !runtime.active) {
+      if (remote === null || !runtime.active || recoveryVerifying) {
         return;
       }
       const readyToLaunch =
@@ -1246,6 +1287,7 @@ export function createOnlineRuntime(
     canSelectLocalPiece(pieceId: string): boolean {
       return (
         runtime.active &&
+        !recoveryVerifying &&
         turnRuntime.currentSide === mySide &&
         canSelectTurnPiece(turnRuntime, pieceId)
       );
@@ -1267,6 +1309,9 @@ export function createOnlineRuntime(
           reason: "온라인 연결이 준비되지 않았습니다.",
         };
       }
+      if (recoveryVerifying) {
+        return { accepted: false, reason: "Online state recovery is being verified." };
+      }
       if (turnRuntime.currentSide !== mySide) {
         return {
           accepted: false,
@@ -1286,7 +1331,8 @@ export function createOnlineRuntime(
     async flush(): Promise<void> {
       while (true) {
         const work = pendingWork;
-        await work;
+        try { await work; }
+        catch (error) { handleProtocolError(error); throw error; }
         if (work === pendingWork) {
           return;
         }
@@ -1468,6 +1514,10 @@ export function createOnlineRuntime(
     },
 
     close(): void {
+      if (closed) return;
+      closed = true;
+      turnGeneration += 1;
+      sessionEnded = true;
       removeMessageHandler();
       removeStateHandler();
       if (
@@ -1487,6 +1537,9 @@ export function createOnlineRuntime(
           turnRuntime,
           previousSettledHandler,
         );
+      }
+      if (hooksAttached && turnRuntime.onMatchOver === matchOverHandler) {
+        turnRuntime.onMatchOver = previousMatchOverHandler;
       }
       hooksAttached = false;
       cancelRemoteTelegraph();
@@ -1518,6 +1571,7 @@ export function createOnlineRuntime(
   };
 
   const beginRematch = (offerId: string): void => {
+    if (protocolFailed) return;
     const nextMatchId = deriveRematchMatchId(offerId);
     if (
       rematchPreparationId === nextMatchId ||
@@ -1531,6 +1585,9 @@ export function createOnlineRuntime(
       );
     }
     rematchPreparationId = nextMatchId;
+    turnGeneration += 1;
+    confirmedWinner = null;
+    recoveryVerifying = false;
     outgoingRematchOfferId = null;
     incomingRematchOfferId = null;
     runtime.active = false;
@@ -1600,7 +1657,7 @@ export function createOnlineRuntime(
 
   // 최초 ready 또는 재접속 동기화가 끝나면 입력과 메뉴 대기를 함께 해제한다.
   const activateRuntime = (event: string): void => {
-    if (compatibilityFailure !== null) return;
+    if (compatibilityFailure !== null || protocolFailed || sessionEnded) return;
     const startedRematchId = rematchPreparationId;
     rejoiningSession = false;
     runtime.active = true;
@@ -1623,6 +1680,7 @@ export function createOnlineRuntime(
   const updateActiveState = (): void => {
     if (
       sessionEnded ||
+      protocolFailed ||
       runtime.active ||
       !transportConnected ||
       !runtime.localReady ||
@@ -1799,6 +1857,7 @@ export function createOnlineRuntime(
       matched: localHash === hostHash,
     };
     if (localHash === hostHash) {
+      confirmTerminalBoard(turnIndex);
       runtime.lastEvent = `${turnIndex}번 해시 일치`;
       return;
     }
@@ -1806,6 +1865,7 @@ export function createOnlineRuntime(
     runtime.desyncCount += 1;
     const request: OnlineStateRequestMessage = {
       kind: "stateRequest",
+      matchId: runtime.matchId,
       turnIndex,
     };
     currentTransport.send(request);
@@ -1814,11 +1874,16 @@ export function createOnlineRuntime(
 
   // 프로토콜 오류를 전체 스택으로 남기고 온라인 입력을 닫는다.
   const handleProtocolError = (error: unknown): void => {
+    if (protocolFailed || closed) return;
+    protocolFailed = true;
     const failure =
       error instanceof Error ? error : new Error(String(error));
     const fullError = failure.stack ?? failure.message;
     console.error(`[온라인 프로토콜] ${fullError}`);
     runtime.active = false;
+    sessionEnded = true;
+    turnRuntime.phase = "match-over";
+    turnRuntime.sceneRuntime.controls.enabled = false;
     cancelRemoteTelegraph();
     runtime.lastEvent = "프로토콜 오류";
     readyRejecter?.(failure);
@@ -1830,8 +1895,13 @@ export function createOnlineRuntime(
       setRematchStatus({
         phase: "failed",
         offerId: failedOfferId,
-        message: `재대결 시작 실패: ${failure.message}`,
+        message: getRuntimeText("online.rematch_failed_start", { reason: uiText("connectionHelp") }),
       });
+    }
+    try {
+      hooks.onProtocolError?.(failure);
+    } catch (hookError) {
+      console.error("[online protocol] Error callback failed", hookError);
     }
   };
 
@@ -1870,7 +1940,7 @@ export function createOnlineRuntime(
   };
 
   const handleMessage = (payload: object): void => {
-    if (compatibilityFailure !== null) return;
+    if (compatibilityFailure !== null || protocolFailed) return;
     try {
       const message = parseOnlineMessage(payload);
       switch (message.kind) {
@@ -1975,6 +2045,7 @@ export function createOnlineRuntime(
           return;
         }
         case "turnHash": {
+          if (message.matchId !== undefined && message.matchId !== runtime.matchId) return;
           if (isHost) {
             throw new Error("참가자가 권위 turnHash를 보냈습니다.");
           }
@@ -1993,6 +2064,7 @@ export function createOnlineRuntime(
           return;
         }
         case "stateRequest": {
+          if (message.matchId !== undefined && message.matchId !== runtime.matchId) return;
           if (!isHost) {
             throw new Error("방장이 아닌 쪽에 stateRequest가 도착했습니다.");
           }
@@ -2002,9 +2074,17 @@ export function createOnlineRuntime(
               `${message.turnIndex}번 권위 스냅샷이 없습니다.`,
             );
           }
+          const resumeRecovery = runtime.nextTurnIndex === message.turnIndex;
+          if ((!resumeRecovery && runtime.nextTurnIndex !== message.turnIndex + 1) ||
+              runtime.activeTurn !== null || turnRuntime.pendingLaunch !== null) {
+            currentTransport.send({ ...snapshot, matchId: runtime.matchId });
+            return;
+          }
           runtime.desyncCount += 1;
           // 양쪽 런타임이 같은 위치 덮어쓰기·수면 절차를 거치게 해 Rapier 내부 상태도 정규화한다.
           applyOnlineStateSnapshot(turnRuntime, snapshot);
+          turnRuntime.currentSide = sideForOnlineTurnIndex(message.turnIndex + (resumeRecovery ? 0 : 1));
+          hooks.onStateRestored?.();
           // setRotation의 quaternion 정규화까지 반영된 방장 상태를 새 권위 기준으로 보낸다.
           // 적용 전 해시와 적용 후 pose를 섞으면 양쪽 월드가 같아도 복구 검증이 실패한다.
           const canonicalSnapshot = createOnlineStateSnapshot(
@@ -2014,8 +2094,12 @@ export function createOnlineRuntime(
           const canonicalStatePromise = capturePhysicsStateHash(
             turnRuntime.physicsRuntime,
           );
+          const expectedMatch = runtime.matchId;
+          const expectedGeneration = turnGeneration;
           pendingWork = pendingWork.then(async () => {
             const canonicalState = await canonicalStatePromise;
+            if (runtime.matchId !== expectedMatch || turnGeneration !== expectedGeneration ||
+                runtime.activeTurn !== null || runtime.nextTurnIndex !== message.turnIndex + (resumeRecovery ? 0 : 1)) return;
             localHashes.set(
               message.turnIndex,
               canonicalState.sha256,
@@ -2026,17 +2110,19 @@ export function createOnlineRuntime(
             );
             const correctedHash: OnlineTurnHashMessage = {
               kind: "turnHash",
+              matchId: runtime.matchId,
               turnIndex: message.turnIndex,
               hash: canonicalState.sha256,
             };
             currentTransport.send(correctedHash);
-            currentTransport.send(canonicalSnapshot);
+            currentTransport.send({ ...canonicalSnapshot, matchId: runtime.matchId });
             runtime.lastEvent =
               `${message.turnIndex}번 정규화 권위 스냅샷 전송`;
           });
           return;
         }
         case "stateSnapshot": {
+          if (message.matchId !== undefined && message.matchId !== runtime.matchId) return;
           if (
             isHost ||
             (!awaitingResumeSnapshot &&
@@ -2045,7 +2131,10 @@ export function createOnlineRuntime(
             throw new Error("요청하지 않은 stateSnapshot이 도착했습니다.");
           }
           if (awaitingResumeSnapshot) {
+            const expectedMatch = runtime.matchId;
+            const expectedGeneration = turnGeneration;
             pendingWork = pendingWork.then(async () => {
+              if (runtime.matchId !== expectedMatch || turnGeneration !== expectedGeneration) return;
               if (
                 resumeTargetTurnIndex === null ||
                 resumeTargetHash === null ||
@@ -2060,11 +2149,13 @@ export function createOnlineRuntime(
                 const recovered = await capturePhysicsStateHash(
                   turnRuntime.physicsRuntime,
                 );
+                if (runtime.matchId !== expectedMatch || turnGeneration !== expectedGeneration) return;
                 if (recovered.sha256 !== resumeTargetHash) {
                   throw new Error(
                     `${message.turnIndex}번 재접속 스냅샷 적용 뒤 해시가 방장과 다릅니다.`,
                   );
                 }
+                hooks.onStateRestored?.();
               }
               awaitingResumeSnapshot = false;
               requestedSnapshots.delete(message.turnIndex);
@@ -2076,18 +2167,30 @@ export function createOnlineRuntime(
                   ? `${message.turnIndex}번 전체 기록 재생으로 재개`
                   : `${message.turnIndex}번 방장 상태로 재개`,
               );
+              confirmTerminalBoard(message.turnIndex - 1);
               resumeReplayMatched = false;
               resumeTargetTurnIndex = null;
               resumeTargetHash = null;
             });
             return;
           }
+          if (runtime.nextTurnIndex !== message.turnIndex + 1 ||
+              runtime.activeTurn !== null || turnRuntime.pendingLaunch !== null) {
+            requestedSnapshots.delete(message.turnIndex);
+            return;
+          }
+          const expectedMatch = runtime.matchId;
+          const expectedGeneration = turnGeneration;
+          recoveryVerifying = true;
           applyOnlineStateSnapshot(turnRuntime, message);
+          turnRuntime.currentSide = sideForOnlineTurnIndex(message.turnIndex + 1);
           const verificationPromise = capturePhysicsStateHash(
             turnRuntime.physicsRuntime,
           );
           pendingWork = pendingWork.then(async () => {
             const recovered = await verificationPromise;
+            if (runtime.matchId !== expectedMatch || turnGeneration !== expectedGeneration ||
+                runtime.nextTurnIndex !== message.turnIndex + 1 || runtime.activeTurn !== null) return;
             const expected = authoritativeHashes.get(
               message.turnIndex,
             );
@@ -2098,6 +2201,9 @@ export function createOnlineRuntime(
             }
             localHashes.set(message.turnIndex, recovered.sha256);
             requestedSnapshots.delete(message.turnIndex);
+            recoveryVerifying = false;
+            hooks.onStateRestored?.();
+            confirmTerminalBoard(message.turnIndex);
             runtime.lastEvent =
               `${message.turnIndex}번 스냅샷 복구 완료`;
           });
@@ -2211,6 +2317,7 @@ export function createOnlineRuntime(
               requestedSnapshots.add(message.targetTurnIndex);
               const request: OnlineStateRequestMessage = {
                 kind: "stateRequest",
+                matchId: runtime.matchId,
                 turnIndex: message.targetTurnIndex,
               };
               currentTransport.send(request);
@@ -2334,6 +2441,8 @@ export function createOnlineRuntime(
       }
     } catch (error: unknown) {
       handleProtocolError(error);
+    } finally {
+      void pendingWork.catch(handleProtocolError);
     }
   };
 

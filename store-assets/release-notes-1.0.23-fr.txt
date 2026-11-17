@@ -1,0 +1,3 @@
+• La récupération en ligne restaure les pièces manquantes quand les plateaux des joueurs divergent.
+• Correction du tour et du résultat après récupération ; les anciennes données de récupération n'affectent plus la partie en cours.
+• Si la synchronisation échoue, la partie se termine avec des indications sur la suite.
