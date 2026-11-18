@@ -79,6 +79,8 @@ export interface PinballObstacleMeshBinding {
 }
 
 export interface SceneRuntime {
+  recoveryAssets: ChessAssets;
+  recoverySpawnOptions: StageSpawnOptions;
   // 루프가 물리 자세를 개체별 렌더 메시로 복사하기 위한 연결표다.
   pieceMeshes: Map<string, Mesh>;
   // 파괴 벽과 포켓 불파괴 벽을 같은 정의·메시 생성 경로로 동기화하는 연결표다.
@@ -731,6 +733,21 @@ function addPieceMesh(
   pieceMeshes.set(instance.id, mesh);
 }
 
+export function restorePieceMesh(runtime: SceneRuntime, instance: PieceInstance): void {
+  if (runtime.pieceMeshes.has(instance.id)) {
+    throw new Error(`Piece mesh ${instance.id} already exists.`);
+  }
+  addPieceMesh(
+    runtime.scene,
+    runtime.pieceMeshes,
+    runtime.recoveryAssets,
+    instance,
+    runtime.whitePieceMaterial,
+    runtime.blackPieceMaterial,
+    runtime.recoverySpawnOptions,
+  );
+}
+
 /**
  * 폰 승급: 씬 내 기물 메시의 형상(Geometry) 및 스케일을 새 기물 종류에 맞게 교체한다.
  */
@@ -946,6 +963,8 @@ export function createSceneRuntime(
   }
 
   const runtime: SceneRuntime = {
+    recoveryAssets: assets,
+    recoverySpawnOptions: stageOptions,
     pieceMeshes,
     breakableWallMeshes,
     pinballObstacleMeshes,
@@ -1201,6 +1220,8 @@ export function resetScenePieces(
   instances: readonly PieceInstance[],
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): void {
+  runtime.recoveryAssets = assets;
+  runtime.recoverySpawnOptions = stageOptions;
   resetSceneBreakableWalls(runtime, assets, stageOptions);
   resetScenePinballObstacles(runtime, assets, stageOptions);
   for (const mesh of runtime.pieceMeshes.values()) {

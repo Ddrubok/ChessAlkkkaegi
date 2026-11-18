@@ -33,6 +33,8 @@ export const UI_COPY = {
  pitch: ["피치", "Pitch", "俯仰角", "俯仰角", "Neigung", "Inclinaison", "Inclinación", "Наклон", "Inclinação"],
  power: ["세기", "Power", "強さ", "力度", "Stärke", "Puissance", "Potencia", "Сила", "Força"],
  connectionHelp: ["연결을 확인하고 다시 시도해 주세요.", "Check your connection and try again.", "接続を確認して、もう一度お試しください。", "请检查连接后重试。", "Prüfe deine Verbindung und versuche es erneut.", "Vérifiez votre connexion et réessayez.", "Comprueba la conexión e inténtalo de nuevo.", "Проверьте подключение и повторите попытку.", "Verifique sua conexão e tente novamente."],
+ syncFailed: ["대국 상태를 복구하지 못했습니다", "Could not restore the match", "対局の状態を復元できませんでした", "无法恢复对局状态", "Spielstand konnte nicht wiederhergestellt werden", "Impossible de restaurer la partie", "No se pudo restaurar la partida", "Не удалось восстановить партию", "Não foi possível restaurar a partida"],
+ syncRecoveryHint: ["현재 대국을 종료하고 새 대국을 시작해 주세요.", "End this match and start a new one.", "現在の対局を終了し、新しい対局を始めてください。", "请结束当前对局并开始新对局。", "Beende diese Partie und starte eine neue.", "Terminez cette partie et commencez-en une nouvelle.", "Termina esta partida y empieza una nueva.", "Завершите эту партию и начните новую.", "Encerre esta partida e comece uma nova."],
 } satisfies Record<string, readonly [string,string,string,string,string,string,string,string,string]>;
 export function uiText(key: keyof typeof UI_COPY, params: Record<string, string | number> = {}): string {
  return UI_COPY[key][languages.indexOf(I18nManager.getLanguage())]!.replace(/\{(\w+)\}/g, (match, name: string) => String(params[name] ?? match));

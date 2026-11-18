@@ -1,0 +1,3 @@
+• Improved online recovery to restore missing pieces when players' boards differ.
+• Corrected turn and match result handling, and prevented stale recovery data from affecting the current match.
+• If sync fails, the match ends with clear guidance on what to do next.

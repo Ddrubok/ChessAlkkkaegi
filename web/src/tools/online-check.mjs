@@ -1,7 +1,7 @@
 import "./headless-browser-env.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { Mesh, Scene, Vector3 } from "three";
+import { BoxGeometry, Mesh, MeshStandardMaterial, Scene, Vector3 } from "three";
 import { createServer } from "vite";
 
 const webRoot = fileURLToPath(new URL("../..", import.meta.url));
@@ -205,8 +205,12 @@ function createFakeTransportPair() {
 function createHeadlessSceneRuntime(physicsRuntime) {
   const scene = new Scene();
   const pieceMeshes = new Map();
+  const geometry = new BoxGeometry(1, 1, 1);
+  const geometries = new Map([...physicsRuntime.massProperties.keys()].map(type => [type, geometry]));
+  const whitePieceMaterial = new MeshStandardMaterial();
+  const blackPieceMaterial = new MeshStandardMaterial();
   for (const binding of physicsRuntime.pieces.values()) {
-    const mesh = new Mesh();
+    const mesh = new Mesh(geometry, binding.instance.side === "white" ? whitePieceMaterial : blackPieceMaterial);
     mesh.name = binding.instance.id;
     scene.add(mesh);
     pieceMeshes.set(binding.instance.id, mesh);
@@ -214,6 +218,10 @@ function createHeadlessSceneRuntime(physicsRuntime) {
   return {
     scene,
     pieceMeshes,
+    recoveryAssets: { meta: physicsRuntime.recoveryMeta, geometries },
+    recoverySpawnOptions: physicsRuntime.recoverySpawnOptions,
+    whitePieceMaterial,
+    blackPieceMaterial,
     controls: { enabled: true },
   };
 }
@@ -514,6 +522,237 @@ try {
       "utf8",
     ),
   );
+  {
+    const authority = await createMatchRuntime(modules, meta);
+    const follower = await createMatchRuntime(modules, meta);
+    const boostedDeck = { Rook: { weight: 3 } };
+    modules.physics.applyStrategyDecksToPhysics(authority.physicsRuntime, boostedDeck, null);
+    modules.physics.applyStrategyDecksToPhysics(follower.physicsRuntime, boostedDeck, null);
+    const removePiece = (runtime, id) => {
+      const binding = runtime.physicsRuntime.pieces.get(id);
+      runtime.physicsRuntime.world.removeRigidBody(binding.body);
+      runtime.physicsRuntime.pieces.delete(id);
+      const mesh = runtime.sceneRuntime.pieceMeshes.get(id);
+      runtime.sceneRuntime.scene.remove(mesh);
+      runtime.sceneRuntime.pieceMeshes.delete(id);
+    };
+    removePiece(authority, "black-pawn-a7");
+    removePiece(follower, "white-rook-a1");
+    const snapshot = online.createOnlineStateSnapshot(authority.turnRuntime, 1);
+    const beforeInvalid = await stateHash.capturePhysicsStateHash(follower.physicsRuntime);
+    const serialBeforeInvalid = follower.turnRuntime.feedbackResetSerial;
+    assertCondition(
+      (() => { try { online.applyOnlineStateSnapshot(follower.turnRuntime, {
+        ...snapshot, pieces: [...snapshot.pieces, { id: "unknown-piece", p: [0, 0, 0], q: [0, 0, 0, 1] }],
+      }); return false; } catch { return true; } })(),
+      "Unknown snapshot ID was accepted",
+    );
+    const afterInvalid = await stateHash.capturePhysicsStateHash(follower.physicsRuntime);
+    assertCondition(beforeInvalid.sha256 === afterInvalid.sha256 &&
+      follower.turnRuntime.feedbackResetSerial === serialBeforeInvalid,
+      "Invalid snapshot mutated the local board");
+    follower.turnRuntime.phase = "match-over";
+    follower.sceneRuntime.controls.enabled = false;
+    online.applyOnlineStateSnapshot(authority.turnRuntime, snapshot);
+    const canonical = online.createOnlineStateSnapshot(authority.turnRuntime, 1);
+    online.applyOnlineStateSnapshot(follower.turnRuntime, canonical);
+    const restored = follower.physicsRuntime.pieces.get("white-rook-a1");
+    const restoredMesh = follower.sceneRuntime.pieceMeshes.get("white-rook-a1");
+    const authorityHash = await stateHash.capturePhysicsStateHash(authority.physicsRuntime);
+    const followerHash = await stateHash.capturePhysicsStateHash(follower.physicsRuntime);
+    assertCondition(restored && restoredMesh && restoredMesh.parent === follower.sceneRuntime.scene &&
+      restored.collider && restored.body.mass() === authority.physicsRuntime.pieces.get("white-rook-a1").body.mass() &&
+      !follower.physicsRuntime.pieces.has("black-pawn-a7") &&
+      !follower.sceneRuntime.pieceMeshes.has("black-pawn-a7") &&
+      follower.physicsRuntime.pieces.size === follower.sceneRuntime.pieceMeshes.size &&
+      follower.turnRuntime.phase === "ready" && follower.sceneRuntime.controls.enabled &&
+      authorityHash.sha256 === followerHash.sha256,
+      "Missing-piece recovery failed to reconstruct a synchronized playable board");
+    const recoveryTransport = createFakeTransportPair();
+    const authorityOnline = online.createOnlineRuntime(recoveryTransport.host, authority.turnRuntime, null, "white");
+    const followerOnline = online.createOnlineRuntime(recoveryTransport.guest, follower.turnRuntime, null, "black");
+    authorityOnline.startMatch();
+    followerOnline.startMatch();
+    await Promise.all([authorityOnline.flush(), followerOnline.flush()]);
+    assertCondition(authorityOnline.active && followerOnline.active, "Recovered board did not start online turns");
+    for (let turnIndex = 0; turnIndex < 2; turnIndex += 1) {
+      const localRuntime = turnIndex === 0 ? authority : follower;
+      const localOnline = turnIndex === 0 ? authorityOnline : followerOnline;
+      const queued = localOnline.queueLocalLaunch(createScriptedRequest(localRuntime, turnIndex));
+      assertCondition(queued.accepted, `Recovered board rejected turn ${turnIndex}: ${queued.reason}`);
+      settlePair(modules, authority, follower, authorityOnline, followerOnline);
+      await Promise.all([authorityOnline.flush(), followerOnline.flush()]);
+    }
+    const afterTurnsAuthority = await stateHash.capturePhysicsStateHash(authority.physicsRuntime);
+    const afterTurnsFollower = await stateHash.capturePhysicsStateHash(follower.physicsRuntime);
+    assertCondition(afterTurnsAuthority.sha256 === afterTurnsFollower.sha256 &&
+      authorityOnline.nextTurnIndex === 2 && followerOnline.nextTurnIndex === 2,
+      "Recovered board failed to stay synchronized across both players' next turns");
+    authorityOnline.close();
+    followerOnline.close();
+    for (const binding of [...authority.physicsRuntime.pieces.values()]) {
+      if (binding.instance.side === "black") removePiece(authority, binding.instance.id);
+    }
+    const finalSnapshot = online.createOnlineStateSnapshot(authority.turnRuntime, 2);
+    online.applyOnlineStateSnapshot(follower.turnRuntime, finalSnapshot);
+    assertCondition(follower.turnRuntime.phase === "match-over" &&
+      !follower.sceneRuntime.controls.enabled &&
+      [...follower.physicsRuntime.pieces.values()].every(binding => binding.instance.side === "white"),
+      "Final-board correction did not end the match");
+    authority.physicsRuntime.world.free();
+    follower.physicsRuntime.world.free();
+    console.log("[pass] missing/extra pieces, mesh, hash, invalid ID atomicity, false/final match-over");
+  }
+  {
+    // Settle through the real online callbacks and fake transport while injecting
+    // divergent terminal boards at the physics boundary.
+    const makePair = async (label) => {
+      const host = await createMatchRuntime(modules, meta);
+      const guest = await createMatchRuntime(modules, meta);
+      const wire = createFakeTransportPair();
+      const results = { host: [], guest: [], restored: 0, errors: [] };
+      host.turnRuntime.onMatchOver = winner => results.host.push(winner);
+      guest.turnRuntime.onMatchOver = winner => results.guest.push(winner);
+      const hostOnline = online.createOnlineRuntime(wire.host, host.turnRuntime, null, "white", {}, { matchId: label });
+      const guestOnline = online.createOnlineRuntime(wire.guest, guest.turnRuntime, null, "black", {
+        onStateRestored: () => { results.restored += 1; },
+        onProtocolError: error => results.errors.push(error),
+      }, { matchId: label });
+      hostOnline.startMatch();
+      guestOnline.startMatch();
+      await Promise.all([hostOnline.flush(), guestOnline.flush()]);
+      assertCondition(hostOnline.active && guestOnline.active, `${label}: ready exchange failed`);
+      return { host, guest, wire, results, hostOnline, guestOnline };
+    };
+    const removeSide = (runtime, side, keepOne = false) => {
+      const bindings = [...runtime.physicsRuntime.pieces.values()].filter(binding => binding.instance.side === side);
+      for (const binding of keepOne ? bindings.slice(1) : bindings) {
+        runtime.physicsRuntime.world.removeRigidBody(binding.body);
+        runtime.physicsRuntime.pieces.delete(binding.instance.id);
+        const mesh = runtime.sceneRuntime.pieceMeshes.get(binding.instance.id);
+        runtime.sceneRuntime.scene.remove(mesh);
+        runtime.sceneRuntime.pieceMeshes.delete(binding.instance.id);
+      }
+    };
+    const finishInjectedTurn = (pair, hostWinner, guestWinner, mutate = () => {}) => {
+      const { host, guest, hostOnline, guestOnline } = pair;
+      const queued = hostOnline.queueLocalLaunch(createScriptedRequest(host, 0));
+      assertCondition(queued.accepted, "Injected turn launch was rejected");
+      guestOnline.update(performance.now() + 10000);
+      assertCondition(hostOnline.activeTurn?.turnIndex === 0 && guestOnline.activeTurn?.turnIndex === 0,
+        "Injected turn did not reach both online runtimes");
+      mutate();
+      for (const [runtime, winner] of [[host, hostWinner], [guest, guestWinner]]) {
+        runtime.turnRuntime.pendingLaunch = null;
+        runtime.turnRuntime.currentSide = "black";
+        runtime.turnRuntime.phase = winner === null ? "ready" : "match-over";
+        runtime.turnRuntime.sceneRuntime.controls.enabled = winner === null;
+        runtime.turnRuntime.onTurnSettled?.();
+        if (winner !== null) runtime.turnRuntime.onMatchOver?.(winner);
+      }
+    };
+    const dispose = pair => {
+      pair.hostOnline.close(); pair.guestOnline.close();
+      pair.host.physicsRuntime.world.free(); pair.guest.physicsRuntime.world.free();
+    };
+
+    const falseTerminal = await makePair("recovery-false-terminal");
+    finishInjectedTurn(falseTerminal, null, "black", () => removeSide(falseTerminal.guest, "white"));
+    await falseTerminal.guestOnline.flush();
+    await falseTerminal.hostOnline.flush();
+    await falseTerminal.guestOnline.flush();
+    assertCondition(falseTerminal.results.host.length === 0 && falseTerminal.results.guest.length === 0 &&
+      falseTerminal.guest.turnRuntime.phase === "ready" && falseTerminal.results.restored === 1 &&
+      falseTerminal.results.errors.length === 0,
+      `False guest terminal published a result or failed to restore a live board: ${JSON.stringify({ results: falseTerminal.results, phase: falseTerminal.guest.turnRuntime.phase, comparison: falseTerminal.guestOnline.lastHashComparison, guestDesync: falseTerminal.guestOnline.desyncCount, hostLog: falseTerminal.wire.host.log.map(x => x.payload.kind), guestLog: falseTerminal.wire.guest.log.map(x => x.payload.kind) })}`);
+    dispose(falseTerminal);
+
+    const opposite = await makePair("recovery-opposite-terminal");
+    finishInjectedTurn(opposite, "white", "black", () => {
+      removeSide(opposite.host, "black");
+      removeSide(opposite.guest, "white");
+    });
+    await opposite.guestOnline.flush();
+    await opposite.hostOnline.flush();
+    await opposite.guestOnline.flush();
+    assertCondition(JSON.stringify(opposite.results.host) === '["white"]' &&
+      JSON.stringify(opposite.results.guest) === '["white"]' &&
+      opposite.guest.turnRuntime.phase === "match-over" && opposite.results.restored === 1 &&
+      opposite.results.errors.length === 0,
+      "Opposite terminal recovery did not publish the authoritative winner exactly once");
+    dispose(opposite);
+
+    const matching = await makePair("recovery-matching-terminal");
+    finishInjectedTurn(matching, "white", "white", () => {
+      removeSide(matching.host, "black");
+      removeSide(matching.guest, "black");
+    });
+    await matching.guestOnline.flush();
+    await matching.hostOnline.flush();
+    await matching.guestOnline.flush();
+    assertCondition(JSON.stringify(matching.results.host) === '["white"]' &&
+      JSON.stringify(matching.results.guest) === '["white"]' &&
+      matching.results.restored === 0 && matching.results.errors.length === 0,
+      "Matching terminal hash did not publish exactly one confirmed result");
+    dispose(matching);
+
+    const delayed = await makePair("recovery-delayed-snapshot");
+    delayed.wire.guest.beforeDeliver = payload => {
+      if (payload.kind === "stateRequest") delayed.wire.host.deferMessages = true;
+    };
+    finishInjectedTurn(delayed, null, null, () => removeSide(delayed.guest, "white", true));
+    await delayed.guestOnline.flush();
+    await delayed.hostOnline.flush();
+    await delayed.guestOnline.flush();
+    assertCondition(delayed.wire.host.log.some(entry => entry.payload.kind === "stateSnapshot"),
+      "Delayed snapshot was not requested over the transport");
+    const next = delayed.guestOnline.queueLocalLaunch(createScriptedRequest(delayed.guest, 1));
+    assertCondition(next.accepted, "New guest turn was blocked before delayed recovery arrived");
+    const before = await stateHash.capturePhysicsStateHash(delayed.guest.physicsRuntime);
+    const beforeDesync = delayed.guestOnline.desyncCount;
+    delayed.wire.host.flushDeferred();
+    await delayed.guestOnline.flush();
+    const after = await stateHash.capturePhysicsStateHash(delayed.guest.physicsRuntime);
+    assertCondition(before.sha256 === after.sha256 && delayed.guestOnline.nextTurnIndex === 1 &&
+      delayed.guestOnline.activeTurn?.turnIndex === 1 && delayed.guestOnline.desyncCount === beforeDesync &&
+      delayed.results.restored === 0 && delayed.results.errors.length === 0,
+      "Old requested snapshot rewound an active newer turn");
+    dispose(delayed);
+
+    const rejected = await makePair("recovery-async-failure");
+    rejected.wire.host.beforeDeliver = payload => {
+      if (payload.kind === "stateSnapshot") payload.pieces[0].p[0] += 0.25;
+    };
+    finishInjectedTurn(rejected, null, null, () => removeSide(rejected.guest, "white", true));
+    await rejected.guestOnline.flush();
+    await rejected.hostOnline.flush();
+    await Promise.allSettled([rejected.guestOnline.flush()]);
+    await Promise.resolve();
+    assertCondition(rejected.results.errors.length === 1 && rejected.results.errors[0] instanceof Error &&
+      !rejected.guestOnline.active && rejected.results.restored === 0,
+      "Async snapshot verification failure did not report exactly once");
+    dispose(rejected);
+    const closing = await makePair("recovery-close-pending");
+    closing.wire.guest.beforeDeliver = payload => {
+      if (payload.kind === "stateRequest") closing.wire.host.deferMessages = true;
+    };
+    closing.wire.host.beforeDeliver = payload => {
+      if (payload.kind === "stateSnapshot") payload.pieces[0].p[0] += 0.25;
+    };
+    finishInjectedTurn(closing, null, null, () => removeSide(closing.guest, "white", true));
+    await closing.guestOnline.flush();
+    await closing.hostOnline.flush();
+    closing.wire.host.flushDeferred();
+    // The user leaves after receipt, before asynchronous hash verification.
+    closing.guestOnline.close();
+    await Promise.allSettled([closing.guestOnline.flush()]);
+    await Promise.resolve();
+    assertCondition(closing.results.errors.length === 0 && closing.results.guest.length === 0 &&
+      !closing.guestOnline.active,
+      "Pending recovery reopened an error/result UI after the user closed the room");
+    dispose(closing);
+    console.log("[pass] authoritative terminal callbacks, delayed snapshot gating, async verification failure");
+  }
   const revision = "polyhaven-2026-10-28";
   for (const kind of ["ready", "resume"]) {
     const base = { kind, matchId: "name-check", side: "black", turnIndex: 0, stateHash: "a".repeat(64) };
@@ -545,6 +784,23 @@ try {
     }
   }
   console.log("[pass] ready/resume physics revision parser and legacy/mismatch rejection");
+  {
+    const pair = createFakeTransportPair();
+    const fakeTurn = { sceneRuntime: { controls: { enabled: true } }, phase: "ready" };
+    const failures = [];
+    const peer = online.createOnlineRuntime(pair.host, fakeTurn, null, "white", {
+      onProtocolError: error => failures.push(error),
+    });
+    pair.guest.send({ kind: "invalid-protocol-kind" });
+    pair.guest.send({ kind: "invalid-protocol-kind" });
+    let restarted = false;
+    try { peer.startMatch(); restarted = true; } catch {}
+    assertCondition(failures.length === 1 && failures[0] instanceof Error &&
+      !restarted && !peer.active && fakeTurn.phase === "match-over" && !fakeTurn.sceneRuntime.controls.enabled,
+      "Fatal protocol callback was not exactly once after input stopped");
+    peer.close();
+    console.log("[pass] fatal protocol callback once and input disabled");
+  }
   if (!process.argv.includes("--compat-only")) {
   const host = await createMatchRuntime(modules, meta);
   const guest = await createMatchRuntime(modules, meta);

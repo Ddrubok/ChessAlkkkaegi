@@ -134,6 +134,13 @@ export interface PinballObstaclePhysicsBinding {
 }
 
 export interface PhysicsRuntime {
+  recoveryMeta: ChessSetMeta;
+  recoverySpawnOptions: StageSpawnOptions;
+  pieceTemplates: Map<string, PieceInstance>;
+  strategyDecks: {
+    white: import("./strategy-deck").StrategyDeck | null;
+    black: import("./strategy-deck").StrategyDeck | null;
+  } | null;
   hotseatMap?: HotseatMapRuntime;
   world: RAPIER.World;
   boardBody: RAPIER.RigidBody;
@@ -758,6 +765,10 @@ function createPieceBodyFromState(
     upgradeAdditionalMass,
   };
   runtime.pieces.set(instance.id, binding);
+  runtime.pieceTemplates.set(instance.id, instance);
+  if (runtime.strategyDecks !== null) {
+    applyStrategyMass(binding, runtime.strategyDecks[instance.side]);
+  }
   runtime.massProperties.set(instance.type, properties);
   if (!hadMassProperties || forceMassLog) {
     console.info(
@@ -1011,6 +1022,10 @@ export async function createPhysicsRuntime(
     stageOptions,
   );
   const runtime: PhysicsRuntime = {
+    recoveryMeta: meta,
+    recoverySpawnOptions: stageOptions,
+    pieceTemplates: new Map(),
+    strategyDecks: null,
     world,
     boardBody: board.body,
     boardCollider: board.collider,
@@ -1197,6 +1212,10 @@ export function resetPhysicsPieces(
   instances: readonly PieceInstance[],
   stageOptions: StageSpawnOptions = DEFAULT_STAGE_SPAWN_OPTIONS,
 ): void {
+  runtime.recoveryMeta = meta;
+  runtime.recoverySpawnOptions = stageOptions;
+  runtime.pieceTemplates.clear();
+  runtime.strategyDecks = null;
   if (stageOptions.gameMode === "online" || runtime.gameMode !== stageOptions.gameMode) {
     for (const collider of runtime.boardColliders) {
       collider.setFriction(getPieceFriction(stageOptions.gameMode));
@@ -1247,20 +1266,27 @@ export function applyStrategyDecksToPhysics(
   whiteDeck: import("./strategy-deck").StrategyDeck | null,
   blackDeck: import("./strategy-deck").StrategyDeck | null,
 ): void {
+  runtime.strategyDecks = { white: whiteDeck, black: blackDeck };
   for (const binding of runtime.pieces.values()) {
     const deck = binding.instance.side === "white" ? whiteDeck : blackDeck;
-    const weightStat = deck ? deck[binding.instance.type]?.weight ?? 0 : 0;
-    const additionalMass = binding.originalHullMass * (weightStat * STRATEGY_STAT_STEP);
-
-    binding.body.setAdditionalMassProperties(
-      additionalMass,
-      { x: 0, y: binding.localPieceHeight * 0.06, z: 0 },
-      { x: 0, y: 0, z: 0 },
-      { x: 0, y: 0, z: 0, w: 1 },
-      false,
-    );
-    binding.upgradeAdditionalMass = additionalMass;
+    applyStrategyMass(binding, deck);
   }
+}
+
+function applyStrategyMass(
+  binding: PieceBodyBinding,
+  deck: import("./strategy-deck").StrategyDeck | null,
+): void {
+  const weightStat = deck ? deck[binding.instance.type]?.weight ?? 0 : 0;
+  const additionalMass = binding.originalHullMass * (weightStat * STRATEGY_STAT_STEP);
+  binding.body.setAdditionalMassProperties(
+    additionalMass,
+    { x: 0, y: binding.localPieceHeight * 0.06, z: 0 },
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0, w: 1 },
+    false,
+  );
+  binding.upgradeAdditionalMass = additionalMass;
 }
 
 /**

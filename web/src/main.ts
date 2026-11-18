@@ -1005,16 +1005,27 @@ async function bootstrap(): Promise<void> {
   ) {
     throw new Error("온라인 재연결 화면 요소를 만들지 못했습니다.");
   }
-  const showDisconnectOverlay = (): void => {
-    if (turnRuntime.phase === "match-over") return;
+  const showOnlineRecoveryOverlay = (protocolFailure = false): void => {
+    if (!protocolFailure && turnRuntime.phase === "match-over" && !matchRuntime.overlay.hidden) return;
+    if (protocolFailure) hideMatchResult(matchRuntime);
     disconnectOverlay.querySelector(".match-result-panel > p")!.textContent = getRuntimeText("online.reconnect_overlay_title");
-    disconnectOverlay.querySelector("h1")!.textContent = getRuntimeText("online.reconnect_overlay_disconnected");
-    reconnectStatus.textContent = getRuntimeText("online.reconnect_overlay_prompt");
+    disconnectOverlay.querySelector("h1")!.textContent = protocolFailure
+      ? uiText("syncFailed")
+      : getRuntimeText("online.reconnect_overlay_disconnected");
+    reconnectStatus.textContent = protocolFailure
+      ? uiText("syncRecoveryHint")
+      : getRuntimeText("online.reconnect_overlay_prompt");
     reconnectButton.textContent = getRuntimeText("online.reconnect_overlay_create_code");
+    reconnectButton.hidden = protocolFailure;
     abandonButton.textContent = getRuntimeText("online.reconnect_overlay_abandon");
     onlineConnectionBlocked = true;
     disconnectOverlay.hidden = false;
-    reconnectButton.focus();
+    (protocolFailure ? abandonButton : reconnectButton).focus();
+  };
+  const showDisconnectOverlay = (): void => showOnlineRecoveryOverlay();
+  const showProtocolErrorOverlay = (): void => {
+    lockInputForMatchOver(inputRuntime);
+    showOnlineRecoveryOverlay(true);
   };
   const hideDisconnectOverlay = (): void => {
     onlineConnectionBlocked = false;
@@ -1189,6 +1200,12 @@ async function bootstrap(): Promise<void> {
   setPieceRemovalHandler(turnRuntime, (pieceId) =>
     handleInputPieceRemoved(inputRuntime, pieceId),
   );
+  const synchronizeOnlineSnapshotUi = (): void => {
+    cancelInputInteraction(inputRuntime, true);
+    inputRuntime.selectablePieceIds = new Set(physicsRuntime.pieces.keys());
+    // A local fall can show a result before the host restores the live board.
+    if (turnRuntime.phase !== "match-over") hideMatchResult(matchRuntime);
+  };
   turnRuntime.onPromotionReady = (pieceId, side, _choices, onSelect) => {
     playSoundEffect("power90");
     openPromotionModal(pieceId, side, onSelect, app);
@@ -2644,6 +2661,8 @@ async function bootstrap(): Promise<void> {
         session.mySide,
         {
           onDisconnected: showDisconnectOverlay,
+          onProtocolError: showProtocolErrorOverlay,
+          onStateRestored: synchronizeOnlineSnapshotUi,
           onStrategyDecksReady: (whiteDeck, blackDeck) => {
             applyStrategyDecksToPhysics(physicsRuntime, whiteDeck, blackDeck);
           },
@@ -2876,6 +2895,8 @@ async function bootstrap(): Promise<void> {
       session.mySide,
       {
         onDisconnected: showDisconnectOverlay,
+        onProtocolError: showProtocolErrorOverlay,
+        onStateRestored: synchronizeOnlineSnapshotUi,
         onStrategyDecksReady: (whiteDeck, blackDeck) => {
           applyStrategyDecksToPhysics(physicsRuntime, whiteDeck, blackDeck);
         },
