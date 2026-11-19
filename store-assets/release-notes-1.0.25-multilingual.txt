@@ -1,0 +1,24 @@
+<ko-KR>
+• 작은 휴대폰을 가로로 사용할 때 로비의 게임 모드와 하단 메뉴를 한눈에 볼 수 있습니다.
+• 좁은 화면에서 설정 탭의 글자가 줄바꿈되고 닫기 버튼을 누르기 쉬워졌습니다.
+• 조준할 때 세기 표시가 플레이어 배너나 취소 버튼에 가리지 않도록 위치를 조정했습니다.
+• 승리 후 강화 카드가 퀘스트 기록보다 먼저 보입니다. 짧은 가로 화면에서는 카드 세 장을 나란히 비교할 수 있습니다.
+</ko-KR>
+<en-US>
+• On small phones in landscape, game modes and the lobby navigation now fit on one screen.
+• Settings tabs wrap on narrow screens, and the close button is easier to tap.
+• Shot power stays visible above the player banner and cancel control while aiming.
+• After a win, upgrade cards appear before quest progress. Compare all three side by side on short landscape screens.
+</en-US>
+<ja-JP>
+• 小さなスマートフォンの横画面で、ゲームモードとロビーの下部メニューが一画面に収まるようになりました。
+• 幅の狭い画面では設定タブの文字が折り返され、閉じるボタンも押しやすくなりました。
+• 狙いを定める際に、パワー表示がプレイヤーバナーやキャンセルボタンに隠れにくくなりました。
+• 勝利後はクエストの進捗より先に強化カードが表示されます。縦幅の狭い横画面でも3枚を並べて比較できます。
+</ja-JP>
+<fr-FR>
+• Sur petit écran en paysage, les modes de jeu et le menu du salon tiennent sur un seul écran.
+• Dans les réglages, les libellés s’adaptent aux écrans étroits et le bouton de fermeture est plus facile à toucher.
+• Pendant la visée, la puissance du tir reste visible au-dessus du bandeau du joueur et du bouton d’annulation.
+• Après une victoire, les améliorations apparaissent avant les quêtes. En paysage, les trois cartes se comparent côte à côte sur les écrans peu hauts.
+</fr-FR>

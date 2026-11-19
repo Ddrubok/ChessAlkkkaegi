@@ -10,7 +10,7 @@ import "./crazygames-opening.css";
 import "./solo-run.css";
 import { marketingRuntime } from "./marketing-runtime";
 import { gameplay, isAdActive, loadingFinished, setBeforeAd } from "./poki-sdk";
-import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED } from "./config";
+import { CLASSIC_MAX_LAUNCH_SPEED, CLASSIC_KNIGHT_MAX_LAUNCH_SPEED, type PieceType } from "./config";
 import { backFromDialog, installAndroidBackHandler } from "./android-back";
 import { createWeeklyChallengeHud } from "./weekly-challenge-hud";
 import { updateQuestSummaries } from "./quest-ui";
@@ -550,6 +550,8 @@ async function bootstrap(): Promise<void> {
   let soloSaved = soloLoaded?.issue !== "storage";
   let soloLookupPending = false;
   let soloLastShot: { ownOut: number; enemyOut: number; forced: boolean; byAI: boolean } | undefined;
+  let soloPendingHumanShot: { piece: PieceType; power: number } | undefined;
+  let soloLastHumanShot: { piece: PieceType; power: number } | undefined;
   let soloActionPending = false;
   let soloReadNotice: HTMLElement | null = null;
   if (soloLoaded?.issue === "invalid" || soloLoaded?.migrated && soloLoaded.issue !== "storage") {
@@ -1152,6 +1154,9 @@ async function bootstrap(): Promise<void> {
         if (accepted.accepted) {
           clearStageTip();
           if (gameMode === "tutorial") tutorialManager.recordPracticeShot(request.normalizedPower);
+          if (PLATFORM.features.solo && gameMode === "stage" && soloRun?.phase === "stage-ready" && binding?.instance.side === "white") {
+            soloPendingHumanShot = { piece: binding.instance.type, power: request.normalizedPower };
+          }
         }
         if (accepted.accepted && binding?.instance.side === "white" && questRun &&
           ["stage", "tutorial", "puzzle"].includes(gameMode) && questRun.mode === gameMode) {
@@ -1374,6 +1379,8 @@ async function bootstrap(): Promise<void> {
     requestedOptions?: StageSpawnOptions,
   ): Promise<void> => {
     soloLastShot = undefined;
+    soloPendingHumanShot = undefined;
+    soloLastHumanShot = undefined;
     clearStageTip();
     const baseOptions = requestedOptions ?? {
       gameMode: gameModeRuntime?.mode ?? "hotseat",
@@ -1956,6 +1963,8 @@ async function bootstrap(): Promise<void> {
 
   turnRuntime.onMasterySettlement = (evidence) => {
     if (PLATFORM.features.solo && gameModeRuntime?.mode === "stage" && soloRun?.phase === "stage-ready" && turnRuntime.lastLaunchInitialSpeed > 0) {
+      if (evidence.launchingSide === "white" && soloPendingHumanShot) soloLastHumanShot = soloPendingHumanShot;
+      soloPendingHumanShot = undefined;
       soloLastShot = { ownOut: evidence.removedPieces.filter(p => p.side === "white").length,
         enemyOut: evidence.removedPieces.filter(p => p.side === "black").length, forced: evidence.forced,
         byAI: evidence.launchingSide === "black" };
@@ -2069,7 +2078,8 @@ async function bootstrap(): Promise<void> {
         if (soloLookupPending) await resumeSoloRun();
         else if (soloRun?.phase === "ending") await settleSoloRun();
         else await prepareSoloRunBoard();
-      }, () => returnToMainMenu(menuRuntime), countRemainingPieces(turnRuntime), soloConfirmedPayout);
+      }, () => returnToMainMenu(menuRuntime), countRemainingPieces(turnRuntime), soloConfirmedPayout,
+      soloRun.phase === "stage-result" ? soloLastHumanShot : undefined);
       if (soloLookupPending) {
         matchRuntime.winnerHeading.textContent = soloRunText("settlementPending");
         matchRuntime.restartButton.textContent = soloRunText("settlementRetry");

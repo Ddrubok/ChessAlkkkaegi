@@ -3,7 +3,7 @@ import { feedbackCopy } from "./feedback-copy";
 import { PLATFORM } from "./platform";
 import { readSoloState, soloCopy } from "./crazygames-solo";
 import { soloRunPayout } from "./solo-run";
-import { soloRunText } from "./solo-run-copy";
+import { soloRunOwnedUpgrade, soloRunText } from "./solo-run-copy";
 import type { MainMenuRuntime } from "./menu";
 import { getMaxClearedStage, type MetaRuntime } from "./meta";
 import { I18nManager } from "./i18n";
@@ -79,9 +79,10 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
   const run = PLATFORM.features.solo ? runtime.getSoloRun?.() : null;
   if (run && run.phase !== "ended") {
     const label = soloRunText(run.phase === "ending" ? "settlementRetry" : run.phase === "awaiting-card" ? "resumeCard" : "resume", { stage: run.stage });
+    const upgrade = run.phase === "ending" ? null : soloRunOwnedUpgrade(run.cards, run.offer?.selected);
     return { mode: "stage", tutorialType: "basic", stage: run.stage, assetId: "lobbyHeroStage",
-      eyebrow: I18nManager.t("lobby.hero_eyebrow_continue"), title: label,
-      body: soloRunText("pendingPoints", { points: soloRunPayout(run) }), cta: label };
+      eyebrow: I18nManager.t("lobby.hero_eyebrow_continue"), title: run.phase === "ending" ? label : soloRunText("resume", { stage: run.stage }),
+      body: upgrade ?? soloRunText("pendingPoints", { points: soloRunPayout(run) }), cta: label };
   }
   const solo = PLATFORM.features.solo ? readSoloState(progressStorage.owner) : null;
   const basicTutorialCompleted = isBasicTutorialCompleted(readLobbyStorage("has_completed_tutorial")) || solo?.intro != null || (PLATFORM.features.solo && getMaxClearedStage(runtime.metaRuntime.storage) > 0);

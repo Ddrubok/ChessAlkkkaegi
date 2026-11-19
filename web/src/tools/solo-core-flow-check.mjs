@@ -20,14 +20,14 @@ try {
   const { PIECE_INSTANCES } = await vite.ssrLoadModule('/src/layout.ts');
   const { finalCardValues } = await vite.ssrLoadModule('/src/feedback-card-preview.ts');
   const meta=JSON.parse(await readFile(new URL('../../public/assets/chess-set.meta.json',import.meta.url),'utf8'));
-  let resets=0, starts=0, settlements=0, displayed=null, pick=null, previews=null, failPrepare=false;
+  let resets=0, starts=0, settlements=0, displayed=null, pick=null, previews=null, failPrepare=false, shownHumanShot;
   const context = {
     ...model, ...cards, ...stage, PIECE_INSTANCES, finalCardValues,
     assets:{meta},physicsRuntime:{pieces:new Map()},cardTuningRuntime:{settings:{}},
     createCardEffectTuning:()=>undefined,I18nManager:{getLanguage:()=>'en'},
     soloRun: model.createSoloRun(null,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
     soloActionPending:false, soloLookupPending:false, soloSaved:true,
-    soloLastShot:undefined,
+    soloLastShot:undefined, soloLastHumanShot:undefined,
     progressStorage:{owner:null, lookupSoloRunSettlement:async()=>({status:'unpaid'}),
       settleSoloRun:async()=>{settlements++;return {status:'paid',payout:1};}},
     tuningRuntime:{settings:{cardEffectScale:1}}, gameModeRuntime:{stageNumber:1,mode:'hotseat'},
@@ -41,7 +41,7 @@ try {
     ensureGameLoopStarted(){},
     commitSoloRun(run){context.soloRun=run;},
     showMatchResult(runtime,_winner,_mode,_stage,_retry,_cards,onPick,_menu,_side,values){runtime.overlay.hidden=false;displayed='card';pick=onPick;previews=values;},
-    showSoloRunState(runtime,run){runtime.overlay.hidden=false;displayed=run.phase;},
+    showSoloRunState(runtime,run,_retry,_menu,_remaining,_payout,humanShot){runtime.overlay.hidden=false;displayed=run.phase;shownHumanShot=humanShot;},
     hideMatchResult(runtime){runtime.overlay.hidden=true;},
     gameplay:{enter(){starts++;}},marketingRuntime:{startLocalMatch(){}},
     returnToMainMenu(){},countRemainingPieces:()=>({white:0,black:1}),
@@ -51,6 +51,10 @@ try {
   context.soloRun=model.recordSoloRunResult(context.soloRun,'black');
   const id=context.soloRun.runId;
   api.present();assert.equal(displayed,'stage-result');
+  assert.equal(shownHumanShot,undefined,'a reloaded result must not invent shot details');
+  context.soloLastHumanShot={piece:'Knight',power:0.735};
+  api.present();assert.deepEqual(shownHumanShot,context.soloLastHumanShot,'live result keeps the accepted human shot');
+  context.soloLastHumanShot=undefined;
   await api.prepare();
   assert.equal(context.gameModeRuntime.mode,'stage','retry from a saved result must enter stage rules');
   assert.equal(context.soloRun.runId,id);assert.equal(context.soloRun.stage,1);
