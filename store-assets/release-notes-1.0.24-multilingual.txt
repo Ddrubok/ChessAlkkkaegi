@@ -1,0 +1,12 @@
+<ko-KR>
+• 기물을 선택했을 때 룩의 강한 샷으로 내 말도 장외로 나갈 수 있고, 나이트의 도약이 가까운 목표를 지나칠 수 있다는 안내를 추가했습니다.
+</ko-KR>
+<en-US>
+• Piece hints now explain that powerful rook shots can send your own piece off the board and knight jumps can overshoot nearby targets.
+</en-US>
+<ja-JP>
+• 駒を選んだときの説明に、ルークの強打で自分の駒も盤外に出ることや、ナイトの跳躍が近くの狙いを飛び越えることを追加しました。
+</ja-JP>
+<fr-FR>
+• Les conseils expliquent désormais qu'un tir puissant de la tour peut faire sortir votre propre pièce et qu'un saut du cavalier peut dépasser une cible proche.
+</fr-FR>
