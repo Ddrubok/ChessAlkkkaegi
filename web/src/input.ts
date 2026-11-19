@@ -523,7 +523,7 @@ export function computeEffectiveMaxDragPixels(
     : computeViewportPowerDistance(preferred, viewportWidth, viewportHeight);
 }
 
-function isArmedPowerDrag(gesture: PointerGesture): boolean {
+export function isArmedPowerDrag(gesture: PointerGesture): boolean {
   return gesture.maximumDistance > (isTouchPointerEvent({ pointerType: gesture.pointerType ?? "mouse" }) ? 8 : 4);
 }
 

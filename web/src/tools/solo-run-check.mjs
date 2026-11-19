@@ -2,33 +2,56 @@ import assert from "node:assert/strict";
 import { createServer } from "vite";
 import { fileURLToPath } from "node:url";
 
-const vite = await createServer({ root: fileURLToPath(new URL("../..", import.meta.url)), logLevel: "error", appType: "custom", server: { middlewareMode: true } });
+const migratedIds = new Map();
+for (const platform of ["itch", "crazygames"]) {
+const prefix = platform === "itch" ? "ca_itch" : "ca_cg";
+const expectedRules = "itch-retry-v1"; // Shared settlement rule accepted by local and account receipts.
+const vite = await createServer({ root: fileURLToPath(new URL("../..", import.meta.url)), configFile: false,
+  define: { __ITCH_BUILD__: platform === "itch", __CRAZYGAMES_BUILD__: platform === "crazygames", __POKI_BUILD__: false },
+  logLevel: "error", appType: "custom", server: { middlewareMode: true } });
 try {
   const { createSoloRun, readSoloRun, saveSoloRun, replaceInvalidSoloRun, recordSoloRunResult, chooseSoloRunCard, retrySoloRun, readySoloRun, endSoloRun, finishSoloRun, soloRunPayout } = await vite.ssrLoadModule("/src/solo-run.ts");
   const items = new Map();
   const store = { getItem: key => items.get(key) ?? null, setItem: (key, value) => { items.set(key, value); } };
   const id = "12345678-1234-4123-8123-123456789abc";
   const initial = createSoloRun(null, 1, id);
+  assert.equal(initial.platform, platform);
+  assert.equal(initial.rulesVersion, expectedRules);
+  assert.equal(initial.settlementId, `solo-v1:${id}`);
   assert.equal(saveSoloRun(initial, store), true);
+  assert.equal(items.has(`${prefix}_solo_run_v3:guest`), true);
+  assert.equal(readSoloRun(null, store).run.rulesVersion, expectedRules);
   const loss = recordSoloRunResult(initial, "black", undefined, { ownOut: 4, enemyOut: 2, forced: true });
   assert.equal(loss.phase, "stage-result");
+  assert.equal(loss.rulesVersion, expectedRules);
+  assert.equal(loss.settlementId, initial.settlementId);
+  assert.equal(saveSoloRun(loss, store), true);
+  assert.equal(readSoloRun(null, store).run.result.winner, "black");
   assert.equal(retrySoloRun(loss).phase, "stage-ready");
   assert.equal(soloRunPayout(loss), 0);
   assert.throws(() => chooseSoloRunCard(loss, "size"));
+  const drawn = recordSoloRunResult(retrySoloRun(loss), "draw");
+  assert.equal(drawn.result.winner, "draw");
+  assert.equal(drawn.points.lastClearedStage, 0);
+  assert.equal(drawn.offer, null);
+  assert.equal(retrySoloRun(drawn).stage, 1);
   const won = recordSoloRunResult(retrySoloRun(loss), "white");
   assert.equal(won.phase, "awaiting-card");
   assert.equal(won.offer.id, `${id}:1`);
   assert.equal(won.cards.picksSoFar, 0);
+  assert.equal(saveSoloRun(won, store), true);
+  assert.deepEqual(readSoloRun(null, store).run.offer, won.offer, "reload keeps the original card offer");
   assert.throws(() => recordSoloRunResult(won, "white"));
   const picked = chooseSoloRunCard(won, won.offer.choices[0]);
   assert.equal(picked.phase, "preparing-stage");
   assert.equal(picked.cards.picksSoFar, 1);
   assert.equal(picked.stage, 2);
+  assert.equal(saveSoloRun(picked, store), true);
+  assert.equal(readSoloRun(null, store).run.offer.selected, picked.offer.selected);
   assert.throws(() => chooseSoloRunCard(picked, won.offer.choices[0]));
   assert.equal(readySoloRun(picked).phase, "stage-ready");
   assert.equal(soloRunPayout(picked), soloRunPayout(won));
   assert.equal(initial.cards.picksSoFar, 0);
-  assert.equal(saveSoloRun(picked, store), true);
   assert.equal(saveSoloRun(initial, store), false);
   assert.equal(saveSoloRun(createSoloRun(null, 1, "22345678-1234-4123-8123-123456789abc"), store), false);
   const finished = finishSoloRun(endSoloRun(picked));
@@ -45,6 +68,8 @@ try {
   assert.throws(() => recordSoloRunResult(tenth, "white"));
   const malformed = { ...picked, cards: { ...picked.cards, picksSoFar: 0 } };
   assert.equal(saveSoloRun(malformed, { getItem: () => null, setItem: () => {} }), false);
+  assert.equal(saveSoloRun({ ...initial, rulesVersion: "unsupported" }, { getItem: () => null, setItem: () => {} }), false);
+  assert.equal(saveSoloRun({ ...initial, platform: platform === "itch" ? "crazygames" : "itch" }, { getItem: () => null, setItem: () => {} }), false);
 
   const blocked = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("quota"); } };
   assert.equal(readSoloRun(null, blocked).issue, "storage");
@@ -54,24 +79,58 @@ try {
 
   const legacy = new Map();
   const legacyStore = { getItem: key => legacy.get(key) ?? null, setItem: (key, value) => { legacy.set(key, value); } };
-  legacy.set("ca_cg_opening_v2:guest", JSON.stringify({ intro: "complete", run: { stage: 2, metaPoints: 0, cards: { sizeGrade: 1, weightGrade: 0, forceGrade: 0, giantPawn: false, proneStart: false, picksSoFar: 1 }, points: { lastClearedStage: 1 } } }));
+  legacy.set(`${prefix}_opening_v2:guest`, JSON.stringify({ intro: "complete", run: { stage: 2, metaPoints: 0, cards: { sizeGrade: 1, weightGrade: 0, forceGrade: 0, giantPawn: false, proneStart: false, picksSoFar: 1 }, points: { lastClearedStage: 1 } } }));
   const migrated = readSoloRun(null, legacyStore);
+  migratedIds.set(platform, migrated.run?.runId);
   assert.equal(migrated.migrated, true);
   assert.equal(migrated.run.stage, 2);
   assert.equal(migrated.run.cards.sizeGrade, 1);
+  assert.equal(migrated.run.rulesVersion, expectedRules);
+  assert.equal(migrated.run.platform, platform);
+  assert.equal(migrated.run.points.lastClearedStage, 1);
+  assert.equal(soloRunPayout(migrated.run), 1);
+  assert.equal(legacy.get(`${prefix}_opening_v2:guest`) !== undefined, true, "legacy checkpoint stays intact");
   assert.equal(readSoloRun(null, legacyStore).run.runId, migrated.run.runId);
   const failedMigration = { getItem: key => key.includes("solo_run_v3") ? null : legacy.get(key) ?? null, setItem: () => { throw new Error("quota"); } };
   assert.equal(readSoloRun(null, failedMigration).run.runId, migrated.run.runId);
   assert.equal(readSoloRun(null, failedMigration).issue, "storage");
-  const corrupt = new Map([["ca_cg_solo_run_v3:guest", "{broken"]]);
+  const corrupt = new Map([[`${prefix}_solo_run_v3:guest`, "{broken"]]);
   const corruptStore = { getItem: key => corrupt.get(key) ?? null, setItem: (key, value) => corrupt.set(key, value) };
   assert.equal(readSoloRun(null, corruptStore).issue, "invalid");
   assert.equal(saveSoloRun(initial, corruptStore), false);
-  assert.equal(corrupt.get("ca_cg_solo_run_v3:guest"), "{broken");
+  assert.equal(corrupt.get(`${prefix}_solo_run_v3:guest`), "{broken");
   assert.equal(replaceInvalidSoloRun(initial, corruptStore), true);
   assert.equal(readSoloRun(null, corruptStore).run.runId, initial.runId);
   assert.ok([...corrupt].some(([key,value]) => key.includes(':invalid:') && value === '{broken'));
   const noRun = {getItem:key=>key.includes('opening_v2')?JSON.stringify({intro:'complete',run:null}):null,setItem:()=>{throw Error('not expected');}};
   assert.equal(readSoloRun(null,noRun).issue,null,'completed intro without a run is valid');
-  console.log("solo-run-check: passed");
+  const brokenLegacy = new Map([[`${prefix}_opening_v2:guest`, '{broken']]);
+  const brokenLegacyStore = { getItem: key => brokenLegacy.get(key) ?? null, setItem: (key, value) => brokenLegacy.set(key, value) };
+  assert.equal(readSoloRun(null, brokenLegacyStore).issue, "invalid");
+  assert.equal(brokenLegacy.get(`${prefix}_opening_v2:guest`), '{broken');
+  brokenLegacy.set(`${prefix}_opening_v2:guest`, "null");
+  assert.equal(readSoloRun(null, brokenLegacyStore).issue, "invalid");
+  brokenLegacy.set(`${prefix}_opening_v2:guest`, JSON.stringify({ intro: "complete", run: { stage: 4 } }));
+  assert.equal(readSoloRun(null, brokenLegacyStore).issue, "invalid");
+  assert.equal(readSoloRun("another-owner", legacyStore).run, null, "owners never inherit guest checkpoints");
+  const account = createSoloRun("account-a", 1, "42345678-1234-4123-8123-123456789abc");
+  assert.equal(saveSoloRun(account, legacyStore), true);
+  assert.equal(readSoloRun("account-b", legacyStore).run, null);
+  assert.equal(readSoloRun(null, legacyStore).run.runId, migrated.run.runId);
+  legacy.set(`${prefix}_solo_run_v3:account-b`, JSON.stringify(account));
+  assert.equal(readSoloRun("account-b", legacyStore).issue, "invalid", "a run in another owner's key is rejected");
+  assert.equal(saveSoloRun(finished, store), false, "an ended run cannot overwrite a newer active run");
+  assert.throws(() => retrySoloRun(finished));
+  if (platform === "crazygames") {
+    const { platform: _priorPlatform, ...previous } = account;
+    legacy.set(`${prefix}_solo_run_v3:account-a`, JSON.stringify(previous));
+    assert.equal(readSoloRun("account-a", legacyStore).run.platform, undefined, "old CG v3 runs remain readable");
+    assert.equal(saveSoloRun(previous, legacyStore), true);
+    const previousLoss = recordSoloRunResult(previous, "black");
+    assert.equal(previousLoss.rulesVersion, "itch-retry-v1");
+    assert.equal(saveSoloRun(previousLoss, legacyStore), true);
+  }
+  console.log(`solo-run-check (${platform}): passed`);
 } finally { await vite.close(); }
+}
+assert.notEqual(migratedIds.get("itch"), migratedIds.get("crazygames"), "legacy receipts stay platform-scoped");

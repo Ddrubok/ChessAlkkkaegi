@@ -141,6 +141,8 @@ export function createMatchRuntime(
   ) {
     throw new Error("대국 결과 화면의 필수 요소를 만들지 못했습니다.");
   }
+  // Portal stage prompts precede the cards. On other builds the details hold optional quest progress.
+  if (!PLATFORM.features.solo) resultDetails.before(cardChoices);
   const runtime: MatchRuntime = {
     overlay,
     resultKicker,

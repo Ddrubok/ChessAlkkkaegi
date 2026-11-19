@@ -1,6 +1,9 @@
 import { showSoloDrawResult, showStageRunResult, type MatchRuntime } from "./match";
 import { soloRunPayout, type SoloRun } from "./solo-run";
 import { soloRunText as text } from "./solo-run-copy";
+import { I18nManager } from "./i18n";
+import { uiText } from "./ui-text";
+import type { PieceType } from "./config";
 
 /** Extend the existing result panel; none of these labels imply a successful disk write. */
 export function showSoloRunState(
@@ -8,6 +11,7 @@ export function showSoloRunState(
   onRetry: () => Promise<void>, onMenu: () => Promise<void>,
   remaining?: { white: number; black: number },
   confirmedPayout?: number,
+  lastHumanShot?: { piece: PieceType; power: number },
 ): void {
   if (run.phase === "ended") {
     showStageRunResult(runtime, run.stage, 0, run.endReason === "completed", onMenu,
@@ -28,12 +32,17 @@ export function showSoloRunState(
   const line = (value: string) => {
     const p = document.createElement("p"); p.textContent = value; runtime.resultDetails.append(p);
   };
+  const humanShotDetail = run.phase === "stage-result" && result?.observed && lastHumanShot && Number.isFinite(lastHumanShot.power)
+    ? `${I18nManager.t(`lobby.piece_${lastHumanShot.piece.toLowerCase()}`)} · ${uiText("power")} ${new Intl.NumberFormat(I18nManager.getLanguage(), { maximumFractionDigits: 1 }).format(lastHumanShot.power * 100)}%`
+    : null;
   if (run.phase === "stage-result" && result?.observed) {
-    if (result.byAI) line(text("aiShot"));
+    line(`${text(result.byAI ? "aiShot" : "playerShot")}${!result.byAI && humanShotDetail ? ` · ${humanShotDetail}` : ""}`);
     line(text("shotSummary", { own: result.ownOut, enemy: result.enemyOut }));
   } else if (remaining && (run.phase === "stage-ready" || run.phase === "stage-result")) {
     line(text("remainingSummary", { own: result?.remainingOwn ?? remaining.white, enemy: result?.remainingEnemy ?? remaining.black }));
   }
+  if (run.phase === "stage-result" && result?.observed && result.byAI && humanShotDetail)
+    line(`${text("yourLastShot")} · ${humanShotDetail}`);
   if (run.phase === "stage-result" || run.phase === "stage-ready") line(text("retained", values));
   if (run.phase !== "ended") line(text("pendingPoints", { points: soloRunPayout(run) }));
   else line(text("settled", { points: confirmedPayout ?? soloRunPayout(run) }));

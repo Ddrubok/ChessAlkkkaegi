@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { MASTERY_PROGRESS_KEY, MASTERY_REWARDS_KEY, MASTERY_PREFERENCES_KEY, MASTERY_KEYS, mergeMasteryValue, reconcileMasteryValues, validateMasteryValues } from "./mastery.ts";
 import { getRuntimeText, type RuntimeTextKey } from "./runtime-text.ts";
 import { portalStoragePersistent } from "./portal-browser-guards";
+import { createDefaultPermanentUpgrades } from "./meta";
 
 // Offline/client-authored sync data: validated shape and account ownership do
 // not prove earned progress. Never use these values to authorize ranked scores.
@@ -511,12 +512,19 @@ export class AccountProgressStorage {
         const existing = envelope.settlements[input.settlementId];
         if (existing) return Promise.resolve(sameSoloSettlement(existing, input)
           ? { status: "paid", payout: existing.payout } : { status: "conflict" });
-        const points = Number(envelope.data["chessAlkkagi.meta.points"]);
-        if (!Number.isSafeInteger(points) || points < 0 || !envelope.data["chessAlkkagi.meta.upgrades"]
+        const data = { ...envelope.data };
+        // A new guest may finish a run before ever saving research. Commit its
+        // defaults together with the first receipt; incomplete existing data stays blocked.
+        if (data["chessAlkkagi.meta.points"] === undefined && data["chessAlkkagi.meta.upgrades"] === undefined) {
+          data["chessAlkkagi.meta.points"] = "0";
+          data["chessAlkkagi.meta.upgrades"] = JSON.stringify(createDefaultPermanentUpgrades());
+        }
+        const points = Number(data["chessAlkkagi.meta.points"]);
+        if (!Number.isSafeInteger(points) || points < 0 || !data["chessAlkkagi.meta.upgrades"]
           || points > Number.MAX_SAFE_INTEGER - payout) return Promise.resolve({ status: "pending" });
         const next: GuestMeta = {
           schemaVersion: 2,
-          data: { ...envelope.data, "chessAlkkagi.meta.points": String(points + payout) },
+          data: { ...data, "chessAlkkagi.meta.points": String(points + payout) },
           settlements: { ...envelope.settlements, [input.settlementId]: { ...input, payout } },
         };
         readData(next.data);

@@ -13,7 +13,7 @@ import { I18nManager } from "./i18n";
 import { marketingRuntime } from "./marketing-runtime";
 import { getRuntimeText } from "./runtime-text";
 import { Vector3 } from "three";
-import { computeEffectiveMaxDragPixels, type InputRuntime } from "./input";
+import { computeEffectiveMaxDragPixels, isArmedPowerDrag, type InputRuntime } from "./input";
 import { MOUSE_POWER_EXPONENT, pullDistanceForPower } from "./power-controls";
 import { getSupabaseClient } from "./supabase-client";
 import { cancelItchAuth, startItchAuth } from "./itch-auth";
@@ -589,7 +589,8 @@ export class TutorialManager {
   /** A non-interactive cue follows the real piece; input, menus and scene exits hide it. */
   public updateInputGuide(input: InputRuntime): void {
     if (!this.isActive) return;
-    const idle = !this.isTransitioning && !input.policy.isInputBlocked() && input.activePointerId === null && input.cameraTransition === null;
+    const canGuide = !this.isTransitioning && !input.policy.isInputBlocked() && input.cameraTransition === null;
+    const idle = canGuide && input.activePointerId === null;
     const bishop = this.tutorialType === "advanced" && this.currentStep === 3;
     const king = this.tutorialType === "advanced" && this.currentStep === 4;
     const action = idle && input.aimRuntime.selectedPieceId !== null
@@ -605,7 +606,10 @@ export class TutorialManager {
     const showPull = firstShot || (king && this.kingSwapped && input.mode === "billiards" && input.aimRuntime.selectedPieceId !== null && !input.strikeMode);
     const pieceId = firstShot ? this.powerPractice ? "white-pawn-d4" : "white-pawn-d6" : bishop && input.aimRuntime.selectedPieceId === null ? "white-bishop-d2" : king && !this.kingSwapped ? (input.kingSwapMode ? "white-pawn-f6" : input.aimRuntime.selectedPieceId === null ? "white-king-d2" : null) : null;
     const mesh = pieceId ? input.sceneRuntime.pieceMeshes.get(pieceId) : showPull ? input.aimParametersRuntime.redDot : undefined;
-    if (!idle || !mesh || !mesh.visible || (pieceId && !input.policy.canSelectPiece(pieceId))) {
+    const heldFirstPawn = this.quickIntro && firstShot && canGuide && input.state === "aiming" &&
+      input.gesture?.source === "classic-canvas" && input.gesture.candidatePieceId === pieceId &&
+      !isArmedPowerDrag(input.gesture);
+    if ((!idle && !heldFirstPawn) || !mesh || !mesh.visible || (pieceId && !input.policy.canSelectPiece(pieceId))) {
       if (this.gestureElement) this.gestureElement.style.display = "none";
       return;
     }
@@ -613,7 +617,7 @@ export class TutorialManager {
       this.gestureElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       this.gestureElement.classList.add("tutorial-gesture");
       this.gestureElement.setAttribute("aria-hidden", "true");
-      this.gestureElement.innerHTML = '<circle r="16"/><path/>';
+      this.gestureElement.innerHTML = '<circle r="16"/><path/>' + (this.quickIntro ? '<circle class="tutorial-pull-dot" r="4"/>' : '');
       document.body.append(this.gestureElement);
     }
     const canvas = input.sceneRuntime.renderer.domElement.getBoundingClientRect();
@@ -629,6 +633,12 @@ export class TutorialManager {
     const circle = this.gestureElement.querySelector("circle")!;
     circle.setAttribute("cx", String(x)); circle.setAttribute("cy", String(y));
     const pullLength = Math.max(0, end - y);
+    const dot = this.gestureElement.querySelector(".tutorial-pull-dot");
+    if (dot) {
+      dot.setAttribute("cx", String(x));
+      dot.setAttribute("cy", String(y));
+      this.gestureElement.style.setProperty("--tutorial-pull", `${pullLength}px`);
+    }
     const radius = Math.min(16, pullLength / 4);
     const arrow = Math.min(7, pullLength / 4);
     circle.setAttribute("r", String(showPull ? radius : 16));

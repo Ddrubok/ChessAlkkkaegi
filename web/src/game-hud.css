@@ -212,6 +212,9 @@
     width: min(270px, calc(100% - 20px));
   }
   #app .strike-point-panel { width: min(140px, 38vw); }
+  #app:has(.player-banners:not([hidden])) .aim-power {
+    bottom: calc(var(--game-dock-bottom) + 80px);
+  }
 }
 
 @media (orientation: portrait) and (max-width: 520px) {
@@ -296,6 +299,9 @@
   #app:has(.player-banners:not([hidden])) .king-swap-banner {
     bottom: calc(var(--game-dock-bottom) + 62px);
     padding: 4px 8px;
+  }
+  #app:has(.player-banners:not([hidden])) .aim-power {
+    bottom: calc(var(--game-dock-bottom) + 62px);
   }
 }
 

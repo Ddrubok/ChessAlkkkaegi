@@ -12,7 +12,7 @@
 .feedback-practice-actions button:focus-visible { outline: 3px solid #fbbf24; outline-offset: 3px; }
 .feedback-practice-actions button:disabled { opacity: .6; cursor: wait; }
 .feedback-practice-modal .tutorial-modal-card { width: min(420px, calc(100vw - 32px)); max-height: 85vh; overflow-y: auto; }
-.feedback-stage-tip { position: absolute; top: 66px; left: 50%; transform: translateX(-50%); width: min(440px, calc(100vw - 32px)); padding: 10px 14px; border-radius: 8px; background: rgba(15,23,42,.94); border: 1px solid #475569; z-index: 32; }
+.feedback-stage-tip { box-sizing: border-box; width: min(440px, 100%); padding: 10px 14px; border-radius: 8px; background: rgba(15,23,42,.94); border: 1px solid #475569; pointer-events: auto; }
 .feedback-stage-tip button { float: right; margin-left: 8px; border: 0; padding: 2px 8px; background: #334155; color: white; cursor: pointer; min-width: 32px; min-height: 32px; }
 body:has(.main-menu-overlay:not([hidden])) .feedback-stage-tip { display: none; }
-@media(max-height: 520px) { .feedback-stage-tip { top: 8px; font-size: 11px; padding: 6px 10px; } }
+@media(max-height: 520px) { .feedback-stage-tip { font-size: 11px; padding: 6px 10px; } }

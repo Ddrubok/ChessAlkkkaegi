@@ -651,6 +651,21 @@ body {
   line-height: 1.45;
 }
 
+@media (max-height: 450px) and (min-width: 480px) {
+  .match-result-overlay:not(.cg-progression) .match-result-panel:has(.match-card-choices:not([hidden])) {
+    padding: .75rem;
+  }
+  .match-result-overlay:not(.cg-progression) .match-card-choices {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .5rem;
+  }
+  .match-result-overlay:not(.cg-progression) .upgrade-card {
+    min-width: 0;
+    min-height: 44px;
+    padding: .55rem;
+  }
+}
+
 .main-menu-overlay {
   position: absolute;
   z-index: 30;
@@ -1622,6 +1637,14 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
   filter: drop-shadow(0 1px 2px #000);
 }
 #app .tutorial-next-control { outline: 3px solid #ffdf69; outline-offset: 2px; }
+.tutorial-pull-dot { fill: currentColor; color: #ffdf69; }
+@media (prefers-reduced-motion: no-preference) {
+  .tutorial-pull-dot { animation: tutorial-pull 1.6s ease-out infinite; }
+  @keyframes tutorial-pull {
+    0%, 15% { transform: translateY(0); }
+    75%, 100% { transform: translateY(var(--tutorial-pull)); }
+  }
+}
 @media (max-height: 500px) {
   body[data-tutorial] { --tutorial-coach-top: 48px; }
   body[data-tutorial="basic"] #app { --game-hud-height: calc(104px + env(safe-area-inset-bottom, 0px)); --game-dock-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }

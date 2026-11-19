@@ -327,7 +327,7 @@ export function openPveLobbyModal(
 
       startBox.querySelector("#pve-start-btn")?.addEventListener("click", async () => {
         close();
-        if (PLATFORM.id === "itch" && runtime.onStartNewSoloRun) await startLobbyMode(runtime, "stage", selectedStage, "basic", true);
+        if (PLATFORM.features.solo && runtime.onStartNewSoloRun) await startLobbyMode(runtime, "stage", selectedStage, "basic", true);
         else await onStartStage(selectedStage);
       });
     } else {
@@ -868,7 +868,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
       void startLobbyMode(runtime, recommendation.mode, recommendation.stage, recommendation.tutorialType);
     }
   });
-  const soloRun = PLATFORM.id === "itch" ? runtime.getSoloRun?.() : null;
+  const soloRun = PLATFORM.features.solo ? runtime.getSoloRun?.() : null;
   if (soloRun && soloRun.phase !== "ended") {
     const end = document.createElement("button"); end.type = "button";
     end.dataset.soloRunEnd = ""; end.textContent = soloRunText("endRun");
@@ -1028,7 +1028,7 @@ export function createMainMenu(
     onConfirmAbandon,
   };
 
-  const retryStage = (): boolean => PLATFORM.id === "itch" && runtime.isStageMatch?.() === true
+  const retryStage = (): boolean => PLATFORM.features.solo && runtime.isStageMatch?.() === true
     && !!runtime.getSoloRun?.() && runtime.getSoloRun?.()?.phase !== "ended";
   const confirmLabel = (): string => retryStage() ? soloRunText("endRun") : I18nManager.t(abandonConfirmKey());
   const abandonDescription = (): string => {

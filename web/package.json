@@ -28,7 +28,7 @@
     "preview": "vite preview",
     "check:balance": "node src/tools/balance-csv-check.mjs",
     "check:knight-ai": "node src/tools/launch-kinematics-check.mjs && node src/tools/knight-ai-check.mjs && node src/tools/ai-headless-check.mjs",
-    "check:solo-retry": "node src/tools/solo-run-check.mjs && node src/tools/solo-run-settlement-check.mjs && node src/tools/solo-run-copy-check.mjs",
+    "check:solo-retry": "node src/tools/solo-run-check.mjs && node src/tools/solo-run-settlement-check.mjs && node src/tools/solo-run-copy-check.mjs && node src/tools/solo-core-flow-check.mjs",
     "experiment:strategy": "node src/tools/strategy-experiment-serve.mjs",
     "check:strategy-experiments": "node src/tools/strategy-experiment-sweep.mjs && node src/tools/strategy-experiment-check.mjs && node src/tools/strategy-role-check.mjs && node src/tools/strategy-experiment-analyze.mjs",
     "capture:map-previews": "node src/tools/capture-map-previews.mjs",

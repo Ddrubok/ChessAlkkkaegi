@@ -1094,6 +1094,54 @@
   .lobby-fit[data-portal="crazygames"] .lobby-hero-content { padding: 20px; }
 }
 
+/* Keep the primary modes and navigation in view on short phone landscape. */
+@media (min-width: 480px) and (max-width: 679px) and (max-height: 500px) and (orientation: landscape) {
+  .main-menu-overlay > .main-menu-panel.lobby-fit:not([data-portal]) {
+    gap: 8px;
+    padding: 8px;
+  }
+  .lobby-fit:not([data-portal]) .lobby-fit-body {
+    min-height: 0;
+    flex: 1 1 0;
+    grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .lobby-fit:not([data-portal]) .lobby-hero-content { gap: 4px; padding: 10px; }
+  .lobby-fit:not([data-portal]) .lobby-hero-title { margin: 3px 0; font-size: 18px; }
+  .lobby-fit:not([data-portal]) .lobby-hero-sub { font-size: 10px; line-height: 1.25; }
+  .lobby-fit:not([data-portal]) .lobby-cta { min-height: 44px; padding: 4px; font-size: 12px; }
+  .lobby-fit:not([data-portal]) .lobby-modes { grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .lobby-fit:not([data-portal]) .lobby-mode {
+    min-height: 0;
+    grid-template-columns: 24px minmax(0, 1fr);
+    row-gap: 2px;
+    column-gap: 4px;
+    padding: 5px;
+  }
+  .lobby-fit:not([data-portal]) .lobby-mode-icon { width: 24px; height: 24px; flex-basis: 24px; }
+  .lobby-fit:not([data-portal]) .lobby-mode-icon svg { width: 16px; height: 16px; }
+  .lobby-fit:not([data-portal]) .lobby-mode-title { font-size: 12px; line-height: 1.15; }
+  .lobby-fit:not([data-portal]) .lobby-mode-status { font-size: 10px; line-height: 1.15; }
+  .lobby-fit:not([data-portal]) .lobby-fit-nav { min-height: 44px; }
+  .lobby-fit:not([data-portal]) .lobby-fit-nav button { min-height: 44px; }
+}
+
+/* The settings dialog is created with inline sizing; keep its tabs and close control usable on touch screens. */
+@media (max-width: 600px), (pointer: coarse) and (max-height: 500px) {
+  .settings-modal-overlay .settings-modal-card [role="tablist"] { min-width: 0; }
+  .settings-modal-overlay .settings-modal-card [role="tab"] {
+    min-width: 0;
+    min-height: 44px;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  .settings-modal-overlay #settings-modal-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 380px) {
   .main-menu-overlay > .main-menu-panel.lobby-fit { gap: 12px; padding: 12px; }
   .lobby-fit .lobby-header h1 { font-size: 20px; }
