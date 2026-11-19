@@ -6,6 +6,8 @@ import { portalStoragePersistent } from "./portal-browser-guards";
 
 export interface SoloRun {
   schemaVersion: 3;
+  // Older v3 runs have no platform; their storage key supplies the namespace.
+  platform?: "itch" | "crazygames";
   rulesVersion: "itch-retry-v1";
   owner: string | null;
   runId: string;
@@ -24,6 +26,7 @@ export interface SoloRun {
 
 type Store = Pick<Storage, "getItem" | "setItem">;
 const prefix = PLATFORM.id === "itch" ? "ca_itch" : "ca_cg";
+const platform = PLATFORM.id === "itch" ? "itch" : "crazygames";
 const key = (owner: string | null) => `${prefix}_solo_run_v3:${owner ?? "guest"}`;
 const legacyKey = (owner: string | null) => `${prefix}_opening_v2:${owner ?? "guest"}`;
 const idPattern = /^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
@@ -40,7 +43,8 @@ function storageOrNull(storage?: Store): Store | null {
 
 // The legacy checkpoint has no ID. Its exact bytes and owner produce a stable ID on every retry.
 function legacyId(owner: string | null, raw: string): string {
-  const input = `${owner ?? "guest"}\0${raw}`;
+  // Keep the original itch ID contract; namespace newly migrated CG receipts.
+  const input = `${prefix === "ca_cg" ? "ca_cg\0" : ""}${owner ?? "guest"}\0${raw}`;
   return [0x811c9dc5, 0x9e3779b9, 0x85ebca6b, 0xc2b2ae35].map(seed => {
     let h = seed;
     for (let i = 0; i < input.length; i += 1) h = Math.imul(h ^ input.charCodeAt(i), 0x01000193);
@@ -49,7 +53,8 @@ function legacyId(owner: string | null, raw: string): string {
 }
 
 function valid(run: unknown, owner?: string | null): run is SoloRun {
-  if (!object(run) || run.schemaVersion !== 3 || run.rulesVersion !== "itch-retry-v1" || !ownerValid(run.owner) ||
+  if (!object(run) || run.schemaVersion !== 3 || run.rulesVersion !== "itch-retry-v1" ||
+      (run.platform !== undefined && run.platform !== platform) || !ownerValid(run.owner) ||
       (owner !== undefined && run.owner !== owner) || typeof run.runId !== "string" || !idPattern.test(run.runId) ||
       typeof run.settlementId !== "string" || run.settlementId !== `solo-v1:${run.runId}` || !count(run.revision) ||
       !stageNumber(run.startStage) || !stageNumber(run.stage) || run.stage < run.startStage ||
@@ -101,7 +106,7 @@ function next(run: SoloRun, patch: Partial<SoloRun>): SoloRun {
 
 export function createSoloRun(owner: string | null, stage: number, runId: string = crypto.randomUUID()): SoloRun {
   if (!ownerValid(owner) || !stageNumber(stage) || !idPattern.test(runId)) throw new Error("Invalid solo run origin");
-  const run: SoloRun = { schemaVersion: 3, rulesVersion: "itch-retry-v1", owner, runId, revision: 0,
+  const run: SoloRun = { schemaVersion: 3, platform, rulesVersion: "itch-retry-v1", owner, runId, revision: 0,
     startStage: stage, stage, phase: "stage-ready", cards: createRunCardState(), points: createStageRunPointState(stage),
     offer: null, result: null, endReason: null, settlementId: `solo-v1:${runId}` };
   requireRun(run);
@@ -121,8 +126,10 @@ export function readSoloRun(owner: string | null, storage?: Store): { run: SoloR
     }
     const oldRaw = store.getItem(legacyKey(owner));
     if (oldRaw === null) return { run: null, issue: null, migrated: false };
-    const oldEnvelope = JSON.parse(oldRaw);
-    if (oldEnvelope && oldEnvelope.run === null && [null, "complete", "skipped"].includes(oldEnvelope.intro)) {
+    let oldEnvelope: unknown;
+    try { oldEnvelope = JSON.parse(oldRaw); } catch { return { run: null, issue: "invalid", migrated: false }; }
+    if (object(oldEnvelope) && oldEnvelope.run === null &&
+        (oldEnvelope.intro === null || oldEnvelope.intro === "complete" || oldEnvelope.intro === "skipped")) {
       return { run: null, issue: null, migrated: false };
     }
     const old = readSoloState(owner, store).run;

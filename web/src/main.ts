@@ -131,7 +131,6 @@ import {
   showMatchResult,
   type MatchWinner,
   showStageRunResult,
-  showSoloDrawResult,
 } from "./match";
 import {
   createMainMenu,
@@ -332,7 +331,7 @@ async function bootstrap(): Promise<void> {
   const sessionUser = progressSession?.data.session?.user;
   const progressOwner = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : null;
   await progressStorage.activate(progressClient, progressOwner);
-  if (PLATFORM.id === "itch" && !await claimSoloRunTab(progressOwner)) {
+  if (PLATFORM.features.solo && !await claimSoloRunTab(progressOwner)) {
     const panel = document.createElement("section"); panel.className = "main-menu-overlay";
     const body = document.createElement("div"); body.className = "main-menu-panel";
     const message = document.createElement("p"); message.setAttribute("role", "status");
@@ -546,7 +545,7 @@ async function bootstrap(): Promise<void> {
   let weeklyRunOwner: string | null = null;
   let weeklySavePending = false, weeklySaveError = false;
   const stageRunPoints = createStageRunPointState();
-  const soloLoaded = PLATFORM.id === "itch" ? readSoloRun(progressStorage.owner) : null;
+  const soloLoaded = PLATFORM.features.solo ? readSoloRun(progressStorage.owner) : null;
   let soloRun: SoloRun | null = soloLoaded?.run ?? null;
   let soloSaved = soloLoaded?.issue !== "storage";
   let soloLookupPending = false;
@@ -584,7 +583,7 @@ async function bootstrap(): Promise<void> {
     null;
   let gameModeRuntime: GameModeRuntime | null = null;
   menuRuntime.isStageMatch = () => gameModeRuntime?.mode === "stage";
-  menuRuntime.getPendingStagePoints = () => PLATFORM.id === "itch" && soloRun && soloRun.phase !== "ended" ? soloRunPayout(soloRun) : gameModeRuntime?.mode === "stage"
+  menuRuntime.getPendingStagePoints = () => PLATFORM.features.solo && soloRun && soloRun.phase !== "ended" ? soloRunPayout(soloRun) : gameModeRuntime?.mode === "stage"
     ? computeStageRunPayout(stageRunPoints.lastClearedStage) - computeStageRunPayout((stageRunPoints.startedAtStage ?? 1) - 1)
     : 0;
   let puzzleInputBlocked = false;
@@ -1500,7 +1499,7 @@ async function bootstrap(): Promise<void> {
     resetTurnRuntime(turnRuntime);
     turnHud.reset();
     playerBanners.resetFeedback();
-    const runId = PLATFORM.id === "itch" && stageOptions.gameMode === "stage" && soloRun
+    const runId = PLATFORM.features.solo && stageOptions.gameMode === "stage" && soloRun
       ? `solo-clear:${soloRun.runId}:${stageOptions.stageNumber}` : typeof crypto !== "undefined" && "randomUUID" in crypto
       ? `match-${crypto.randomUUID()}` : `match-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     masteryRun = {
@@ -1709,15 +1708,15 @@ async function bootstrap(): Promise<void> {
           ) < 1e-9,
       });
     }
-    if (PLATFORM.features.solo && stageOptions.gameMode === "stage" && [1, 3, 7].includes(stageOptions.stageNumber)) {
+    if (PLATFORM.features.solo && stageOptions.gameMode === "stage" && [1, 2, 3, 7].includes(stageOptions.stageNumber)) {
       const copy = feedbackCopy();
       const tip = document.createElement("aside"); tip.className = "feedback-stage-tip";
       tip.setAttribute("aria-label", I18nManager.getLanguage() === "ko" ? "단계 안내" : "Stage tip");
       const close = document.createElement("button"); close.textContent = "×";
       close.setAttribute("aria-label", I18nManager.t("common.close")); close.onclick = clearStageTip;
       const text = document.createElement("span");
-      text.textContent = stageOptions.stageNumber === 1 ? copy.stageOpening : stageOptions.stageNumber === 3 ? copy.breakableWall : copy.pocketWall;
-      tip.append(close, text); app.append(tip);
+      text.textContent = stageOptions.stageNumber === 1 ? copy.stageOpening : stageOptions.stageNumber === 2 ? copy.rookChoice : stageOptions.stageNumber === 3 ? copy.knightChoice : copy.pocketWall;
+      tip.append(close, text); turnHud.element.append(tip);
     }
     console.info(
       `[대국] 다시 시작 완료: 백 선공, 물리 ${physicsRuntime.pieces.size}/${expectedPieceCount}, 렌더 ${sceneRuntime.pieceMeshes.size}/${expectedPieceCount}, 수면 ${sleepingCount}/${expectedPieceCount}`,
@@ -1803,15 +1802,8 @@ async function bootstrap(): Promise<void> {
     else resetRunCardState(runCardState);
     delete stageRunPoints.startedAtStage;
     Object.assign(stageRunPoints, nextRunPoints);
-    if (PLATFORM.id === "itch" && mode === "stage" && soloRun) {
+    if (PLATFORM.features.solo && mode === "stage" && soloRun) {
       restoreSoloBoundary();
-    } else if (PLATFORM.features.solo && mode === "stage") {
-      const saved = readSoloState(progressStorage.owner).run;
-      if (saved && saved.stage === gameModeRuntime?.stageNumber && saved.metaPoints === metaRuntime.state.points) {
-        restoreRunCardState(runCardState, saved.cards);
-        delete stageRunPoints.startedAtStage;
-        Object.assign(stageRunPoints, saved.points);
-      }
     }
     setTurnGameMode(turnRuntime, mode);
     turnRuntime.tuningSettings = mode === "weekly" ? weeklyTuningSettings : tuningRuntime.settings;
@@ -1824,9 +1816,6 @@ async function bootstrap(): Promise<void> {
     try {
       const stageNumber = gameModeRuntime?.stageNumber ?? 1;
       await resetBoard({ gameMode: mode, stageNumber });
-      if (PLATFORM.features.solo && PLATFORM.id !== "itch" && mode === "stage") writeSoloCheckpoint(progressStorage.owner, {
-        stage: stageNumber, metaPoints: metaRuntime.state.points, cards: cloneRunCardState(runCardState), points: { ...stageRunPoints },
-      });
     } catch (error: unknown) {
       restoreRunCardState(runCardState, previousCards);
       delete stageRunPoints.startedAtStage;
@@ -1966,7 +1955,7 @@ async function bootstrap(): Promise<void> {
   });
 
   turnRuntime.onMasterySettlement = (evidence) => {
-    if (PLATFORM.id === "itch" && gameModeRuntime?.mode === "stage" && soloRun?.phase === "stage-ready" && turnRuntime.lastLaunchInitialSpeed > 0) {
+    if (PLATFORM.features.solo && gameModeRuntime?.mode === "stage" && soloRun?.phase === "stage-ready" && turnRuntime.lastLaunchInitialSpeed > 0) {
       soloLastShot = { ownOut: evidence.removedPieces.filter(p => p.side === "white").length,
         enemyOut: evidence.removedPieces.filter(p => p.side === "black").length, forced: evidence.forced,
         byAI: evidence.launchingSide === "black" };
@@ -2053,7 +2042,25 @@ async function bootstrap(): Promise<void> {
         if (!soloRun || soloRun.runId !== run.runId || soloRun.phase !== "awaiting-card") return;
         commitSoloRun(chooseSoloRunCard(soloRun, cardId, tuningRuntime.settings.cardEffectScale));
         await prepareSoloRunBoard();
-      }, () => returnToMainMenu(menuRuntime));
+      }, () => returnToMainMenu(menuRuntime), null, Object.fromEntries(cards.map(card => {
+        const next = cloneRunCardState(run.cards);
+        applyCardPick(next, card.id, tuningRuntime.settings.cardEffectScale);
+        if (card.id === "giantPawn") {
+          const count = (state: typeof next) => selectStageSpawnInstances(PIECE_INSTANCES, { gameMode: "stage", stageNumber: run.stage + 1, runCards: state }).filter(p => p.side === "white" && p.type === "Pawn").length;
+          return [card.id, { pawnsLost: count(run.cards) - count(next) }];
+        }
+        if (card.id === "proneStart") return [card.id, {}];
+        const tuning = createCardEffectTuning(cardTuningRuntime.settings);
+        return [card.id, {
+          before: computeTunedGeneralCardEffect("stage", run.cards, card.id, tuningRuntime.settings.cardEffectScale, tuning),
+          after: computeTunedGeneralCardEffect("stage", next, card.id, tuningRuntime.settings.cardEffectScale, tuning),
+          appliedValues: finalCardValues(card.id, run.cards, next, {
+            gameMode: "stage", stageNumber: run.stage + 1,
+            permanentUpgrades: metaRuntime.state.upgrades,
+            cardEffectScale: tuningRuntime.settings.cardEffectScale, cardTuning: tuning,
+          }, assets.meta, physicsRuntime.pieces.values(), tuningRuntime.settings.maxLaunchSpeed, I18nManager.getLanguage() === "ko"),
+        }];
+      })));
       matchRuntime.overlay.dataset.soloRunState = run.phase;
       matchRuntime.menuButton.hidden = false;
       matchRuntime.menuButton.textContent = soloRunText("menu");
@@ -2081,11 +2088,15 @@ async function bootstrap(): Promise<void> {
       if (soloRun.phase !== "stage-ready" && soloRun.phase !== "preparing-stage") return;
       const run = soloRun;
       restoreSoloBoundary();
-      setStageNumber(gameModeRuntime!, run.stage);
-      await resetBoard({ gameMode: "stage", stageNumber: run.stage });
+      if (gameModeRuntime!.mode !== "stage") await switchGameMode(gameModeRuntime!, "stage", true, run.stage);
+      else {
+        setStageNumber(gameModeRuntime!, run.stage);
+        await resetBoard({ gameMode: "stage", stageNumber: run.stage });
+      }
       if (soloRun.runId !== run.runId || soloRun.revision !== run.revision || run.owner !== progressStorage.owner) return;
       if (run.phase === "preparing-stage") commitSoloRun(readySoloRun(run));
       else commitSoloRun(run);
+      ensureGameLoopStarted();
       hideMatchResult(matchRuntime);
       gameplay.enter("solo-stage-retry"); marketingRuntime.startLocalMatch("stage");
     } catch (error) {
@@ -2148,7 +2159,7 @@ async function bootstrap(): Promise<void> {
     if (currentSoloRun()?.phase === "ended") await returnToMainMenu(menuRuntime);
   };
   I18nManager.subscribe(() => {
-    if (PLATFORM.id === "itch" && soloRun && !matchRuntime.overlay.hidden && !matchRuntime.restarting) presentSoloRun();
+    if (PLATFORM.features.solo && soloRun && !matchRuntime.overlay.hidden && !matchRuntime.restarting) presentSoloRun();
   });
   const restartStageRun = async (): Promise<void> => {
     if (PLATFORM.features.solo) writeSoloCheckpoint(progressStorage.owner, null);
@@ -2168,7 +2179,7 @@ async function bootstrap(): Promise<void> {
       marketingRuntime.endMatch(winner, gameMode === "online" ? onlineRuntime?.mySide ?? "white" : "white");
     }
     const completedStage = gameModeRuntime?.stageNumber ?? 1;
-    if (PLATFORM.id === "itch" && gameMode === "stage" && soloRun && winner !== "white") {
+    if (PLATFORM.features.solo && gameMode === "stage" && soloRun && winner !== "white") {
       if (soloRun.phase !== "stage-ready") return;
       const next = recordSoloRunResult(soloRun, winner, undefined, soloLastShot);
       const remaining = countRemainingPieces(turnRuntime);
@@ -2176,20 +2187,6 @@ async function bootstrap(): Promise<void> {
         remainingOwn: remaining.white, remainingEnemy: remaining.black });
       commitSoloRun(next);
       presentSoloRun(); return;
-    }
-    if (PLATFORM.features.solo && PLATFORM.id !== "itch" && gameMode === "stage" && winner === "draw") {
-      // A draw neither clears the stage nor settles the run. Keep the exact
-      // stage-boundary state, so a retry/reload cannot reroll cards or rewards.
-      writeSoloCheckpoint(progressStorage.owner, {
-        stage: completedStage, metaPoints: metaRuntime.state.points,
-        cards: cloneRunCardState(runCardState), points: { ...stageRunPoints },
-      });
-      showSoloDrawResult(matchRuntime, completedStage, async () => {
-        await resetBoard({ gameMode: "stage", stageNumber: completedStage });
-        hideMatchResult(matchRuntime);
-        gameplay.enter("stage-draw-replay"); marketingRuntime.startLocalMatch("stage");
-      }, async () => { clearStageTip(); await returnToMainMenu(menuRuntime); });
-      return;
     }
     if (gameMode === "weekly" && weeklyRun) {
       const runAtResult = weeklyRun;
@@ -2276,7 +2273,7 @@ async function bootstrap(): Promise<void> {
       if (!tuningIsDefault()) questRun.eligible = false;
       if (questRun.eligible) {
         const context = questStorage.captureContext();
-        if (context) questStorage.enqueue(makePveWinEvent(PLATFORM.id === "itch" && soloRun ? soloRun.runId : questRun.runId, completedStage, context.periods, context.occurredAt));
+        if (context) questStorage.enqueue(makePveWinEvent(PLATFORM.features.solo && soloRun ? soloRun.runId : questRun.runId, completedStage, context.periods, context.occurredAt));
       }
     }
     if (gameMode === "stage" && winner === "white" && masteryRun) {
@@ -2294,7 +2291,7 @@ async function bootstrap(): Promise<void> {
       finishBannerMatch(progressStorage, masteryRun.banner, masteryRun.eventId, gameMode === "stage" && winner === "white");
     }
     const openAllMastery = () => openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });
-    if (PLATFORM.id === "itch" && gameMode === "stage" && soloRun) {
+    if (PLATFORM.features.solo && gameMode === "stage" && soloRun) {
       if (soloRun.phase !== "stage-ready") return;
       const choices = completedStage < 10 ? drawUpgradeCards(completedStage, runCardState,
         tuningRuntime.settings.cardEffectScale).map(card => card.id) : undefined;
@@ -2418,25 +2415,6 @@ async function bootstrap(): Promise<void> {
       gameMode === "online"
         ? onlineRuntime?.mySide ?? null
         : null,
-      PLATFORM.features.solo && gameMode === "stage" ? Object.fromEntries(upgradeCards.map(card => {
-        const next = cloneRunCardState(runCardState);
-        applyCardPick(next, card.id, tuningRuntime.settings.cardEffectScale);
-        if (card.id === "giantPawn") {
-          const count = (cards: typeof next) => selectStageSpawnInstances(PIECE_INSTANCES, { gameMode: "stage", stageNumber: completedStage + 1, runCards: cards }).filter(p => p.side === "white" && p.type === "Pawn").length;
-          return [card.id, { pawnsLost: count(runCardState) - count(next) }];
-        }
-        if (card.id === "proneStart") return [card.id, {}];
-        const tuning = createCardEffectTuning(cardTuningRuntime.settings);
-        return [card.id, {
-          before: computeTunedGeneralCardEffect("stage", runCardState, card.id, tuningRuntime.settings.cardEffectScale, tuning),
-          after: computeTunedGeneralCardEffect("stage", next, card.id, tuningRuntime.settings.cardEffectScale, tuning),
-          appliedValues: finalCardValues(card.id, runCardState, next, {
-            gameMode: "stage", stageNumber: completedStage + 1,
-            permanentUpgrades: metaRuntime.state.upgrades,
-            cardEffectScale: tuningRuntime.settings.cardEffectScale, cardTuning: tuning,
-          }, assets.meta, physicsRuntime.pieces.values(), tuningRuntime.settings.maxLaunchSpeed, I18nManager.getLanguage() === "ko"),
-        }];
-      })) : {},
     );
     if (gameMode === "stage" && !PLATFORM.features.solo) appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, openAllMastery);
     if (gameMode === "stage" && !PLATFORM.features.solo) appendQuestResult(matchRuntime.resultDetails, questResultBaseline, questStorage, () => openQuestBook(app, questStorage));
@@ -2469,6 +2447,7 @@ async function bootstrap(): Promise<void> {
         tutorialManager.updateInputGuide(inputRuntime);
         const selectedBinding = inputRuntime.policy.isInputBlocked() || turnRuntime.phase !== "ready"
           ? undefined : physicsRuntime.pieces.get(aimRuntime.selectedPieceId ?? "");
+        if (selectedBinding) clearStageTip();
         pieceIdentity.update(selectedBinding?.instance.type ?? null, gameModeRuntime!.mode,
           aimParametersRuntime.strikePointOverride !== null,
           selectedBinding ? turnRuntime.kingSpecialUsed[selectedBinding.instance.side] : false,
@@ -2531,7 +2510,7 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
-    if (PLATFORM.id === "itch" && mode === "stage") {
+    if (PLATFORM.features.solo && mode === "stage") {
       if (soloActionPending) throw new Error(soloRunText("preparing"));
       if (soloRun?.phase === "ending") {
         await resumeSoloRun();
@@ -2767,6 +2746,11 @@ async function bootstrap(): Promise<void> {
     }
     if (mode === "weekly" && !weeklyRun) throw new Error("Weekly challenge run is not prepared.");
     if (PLATFORM.features.solo && mode === "stage" && (selectedStage ?? 1) <= 3) switchInputMode(inputRuntime, "classic", false);
+    // Saved results and card offers remain accessible even if a new board cannot be prepared.
+    if (PLATFORM.features.solo && mode === "stage" && soloRun && soloRun.phase !== "stage-ready") {
+      await resumeSoloRun();
+      return;
+    }
     const previousHotseatMapId = selectedHotseatMapId;
     if (mode === "hotseat") selectedHotseatMapId = nextHotseatMapId;
     try {
@@ -2776,9 +2760,11 @@ async function bootstrap(): Promise<void> {
       throw error;
     }
     ensureGameLoopStarted();
-    marketingRuntime.startLocalMatch(mode);
-    if (PLATFORM.id === "itch" && mode === "stage") await resumeSoloRun();
-    if (!awaitingWeeklyCard) gameplay.enter("mode-start");
+    if (PLATFORM.features.solo && mode === "stage") await resumeSoloRun();
+    if (!awaitingWeeklyCard && matchRuntime.overlay.hidden) {
+      marketingRuntime.startLocalMatch(mode);
+      gameplay.enter("mode-start");
+    }
   };
 
   const startPreparedWeeklyRun = async (run: WeeklyChallengePracticeRun, account: boolean): Promise<void> => {
@@ -3046,7 +3032,7 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
-    if (PLATFORM.id === "itch" && gameModeRuntime.mode === "stage" && soloRun) {
+    if (PLATFORM.features.solo && gameModeRuntime.mode === "stage" && soloRun) {
       commitSoloRun(soloRun);
       resetAiMatch(aiRuntime);
       lockInputForMatchOver(inputRuntime);
@@ -3088,7 +3074,7 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
-    if (PLATFORM.id === "itch" && gameModeRuntime.mode === "stage" && soloRun) {
+    if (PLATFORM.features.solo && gameModeRuntime.mode === "stage" && soloRun) {
       await settleSoloRun();
       if (soloRun.phase === "ended") await returnToMainMenu(menuRuntime);
       return;

@@ -76,7 +76,7 @@ export function renderHeaderActions(nameOrOptions?: HeaderActionIcon | { showLog
 }
 
 export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; tutorialType: "basic" | "advanced"; stage: number; assetId: "lobbyHeroStage" | "lobbyHeroTutorial" | "lobbyAvatar"; eyebrow: string; title: string; body: string; cta: string } {
-  const run = PLATFORM.id === "itch" ? runtime.getSoloRun?.() : null;
+  const run = PLATFORM.features.solo ? runtime.getSoloRun?.() : null;
   if (run && run.phase !== "ended") {
     const label = soloRunText(run.phase === "ending" ? "settlementRetry" : run.phase === "awaiting-card" ? "resumeCard" : "resume", { stage: run.stage });
     return { mode: "stage", tutorialType: "basic", stage: run.stage, assetId: "lobbyHeroStage",
@@ -118,7 +118,7 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
       cta: member ? I18nManager.t("lobby.hero_cta_online") : uiPolishCopy().friendlyTitle,
     };
   }
-  const stage = PLATFORM.id === "itch" ? recommendation.stage : solo?.run?.stage ?? recommendation.stage;
+  const stage = recommendation.stage;
   return {
     mode: "stage",
     tutorialType: "basic",
@@ -126,7 +126,7 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     assetId: "lobbyHeroStage",
     eyebrow: I18nManager.t("lobby.hero_eyebrow_continue"),
     title: I18nManager.t("lobby.hero_title_stage", { stage }),
-    body: PLATFORM.id !== "itch" && solo?.run ? soloCopy().saved : I18nManager.t("lobby.hero_sub_stage", { cleared: getMaxClearedStage(runtime.metaRuntime.storage), max: PVE_MAX_STAGE, points: runtime.metaRuntime.state.points }),
+    body: I18nManager.t("lobby.hero_sub_stage", { cleared: getMaxClearedStage(runtime.metaRuntime.storage), max: PVE_MAX_STAGE, points: runtime.metaRuntime.state.points }),
     cta: I18nManager.t("lobby.hero_cta_stage"),
   };
 }

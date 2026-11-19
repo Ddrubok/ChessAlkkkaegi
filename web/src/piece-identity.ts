@@ -8,7 +8,7 @@ export function pieceIdentityCopy(type: PieceType, mode: GameMode, spin: boolean
   switch (type) {
     case "Rook": return {
       condition: ko ? `최대 ${spin ? 100 : 150}% · ${spin ? "스핀 타점" : "중앙 타점"}` : `Max ${spin ? 100 : 150}% · ${spin ? "spin strike" : "central strike"}`,
-      detail: ko ? "중앙 타격은 최대 150%, 스핀 타격은 최대 100%입니다." : "Central strikes allow 150% power; adding spin limits power to 100%.",
+      detail: ko ? "중앙 타격은 최대 150%, 스핀 타격은 최대 100%입니다. 강하게 칠수록 내 말도 장외로 나갈 수 있습니다." : "Central strikes allow 150% power; adding spin limits power to 100%. Strong shots can send your own piece off too.",
     };
     case "Queen": return {
       condition: ko ? "최대 150% · 스핀 굴절" : "Max 150% · spin ricochet",
@@ -20,11 +20,11 @@ export function pieceIdentityCopy(type: PieceType, mode: GameMode, spin: boolean
     };
     case "Knight": return {
       condition: ko ? "65° 도약 · 최대 100%" : "65° jump · max 100%",
-      detail: ko ? "높은 포물선으로 앞 기물을 넘습니다. 약한 입력에도 최소 도약 세기 보정이 적용됩니다." : "A high arc can clear pieces in front. Even soft input receives a minimum jump-power correction.",
+      detail: ko ? "높은 포물선으로 앞 기물을 넘습니다. 약한 입력에도 최소 도약 세기 보정이 적용되며, 강하게 쏘면 가까운 목표를 넘어갈 수 있습니다." : "A high arc can clear pieces in front. Soft input receives a minimum jump-power correction; stronger shots can overshoot a nearby target.",
     };
     case "Pawn": return {
       condition: mode === "online" || mode === "puzzle" || !promotionEnabled ? (ko ? "최대 100% · 이 판에서는 승격 없음" : "Max 100% · no promotion in this match") : (ko ? "최대 100% · 끝 진영 생존 시 승격" : "Max 100% · promotion at the far end"),
-      detail: mode === "online" || mode === "puzzle" || !promotionEnabled ? (ko ? "현재 모드·단계에서는 폰 승격을 지원하지 않습니다." : "Pawn promotion is unavailable in this mode or stage.") : (ko ? "상대 진영 끝에 도달한 뒤 상대 턴을 버텨내면 승격할 수 있습니다." : "Reach the opponent's end and survive the opponent's turn to promote."),
+      detail: mode === "online" || mode === "puzzle" || !promotionEnabled ? (ko ? "약한 지상 샷으로 가까운 말을 밀거나 자리를 잡아보세요. 현재 모드·단계에서는 승격할 수 없습니다." : "Try a soft ground shot to nudge a nearby piece or adjust position. Promotion is unavailable in this mode or stage.") : (ko ? "상대 진영 끝에 도달한 뒤 상대 턴을 버텨내면 승격할 수 있습니다." : "Reach the opponent's end and survive the opponent's turn to promote."),
     };
     case "King": return {
       condition: mode === "online" || mode === "puzzle" ? (ko ? "최대 100% · 이 모드에서는 특수기 없음" : "Max 100% · specials unavailable here") : kingUsed ? (ko ? "최대 100% · 특수기 사용 완료" : "Max 100% · special already used") : (ko ? "최대 100% · 교환 / 방어 중 한 번" : "Max 100% · one swap or defense"),

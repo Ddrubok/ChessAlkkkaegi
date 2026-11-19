@@ -13,6 +13,25 @@ const store = initial => {
 };
 try {
   const { AccountProgressStorage } = await vite.ssrLoadModule('/src/progress-storage.ts');
+  const { parsePermanentUpgrades } = await vite.ssrLoadModule('/src/meta.ts');
+  for (const initial of [[], [['ca_guest_meta_v1', JSON.stringify({ has_completed_tutorial: 'skipped' })]]]) {
+    const fresh = store(initial), newGuest = new AccountProgressStorage(() => fresh);
+    fresh.fail = true;
+    assert.deepEqual(await newGuest.settleSoloRun(input), { status: 'pending' });
+    assert.equal(fresh.values.get('ca_guest_meta_v2'), undefined, 'defaults and receipt are atomic');
+    fresh.fail = false;
+    assert.deepEqual(await newGuest.settleSoloRun(input), { status: 'paid', payout: 12 });
+    const saved = JSON.parse(fresh.values.get('ca_guest_meta_v2'));
+    assert.equal(saved.data['chessAlkkagi.meta.points'], '12');
+    assert.doesNotThrow(() => parsePermanentUpgrades(JSON.parse(saved.data['chessAlkkagi.meta.upgrades'])));
+    assert.equal(Object.keys(saved.settlements).length, 1);
+    assert.deepEqual(await new AccountProgressStorage(() => fresh).settleSoloRun(input), { status: 'paid', payout: 12 });
+    assert.equal(newGuest.getItem('chessAlkkagi.meta.points'), '12', 'retry does not credit again');
+  }
+  const partial = store([['chessAlkkagi.meta.points', '99']]);
+  assert.deepEqual(await new AccountProgressStorage(() => partial).settleSoloRun(input), { status: 'pending' });
+  assert.equal(partial.values.get('chessAlkkagi.meta.points'), '99');
+  assert.equal(partial.values.get('ca_guest_meta_v2'), undefined, 'do not replace damaged research with defaults');
   const local = store([['ca_guest_meta_v1', JSON.stringify({ 'chessAlkkagi.meta.points': '20', 'chessAlkkagi.meta.upgrades': '{}', has_completed_tutorial: 'true' })]]);
   const guest = new AccountProgressStorage(() => local);
   local.fail = true;

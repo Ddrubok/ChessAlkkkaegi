@@ -18,6 +18,8 @@ export function feedbackCopy() {
     breakableWall: "이 벽은 새 접촉이 두 번 발생하면 부서집니다. 첫 접촉 후 균열이 생깁니다. 낮은 벽은 뛰어넘을 수 있습니다.",
     pocketWall: "이 단계의 벽은 부서지지 않습니다. 모서리 출구를 이용하세요.",
     stageOpening: "내 폰 3개 · 상대 폰 3개. 한 발 제한이 아닙니다. 약하게 쏘며 위치를 잡아도 됩니다.",
+    rookChoice: "폰과 룩을 골라 보세요. 룩의 중앙 타격은 최대 150%지만, 세게 치면 내 말도 떨어질 수 있습니다.",
+    knightChoice: "폰의 지상 공격과 나이트의 도약을 비교해 보세요. 낮은 벽은 넘을 수 있지만, 착지 위치는 세기에 따라 달라집니다. 이 벽은 새 접촉 두 번에 부서집니다.",
   } : {
     practice: "Practice a softer shot", practiceTitle: "Power control practice", practiceGoal: "Release one shot at 30–50% power. You do not need a knockout.",
     practiceGuide: "Pull a little for a softer shot. Move back toward the piece to reduce power.",
@@ -35,6 +37,8 @@ export function feedbackCopy() {
     breakableWall: "These walls break after two new contacts. The first contact leaves a crack. Low walls can be jumped over.",
     pocketWall: "These walls do not break. Use the corner exits.",
     stageOpening: "Three pawns on each side. This is not a one-shot challenge. Softer shots can help you position your pieces.",
+    rookChoice: "Choose a Pawn or Rook. A central Rook strike allows 150% power, but a strong shot can send your own piece off too.",
+    knightChoice: "Compare a Pawn's ground shot with a Knight's jump. It can clear low walls; power changes where it lands. These walls break after two new contacts.",
   };
 }
 

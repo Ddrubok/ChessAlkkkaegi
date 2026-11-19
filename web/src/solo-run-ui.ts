@@ -29,7 +29,7 @@ export function showSoloRunState(
     const p = document.createElement("p"); p.textContent = value; runtime.resultDetails.append(p);
   };
   if (run.phase === "stage-result" && result?.observed) {
-    if (result.byAI) line(text("aiShot"));
+    line(text(result.byAI ? "aiShot" : "playerShot"));
     line(text("shotSummary", { own: result.ownOut, enemy: result.enemyOut }));
   } else if (remaining && (run.phase === "stage-ready" || run.phase === "stage-result")) {
     line(text("remainingSummary", { own: result?.remainingOwn ?? remaining.white, enemy: result?.remainingEnemy ?? remaining.black }));
