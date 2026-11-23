@@ -8,7 +8,7 @@ try {
   const emptyCards={sizeGrade:0,weightGrade:0,forceGrade:0,giantPawn:false,proneStart:false,picksSoFar:0};
   for(const {code} of SUPPORTED_LANGUAGES){
     I18nManager.setLanguage(code);
-    for(const key of ['loss','draw','retained','retry','menu','pendingPoints','shotSummary','remainingSummary','aiShot','playerShot','preparing','prepareFailed','prepareRetry','choiceCommitted','saveFailed','sessionOnly','resume','resumeCard','settlementPending','settlementRetry','endRun','endTitle','endDescription','continueRun','confirmEnd','newRun','conflict','lockUnavailable','invalidSave','migrated','alreadyEnded','settled','ownedUpgrade']) {
+    for(const key of ['loss','draw','retained','retry','menu','pendingPoints','shotSummary','remainingSummary','aiShot','playerShot','preparing','prepareFailed','prepareRetry','choiceCommitted','saveFailed','sessionOnly','sessionFallback','resume','resumeCard','settlementPending','settlementRetry','endRun','endTitle','endDescription','continueRun','confirmEnd','newRun','conflict','tabOccupied','lockUnavailable','invalidSave','migrated','alreadyEnded','settled','ownedUpgrade']) {
       const value=soloRunText(key,{stage:4,points:55,own:2,enemy:3,card:'CARD'});
       assert.ok(value && !value.includes('{'),`${code}:${key} unresolved text`);
     }

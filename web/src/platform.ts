@@ -7,8 +7,7 @@ export const PLATFORM = {
   id: crazygamesBuild ? "crazygames" : itchBuild ? "itch" : pokiBuild ? "poki" : "web",
   features: {
     solo: crazygamesBuild || itchBuild,
-    // Solo review candidate. Keep the other releases' multiplayer routes intact.
-    online: !pokiBuild && !crazygamesBuild,
+    online: !pokiBuild,
     cloudProgress: !pokiBuild,
     accounts: !pokiBuild && !crazygamesBuild,
     externalLinks: !portalBuild,

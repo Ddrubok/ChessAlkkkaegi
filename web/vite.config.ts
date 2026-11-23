@@ -127,7 +127,10 @@ export default defineConfig(({ command, isPreview, mode }) => {
     dirty = Boolean(execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], { cwd: PROJECT_ROOT, encoding: "utf8" }).trim());
   } catch { /* Source archives may not contain Git metadata. */ }
   const builtAt = new Date().toISOString();
-  const buildInfo = { build: `${commit.slice(0, 12)}${dirty ? "-dirty" : ""}-${builtAt.replace(/\D/g, "").slice(0, 14)}`, commit, builtAt, dirty, mode };
+  const gradle = readFileSync(resolve(PROJECT_ROOT, "android/app/build.gradle"), "utf8");
+  const version = /^\s*versionName\s+"([^"]+)"/m.exec(gradle)?.[1];
+  if (!version) throw new Error("Missing release version in android/app/build.gradle");
+  const buildInfo = { build: `${commit.slice(0, 12)}${dirty ? "-dirty" : ""}-${builtAt.replace(/\D/g, "").slice(0, 14)}`, version, commit, builtAt, dirty, mode };
   const staging = mode === "staging";
   const pokiBuild = mode === "poki";
   const crazygamesBuild = mode === "crazygames";
@@ -202,7 +205,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
         // Vite define does not replace properties of an imported binding.
         // Resolve these known feature reads before bundling so disabled imports disappear.
         const featuresResolved = code.replace(/\bPLATFORM\.features\.(solo|online|cloudProgress|accounts|externalLinks|debugTools)\b/gu,
-          (_match, feature: string) => String(feature === "solo" ? crazygamesBuild || itchBuild : feature === "cloudProgress" ? !pokiBuild : feature === "online" ? !pokiBuild && !crazygamesBuild : feature === "accounts" ? !pokiBuild && !crazygamesBuild : !portalBuild));
+          (_match, feature: string) => String(feature === "solo" ? crazygamesBuild || itchBuild : feature === "cloudProgress" || feature === "online" ? !pokiBuild : feature === "accounts" ? !pokiBuild && !crazygamesBuild : !portalBuild));
         return featuresResolved.replace(/\bPLATFORM\.id\b/gu,
           JSON.stringify(crazygamesBuild ? "crazygames" : itchBuild ? "itch" : pokiBuild ? "poki" : "web"));
       },

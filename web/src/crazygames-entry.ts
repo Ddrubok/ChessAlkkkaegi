@@ -8,4 +8,6 @@ const { getSdk } = await import("./crazygames-sdk");
 let sdkLocale: unknown;
 try { sdkLocale = getSdk()?.user.systemInfo?.locale; } catch { /* SDK unavailable. */ }
 I18nManager.init(normalizeLanguage(sdkLocale) || "en");
+const { showFirstVisitPrivacyNotice } = await import("./crazygames-privacy-notice");
+showFirstVisitPrivacyNotice(I18nManager);
 await import("./main");

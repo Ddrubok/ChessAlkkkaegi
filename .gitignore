@@ -18,6 +18,7 @@ keystore.properties
 
 # Dedicated CrazyGames output and observation-only local QA bundle.
 /web/dist-crazygames/
+/release/
 /qa/crazygames-basic-2026-10-28/observed-dist/
 /qa/crazygames-basic-2026-10-28/viewport-dist/
 /qa/polyhaven-model-2026-10-28/observed-dist/

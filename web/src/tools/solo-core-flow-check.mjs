@@ -26,7 +26,7 @@ try {
     assets:{meta},physicsRuntime:{pieces:new Map()},cardTuningRuntime:{settings:{}},
     createCardEffectTuning:()=>undefined,I18nManager:{getLanguage:()=>'en'},
     soloRun: model.createSoloRun(null,1,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
-    soloActionPending:false, soloLookupPending:false, soloSaved:true,
+    soloActionPending:false, soloLookupPending:false, soloSaved:true, soloSessionOnly:false,
     soloLastShot:undefined, soloLastHumanShot:undefined,
     progressStorage:{owner:null, lookupSoloRunSettlement:async()=>({status:'unpaid'}),
       settleSoloRun:async()=>{settlements++;return {status:'paid',payout:1};}},
@@ -81,6 +81,13 @@ try {
   await api.settle();assert.equal(context.soloRun.phase,'ended');assert.equal(settlements,1);
   context.progressStorage.lookupSoloRunSettlement=async()=>({status:'paid',payout:1});
   await api.resume();assert.equal(context.soloRun.phase,'ended');assert.equal(settlements,1);
+  context.soloSessionOnly=true;
+  context.soloRun=model.createSoloRun(null,1,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+  await api.settle();
+  assert.equal(context.soloRun.phase,'ended','session-only run can finish without a receipt');
+  assert.equal(settlements,1,'session-only run never reaches account or guest settlement');
+  await api.resume();
+  assert.equal(settlements,1,'resuming a session-only result cannot settle twice');
   assert(resets>=4);
 
   const boundaryStart=source.indexOf('    // Saved results and card offers remain accessible');

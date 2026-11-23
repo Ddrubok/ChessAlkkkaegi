@@ -5,7 +5,7 @@ import { createSoloRun, readSoloRun, saveSoloRun, replaceInvalidSoloRun, recordS
 import { soloRunText } from "./solo-run-copy";
 import { showSoloRunState, confirmSoloRunEnd } from "./solo-run-ui";
 import { claimSoloRunTab } from "./solo-run-lock";
-import { portalStoragePersistent, reportPortalStorageUnavailable } from "./portal-browser-guards";
+import { portalStoragePersistent, reportPortalStorageUnavailable, useTemporaryPortalStorage } from "./portal-browser-guards";
 import "./crazygames-opening.css";
 import "./solo-run.css";
 import { marketingRuntime } from "./marketing-runtime";
@@ -301,11 +301,18 @@ async function bootstrap(): Promise<void> {
   app.replaceChildren(loadingPanel);
   initializeSound();
   let portalVerifiedProfile: UserProfile | null = null;
+  const pendingCrazyGamesQuickMatchKey = "ca_crazygames_pending_quick_match";
+  let signingInForMatch = false;
+  let resumeQuickMatch = false;
   if (PLATFORM.id === "crazygames") {
     const { onIdentityChanged, getCachedUser } = await import("./crazygames-sdk");
     const portalClient = getSupabaseClient();
+    const pendingPlayer = sessionStorage.getItem(pendingCrazyGamesQuickMatchKey);
+    sessionStorage.removeItem(pendingCrazyGamesQuickMatchKey);
     onIdentityChanged(() => {
       // A different portal account must never inherit an active ranked peer/session.
+      const player = getCachedUser()?.__dangerousUserId;
+      if (signingInForMatch && !portalVerifiedProfile && player) sessionStorage.setItem(pendingCrazyGamesQuickMatchKey, player);
       app.inert = true;
       portalClient?.realtime.disconnect();
       window.location.reload();
@@ -313,8 +320,9 @@ async function bootstrap(): Promise<void> {
     if (portalClient) {
       const { signInCrazyGames } = await import("./crazygames-auth");
       // Resolve the portal account before selecting its progress namespace.
-      // A failed exchange still lets guests start a solo game.
+      // A failed exchange still lets guests play solo or use invite-code matches.
       portalVerifiedProfile = await signInCrazyGames(portalClient).catch(() => null);
+      resumeQuickMatch = !!pendingPlayer && !!portalVerifiedProfile && pendingPlayer === getCachedUser()?.__dangerousUserId;
     }
     if (getCachedUser() && !portalVerifiedProfile) {
       const notice = document.createElement("p");
@@ -330,20 +338,57 @@ async function bootstrap(): Promise<void> {
   if (progressSession?.error) throw new Error("로그인 상태를 확인하지 못했습니다. 연결을 확인한 뒤 새로고침해 주세요.");
   const sessionUser = progressSession?.data.session?.user;
   const progressOwner = sessionUser && !sessionUser.is_anonymous ? sessionUser.id : null;
-  await progressStorage.activate(progressClient, progressOwner);
-  if (PLATFORM.features.solo && !await claimSoloRunTab(progressOwner)) {
+  const soloTabClaim = PLATFORM.features.solo ? await claimSoloRunTab(progressOwner) : "acquired";
+  let soloSessionOnly = soloTabClaim === "session-only";
+  let progressReadPractice = false;
+  if (soloTabClaim === "occupied") {
     const panel = document.createElement("section"); panel.className = "main-menu-overlay";
     const body = document.createElement("div"); body.className = "main-menu-panel";
     const message = document.createElement("p"); message.setAttribute("role", "status");
-    message.textContent = soloRunText(navigator.locks ? "conflict" : "lockUnavailable");
+    message.textContent = soloRunText("tabOccupied");
     const reload = document.createElement("button"); reload.type = "button";
     reload.textContent = I18nManager.t("tier.retry"); reload.onclick = () => window.location.reload();
     body.append(message, reload); panel.append(body); app.replaceChildren(panel);
     loadingPanel.remove(); loadingFinished(); reload.focus(); return;
   }
-  await questStorage.activate(PLATFORM.features.solo ? null : progressClient, progressOwner);
-  await weeklyChallengeStorage.activate(PLATFORM.features.solo ? null : progressClient, progressOwner);
-  if (progressOwner && progressClient) {
+  if (soloSessionOnly) useTemporaryPortalStorage();
+  await progressStorage.activate(soloSessionOnly ? null : progressClient, soloSessionOnly ? null : progressOwner);
+  if (PLATFORM.id === "crazygames" && progressOwner && !soloSessionOnly
+    && !progressStorage.ready && progressStorage.saveFailed && !progressStorage.conflict && !progressStorage.unsafeData) {
+    const copy = I18nManager.getLanguage() === "ko"
+      ? { message: "계정 진행도를 불러오지 못했습니다. 다시 시도하거나, 계정에 저장되지 않는 임시 연습을 시작할 수 있습니다.", retry: "다시 시도", practice: "임시 연습 시작", retrying: "계정 진행도를 다시 확인하는 중..." }
+      : { message: "Account progress could not be loaded. Retry, or play temporary practice that will not save to your account.", retry: "Retry account", practice: "Start temporary practice", retrying: "Checking account progress..." };
+    const panel = document.createElement("section"); panel.className = "main-menu-overlay";
+    const body = document.createElement("div"); body.className = "main-menu-panel";
+    const message = document.createElement("p"); message.setAttribute("role", "status"); message.textContent = copy.message;
+    const retry = document.createElement("button"); retry.type = "button"; retry.textContent = copy.retry;
+    const practice = document.createElement("button"); practice.type = "button"; practice.textContent = copy.practice;
+    body.append(message, retry, practice); panel.append(body); app.replaceChildren(panel);
+    loadingFinished();
+    await new Promise<void>(resolve => {
+      retry.onclick = async () => {
+        retry.disabled = true; practice.disabled = true; message.textContent = copy.retrying;
+        await progressStorage.retry();
+        if (progressStorage.ready) { resolve(); return; }
+        message.textContent = copy.message; retry.disabled = false; practice.disabled = false;
+      };
+      practice.onclick = () => {
+        progressReadPractice = true;
+        soloSessionOnly = true;
+        portalVerifiedProfile = null;
+        resumeQuickMatch = false;
+        useTemporaryPortalStorage();
+        resolve();
+      };
+    });
+    panel.remove();
+    if (progressReadPractice) await progressStorage.activate(null, null);
+  }
+  if (!soloSessionOnly) {
+    await questStorage.activate(PLATFORM.features.solo ? null : progressClient, progressOwner);
+    await weeklyChallengeStorage.activate(PLATFORM.features.solo ? null : progressClient, progressOwner);
+  }
+  if (!soloSessionOnly && progressOwner && progressClient) {
     localStorage.setItem("ca_logged_in_user", "true");
     localStorage.setItem("ca_guest_user_uuid", progressOwner);
     await getOrCreateUserProfile(progressClient);
@@ -351,7 +396,7 @@ async function bootstrap(): Promise<void> {
   let changingAccount = false;
   progressClient?.auth.onAuthStateChange((_event, session) => {
     const nextOwner = session?.user && !session.user.is_anonymous ? session.user.id : null;
-    if (changingAccount || nextOwner === progressStorage.owner) return;
+    if (changingAccount || nextOwner === (soloSessionOnly ? progressOwner : progressStorage.owner)) return;
     changingAccount = true;
     progressStorage.suspend();
     questStorage.suspend();
@@ -362,8 +407,9 @@ async function bootstrap(): Promise<void> {
     // Do not make awaited Supabase calls inside its auth callback.
     window.setTimeout(() => { void waitForAuthChange().then(() => window.location.reload()); }, 0);
   });
-  window.addEventListener("online", () => { void progressStorage.retry(); void questStorage.retry(); void weeklyChallengeStorage.refresh(); });
+  window.addEventListener("online", () => { if (!soloSessionOnly) { void progressStorage.retry(); void questStorage.retry(); void weeklyChallengeStorage.refresh(); } });
   document.addEventListener("visibilitychange", () => {
+    if (soloSessionOnly) return;
     if (document.hidden) { void progressStorage.flush(); void questStorage.flush(); }
     else { void questStorage.retry(); void weeklyChallengeStorage.refresh(); }
   });
@@ -378,18 +424,30 @@ async function bootstrap(): Promise<void> {
     hasPlayerProfile: PLATFORM.features.solo ? false : hadPlayerProfileBeforeBoot,
     hasLaunchInvite: false,
   });
-  let launchQuickIntro = PLATFORM.features.solo && firstTutorialCandidate && readSoloState(progressOwner).intro === null;
+  let launchQuickIntro = PLATFORM.features.solo && firstTutorialCandidate && readSoloState(progressStorage.owner).intro === null;
   if (PLATFORM.features.solo) {
     const showStorageNotice = (): void => {
-      if (portalStoragePersistent || document.querySelector(".solo-storage-notice")) return;
+      if (progressReadPractice || (!soloSessionOnly && portalStoragePersistent) || document.querySelector(".solo-storage-notice")) return;
       const notice = document.createElement("p");
       notice.className = "solo-storage-notice";
       notice.setAttribute("role", "status");
-      notice.textContent = soloCopy().noSave;
+      notice.textContent = soloSessionOnly ? soloRunText("sessionFallback") : soloCopy().noSave;
       document.body.append(notice);
     };
     window.addEventListener("portal-storage-unavailable", showStorageNotice);
     showStorageNotice();
+  }
+  if (progressReadPractice) {
+    const notice = document.createElement("p");
+    notice.className = "solo-account-notice";
+    notice.setAttribute("role", "status");
+    notice.append(document.createTextNode(I18nManager.getLanguage() === "ko"
+      ? "임시 연습 중입니다. 계정 진행도와 랭킹에는 반영되지 않습니다. "
+      : "Temporary practice: progress and ranking will not be saved to your account. "));
+    const retry = document.createElement("button"); retry.type = "button";
+    retry.textContent = I18nManager.getLanguage() === "ko" ? "계정 다시 시도" : "Retry account";
+    retry.onclick = () => window.location.reload();
+    notice.append(retry); document.body.append(notice);
   }
   let tutorialInputModeBeforeStart: InputMode | null = null;
   let launchPowerPractice = false;
@@ -424,7 +482,10 @@ async function bootstrap(): Promise<void> {
       await confirmAbandonAction();
     },
   );
-  if (portalVerifiedProfile && portalVerifiedProfile.id === progressOwner) {
+  if (progressReadPractice) {
+    menuRuntime.temporaryPractice = true;
+    renderMainMenu(menuRuntime);
+  } else if (portalVerifiedProfile && portalVerifiedProfile.id === progressOwner) {
     menuRuntime.verifiedPortalProfile = portalVerifiedProfile;
     renderMainMenu(menuRuntime);
   }
@@ -569,10 +630,10 @@ async function bootstrap(): Promise<void> {
     soloSaved = saveSoloRun(next) && portalStoragePersistent;
     if (!soloSaved && next.revision === 0 && soloLoaded?.issue === "invalid") soloSaved = replaceInvalidSoloRun(next) && portalStoragePersistent;
     if (soloSaved && next.revision === 0) { soloReadNotice?.remove(); soloReadNotice = null; }
-    if (!soloSaved) {
-      reportPortalStorageUnavailable();
+    if (!soloSaved || soloSessionOnly) {
+      if (!soloSaved) reportPortalStorageUnavailable();
       const notice = document.querySelector<HTMLElement>(".solo-storage-notice");
-      if (notice) notice.textContent = soloRunText("sessionOnly");
+      if (notice) notice.textContent = soloRunText(soloSessionOnly ? "sessionFallback" : "sessionOnly");
     }
   };
   const restoreSoloBoundary = (): void => {
@@ -773,7 +834,7 @@ async function bootstrap(): Promise<void> {
   };
 
   const recordOnlineMatchSettlement = async (matchWinner: MatchWinner): Promise<void> => {
-    if (!PLATFORM.features.online) return;
+    if (!PLATFORM.features.online || progressReadPractice) return;
     const sb = getSupabaseClient();
     const matchId = onlineRuntime?.matchId;
     const me = activeMyProfile;
@@ -828,6 +889,9 @@ async function bootstrap(): Promise<void> {
       const profile = await getOrCreateUserProfile(sb);
       if (profile.id !== me.id || menuRuntime.userProfile?.id !== me.id) return;
       menuRuntime.userProfile = profile;
+      if (menuRuntime.verifiedPortalProfile?.id === me.id && progressStorage.owner === me.id) {
+        menuRuntime.verifiedPortalProfile = profile;
+      }
       if (activeMyProfile?.id === profile.id) activeMyProfile = profile;
       renderMainMenu(menuRuntime);
       const delta = mySide === "white" ? result.whiteDelta : result.blackDelta;
@@ -896,7 +960,7 @@ async function bootstrap(): Promise<void> {
       loggedIn: progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id,
     }),
     requestFriend: async (profileId, opponent) => {
-      if (!PLATFORM.features.online) return { success: false, error: "" };
+      if (!PLATFORM.features.online || progressReadPractice) return { success: false, error: "" };
       const client = getSupabaseClient();
       if (!client) return { success: false, error: "login_required" };
       const { data, error } = await client.auth.getSession();
@@ -2085,9 +2149,9 @@ async function bootstrap(): Promise<void> {
         matchRuntime.restartButton.textContent = soloRunText("settlementRetry");
       }
     }
-    if (!soloSaved) {
+    if (!soloSaved || soloSessionOnly) {
       matchRuntime.actionStatus.hidden = false;
-      matchRuntime.actionStatus.textContent = soloRunText("sessionOnly");
+      matchRuntime.actionStatus.textContent = soloRunText(soloSessionOnly ? "sessionFallback" : "sessionOnly");
     }
   };
   const prepareSoloRunBoard = async (): Promise<void> => {
@@ -2122,6 +2186,12 @@ async function bootstrap(): Promise<void> {
     try {
       if (soloRun.phase !== "ending") commitSoloRun(endSoloRun(soloRun));
       const run = soloRun;
+      if (soloSessionOnly) {
+        commitSoloRun(finishSoloRun(run));
+        soloConfirmedPayout = 0;
+        presentSoloRun();
+        return;
+      }
       // A failed migration/end write must not create a fresh credit on each reload.
       if (!soloSaved) { presentSoloRun(); return; }
       const result = await progressStorage.settleSoloRun({ settlementId: run.settlementId, runId: run.runId,
@@ -2143,7 +2213,8 @@ async function bootstrap(): Promise<void> {
   const resumeSoloRun = async (): Promise<void> => {
     if (!soloRun || soloRun.owner !== progressStorage.owner) return;
     const run = soloRun;
-    const receipt = await progressStorage.lookupSoloRunSettlement(run.settlementId);
+    const receipt = soloSessionOnly ? { status: "unpaid" as const }
+      : await progressStorage.lookupSoloRunSettlement(run.settlementId);
     if (!soloRun || run.runId !== soloRun.runId || run.owner !== progressStorage.owner) return;
     soloLookupPending = receipt.status === "pending";
     if (receipt.status === "paid") {
@@ -2169,7 +2240,7 @@ async function bootstrap(): Promise<void> {
     if (currentSoloRun()?.phase === "ended") await returnToMainMenu(menuRuntime);
   };
   I18nManager.subscribe(() => {
-    if (PLATFORM.features.solo && soloRun && !matchRuntime.overlay.hidden && !matchRuntime.restarting) presentSoloRun();
+    if (PLATFORM.features.solo && gameModeRuntime?.mode === "stage" && soloRun && !matchRuntime.overlay.hidden && !matchRuntime.restarting) presentSoloRun();
   });
   const restartStageRun = async (): Promise<void> => {
     if (PLATFORM.features.solo) writeSoloCheckpoint(progressStorage.owner, null);
@@ -2516,6 +2587,7 @@ async function bootstrap(): Promise<void> {
     newSoloRun = false,
   ): Promise<void> => {
     if (PLATFORM.features.solo && mode !== "tutorial" && mode !== "stage" && mode !== "online") return;
+    if (progressReadPractice && mode === "online") return;
     if (!PLATFORM.features.online && mode === "online") return;
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
@@ -2549,8 +2621,12 @@ async function bootstrap(): Promise<void> {
       const { createOnlineRuntime } = await import("./online");
       const { openFriendlyLobby } = await import("./friendly-lobby");
       const { openFriendsModal } = await import("./friends-modal");
-      const portalInvite = (PLATFORM.id === "crazygames" || PLATFORM.id === "itch")
-        && (await import("./crazygames-multiplayer")).hasLaunchInvite();
+      let portalInvite = false;
+      if (PLATFORM.id === "crazygames" || PLATFORM.id === "itch") {
+        const invites = await import("./crazygames-multiplayer");
+        if (PLATFORM.id === "crazygames") await invites.prepareLaunchInvite();
+        portalInvite = invites.hasLaunchInvite();
+      }
       const itchRankedMember = PLATFORM.id === "itch"
         && await isCurrentRankedMember(getSupabaseClient(), menuRuntime.userProfile);
 
@@ -2566,7 +2642,7 @@ async function bootstrap(): Promise<void> {
       }>((resolve, reject) => {
         const openFriendly = async () => {
           try {
-            const member = progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id;
+            const member = PLATFORM.id !== "crazygames" && progressStorage.owner !== null && progressStorage.owner === menuRuntime.userProfile?.id;
             const manualSession = await openFriendlyLobby(menuRuntime.overlay, member ? () => {
               void openFriendsModal(menuRuntime.overlay, menuRuntime.userProfile, {
                 onStartFriendlyMatch: (friend, roomId, isHost) => {
@@ -2613,7 +2689,16 @@ async function bootstrap(): Promise<void> {
               matchUiContainer.remove();
               await openFriendly();
             },
+            onPortalSignIn: active => { signingInForMatch = active; },
+            onPortalProfileReady: (profile, player) => {
+              if (profile.id === portalVerifiedProfile?.id) return true;
+              // A successful retry can recover the same SDK user without an identity-change event.
+              sessionStorage.setItem(pendingCrazyGamesQuickMatchKey, player);
+              window.location.reload();
+              return false;
+            },
             onClose: () => {
+              signingInForMatch = false;
               matchUiContainer.remove();
               reject(new DOMException("Online lobby closed", "AbortError"));
             },
@@ -2635,6 +2720,16 @@ async function bootstrap(): Promise<void> {
         const client = getSupabaseClient();
         if (PLATFORM.id === "itch" && !await isCurrentRankedMember(client, session.myProfile)) throw new Error("Ranked account changed. Please sign in again.");
         if (!client) throw new Error("대전 등록에 필요한 서버 연결이 없습니다.");
+        if (PLATFORM.id === "crazygames") {
+          const { signInCrazyGames } = await import("./crazygames-auth");
+          const { getCachedUser } = await import("./crazygames-sdk");
+          const currentPortalId = getCachedUser()?.__dangerousUserId;
+          const verified = await signInCrazyGames(client, false);
+          if (!currentPortalId || !verified || verified.id !== session.myProfile.id
+            || getCachedUser()?.__dangerousUserId !== currentPortalId) {
+            throw new Error("CrazyGames ranked account changed. Please log in again.");
+          }
+        }
         await SupabaseMatchmaker.registerRankedMatch(client, {
           matchId, mode: rankedMode,
           whitePlayerId: session.mySide === "white" ? session.myProfile.id : session.opponent.id,
@@ -2831,7 +2926,7 @@ async function bootstrap(): Promise<void> {
     isHost: boolean,
     opponent: { id: string; nickname: string; mmr: number },
   ): Promise<void> => {
-    if (!PLATFORM.features.online) return;
+    if (!PLATFORM.features.online || progressReadPractice) return;
     const sb = getSupabaseClient();
     if (!sb || !menuRuntime.userProfile || !gameModeRuntime || menuRuntime.busy) return;
     const { getFriendlyCopy } = await import('./friendly-copy');
@@ -3388,11 +3483,15 @@ async function bootstrap(): Promise<void> {
     });
   if (PLATFORM.features.online && !PLATFORM.features.solo && menuRuntime.userProfile && progressStorage.owner === menuRuntime.userProfile.id) SocialService.init(menuRuntime.userProfile);
   let hasIncomingMatch = false;
-  if ((PLATFORM.id === "crazygames" || PLATFORM.id === "itch") && PLATFORM.features.online) {
+  if (!progressReadPractice && (PLATFORM.id === "crazygames" || PLATFORM.id === "itch") && PLATFORM.features.online) {
     const { prepareLaunchInvite, hasLaunchInvite } = await import("./crazygames-multiplayer");
     await prepareLaunchInvite();
     hasIncomingMatch = hasLaunchInvite();
     if (hasIncomingMatch) await startLobbyMode(menuRuntime, "online");
+  }
+  if (resumeQuickMatch && !hasIncomingMatch) {
+    hasIncomingMatch = true;
+    await startLobbyMode(menuRuntime, "online");
   }
   if (!localBalancePreview && firstTutorialCandidate && !hasIncomingMatch && (!PLATFORM.features.solo || launchQuickIntro)) {
     // Invite/Instant Multiplayer take precedence even after the invite is consumed.

@@ -173,6 +173,7 @@ export interface MainMenuRuntime {
   onForfeitRound?: () => Promise<void>;
   onResumeSoloConfirm?: (pausedMilliseconds: number) => void;
   verifiedPortalProfile?: UserProfile | null;
+  temporaryPractice?: boolean;
   isStageMatch?: () => boolean;
   getPendingStagePoints?: () => number;
   onStartFriendlyMatch?: (friend: any, roomId: string, isHost: boolean) => Promise<void> | void;
@@ -705,6 +706,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const accountTitle = escapeHtml(I18nManager.t("lobby.profile_sheet_title"));
   const tutorialTitle = escapeHtml(I18nManager.t("lobby.tutorial_sheet_title"));
   const tutorialLabel = escapeHtml(I18nManager.t("lobby.footer_tutorial"));
+  const privacyLabel = escapeHtml(I18nManager.t("lobby.footer_privacy"));
   const moreLabel = escapeHtml(layoutCopy.more);
   const closeLabel = escapeHtml(I18nManager.t("common.close"));
   const sheet = (name: string, title: string, body: string) => `<dialog id="lobby-${name}-dialog" class="lobby-fit-dialog" data-lobby-sheet="${name}" aria-label="${title}"><header class="lobby-fit-dialog-header"><h2>${title}</h2><button type="button" data-lobby-sheet-close aria-label="${closeLabel}">${closeLabel}</button></header><div class="lobby-fit-dialog-body">${body}</div></dialog>`;
@@ -715,7 +717,7 @@ export function renderMainMenu(runtime: MainMenuRuntime): void {
   const tutorialBody = `<button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="basic">${escapeHtml(I18nManager.t("lobby.tutorial_basic"))}</button><button type="button" class="lobby-tutorial-choice" data-game-mode="tutorial" data-tutorial-type="advanced">${escapeHtml(I18nManager.t("lobby.tutorial_advanced"))}</button>${runtime.onOpenPowerPractice ? `<button type="button" class="lobby-tutorial-choice" data-power-practice>${escapeHtml(feedbackCopy().practice)}</button>` : ""}`;
   const tutorialTrigger = `<button type="button" id="menu-tutorial-btn"${isPortal ? ' class="lobby-fit-tutorial"' : ""} aria-haspopup="dialog" aria-controls="lobby-tutorial-dialog">${isPortal ? renderHeaderActions("tutorial", 22) : ""}${tutorialLabel}${isPortal ? renderHeaderActions("chevron", 22) : ""}</button>`;
   const nav = isPortal ? "" : `<nav class="lobby-fit-nav" aria-label="${escapeHtml(I18nManager.t("lobby.other_modes"))}"><button type="button" data-open-quests${questStorage.view().ready ? "" : " disabled"}>${escapeHtml(layoutCopy.quests)}</button><button type="button" data-open-weekly-challenge>${escapeHtml(weeklyChallengeCopy().title)}</button>${tutorialTrigger}<button type="button" id="menu-more-btn" aria-haspopup="dialog" aria-controls="lobby-more-dialog">${moreLabel}</button></nav>`;
-  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.title"))}</h1><div class="lobby-fit-header-actions">${isPortal ? `<button type="button" id="menu-privacy-btn" aria-haspopup="dialog" aria-controls="lobby-privacy-dialog">Privacy</button>${PLATFORM.id === "itch" ? `<button type="button" id="menu-account-btn" aria-haspopup="dialog" aria-controls="lobby-account-dialog" aria-label="${accountTitle}">${renderHeaderActions("profile", 20)}${escapeHtml(layoutCopy.account)}</button>` : ""}` : `<button type="button" id="menu-account-btn" aria-haspopup="dialog" aria-controls="lobby-account-dialog" aria-label="${accountTitle}">${renderHeaderActions("profile", 20)}${escapeHtml(layoutCopy.account)}</button>`}<button type="button" id="menu-sound-btn">${settings}</button></div></header><div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div><div class="lobby-fit-body">${renderRecommendationCard(recommendation, heroAsset)}<div class="lobby-fit-mode-area">${renderModeCards(runtime, maxClearedStage)}${isPortal ? tutorialTrigger : ""}</div></div>${nav}<p class="main-menu-status" data-menu-status aria-live="polite"></p>${isPortal ? sheet("privacy", "Privacy Policy", renderFooterLinks()) + (PLATFORM.id === "itch" ? sheet("account", accountTitle, accountBody) : "") : sheet("account", accountTitle, accountBody)}${sheet("tutorial", tutorialTitle, tutorialBody)}${isPortal ? "" : sheet("more", moreLabel, renderFooterLinks())}`;
+  panel.innerHTML = `<header class="lobby-header"><h1 id="main-menu-title">${escapeHtml(I18nManager.t("lobby.title"))}</h1><div class="lobby-fit-header-actions">${isPortal ? `<button type="button" id="menu-privacy-btn" aria-haspopup="dialog" aria-controls="lobby-privacy-dialog">${privacyLabel}</button>${PLATFORM.id === "itch" ? `<button type="button" id="menu-account-btn" aria-haspopup="dialog" aria-controls="lobby-account-dialog" aria-label="${accountTitle}">${renderHeaderActions("profile", 20)}${escapeHtml(layoutCopy.account)}</button>` : ""}` : `<button type="button" id="menu-account-btn" aria-haspopup="dialog" aria-controls="lobby-account-dialog" aria-label="${accountTitle}">${renderHeaderActions("profile", 20)}${escapeHtml(layoutCopy.account)}</button>`}<button type="button" id="menu-sound-btn">${settings}</button></div></header><div data-progress-controls ${progressStorage.saveFailed || progressStorage.masteryPending || progressStorage.bannersPending ? "" : "hidden"}><p data-progress-status role="status">${escapeHtml(progressStorage.status)}</p><button type="button" id="progress-save">${escapeHtml(I18nManager.t("lobby.progress_retry_save"))}</button></div><div class="lobby-fit-body">${renderRecommendationCard(recommendation, heroAsset)}<div class="lobby-fit-mode-area">${renderModeCards(runtime, maxClearedStage)}${isPortal ? tutorialTrigger : ""}</div></div>${nav}<p class="main-menu-status" data-menu-status aria-live="polite"></p>${isPortal ? sheet("privacy", privacyLabel, renderFooterLinks()) + (PLATFORM.id === "itch" ? sheet("account", accountTitle, accountBody) : "") : sheet("account", accountTitle, accountBody)}${sheet("tutorial", tutorialTitle, tutorialBody)}${isPortal ? "" : sheet("more", moreLabel, renderFooterLinks())}`;
   const openSheet = (name: string): void => {
     const dialog = panel.querySelector<HTMLDialogElement>(`.lobby-fit-dialog[data-lobby-sheet="${name}"]`);
     if (dialog && !dialog.open) {
@@ -1109,7 +1111,7 @@ export function createMainMenu(
     confirmOpenedAt = performance.now();
     confirmResumeVersion = gameplay.leave("confirm-open");
     runtime.confirmOverlay.hidden = false;
-    (retryStage() ? cancelButton : confirmButton).focus();
+    cancelButton.focus();
   });
   cancelButton.addEventListener("click", () => {
     if (!runtime.confirming || cancelButton.disabled) return;
@@ -1183,11 +1185,13 @@ export function createMainMenu(
       event.preventDefault();
       cancelButton.click();
     } else if (event.code === "Tab") {
-      event.preventDefault();
-      (document.activeElement === confirmButton
-        ? cancelButton
-        : confirmButton
-      ).focus();
+      const actions = [cancelButton, forfeitButton, confirmButton]
+        .filter(button => !button.hidden && !button.disabled);
+      const index = actions.indexOf(document.activeElement as HTMLButtonElement);
+      if (actions.length > 0 && (index < 0 || (event.shiftKey ? index === 0 : index === actions.length - 1))) {
+        event.preventDefault();
+        actions[index < 0 ? 0 : event.shiftKey ? actions.length - 1 : 0].focus();
+      }
     }
     event.stopPropagation();
   });

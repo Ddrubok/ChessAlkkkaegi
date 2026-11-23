@@ -44,6 +44,8 @@ export interface SupabaseMatchUiCallbacks {
     matchMode?: "classic" | "strategy",
   ) => Promise<void>;
   onOpenManualP2P: () => void;
+  onPortalSignIn?: (active: boolean) => void;
+  onPortalProfileReady?: (profile: UserProfile, portalPlayer: string) => boolean;
   onClose: () => void;
 }
 
@@ -63,6 +65,7 @@ export class SupabaseMatchUi {
   private renderVersion = 0;
   private crazyGamesUserId: string | null = null;
   private unsubscribeCrazyGamesIdentity: (() => void) | null = null;
+  private quickMatchLoginRequested = false;
 
   constructor(container: HTMLElement, callbacks: SupabaseMatchUiCallbacks, initialProfile: UserProfile | null = null, private readonly previewServices: PiecePreviewServices | null = null) {
     this.container = container;
@@ -215,15 +218,22 @@ export class SupabaseMatchUi {
         signInBtn.onclick = async () => {
           if (!this.client) return;
           signInBtn.disabled = true;
+          this.callbacks.onPortalSignIn?.(true);
           try {
             await signInCrazyGames(this.client, true);
             // Complete the loading lifecycle if the SDK was unavailable at boot.
             await (await import("./crazygames-stubs/portal-lifecycle")).init();
           } catch (error) {
             console.error("CrazyGames sign-in failed:", error);
+          } finally {
+            this.callbacks.onPortalSignIn?.(false);
           }
           if (!this.disposed && version === this.renderVersion) await this.renderLobby();
         };
+        if (!this.quickMatchLoginRequested) {
+          this.quickMatchLoginRequested = true;
+          queueMicrotask(() => { if (!this.disposed && version === this.renderVersion) signInBtn.click(); });
+        }
         authBar.appendChild(signInBtn);
       }
     } else if (__ITCH_BUILD__ && this.profile) {
@@ -323,6 +333,14 @@ export class SupabaseMatchUi {
     }
 
     if (this.disposed || version !== this.renderVersion) return;
+
+    if (__CRAZYGAMES_BUILD__) {
+      attach();
+      if (this.profile && this.crazyGamesUserId && this.callbacks.onPortalProfileReady?.(this.profile, this.crazyGamesUserId) !== false) {
+        void this.openMatchingModal(card, null, "classic");
+      }
+      return;
+    }
 
     // 클래식 vs 전략 랭크 탭
     const guide = document.createElement("p"); guide.className = "feedback-online-guide";
@@ -525,7 +543,7 @@ export class SupabaseMatchUi {
           this.profile = null;
           this.crazyGamesUserId = null;
           this.cancelSearch();
-          if (!this.disposed && version === this.renderVersion) void this.renderLobby();
+          if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
           return;
         }
         this.profile = verifiedProfile;
@@ -535,7 +553,7 @@ export class SupabaseMatchUi {
         this.profile = null;
         this.crazyGamesUserId = null;
         this.cancelSearch();
-        if (!this.disposed && version === this.renderVersion) void this.renderLobby();
+        if (!this.disposed && version === this.renderVersion) { this.destroy(); this.callbacks.onClose(); }
         return;
       }
     } else {
@@ -601,6 +619,7 @@ export class SupabaseMatchUi {
     cancelBtn.onclick = () => {
       this.cancelSearch();
       closeMatching();
+      if (__CRAZYGAMES_BUILD__) { this.destroy(); this.callbacks.onClose(); }
     };
 
     modalOverlay.appendChild(cancelBtn);
@@ -639,9 +658,12 @@ export class SupabaseMatchUi {
               ? I18nManager.t("online.waiting_players", { count })
               : I18nManager.t("online.waiting_players_unknown");
             if (waitersEl.textContent !== label) waitersEl.textContent = label;
-            hintEl.textContent = count === 0 && status.phase === "searching"
-              ? feedbackCopy().searchingEmpty(modeName)
-              : feedbackCopy().separateQueues;
+            const empty = count === 0 && status.phase === "searching";
+            if (__CRAZYGAMES_BUILD__) {
+              hintEl.textContent = I18nManager.t(empty ? "online.waiting_solo_hint" : "online.waiting_players_hint");
+            } else {
+              hintEl.textContent = empty ? feedbackCopy().searchingEmpty(modeName) : feedbackCopy().separateQueues;
+            }
           } else {
             waitersEl.style.display = "none";
             waitersEl.textContent = "";
@@ -688,6 +710,7 @@ export class SupabaseMatchUi {
         console.error(error);
         alert(I18nManager.t("online.match_failed", { error: I18nManager.t("online.server_error_fallback") }));
         closeMatching();
+        if (__CRAZYGAMES_BUILD__) { this.destroy(); this.callbacks.onClose(); }
       },
     );
   }
@@ -700,6 +723,7 @@ export class SupabaseMatchUi {
   public destroy(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.cancelSearch();
     this.disposeWorkbench(); this.unsubscribeLanguage(); this.unsubscribeCrazyGamesIdentity?.();
     this.unbindModal?.(); this.unbindModal = null;
   }

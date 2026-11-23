@@ -65,3 +65,13 @@
   .cg-progression .upgrade-card { transition: none; animation: none; }
 }
 .match-result-overlay.cg-progression { background: rgb(20 18 15 / 90%); }
+
+@media (max-height: 400px) and (min-width: 600px) {
+  .feedback-practice-modal .tutorial-modal-card {
+    box-sizing: border-box;
+    padding: 12px 16px;
+    max-height: calc(100dvh - 16px);
+  }
+  .feedback-practice-modal .feedback-practice-actions { gap: 5px; }
+  .feedback-practice-modal .tutorial-modal-card p:empty { display: none; }
+}

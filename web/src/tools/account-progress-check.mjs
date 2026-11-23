@@ -77,7 +77,13 @@ try {
   assert.equal(store.ready, false);
   assert.throws(() => store.setItem(stage, '0'));
   assert.equal(writes.length, before, 'failed reads must not create blank server rows');
+  await store.retry();
+  assert.equal(store.ready, false, 'a second failed read must keep account writes blocked');
+  assert.equal(writes.length, before);
   failRead = false;
+  await store.retry();
+  assert.equal(store.ready, true, 'retry must recover the same account after reads resume');
+  assert.equal(store.getItem(stage), '6', 'retry restores server progress rather than a blank session');
 
   let releaseRead;
   holdRead = new Promise(resolve => { releaseRead = resolve; });

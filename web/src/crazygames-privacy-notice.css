@@ -1,0 +1,45 @@
+/* The first-visit notice occupies its own row so it cannot cover a piece or a menu action. */
+body:has(> .cg-privacy-notice) {
+  display: flex;
+  flex-direction: column;
+}
+body:has(> .cg-privacy-notice) > #app {
+  flex: 1 1 0;
+  min-height: 0;
+}
+body:has(> .cg-privacy-notice) .main-menu-overlay {
+  grid-template-rows: minmax(0, 1fr);
+}
+body:has(> .cg-privacy-notice) .main-menu-overlay > .main-menu-panel.lobby-fit {
+  max-height: 100%;
+}
+.cg-privacy-notice {
+  order: 1;
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  box-sizing: border-box;
+  max-height: 35dvh;
+  overflow-y: auto;
+  padding: 6px max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  border-top: 1px solid #b49257;
+  color: #f8f0e1;
+  background: #29231b;
+  font: 13px/1.4 system-ui, sans-serif;
+}
+.cg-privacy-notice strong, .cg-privacy-notice a { color: #ffe7a3; }
+.cg-privacy-notice p { flex: 1 1 18em; margin: 0; }
+.cg-privacy-notice-actions { display: flex; align-items: center; gap: 12px; }
+.cg-privacy-notice button {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid #d4b477;
+  border-radius: 5px;
+  color: #1d1812;
+  background: #ffe7a3;
+  font: inherit;
+  cursor: pointer;
+}
+.cg-privacy-notice :is(a, button):focus-visible { outline: 3px solid #fff; outline-offset: 2px; }

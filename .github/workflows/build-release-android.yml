@@ -1,0 +1,184 @@
+name: Build signed Android release
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Release versionName, for example 1.0.25
+        required: true
+        type: string
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: true
+      ANDROID_KEYSTORE_PASSWORD:
+        required: true
+      ANDROID_KEY_ALIAS:
+        required: true
+      ANDROID_KEY_PASSWORD:
+        required: true
+      VITE_SUPABASE_ANON_KEY:
+        required: true
+      VITE_METERED_API_KEY:
+        required: true
+      VITE_ADMOB_REWARDED_ID:
+        required: false
+      VITE_ADMOB_INTERSTITIAL_ID:
+        required: false
+      VITE_ADMOB_BANNER_ID:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: web
+    steps:
+      - name: Check out the caller event commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Check release version and source commit
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          CALLER_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          version = os.environ['RELEASE_VERSION']
+          if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', version):
+              raise SystemExit('version must have the form 1.0.25')
+          gradle = Path('android/app/build.gradle').read_text(encoding='utf-8')
+          matches = re.findall(r'^\s*versionName\s+["\']([^"\']+)["\']', gradle, re.M)
+          if matches != [version]:
+              raise SystemExit('Android versionName does not match the workflow input')
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          if head != os.environ['CALLER_SHA']:
+              raise SystemExit('Checkout does not match the caller event commit')
+          PY
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build production Capacitor web assets
+        env:
+          VITE_SUPABASE_URL: https://yoajmckkrpgvcljrffww.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_METERED_APP_NAME: chessalkkagi
+          VITE_METERED_API_KEY: ${{ secrets.VITE_METERED_API_KEY }}
+          VITE_ADMOB_REWARDED_ID: ${{ secrets.VITE_ADMOB_REWARDED_ID }}
+          VITE_ADMOB_INTERSTITIAL_ID: ${{ secrets.VITE_ADMOB_INTERSTITIAL_ID }}
+          VITE_ADMOB_BANNER_ID: ${{ secrets.VITE_ADMOB_BANNER_ID }}
+          VITE_AD_TEST_MODE: 'false'
+          VITE_WEB_ADS_MODE: 'off'
+          VITE_MARKETING_ENABLED: 'false'
+          VITE_MARKETING_ENV: production
+        run: |
+          for name in VITE_SUPABASE_ANON_KEY VITE_METERED_API_KEY; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required production build input: $name" >&2
+              exit 1
+            fi
+          done
+          npm run build
+
+      - name: Sync Capacitor Android project
+        run: npx cap sync android
+
+      - name: Configure release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import binascii
+          import os
+          from pathlib import Path
+
+          names = ('ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD',
+                   'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD')
+          missing = [name for name in names if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('Missing required signing input: ' + ', '.join(missing))
+          try:
+              keystore = base64.b64decode(os.environ['ANDROID_KEYSTORE_BASE64'], validate=True)
+          except (ValueError, binascii.Error) as exc:
+              raise SystemExit('ANDROID_KEYSTORE_BASE64 is invalid') from exc
+          if not keystore:
+              raise SystemExit('ANDROID_KEYSTORE_BASE64 is empty')
+
+          def property_value(value):
+              if '\n' in value or '\r' in value:
+                  raise SystemExit('Signing values must be single-line')
+              return value.replace('\\', '\\\\').replace('=', '\\=').replace(':', '\\:')
+
+          store = Path('android/app/release-upload.jks')
+          store.write_bytes(keystore)
+          store.chmod(0o600)
+          props = Path('android/keystore.properties')
+          props.write_text(
+              'storeFile=release-upload.jks\n'
+              'storePassword=' + property_value(os.environ['ANDROID_KEYSTORE_PASSWORD']) + '\n'
+              'keyAlias=' + property_value(os.environ['ANDROID_KEY_ALIAS']) + '\n'
+              'keyPassword=' + property_value(os.environ['ANDROID_KEY_PASSWORD']) + '\n',
+              encoding='utf-8')
+          props.chmod(0o600)
+          PY
+
+      - name: Build signed release bundle
+        run: |
+          chmod +x android/gradlew
+          # The tracked gradle.properties contains a Windows-only JBR path.
+          ./android/gradlew -p android -Dorg.gradle.java.home="$JAVA_HOME" :app:bundleRelease --no-daemon
+
+      - name: Verify signed bundle
+        run: |
+          bundle=android/app/build/outputs/bundle/release/app-release.aab
+          test -s "$bundle"
+          jarsigner -verify "$bundle" > "$RUNNER_TEMP/android-jarsigner.txt" 2>&1 || {
+            echo 'AAB signature verification failed' >&2
+            exit 1
+          }
+          if ! grep -q 'jar verified\.' "$RUNNER_TEMP/android-jarsigner.txt"; then
+            echo 'AAB has no verified JAR signature' >&2
+            exit 1
+          fi
+
+      - name: Upload Android bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-bundle
+          path: web/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove signing files
+        if: always()
+        run: |
+          rm -f android/keystore.properties android/app/release-upload.jks

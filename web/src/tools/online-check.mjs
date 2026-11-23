@@ -604,6 +604,76 @@ try {
     console.log("[pass] missing/extra pieces, mesh, hash, invalid ID atomicity, false/final match-over");
   }
   {
+    // A real fixed-step turn removes the final opposing body. No result callback
+    // or terminal phase is injected by the fixture.
+    const host = await createMatchRuntime(modules, meta);
+    const guest = await createMatchRuntime(modules, meta);
+    const wire = createFakeTransportPair();
+    const results = { host: [], guest: [], removed: { host: [], guest: [] } };
+    for (const [label, runtime] of [["host", host], ["guest", guest]]) {
+      for (const binding of [...runtime.physicsRuntime.pieces.values()]) {
+        if (binding.instance.id === "white-rook-a1" || binding.instance.id === "black-pawn-a7") continue;
+        runtime.physicsRuntime.world.removeRigidBody(binding.body);
+        runtime.physicsRuntime.pieces.delete(binding.instance.id);
+        const mesh = runtime.sceneRuntime.pieceMeshes.get(binding.instance.id);
+        runtime.sceneRuntime.scene.remove(mesh);
+        runtime.sceneRuntime.pieceMeshes.delete(binding.instance.id);
+      }
+      // Both pieces start on the board one square apart, with the pawn on the edge file.
+      const rook = runtime.physicsRuntime.pieces.get("white-rook-a1").body;
+      const lastBlack = runtime.physicsRuntime.pieces.get("black-pawn-a7").body;
+      rook.setTranslation({ x: 2.5 * meta.cellSize, y: rook.translation().y, z: 0 }, true);
+      lastBlack.setTranslation({ x: 3.5 * meta.cellSize, y: lastBlack.translation().y, z: 0 }, true);
+      runtime.turnRuntime.onPieceRemoved = id => results.removed[label].push(id);
+      runtime.turnRuntime.onMatchOver = winner => results[label].push(winner);
+    }
+    const hostOnline = online.createOnlineRuntime(wire.host, host.turnRuntime, null, "white", {}, { matchId: "natural-classic-final-piece" });
+    const guestOnline = online.createOnlineRuntime(wire.guest, guest.turnRuntime, null, "black", {}, { matchId: "natural-classic-final-piece" });
+    try {
+      hostOnline.startMatch();
+      guestOnline.startMatch();
+      await Promise.all([hostOnline.flush(), guestOnline.flush()]);
+      assertCondition(hostOnline.active && guestOnline.active, "Natural classic fixture did not become ready");
+      const shot = createScriptedRequest(host, 0);
+      shot.direction.set(1, 0, 0);
+      shot.normalizedPower = 0.29;
+      const queued = hostOnline.queueLocalLaunch(shot);
+      assertCondition(queued.accepted, `Natural classic launch rejected: ${queued.reason}`);
+      guestOnline.update(performance.now() + 10000);
+      const maximumSteps = Math.ceil(modules.config.MAX_SETTLE_SECONDS * 2 / modules.config.FIXED_STEP);
+      let steps = 0;
+      while (steps < maximumSteps &&
+          (host.turnRuntime.phase !== "match-over" || guest.turnRuntime.phase !== "match-over")) {
+        for (const runtime of [host, guest]) {
+          modules.turn.applyPendingLaunchBeforeStep(runtime.turnRuntime);
+          runtime.physicsRuntime.world.step();
+          modules.turn.updateTurnAfterStep(runtime.turnRuntime, modules.config.FIXED_STEP);
+        }
+        steps += 1;
+      }
+      assertCondition(steps < maximumSteps, `Natural classic turn did not end: ${JSON.stringify([...host.physicsRuntime.pieces].map(([id, p]) => [id, p.body.translation()]))}`);
+      await Promise.all([hostOnline.flush(), guestOnline.flush()]);
+      await Promise.all([hostOnline.flush(), guestOnline.flush()]);
+      const turnHash = wire.host.log.find(entry => entry.payload.kind === "turnHash")?.payload;
+      assertCondition(turnHash !== undefined, "Natural classic terminal turn did not send its authoritative hash");
+      wire.host.deliver(turnHash);
+      wire.host.deliver(turnHash);
+      await guestOnline.flush();
+      assertCondition(JSON.stringify(results.host) === '["white"]' && JSON.stringify(results.guest) === '["white"]' &&
+        JSON.stringify(results.removed.host) === '["black-pawn-a7"]' &&
+        JSON.stringify(results.removed.guest) === '["black-pawn-a7"]' &&
+        host.turnRuntime.phase === "match-over" && guest.turnRuntime.phase === "match-over" &&
+        !host.sceneRuntime.controls.enabled && !guest.sceneRuntime.controls.enabled &&
+        hostOnline.nextTurnIndex === 1 && guestOnline.nextTurnIndex === 1 &&
+        guestOnline.lastHashComparison?.matched === true,
+        `Natural classic result mismatch: ${JSON.stringify({ results, hostPhase: host.turnRuntime.phase, guestPhase: guest.turnRuntime.phase, hostTurn: hostOnline.nextTurnIndex, guestTurn: guestOnline.nextTurnIndex, comparison: guestOnline.lastHashComparison })}`);
+      console.log("[pass] natural classic final-piece fall: host victory, guest defeat, terminal hash, no duplicate result");
+    } finally {
+      hostOnline.close(); guestOnline.close();
+      host.physicsRuntime.world.free(); guest.physicsRuntime.world.free();
+    }
+  }
+  {
     // Settle through the real online callbacks and fake transport while injecting
     // divergent terminal boards at the physics boundary.
     const makePair = async (label) => {

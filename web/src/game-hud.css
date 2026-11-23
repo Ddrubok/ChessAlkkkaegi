@@ -245,7 +245,7 @@
 }
 
 /* Keep player identity outside the board and reserve the same space throughout a shot. */
-@media (orientation: landscape) and (max-height: 640px) {
+@media (orientation: landscape) and (max-height: 640px), (orientation: portrait) and (max-height: 580px) {
   #app:has(.player-banners:not([hidden])) {
     --game-board-top: calc(100px + env(safe-area-inset-top, 0px));
     --game-hud-height: calc(112px + env(safe-area-inset-bottom, 0px));
@@ -301,6 +301,21 @@
     padding: 4px 8px;
   }
   #app:has(.player-banners:not([hidden])) .aim-power {
+    bottom: calc(var(--game-dock-bottom) + 62px);
+  }
+}
+
+@media (orientation: portrait) and (max-height: 580px) {
+  #app {
+    --game-board-top: calc(100px + env(safe-area-inset-top, 0px));
+    --game-hud-height: calc(112px + env(safe-area-inset-bottom, 0px));
+    --game-dock-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  #app .player-banner[data-owner="opponent"] {
+    left: auto;
+    right: max(12px, env(safe-area-inset-right, 0px));
+  }
+  #app .aim-parameters, #app .king-swap-banner {
     bottom: calc(var(--game-dock-bottom) + 62px);
   }
 }

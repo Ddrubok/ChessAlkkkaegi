@@ -107,7 +107,19 @@ export function getRecommendation(runtime: MainMenuRuntime): { mode: LobbyMode; 
     };
   }
   if (recommendation.kind === "online") {
-    const member = PLATFORM.id === "crazygames" || (progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id);
+    const member = progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id;
+    if (PLATFORM.id === "crazygames" && !member) {
+      return {
+        mode: "online",
+        tutorialType: "basic",
+        stage: 1,
+        assetId: "lobbyHeroTutorial",
+        eyebrow: I18nManager.t("lobby.hero_eyebrow_crazygames"),
+        title: I18nManager.t("online.find_classic"),
+        body: I18nManager.t("lobby.hero_sub_crazygames"),
+        cta: I18nManager.t("online.find_classic"),
+      };
+    }
     return {
       mode: "online",
       tutorialType: "basic",
@@ -147,7 +159,7 @@ export function renderRecommendationCard(recommendation: ReturnType<typeof getRe
 }
 
 export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: number): string {
-  const member = PLATFORM.id === "crazygames" || (progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id);
+  const member = progressStorage.owner !== null && progressStorage.owner === runtime.userProfile?.id;
   const cards = [
     { mode: "online" as const, icon: "globe" as const, label: "lobby.mode_online", status: "lobby.card_online_status", detail: "" },
     { mode: "stage" as const, icon: "flag" as const, label: "lobby.mode_stage_short", status: "lobby.card_stage_status", detail: "" },
@@ -160,12 +172,15 @@ export function renderModeCards(runtime: MainMenuRuntime, maxClearedStage: numbe
   const statusByMode: Record<LobbyMode, string> = {
     stage: I18nManager.t("lobby.card_stage_status", { cleared: maxClearedStage, max: PVE_MAX_STAGE }),
     puzzle: I18nManager.t("lobby.card_puzzle_status", { count: puzzleCount }),
-    online: PLATFORM.id === "itch" && !member ? feedbackCopy().guestOnlineStatus : PLATFORM.id === "crazygames" ? I18nManager.t("lobby.card_online_crazygames") : member ? I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
+    online: PLATFORM.id === "itch" && !member ? feedbackCopy().guestOnlineStatus : PLATFORM.id === "crazygames" && !member ? I18nManager.t("lobby.card_online_crazygames") : member ? I18nManager.t("lobby.card_online_status", { tier: formatTier(runtime.userProfile?.classicMmr ?? runtime.userProfile?.mmr ?? 1200), wins: runtime.userProfile?.classicWins ?? 0, losses: runtime.userProfile?.classicLosses ?? 0 }) : uiPolishCopy().rankedHint,
     hotseat: I18nManager.t("lobby.card_2p_status"),
     tutorial: "",
   };
-  const visibleCards = PLATFORM.features.solo ? cards.filter(card => card.mode === "stage" || PLATFORM.id === "itch" && card.mode === "online") : PLATFORM.features.online ? cards : cards.filter(card => card.mode !== "online");
-  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${visibleCards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
+  const visibleCards = cards.filter(card => {
+    if (card.mode === "online") return PLATFORM.features.online && !runtime.temporaryPractice;
+    return !PLATFORM.features.solo || card.mode === "stage";
+  });
+  return `<div class="lobby-modes" role="group" aria-label="${escapeHtml(I18nManager.t("lobby.title"))}">${visibleCards.map((card) => `<button type="button"${card.mode === "puzzle" ? ' id="menu-puzzle-btn"' : ""} data-game-mode="${card.mode}" class="lobby-mode" ${card.mode === "puzzle" && !runtime.onOpenPuzzles ? "disabled" : ""}><span class="lobby-mode-icon">${renderHeaderActions(card.icon)}</span><span class="lobby-mode-title">${escapeHtml(card.mode === "online" && PLATFORM.id === "crazygames" ? I18nManager.t("online.find_classic") : card.mode === "online" && !member ? uiPolishCopy().friendlyTitle : I18nManager.t(card.label))}</span><small class="lobby-mode-status" data-mode-status="${card.mode}">${escapeHtml(statusByMode[card.mode])}</small></button>`).join("")}</div>`;
 }
 
 export function renderCommunityLink(): string {

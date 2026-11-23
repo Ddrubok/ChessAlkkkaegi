@@ -19,7 +19,8 @@
 
     <h2>Information used by the game</h2>
     <p>If you are signed in to CrazyGames, the game uses your CrazyGames account identifier to connect to a server-bound Chess Alkkagi account. The game does not receive your CrazyGames email address or password. Supabase provides authentication and stores the linked account ID, player name, and account progress such as unlocked stages and permanent research. Session tokens are used to keep you signed in.</p>
-    <p>This candidate offers solo play. It does not open multiplayer matchmaking or peer connections. Earlier account and match records are not deleted by this update.</p>
+    <p>When you search for an online opponent, Supabase Realtime shares your game account ID, player name and rating with other players in the queue. The game records ranked match participants and results to update ratings. For a friend invitation, the game shares the room code and whether the room is open with CrazyGames.</p>
+    <p>Players exchange moves over WebRTC. The connection can use a relay, and network services and the other player may receive your IP address.</p>
     <p>Your browser also stores game progress and settings locally. In-progress runs and their selected cards resume from the start of a stage in the same browser, separately for each linked account or guest. These run checkpoints are not synced across devices. Clearing site data removes local records but does not delete the server account or its saved data. This CrazyGames build does not include in-game ads.</p>
 
     <h2>Access and deletion</h2>

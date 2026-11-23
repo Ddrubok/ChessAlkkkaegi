@@ -51,9 +51,11 @@ body,
   height: 100%;
 }
 
+html {
+  height: 100dvh;
+}
+
 body {
-  min-width: 320px;
-  min-height: 100vh;
   margin: 0;
   overflow: hidden;
   background: #171410;
@@ -663,6 +665,28 @@ body {
     min-width: 0;
     min-height: 44px;
     padding: .55rem;
+  }
+}
+
+@media (orientation: landscape) {
+  .match-result-overlay:has(.quest-result) {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .match-result-panel:has(.quest-result):has(> .match-card-choices[hidden]) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .match-result-panel:has(> .match-card-choices[hidden]) .match-result-details:has(.quest-result) {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .match-result-panel:has(.quest-result) .match-result-actions {
+    flex: none;
   }
 }
 
@@ -1652,6 +1676,19 @@ body[data-tutorial="basic"] #app .aim-power { bottom: calc(8px + env(safe-area-i
   .tutorial-coach-card { padding: 6px 10px; }
   .tutorial-step-title { display: none; }
   .tutorial-guide-text { font-size: 11px; }
+}
+
+@media (orientation: portrait) and (max-height: 580px) {
+  body[data-tutorial="basic"] #app {
+    --game-hud-height: calc(12px + env(safe-area-inset-bottom, 0px));
+    --game-dock-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  body[data-tutorial="basic"] #app .classic-cancel-control {
+    left: max(8px, env(safe-area-inset-left, 0px));
+    right: auto;
+    width: min(100px, 30%);
+    margin: 0;
+  }
 }
 
 @media (orientation: landscape) and (max-height: 600px) {

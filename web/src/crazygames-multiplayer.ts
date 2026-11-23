@@ -6,19 +6,19 @@ let launchInvite: LaunchInvite | null = null;
 let prepared = false;
 let activeRoom: string | null = null;
 
-/** Read the SDK launch data once, after SDK initialization and before opening the menu. */
+/** Read launch data once the SDK is available; failed initialization remains retryable. */
 export async function prepareLaunchInvite(): Promise<void> {
   if (prepared) return;
-  await init();
+  await init(getSdk() === null);
   if (prepared) return;
-  prepared = true;
   const game = getSdk()?.game;
   if (!game) return;
   let room: string | null | undefined;
-  try { room = game.getInviteParam?.('room'); } catch { /* SDK unavailable on this host. */ }
+  try { room = game.getInviteParam?.('room'); } catch { return; }
   const instant = game.isInstantMultiplayer === true;
   if (typeof room === 'string' && room.length) launchInvite = { room, instant };
   else if (instant) launchInvite = { instant };
+  prepared = true;
 }
 
 export function hasLaunchInvite(): boolean { return launchInvite !== null; }

@@ -1,0 +1,181 @@
+name: Four-platform release
+run-name: Release from ${{ github.ref_name }} · ${{ inputs.distribute && 'distribute' || 'prepare' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      distribute:
+        description: Publish Pages and itch and upload the Android bundle to Google Play
+        type: boolean
+        default: false
+      play_track:
+        description: Google Play track when distributing
+        type: choice
+        options: [internal, production]
+        default: internal
+
+permissions:
+  contents: read
+
+concurrency:
+  group: four-platform-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      number: ${{ steps.read.outputs.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        name: Read the release version and check distribution settings
+        env:
+          DISTRIBUTE: ${{ inputs.distribute }}
+          GH_TOKEN: ${{ github.token }}
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          version=$(sed -nE 's/^ *versionName "([0-9]+\.[0-9]+\.[0-9]+)" *$/\1/p' web/android/app/build.gradle)
+          test -n "$version"
+          echo "number=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$DISTRIBUTE" == true ]]; then
+            test "$GITHUB_REF" = refs/heads/main
+            test "$GITHUB_SHA" = "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+            : "${BUTLER_API_KEY:?Set BUTLER_API_KEY for itch.io}"
+            : "${PLAY_JSON:?Set PLAY_SERVICE_ACCOUNT_JSON for Google Play}"
+          fi
+
+  browser:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --prefix web
+      - run: python3 scripts/release-web.py
+        env:
+          VITE_SUPABASE_URL: https://yoajmckkrpgvcljrffww.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_METERED_APP_NAME: chessalkkagi
+          VITE_METERED_API_KEY: ${{ secrets.VITE_METERED_API_KEY }}
+          VITE_WEB_ADS_MODE: ${{ vars.VITE_WEB_ADS_MODE || 'off' }}
+          VITE_ADSENSE_CLIENT_ID: ${{ vars.VITE_ADSENSE_CLIENT_ID || 'ca-pub-1173757866262139' }}
+          VITE_ADSENSE_SLOT_ID: ${{ vars.VITE_ADSENSE_SLOT_ID }}
+          VITE_AD_TEST_MODE: 'false'
+      - name: Check the standard web release
+        working-directory: web
+        run: |
+          npm run check:regressions
+          node src/tools/queen-overdrive-check.mjs
+          node src/tools/classic-balance-check.mjs
+          node src/tools/classic-friction-check.mjs
+          npm run check:auth-interaction
+          npm run check:cosmetics
+          npm run check:lobby
+          npm run check:progress
+          npm run check:ads
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portal-packages
+          path: |
+            release/crazygames.zip
+            release/itch.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    needs: version
+    uses: ./.github/workflows/build-release-android.yml
+    with:
+      version: ${{ needs.version.outputs.number }}
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_METERED_API_KEY: ${{ secrets.VITE_METERED_API_KEY }}
+      VITE_ADMOB_REWARDED_ID: ${{ secrets.VITE_ADMOB_REWARDED_ID }}
+      VITE_ADMOB_INTERSTITIAL_ID: ${{ secrets.VITE_ADMOB_INTERSTITIAL_ID }}
+      VITE_ADMOB_BANNER_ID: ${{ secrets.VITE_ADMOB_BANNER_ID }}
+
+  verify:
+    needs: [browser, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - run: python3 scripts/verify-release.py release --commit "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: release/manifest.json
+          retention-days: 14
+      - name: Record the CrazyGames handoff
+        run: |
+          echo '### CrazyGames' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Download portal-packages from this run. Upload the contents of crazygames.zip to the game draft, check the preview and submit through the [Developer Portal](https://developer.crazygames.com/).' >> "$GITHUB_STEP_SUMMARY"
+
+  pages:
+    if: inputs.distribute
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  itch:
+    if: inputs.distribute
+    needs: [verify, version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: portal-packages
+          path: release
+      - name: Install butler
+        run: |
+          curl -fsSL --retry 3 https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default -o "$RUNNER_TEMP/butler.zip"
+          unzip -q "$RUNNER_TEMP/butler.zip" -d "$RUNNER_TEMP/itch"
+          chmod +x "$RUNNER_TEMP/itch/butler"
+      - name: Upload the HTML game
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          RELEASE_VERSION: ${{ needs.version.outputs.number }}
+        run: '"$RUNNER_TEMP/itch/butler" push release/itch.zip ddurubok/chess-alkkagi:html --userversion "$RELEASE_VERSION"'
+
+  play:
+    if: inputs.distribute
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-bundle
+          path: release
+      - name: Upload the signed bundle
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.chessalkkagi.app
+          releaseFiles: release/app-release.aab
+          track: ${{ inputs.play_track }}
+          status: completed

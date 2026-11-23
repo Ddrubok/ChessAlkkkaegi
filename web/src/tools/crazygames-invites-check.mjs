@@ -3,6 +3,7 @@ import { createServer } from 'vite';
 import { fileURLToPath } from 'node:url';
 
 const calls = [];
+let sdkLoadAttempts = 0;
 let launchRoom = '23456789ABCD';
 let instant = false;
 const game = {
@@ -21,13 +22,19 @@ const sdkMock = {
 globalThis.window = { setTimeout, CrazyGames: { SDK: sdkMock } };
 globalThis.document = {
   createElement: () => ({ remove() {} }),
-  head: { append(script) { queueMicrotask(() => script.onload()); } },
+  head: { append(script) {
+    sdkLoadAttempts++;
+    queueMicrotask(() => sdkLoadAttempts === 1 ? script.onerror() : script.onload());
+  } },
 };
 const vite = await createServer({ root: fileURLToPath(new URL('../..', import.meta.url)), logLevel: 'error', appType: 'custom', server: { middlewareMode: true, hmr: false } });
 try {
   const multiplayer = await vite.ssrLoadModule('/src/crazygames-multiplayer.ts');
   const life = await vite.ssrLoadModule('/src/crazygames-stubs/portal-lifecycle.ts');
   await multiplayer.prepareLaunchInvite();
+  assert.equal(multiplayer.hasLaunchInvite(), false);
+  await multiplayer.prepareLaunchInvite();
+  assert.equal(sdkLoadAttempts, 2);
   assert.equal(multiplayer.hasLaunchInvite(), true);
   assert.deepEqual(multiplayer.consumeLaunchInvite(), { room: '23456789ABCD', instant: false });
   assert.equal(multiplayer.consumeLaunchInvite(), null);
@@ -63,6 +70,18 @@ try {
   await instantOnly.prepareLaunchInvite();
   assert.deepEqual(instantOnly.consumeLaunchInvite(), { instant: true });
   instant = false;
+  let inviteReadAttempts = 0;
+  game.getInviteParam = () => {
+    inviteReadAttempts++;
+    if (inviteReadAttempts === 1) throw new Error('SDK invite read unavailable');
+    return '23456789ABCD';
+  };
+  const retryRead = await vite.ssrLoadModule('/src/crazygames-multiplayer.ts?retry-read');
+  await retryRead.prepareLaunchInvite();
+  assert.equal(retryRead.hasLaunchInvite(), false);
+  await retryRead.prepareLaunchInvite();
+  assert.equal(inviteReadAttempts, 2);
+  assert.deepEqual(retryRead.consumeLaunchInvite(), { room: '23456789ABCD', instant: false });
   game.getInviteParam = undefined;
   game.inviteLink = undefined;
   const unavailable = await vite.ssrLoadModule('/src/crazygames-multiplayer.ts?missing-param');

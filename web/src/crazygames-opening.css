@@ -56,6 +56,7 @@ body:has(.game-canvas-crazygames) .tutorial-step-title { color: #ffe1a0; display
   pointer-events: none;
 }
 .solo-storage-notice ~ .solo-account-notice, body:has(.solo-storage-notice) .solo-account-notice { bottom: 42px; }
+.solo-account-notice button { pointer-events: auto; }
 @media (max-height: 510px) {
   body[data-solo-opening="true"] #app { --game-board-top: 78px; --game-hud-height: 38px; }
   body[data-solo-opening="true"] #app .turn-hud-container { width: calc(100% - 150px); top: 8px; gap: 3px; }

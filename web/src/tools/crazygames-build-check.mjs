@@ -38,8 +38,9 @@ for (const file of files) {
     const url = match[0].replace(/[.,;]+$/u, '');
     if (file.name === 'assets/chess-set.meta.json' && url === 'https://polyhaven.com/a/chess_set') continue;
     // Metered's hostname is selected by the existing shared ICE client at runtime.
-    if (/^assets\/metered-turn-[\w-]+\.js$/u.test(file.name) && /^https:\/\/\$\{/u.test(url)
-      && source.includes('.metered.live/api/v1/turn/credentials?apiKey=')) continue;
+    if (/^https:\/\/\$\{[^}]+$/u.test(url)
+      && source.startsWith('}.metered.live/api/v1/turn/credentials?apiKey=', match.index + match[0].length)) continue;
+    if (/^https:\/\/www\.crazygames\.com\/game\/chess-alkkagi(?:\?room=\$\{[^}]+\})?$/u.test(url)) continue;
     if (!new Set([
       'https://jcgt.org/published/0007/04/01/', 'http://www.w3.org/1999/xhtml', 'http://www.w3.org/2000/svg',
       'https://sdk.crazygames.com/crazygames-sdk-v3.js', 'https://yoajmckkrpgvcljrffww.supabase.co',
@@ -53,6 +54,13 @@ for (const file of files) {
 }
 
 const runtime = (await Promise.all(files.filter(file => file.name.endsWith('.js')).map(file => readFile(file.path, 'utf8')))).join('\n');
+// The Supabase library includes other providers' method definitions. The game must
+// only call the CrazyGames prompt, with no password/email form or external sign-in.
+if (/\.(?:signInWithOAuth|signInWithPassword|signInWithOtp|signInWithIdToken|signUp)\s*\(/u.test(runtime)
+  || /<input\b[^>]*\btype\s*=\s*["'`]?(?:password|email)\b/iu.test(runtime)) {
+  failures.push('game-owned external sign-in call or credential form in CrazyGames build');
+}
+if (!runtime.includes('.showAuthPrompt(')) failures.push('missing official CrazyGames login prompt');
 if (!names.has('privacy.html')) failures.push('privacy.html: missing packaged policy');
 else {
   const privacy = await readFile(join(root, 'privacy.html'), 'utf8');
@@ -66,8 +74,12 @@ if (!runtime.includes('Account progress uses your CrazyGames ID. Run upgrades ar
 for (const marker of ['crazygames-sdk-v3.js', 'crazygames-auth', 'yoajmckkrpgvcljrffww.supabase.co']) {
   if (!runtime.includes(marker)) failures.push(`missing account integration: ${marker}`);
 }
-for (const marker of ['ca-matchmaking-', 'RTCPeerConnection', 'join_friendly_room_v1']) {
-  if (runtime.includes(marker)) failures.push(`solo build retains multiplayer runtime: ${marker}`);
+for (const [route, markers] of Object.entries({
+  'automatic classic queue': ['ca-matchmaking-', 'webrtc-signal', 'register_ranked_match', 'matching-modal-overlay'],
+  'SDK invite and guest room': ['RTCPeerConnection', 'ca-friendly-code-', 'friendly-signal', 'friendly-'],
+  'shared peer relay': ['.metered.live/api/v1/turn/credentials'],
+})) {
+  for (const marker of markers) if (!runtime.includes(marker)) failures.push(`missing ${route} runtime: ${marker}`);
 }
 for (const match of runtime.matchAll(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/gu)) {
   try {

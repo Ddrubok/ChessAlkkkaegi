@@ -16,6 +16,12 @@ function memoryStorage(): Storage {
   };
 }
 
+/** Keep the temporary tab isolated, including callers that use localStorage directly. */
+export function useTemporaryPortalStorage(): void {
+  Object.defineProperty(window, "localStorage", { configurable: true, value: memoryStorage() });
+  reportPortalStorageUnavailable();
+}
+
 export function resilientPortalStorage(storage: Storage, persistent: boolean): Storage {
   const memory = memoryStorage();
   for (let i = 0; i < storage.length; i++) {
