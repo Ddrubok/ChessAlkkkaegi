@@ -21,5 +21,20 @@ try {
  const {UI_COPY,uiText}=await vite.ssrLoadModule('/src/ui-text.ts');
  const {PROMOTION_PIECE_OPTIONS}=await vite.ssrLoadModule('/src/promotion-modal.ts');
  for(const {code} of SUPPORTED_LANGUAGES){I18nManager.setLanguage(code);for(const key of Object.keys(UI_COPY)){assert.equal(UI_COPY[key].length,9);const value=uiText(key);assert.ok(value);assert.deepEqual(parameters(value),parameters(UI_COPY[key][1]),code+": UI parameters "+key);if(code!=='ko')assert.ok(!/[가-힣]/.test(value));}for(const option of PROMOTION_PIECE_OPTIONS){assert.ok(option.name&&option.description);if(code!=='ko')assert.ok(!/[가-힣]/.test(option.name+option.description));}}
+ const {feedbackCopy}=await vite.ssrLoadModule('/src/feedback-copy.ts');
+ for(const {code} of SUPPORTED_LANGUAGES){
+  I18nManager.setLanguage(code);
+  const copy=feedbackCopy();
+  for(const key of Object.keys(LOCALES.en.feedback)){
+   if(key==='practiceMiss'||key==='searchingEmpty')continue;
+   assert.equal(copy[key],LOCALES[code].feedback[key],`${code}: feedback ${key}`);
+  }
+  assert.equal(copy.practiceMiss(42),I18nManager.t('feedback.practiceMiss',{value:42}));
+  assert.ok(copy.practiceMiss(42).includes('42')&&!copy.practiceMiss(42).includes('{value}'));
+  assert.equal(copy.searchingEmpty('MODE'),I18nManager.t('feedback.searchingEmpty',{mode:'MODE'}));
+  assert.ok(copy.searchingEmpty('MODE').includes('MODE')&&!copy.searchingEmpty('MODE').includes('{mode}'));
+ }
+ I18nManager.setLanguage('en');assert.equal(feedbackCopy().practice,'Practice a softer shot');
+ I18nManager.setLanguage('fr');assert.equal(feedbackCopy().practice,LOCALES.fr.feedback.practice);
  console.log(`PASS: ${keys.length} keys in all 9 locales, placeholders, UI text and promotion localization`);
 }finally{await vite.close()}

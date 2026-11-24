@@ -17,7 +17,7 @@ import { computeEffectiveMaxDragPixels, isArmedPowerDrag, type InputRuntime } fr
 import { MOUSE_POWER_EXPONENT, pullDistanceForPower } from "./power-controls";
 import { getSupabaseClient } from "./supabase-client";
 import { cancelItchAuth, startItchAuth } from "./itch-auth";
-import { feedbackCopy, isPracticePower } from "./feedback-copy";
+import { feedbackCopy } from "./feedback-copy";
 import { isCoarsePointerEnvironment } from "./input-capability";
 
 export type TutorialType = "basic" | "advanced";
@@ -332,10 +332,12 @@ export class TutorialManager {
     hasCustomStrikePoint: boolean = false,
   ): { cleared: boolean; hint?: string } {
     if (!this.isActive) return { cleared: false };
-    if (this.powerPractice) return {
-      cleared: this.practicePower !== null && isPracticePower(this.practicePower),
-      hint: this.practicePower === null ? feedbackCopy().practiceGuide : feedbackCopy().practiceMiss(Math.round(this.practicePower * 100)),
-    };
+    if (this.powerPractice) {
+      if (this.practicePower === null) return { cleared: false, hint: feedbackCopy().practiceGuide };
+      const percent = Math.round(this.practicePower * 100);
+      if (percent >= 30 && percent <= 50) return { cleared: true };
+      return { cleared: false, hint: feedbackCopy().practiceMiss(percent) };
+    }
 
     if (this.tutorialType === "basic") {
       return { cleared: this.currentStep < 3 || PLATFORM.features.solo

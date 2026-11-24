@@ -36,6 +36,22 @@ export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
 
 export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>>> = {
   "ko": {
+    "feedback": {
+      "practice": "약한 샷 연습", "practiceTitle": "파워 조절 연습", "practiceGoal": "30~50% 세기로 한 번 발사해 보세요. 장외시킬 필요는 없습니다.",
+      "practiceGuide": "조금만 당기면 약한 샷입니다. 말 쪽으로 되돌리면 세기가 줄어듭니다.", "practiceSuccess": "원하는 세기로 발사했습니다!", "practiceRetry": "다시 연습", "practiceExit": "연습 끝내기", "menu": "메뉴로",
+      "firstSuccess": "첫 샷 성공!", "firstNext": "다음은 폰 3개로 시작하는 1단계입니다. 약한 샷도 연습할 수 있습니다.", "startStage": "1단계 시작",
+      "practiceMiss": "이번 세기 {value}%. 조금 조절해서 30~50%로 다시 해보세요.", "practiceNoReward": "자유 연습 · 진행과 보상에 영향을 주지 않습니다.",
+      "onlineMember": "상대 찾기: 클래식 또는 전략을 선택하세요. 같은 모드에서 검색하는 이용자끼리 연결됩니다. 친구와 하려면 초대 코드를 이용하세요.",
+      "onlineGuest": "친구와 대전: 방 코드를 만들거나 입력하세요. 무작위 상대를 찾으려면 게임 안에서 로그인하세요.",
+      "friendGuide": "한 명이 방을 만들어 코드를 공유하고, 다른 한 명이 코드를 입력하세요. 자동으로 상대를 찾는 기능과는 다릅니다.",
+      "guestOnlineStatus": "친구 방 코드 · 로그인하면 상대 찾기", "onlineSiteLogin": "itch.io 사이트 로그인 후에도 게임 안에서 계정 연결이 필요할 수 있습니다.",
+      "searchingEmpty": "지금 {mode}에서 검색하는 다른 이용자가 없습니다. 기다리거나 취소 후 친구를 초대할 수 있습니다.", "separateQueues": "클래식과 전략은 서로 다른 매칭 대기열입니다.",
+      "breakableWall": "이 벽은 새 접촉이 두 번 발생하면 부서집니다. 첫 접촉 후 균열이 생깁니다. 낮은 벽은 뛰어넘을 수 있습니다.",
+      "pocketWall": "이 단계의 벽은 부서지지 않습니다. 모서리 출구를 이용하세요.",
+      "stageOpening": "내 폰 3개 · 상대 폰 3개. 한 발 제한이 아닙니다. 약하게 쏘며 위치를 잡아도 됩니다.",
+      "rookChoice": "폰과 룩을 골라 보세요. 룩의 중앙 타격은 최대 150%지만, 세게 치면 내 말도 떨어질 수 있습니다.",
+      "knightChoice": "폰의 지상 공격과 나이트의 도약을 비교해 보세요. 낮은 벽은 넘을 수 있지만, 착지 위치는 세기에 따라 달라집니다. 이 벽은 새 접촉 두 번에 부서집니다."
+    },
     "hotseat_map": {
       "title": "2인 대전 · 맵 선택",
       "description": "같은 기기에서 두 사람이 번갈아 플레이할 맵을 선택하세요.",
@@ -450,6 +466,22 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "en": {
+    "feedback": {
+      "practice": "Practice a softer shot", "practiceTitle": "Power control practice", "practiceGoal": "Release one shot at 30–50% power. You do not need a knockout.",
+      "practiceGuide": "Pull a little for a softer shot. Move back toward the piece to reduce power.", "practiceSuccess": "You released a controlled shot!", "practiceRetry": "Practice again", "practiceExit": "Finish practice", "menu": "Main menu",
+      "firstSuccess": "First flick complete!", "firstNext": "Stage 1 starts with three pawns on each side. You can also practice a softer shot first.", "startStage": "Start Stage 1",
+      "practiceMiss": "That shot was {value}%. Adjust your pull and try 30–50% again.", "practiceNoReward": "Free practice · does not change progress or rewards.",
+      "onlineMember": "Find an opponent: choose Classic or Strategy. Players searching in the same mode can match. Use an invite code to play with a friend.",
+      "onlineGuest": "Play with a friend: create or enter a room code. Sign in inside the game to find a random opponent.",
+      "friendGuide": "One player creates a room and shares its code; the other enters it. Room codes connect friends, not random opponents.",
+      "guestOnlineStatus": "Friend room codes · sign in for matchmaking", "onlineSiteLogin": "Signing in to the itch.io website may still require linking your account inside the game.",
+      "searchingEmpty": "No other players are searching in {mode} right now. You can keep waiting or cancel and invite a friend.", "separateQueues": "Classic and Strategy use separate matchmaking queues.",
+      "breakableWall": "These walls break after two new contacts. The first contact leaves a crack. Low walls can be jumped over.",
+      "pocketWall": "These walls do not break. Use the corner exits.",
+      "stageOpening": "Three pawns on each side. This is not a one-shot challenge. Softer shots can help you position your pieces.",
+      "rookChoice": "Choose a Pawn or Rook. A central Rook strike allows 150% power, but a strong shot can send your own piece off too.",
+      "knightChoice": "Compare a Pawn's ground shot with a Knight's jump. It can clear low walls; power changes where it lands. These walls break after two new contacts."
+    },
     "hotseat_map": {
       "title": "2 Players · Choose a map",
       "description": "Choose a map for two people taking turns on the same device.",
@@ -864,6 +896,21 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "ja": {
+    "feedback": {
+      "practice": "弱いショットを練習", "practiceTitle": "パワー調整の練習", "practiceGoal": "30～50%の強さで1回打ってみましょう。相手の駒を落とす必要はありません。",
+      "practiceGuide": "少しだけ引くと弱いショットになります。駒の方へ戻すとパワーが下がります。", "practiceSuccess": "狙った強さで打てました！", "practiceRetry": "もう一度練習", "practiceExit": "練習を終える", "menu": "メインメニューへ",
+      "firstSuccess": "最初のショット成功！", "firstNext": "次は両側にポーンが3個ずつあるステージ1です。先に弱いショットも練習できます。", "startStage": "ステージ1を開始",
+      "practiceMiss": "今回の強さは{value}%でした。引く距離を調整して30～50%を狙いましょう。", "practiceNoReward": "自由練習 · 進行状況や報酬には影響しません。",
+      "onlineMember": "対戦相手を探すにはクラシックかストラテジーを選んでください。同じモードで検索中のプレイヤーとマッチします。友達とは招待コードを使って対戦できます。",
+      "onlineGuest": "友達と対戦するにはルームコードを作成または入力してください。ランダムな相手を探すにはゲーム内でログインしてください。",
+      "friendGuide": "一方がルームを作ってコードを共有し、もう一方が入力してください。ルームコードは友達との接続用で、ランダムマッチには使いません。",
+      "guestOnlineStatus": "友達用ルームコード · ログインすると対戦相手を検索", "onlineSiteLogin": "itch.ioのサイトにログインしていても、ゲーム内でアカウントの連携が必要な場合があります。",
+      "searchingEmpty": "現在{mode}で検索中の他のプレイヤーはいません。そのまま待つか、キャンセルして友達を招待できます。", "separateQueues": "クラシックとストラテジーは別々のマッチング待機列です。",
+      "breakableWall": "この壁は新たに2回接触すると壊れます。最初の接触でひびが入ります。低い壁は飛び越えられます。", "pocketWall": "このステージの壁は壊れません。角の出口を使ってください。",
+      "stageOpening": "双方にポーンが3個ずつあります。1打で決める必要はありません。弱く打って駒の位置を整えることもできます。",
+      "rookChoice": "ポーンかルークを選んでください。ルークの中央ヒットは最大150%ですが、強く打つと自分の駒も落ちることがあります。",
+      "knightChoice": "ポーンの地上ショットとナイトのジャンプを比べてください。低い壁を越えられますが、着地点はパワーで変わります。この壁は新たに2回接触すると壊れます。"
+    },
     "hotseat_map": {
       "title": "2人対戦 · マップ選択",
       "description": "同じ端末で2人が交互に遊ぶマップを選んでください。",
@@ -1278,6 +1325,21 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "zh-CN": {
+    "feedback": {
+      "practice": "练习轻击", "practiceTitle": "力度控制练习", "practiceGoal": "以30%～50%的力度击出一球。不需要把棋子击出场外。",
+      "practiceGuide": "稍微向后拉即可轻击。向棋子方向回拉可减小力度。", "practiceSuccess": "你成功控制了击球力度！", "practiceRetry": "再练一次", "practiceExit": "结束练习", "menu": "返回主菜单",
+      "firstSuccess": "首次击球成功！", "firstNext": "第1关双方各有3个兵。你也可以先练习轻击。", "startStage": "开始第1关",
+      "practiceMiss": "这次力度是{value}%。调整拉动距离，再试试30%～50%。", "practiceNoReward": "自由练习 · 不影响进度或奖励。",
+      "onlineMember": "寻找对手：选择经典或策略模式。搜索同一模式的玩家可以匹配。与朋友对战请使用邀请码。",
+      "onlineGuest": "与朋友对战：创建或输入房间代码。要寻找随机对手，请在游戏内登录。",
+      "friendGuide": "一人创建房间并分享代码，另一人输入代码。房间代码用于与朋友连接，不用于随机匹配。",
+      "guestOnlineStatus": "好友房间代码 · 登录后可寻找对手", "onlineSiteLogin": "即使已登录itch.io网站，你可能仍需在游戏内关联账号。",
+      "searchingEmpty": "目前没有其他玩家在{mode}中搜索。你可以继续等待，或取消后邀请朋友。", "separateQueues": "经典和策略模式使用不同的匹配队列。",
+      "breakableWall": "这些墙在发生两次新的碰撞后会破碎。第一次碰撞会留下裂痕。矮墙可以跳过。", "pocketWall": "本关的墙不会破碎。请使用角落出口。",
+      "stageOpening": "双方各有3个兵。这不是一击挑战。轻击也能帮助你调整棋子位置。",
+      "rookChoice": "选择兵或车。车从中心击中时力度最高可达150%，但猛击也可能把自己的棋子打出场外。",
+      "knightChoice": "比较兵的地面攻击与马的跳跃。马能越过矮墙；力度会改变落点。这些墙在发生两次新的碰撞后会破碎。"
+    },
     "hotseat_map": {
       "title": "双人对战 · 选择地图",
       "description": "选择一张地图，两人在同一设备上轮流游玩。",
@@ -1692,6 +1754,21 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "de": {
+    "feedback": {
+      "practice": "Schwächeren Stoß üben", "practiceTitle": "Kraftkontrolle üben", "practiceGoal": "Stoße einmal mit 30–50 % Kraft. Du musst keine Figur vom Brett stoßen.",
+      "practiceGuide": "Ziehe nur ein wenig zurück, um schwächer zu stoßen. Bewege dich wieder zur Figur hin, um die Kraft zu verringern.", "practiceSuccess": "Du hast mit kontrollierter Kraft gestoßen!", "practiceRetry": "Erneut üben", "practiceExit": "Übung beenden", "menu": "Hauptmenü",
+      "firstSuccess": "Erster Stoß geschafft!", "firstNext": "Stufe 1 beginnt mit drei Bauern auf jeder Seite. Du kannst vorher noch einen schwächeren Stoß üben.", "startStage": "Stufe 1 starten",
+      "practiceMiss": "Dieser Stoß hatte {value} % Kraft. Passe den Zugweg an und versuche erneut 30–50 %.", "practiceNoReward": "Freies Üben · hat keinen Einfluss auf Fortschritt oder Belohnungen.",
+      "onlineMember": "Gegner suchen: Wähle Klassik oder Strategie. Spieler, die im selben Modus suchen, können einander zugeordnet werden. Mit Freunden spielst du per Einladungscode.",
+      "onlineGuest": "Mit Freunden spielen: Erstelle einen Raumcode oder gib einen ein. Melde dich im Spiel an, um einen zufälligen Gegner zu suchen.",
+      "friendGuide": "Eine Person erstellt einen Raum und teilt den Code, die andere gibt ihn ein. Raumcodes verbinden Freunde; sie suchen keine zufälligen Gegner.",
+      "guestOnlineStatus": "Raumcodes für Freunde · für Gegnersuche anmelden", "onlineSiteLogin": "Auch nach der Anmeldung auf itch.io musst du dein Konto möglicherweise noch im Spiel verknüpfen.",
+      "searchingEmpty": "Derzeit sucht niemand sonst in {mode}. Du kannst weiter warten oder abbrechen und einen Freund einladen.", "separateQueues": "Klassik und Strategie haben getrennte Matchmaking-Warteschlangen.",
+      "breakableWall": "Diese Wände zerbrechen nach zwei neuen Kontakten. Beim ersten Kontakt entsteht ein Riss. Niedrige Wände können übersprungen werden.", "pocketWall": "Die Wände dieser Stufe zerbrechen nicht. Nutze die Ausgänge an den Ecken.",
+      "stageOpening": "Drei Bauern auf jeder Seite. Du musst die Aufgabe nicht mit einem Stoß lösen. Schwächere Stöße helfen dir, deine Figuren zu positionieren.",
+      "rookChoice": "Wähle einen Bauern oder Turm. Ein mittiger Treffer mit dem Turm erlaubt bis zu 150 % Kraft, doch ein starker Stoß kann auch deine eigene Figur vom Brett befördern.",
+      "knightChoice": "Vergleiche den Bodenstoß eines Bauern mit dem Sprung eines Springers. Er kann niedrige Wände überspringen; die Kraft bestimmt den Landeplatz. Diese Wände zerbrechen nach zwei neuen Kontakten."
+    },
     "hotseat_map": {
       "title": "2 Spieler · Karte wählen",
       "description": "Wählt eine Karte und spielt zu zweit abwechselnd auf demselben Gerät.",
@@ -2106,6 +2183,21 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "fr": {
+    "feedback": {
+      "practice": "S'entraîner à tirer doucement", "practiceTitle": "Exercice de dosage", "practiceGoal": "Effectuez un tir à 30–50 % de puissance. Vous n'avez pas besoin d'éliminer une pièce.",
+      "practiceGuide": "Tirez légèrement en arrière pour un coup plus doux. Rapprochez-vous de la pièce pour réduire la puissance.", "practiceSuccess": "Vous avez réussi un tir maîtrisé !", "practiceRetry": "Réessayer", "practiceExit": "Terminer l'exercice", "menu": "Menu principal",
+      "firstSuccess": "Premier tir réussi !", "firstNext": "Le niveau 1 commence avec trois pions de chaque côté. Vous pouvez aussi vous entraîner à tirer plus doucement avant de commencer.", "startStage": "Commencer le niveau 1",
+      "practiceMiss": "Ce tir était à {value} %. Ajustez la distance et essayez de nouveau entre 30 et 50 %.", "practiceNoReward": "Entraînement libre · sans effet sur la progression ni les récompenses.",
+      "onlineMember": "Trouver un adversaire : choisissez Classique ou Stratégie. Les joueurs qui cherchent dans le même mode peuvent être associés. Utilisez un code d'invitation pour jouer avec un ami.",
+      "onlineGuest": "Jouer avec un ami : créez ou saisissez un code de salon. Connectez-vous dans le jeu pour trouver un adversaire aléatoire.",
+      "friendGuide": "Un joueur crée un salon et partage son code ; l'autre le saisit. Les codes de salon relient des amis, sans recherche d'adversaire aléatoire.",
+      "guestOnlineStatus": "Codes de salon entre amis · connexion requise pour trouver un adversaire", "onlineSiteLogin": "Même si vous êtes connecté au site itch.io, vous devrez peut-être lier votre compte dans le jeu.",
+      "searchingEmpty": "Personne d'autre ne cherche de partie en mode {mode} pour le moment. Vous pouvez attendre ou annuler et inviter un ami.", "separateQueues": "Les modes Classique et Stratégie ont des files d'attente distinctes.",
+      "breakableWall": "Ces murs se brisent après deux nouveaux contacts. Le premier contact crée une fissure. Il est possible de sauter par-dessus les murs bas.", "pocketWall": "Les murs de ce niveau ne se brisent pas. Utilisez les sorties dans les coins.",
+      "stageOpening": "Trois pions de chaque côté. Il n'est pas nécessaire de gagner en un seul tir. Des coups plus doux peuvent vous aider à placer vos pièces.",
+      "rookChoice": "Choisissez un pion ou une tour. Un coup centré de la tour permet jusqu'à 150 % de puissance, mais un tir puissant peut aussi éjecter votre propre pièce.",
+      "knightChoice": "Comparez le tir au sol du pion au saut du cavalier. Il peut franchir les murs bas ; sa puissance change son point d'atterrissage. Ces murs se brisent après deux nouveaux contacts."
+    },
     "hotseat_map": {
       "title": "2 joueurs · Choisir une carte",
       "description": "Choisissez une carte pour jouer à deux, à tour de rôle sur le même appareil.",
@@ -2520,6 +2612,21 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "es": {
+    "feedback": {
+      "practice": "Practica un tiro suave", "practiceTitle": "Práctica de control de potencia", "practiceGoal": "Lanza una vez con un 30–50 % de potencia. No necesitas sacar ninguna pieza del tablero.",
+      "practiceGuide": "Tira un poco hacia atrás para lanzar más suave. Acércate de nuevo a la pieza para reducir la potencia.", "practiceSuccess": "¡Has lanzado con la potencia adecuada!", "practiceRetry": "Practicar otra vez", "practiceExit": "Terminar práctica", "menu": "Menú principal",
+      "firstSuccess": "¡Primer tiro completado!", "firstNext": "El nivel 1 empieza con tres peones en cada lado. También puedes practicar primero un tiro más suave.", "startStage": "Empezar nivel 1",
+      "practiceMiss": "Ese tiro tuvo un {value} % de potencia. Ajusta cuánto tiras hacia atrás e intenta llegar al 30–50 %.", "practiceNoReward": "Práctica libre · no afecta al progreso ni a las recompensas.",
+      "onlineMember": "Buscar rival: elige Clásico o Estrategia. Los jugadores que busquen en el mismo modo pueden emparejarse. Usa un código de invitación para jugar con un amigo.",
+      "onlineGuest": "Jugar con un amigo: crea o introduce un código de sala. Inicia sesión dentro del juego para buscar un rival aleatorio.",
+      "friendGuide": "Una persona crea una sala y comparte el código; la otra lo introduce. Los códigos de sala conectan a amigos, no buscan rivales aleatorios.",
+      "guestOnlineStatus": "Códigos de sala para amigos · inicia sesión para buscar rival", "onlineSiteLogin": "Aunque hayas iniciado sesión en el sitio de itch.io, quizá debas vincular tu cuenta dentro del juego.",
+      "searchingEmpty": "Ahora mismo no hay otros jugadores buscando en {mode}. Puedes seguir esperando o cancelar e invitar a un amigo.", "separateQueues": "Clásico y Estrategia tienen colas de emparejamiento separadas.",
+      "breakableWall": "Estas paredes se rompen tras dos contactos nuevos. El primero deja una grieta. Puedes saltar las paredes bajas.", "pocketWall": "Las paredes de este nivel no se rompen. Usa las salidas de las esquinas.",
+      "stageOpening": "Tres peones por lado. No tienes que resolverlo de un solo tiro. Los tiros suaves pueden ayudarte a colocar las piezas.",
+      "rookChoice": "Elige un peón o una torre. Un golpe centrado de la torre permite hasta un 150 % de potencia, pero uno fuerte también puede sacar tu propia pieza del tablero.",
+      "knightChoice": "Compara el tiro a ras de suelo del peón con el salto del caballo. Puede superar paredes bajas; la potencia cambia dónde aterriza. Estas paredes se rompen tras dos contactos nuevos."
+    },
     "hotseat_map": {
       "title": "2 jugadores · Elegir mapa",
       "description": "Elige un mapa para que dos personas jueguen por turnos en el mismo dispositivo.",
@@ -2934,6 +3041,21 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "ru": {
+    "feedback": {
+      "practice": "Потренировать слабый удар", "practiceTitle": "Тренировка силы удара", "practiceGoal": "Сделайте один удар с силой 30–50 %. Выбивать фигуру с поля не нужно.",
+      "practiceGuide": "Слегка оттяните назад для слабого удара. Подвиньте обратно к фигуре, чтобы уменьшить силу.", "practiceSuccess": "Удар нужной силы получился!", "practiceRetry": "Повторить тренировку", "practiceExit": "Закончить тренировку", "menu": "Главное меню",
+      "firstSuccess": "Первый удар выполнен!", "firstNext": "На первом этапе у каждой стороны по три пешки. Перед ним можно потренировать слабый удар.", "startStage": "Начать этап 1",
+      "practiceMiss": "Сила удара составила {value} %. Измените расстояние оттягивания и попробуйте снова достичь 30–50 %.", "practiceNoReward": "Свободная тренировка · не влияет на прогресс и награды.",
+      "onlineMember": "Поиск соперника: выберите классический или стратегический режим. Игроки, которые ищут матч в одном режиме, могут встретиться. Для игры с другом используйте код приглашения.",
+      "onlineGuest": "Игра с другом: создайте или введите код комнаты. Войдите в аккаунт в игре, чтобы найти случайного соперника.",
+      "friendGuide": "Один игрок создаёт комнату и передаёт код, другой вводит его. Коды комнат соединяют друзей, но не ищут случайных соперников.",
+      "guestOnlineStatus": "Коды комнат для друзей · войдите для поиска соперника", "onlineSiteLogin": "Даже после входа на сайт itch.io может потребоваться связать аккаунт в самой игре.",
+      "searchingEmpty": "Сейчас в режиме {mode} больше никто не ищет матч. Можно подождать или отменить поиск и пригласить друга.", "separateQueues": "У классического и стратегического режимов отдельные очереди поиска.",
+      "breakableWall": "Эти стены разрушаются после двух новых столкновений. Первое оставляет трещину. Низкие стены можно перепрыгнуть.", "pocketWall": "Стены этого этапа не разрушаются. Используйте выходы по углам.",
+      "stageOpening": "По три пешки с каждой стороны. Необязательно решить задачу одним ударом. Слабые удары помогут расставить фигуры.",
+      "rookChoice": "Выберите пешку или ладью. Удар ладьи по центру допускает силу до 150 %, но сильный удар может выбить и вашу фигуру.",
+      "knightChoice": "Сравните наземный удар пешки и прыжок коня. Конь перепрыгивает низкие стены; сила влияет на место приземления. Эти стены разрушаются после двух новых столкновений."
+    },
     "hotseat_map": {
       "title": "2 игрока · Выбор карты",
       "description": "Выберите карту для двух игроков, играющих по очереди на одном устройстве.",
@@ -3348,6 +3470,21 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "pt-BR": {
+    "feedback": {
+      "practice": "Pratique uma jogada mais leve", "practiceTitle": "Treino de controle de força", "practiceGoal": "Faça uma jogada com 30–50% de força. Não é preciso tirar uma peça do tabuleiro.",
+      "practiceGuide": "Puxe só um pouco para uma jogada mais leve. Aproxime de volta da peça para reduzir a força.", "practiceSuccess": "Você fez uma jogada com a força desejada!", "practiceRetry": "Praticar de novo", "practiceExit": "Terminar treino", "menu": "Menu principal",
+      "firstSuccess": "Primeira jogada concluída!", "firstNext": "A fase 1 começa com três peões de cada lado. Você também pode praticar uma jogada mais leve antes.", "startStage": "Iniciar fase 1",
+      "practiceMiss": "A força dessa jogada foi {value}%. Ajuste o quanto você puxa e tente novamente com 30–50%.", "practiceNoReward": "Treino livre · não altera o progresso nem as recompensas.",
+      "onlineMember": "Encontre um oponente: escolha Clássico ou Estratégia. Jogadores que buscam no mesmo modo podem ser pareados. Use um código de convite para jogar com um amigo.",
+      "onlineGuest": "Jogue com um amigo: crie ou digite um código de sala. Entre na sua conta dentro do jogo para encontrar um oponente aleatório.",
+      "friendGuide": "Uma pessoa cria a sala e compartilha o código; a outra o digita. Códigos de sala conectam amigos, não buscam oponentes aleatórios.",
+      "guestOnlineStatus": "Códigos de sala para amigos · entre para buscar oponentes", "onlineSiteLogin": "Mesmo após entrar no site itch.io, talvez seja preciso vincular sua conta dentro do jogo.",
+      "searchingEmpty": "Ninguém mais está buscando uma partida em {mode} agora. Você pode continuar esperando ou cancelar e convidar um amigo.", "separateQueues": "Clássico e Estratégia têm filas de pareamento separadas.",
+      "breakableWall": "Essas paredes se quebram após dois novos contatos. O primeiro deixa uma rachadura. É possível saltar sobre paredes baixas.", "pocketWall": "As paredes desta fase não se quebram. Use as saídas nos cantos.",
+      "stageOpening": "Três peões de cada lado. Você não precisa resolver tudo em uma jogada. Jogadas mais leves podem ajudar a posicionar suas peças.",
+      "rookChoice": "Escolha um peão ou uma torre. Uma batida central da torre permite até 150% de força, mas uma jogada forte também pode derrubar sua própria peça.",
+      "knightChoice": "Compare a jogada rasteira do peão com o salto do cavalo. Ele pode passar por paredes baixas; a força muda onde ele cai. Essas paredes se quebram após dois novos contatos."
+    },
     "hotseat_map": {
       "title": "2 jogadores · Escolher mapa",
       "description": "Escolha um mapa para duas pessoas jogarem por turnos no mesmo dispositivo.",
