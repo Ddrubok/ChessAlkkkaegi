@@ -47,6 +47,13 @@ export type RuntimeTextKey =
   | "startup.preparing_physics"
   | "startup.stabilizing_pieces"
   | "startup.init_failed"
+  | "startup.graphics_failed"
+  | "startup.graphics_help"
+  | "startup.download_failed"
+  | "startup.download_help"
+  | "startup.unknown_failed"
+  | "startup.unknown_help"
+  | "startup.retry"
   // Online Settlement & Rematch
   | "online.settle_retry_btn"
   | "online.settle_checking_opponent"
@@ -165,6 +172,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "물리 월드를 준비하는 중입니다",
     "startup.stabilizing_pieces": "말의 시작 자세를 안정시키는 중입니다",
     "startup.init_failed": "게임을 시작하지 못했습니다.",
+    "startup.graphics_failed": "그래픽을 시작하지 못했습니다.",
+    "startup.graphics_help": "브라우저에서 WebGL 또는 하드웨어 가속을 사용할 수 있는지 확인한 뒤 다시 시도해 주세요.",
+    "startup.download_failed": "게임 파일을 불러오지 못했습니다.",
+    "startup.download_help": "연결 상태를 확인한 뒤 다시 시도해 주세요.",
+    "startup.unknown_failed": "게임을 시작하지 못했습니다.",
+    "startup.unknown_help": "다시 시도해 주세요. 문제가 계속되면 브라우저를 새로 열어 주세요.",
+    "startup.retry": "다시 시도",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "정산 다시 확인",
@@ -287,6 +301,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "Preparing physics world…",
     "startup.stabilizing_pieces": "Stabilizing initial piece positions…",
     "startup.init_failed": "Failed to initialize game.",
+    "startup.graphics_failed": "Graphics could not start.",
+    "startup.graphics_help": "Check that WebGL or hardware acceleration is available in your browser, then try again.",
+    "startup.download_failed": "Game files could not be loaded.",
+    "startup.download_help": "Check your connection, then try again.",
+    "startup.unknown_failed": "The game could not start.",
+    "startup.unknown_help": "Try again. If the problem continues, reopen your browser.",
+    "startup.retry": "Try again",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Recheck Settlement",
@@ -409,6 +430,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "物理ワールドを準備しています…",
     "startup.stabilizing_pieces": "駒の初期配置を安定させています…",
     "startup.init_failed": "ゲームを開始できませんでした。",
+    "startup.graphics_failed": "グラフィックを開始できませんでした。",
+    "startup.graphics_help": "ブラウザーでWebGLまたはハードウェアアクセラレーションが使えるか確認し、再試行してください。",
+    "startup.download_failed": "ゲームファイルを読み込めませんでした。",
+    "startup.download_help": "接続を確認してから再試行してください。",
+    "startup.unknown_failed": "ゲームを開始できませんでした。",
+    "startup.unknown_help": "再試行してください。問題が続く場合はブラウザーを開き直してください。",
+    "startup.retry": "再試行",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "精算を再確認",
@@ -531,6 +559,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "正在准备物理世界…",
     "startup.stabilizing_pieces": "正在稳定棋子初始姿态…",
     "startup.init_failed": "无法启动游戏。",
+    "startup.graphics_failed": "无法启动图形功能。",
+    "startup.graphics_help": "请确认浏览器支持 WebGL 或已启用硬件加速，然后重试。",
+    "startup.download_failed": "无法加载游戏文件。",
+    "startup.download_help": "请检查网络连接，然后重试。",
+    "startup.unknown_failed": "无法启动游戏。",
+    "startup.unknown_help": "请重试。如果问题持续，请重新打开浏览器。",
+    "startup.retry": "重试",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "重新核对结算",
@@ -653,6 +688,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "Physik-Welt wird vorbereitet …",
     "startup.stabilizing_pieces": "Ausgangsposition der Figuren wird stabilisiert …",
     "startup.init_failed": "Das Spiel konnte nicht gestartet werden.",
+    "startup.graphics_failed": "Die Grafik konnte nicht gestartet werden.",
+    "startup.graphics_help": "Prüfe, ob WebGL oder Hardwarebeschleunigung im Browser verfügbar ist, und versuche es erneut.",
+    "startup.download_failed": "Die Spieldateien konnten nicht geladen werden.",
+    "startup.download_help": "Prüfe deine Verbindung und versuche es erneut.",
+    "startup.unknown_failed": "Das Spiel konnte nicht gestartet werden.",
+    "startup.unknown_help": "Versuche es erneut. Falls das Problem bleibt, öffne den Browser neu.",
+    "startup.retry": "Erneut versuchen",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Wertung erneut prüfen",
@@ -775,6 +817,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "Préparation du monde physique…",
     "startup.stabilizing_pieces": "Stabilisation des positions initiales des pièces…",
     "startup.init_failed": "Impossible de démarrer le jeu.",
+    "startup.graphics_failed": "Impossible de démarrer l'affichage graphique.",
+    "startup.graphics_help": "Vérifiez que WebGL ou l'accélération matérielle est disponible dans le navigateur, puis réessayez.",
+    "startup.download_failed": "Impossible de charger les fichiers du jeu.",
+    "startup.download_help": "Vérifiez votre connexion, puis réessayez.",
+    "startup.unknown_failed": "Impossible de démarrer le jeu.",
+    "startup.unknown_help": "Réessayez. Si le problème persiste, rouvrez le navigateur.",
+    "startup.retry": "Réessayer",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Revérifier le décompte",
@@ -897,6 +946,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "Preparando el mundo físico…",
     "startup.stabilizing_pieces": "Estabilizando posiciones iniciales de las piezas…",
     "startup.init_failed": "No se pudo iniciar el juego.",
+    "startup.graphics_failed": "No se pudieron iniciar los gráficos.",
+    "startup.graphics_help": "Comprueba que WebGL o la aceleración por hardware esté disponible en tu navegador y vuelve a intentarlo.",
+    "startup.download_failed": "No se pudieron cargar los archivos del juego.",
+    "startup.download_help": "Comprueba tu conexión y vuelve a intentarlo.",
+    "startup.unknown_failed": "No se pudo iniciar el juego.",
+    "startup.unknown_help": "Vuelve a intentarlo. Si el problema continúa, abre de nuevo el navegador.",
+    "startup.retry": "Reintentar",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Volver a verificar liquidación",
@@ -1019,6 +1075,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "Подготовка физического мира…",
     "startup.stabilizing_pieces": "Стабилизация начальной расстановки фигур…",
     "startup.init_failed": "Не удалось запустить игру.",
+    "startup.graphics_failed": "Не удалось запустить графику.",
+    "startup.graphics_help": "Проверьте, доступен ли WebGL или аппаратное ускорение в браузере, затем повторите попытку.",
+    "startup.download_failed": "Не удалось загрузить файлы игры.",
+    "startup.download_help": "Проверьте подключение и повторите попытку.",
+    "startup.unknown_failed": "Не удалось запустить игру.",
+    "startup.unknown_help": "Повторите попытку. Если проблема останется, перезапустите браузер.",
+    "startup.retry": "Повторить",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Перепроверить расчет",
@@ -1141,6 +1204,13 @@ export const RUNTIME_LOCALES: Record<LanguageCode, Record<RuntimeTextKey, string
     "startup.preparing_physics": "Preparando mundo de física…",
     "startup.stabilizing_pieces": "Estabilizando posições iniciais das peças…",
     "startup.init_failed": "Não foi possível iniciar o jogo.",
+    "startup.graphics_failed": "Não foi possível iniciar os gráficos.",
+    "startup.graphics_help": "Verifique se WebGL ou a aceleração de hardware está disponível no navegador e tente novamente.",
+    "startup.download_failed": "Não foi possível carregar os arquivos do jogo.",
+    "startup.download_help": "Verifique sua conexão e tente novamente.",
+    "startup.unknown_failed": "Não foi possível iniciar o jogo.",
+    "startup.unknown_help": "Tente novamente. Se o problema continuar, reabra o navegador.",
+    "startup.retry": "Tentar novamente",
 
     // Online Settlement & Rematch
     "online.settle_retry_btn": "Reverificar cálculo",

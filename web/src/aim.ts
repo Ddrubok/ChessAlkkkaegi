@@ -36,7 +36,7 @@ import {
 } from "./config";
 import type { PieceBodyBinding } from "./physics";
 import { computeLaunchKinematics, type LaunchKinematicsOptions } from "./launch";
-import { powerAtPullDistance } from "./power-controls";
+import { adjustClassicMousePower, powerAtPullDistance } from "./power-controls";
 import type { SceneRuntime } from "./scene";
 import {
   resetAimPowerSounds,
@@ -1507,6 +1507,7 @@ export function updateAimPointer(
   clientY: number,
   maxDragPixels = MAX_DRAG_PIXELS,
   powerExponent = 1,
+  mousePreset?: number,
 ): void {
   const activeAim = runtime.activeAim;
   if (activeAim === null) {
@@ -1516,7 +1517,8 @@ export function updateAimPointer(
   const deltaX = clientX - activeAim.startX;
   const deltaY = clientY - activeAim.startY;
   const dragLength = Math.hypot(deltaX, deltaY);
-  activeAim.normalizedPower = powerAtPullDistance(dragLength, maxDragPixels, maxPower, powerExponent);
+  const power = powerAtPullDistance(dragLength, maxDragPixels, maxPower, powerExponent);
+  activeAim.normalizedPower = mousePreset === undefined ? power : adjustClassicMousePower(power, mousePreset, maxDragPixels);
   if (activeAim.tracksPowerSounds) {
     updateAimPowerSounds(activeAim.normalizedPower, maxPower);
   }

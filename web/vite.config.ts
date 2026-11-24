@@ -222,7 +222,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
           .replace(/\s*<link rel="preload"[^>]*>/u, "")
           .replace(/<div class="boot-loading-card">[^]*?<div class="boot-loading-track"[^>]*><\/div>\s*<\/div>/u, '<div class="boot-loading-card"><h1>Chess Alkkagi</h1><p>Flick chess pieces through ten solo stages.</p><p id="boot-loading-phase">Loading...</p><div class="boot-loading-track" aria-hidden="true"></div></div>')
           .replace(/\s*<script src="\.\/boot-language\.js"><\/script>/u, "")
-          .replace('src="/src/main.ts"', 'src="/src/itch-entry.ts"'),
+          .replace('src="/src/web-entry.ts"', 'src="/src/itch-entry.ts"'),
       },
       writeBundle(options: { dir?: string }) {
         const output = resolve(PROJECT_ROOT, options.dir ?? "dist-itch");
@@ -237,7 +237,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
           .replace(/\s*<meta name="google-adsense-account"[^>]*>/u, "")
           .replace(/\s*<nav aria-label="게임 안내">[\s\S]*?<\/nav>/u, "")
           .replace(/\s*<link rel="preload"[^>]*href="\/assets\/banners\/classic\.webp"[^>]*>/u, "")
-          .replace('src="/src/main.ts"', 'src="/src/poki-entry.ts"'),
+          .replace('src="/src/web-entry.ts"', 'src="/src/poki-entry.ts"'),
       },
       writeBundle(options: { dir?: string }) {
         const output = resolve(PROJECT_ROOT, options.dir ?? "dist-poki");
@@ -275,7 +275,7 @@ export default defineConfig(({ command, isPreview, mode }) => {
           .replace(/\s*<link rel="preload"[^>]*>/u, "")
           .replace(/<div class="boot-loading-card">[^]*?<div class="boot-loading-track"[^>]*><\/div>\s*<\/div>/u, `<div class="boot-loading-card"><h1>${CRAZYGAMES_TITLE}</h1><p>Aim and launch chess pieces to knock opponents off the board.</p><p id="boot-loading-phase">Loading…</p><div class="boot-loading-track" aria-hidden="true"></div></div>`)
           .replace(/\s*<script src="\.\/boot-language\.js"><\/script>/u, "")
-          .replace('src="/src/main.ts"', 'src="/src/crazygames-entry.ts"'),
+          .replace('src="/src/web-entry.ts"', 'src="/src/crazygames-entry.ts"'),
       },
       writeBundle(options: { dir?: string }) {
         const output = resolve(PROJECT_ROOT, options.dir ?? "dist-crazygames");

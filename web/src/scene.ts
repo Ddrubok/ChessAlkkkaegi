@@ -1,4 +1,5 @@
 import { uiText } from "./ui-text";
+import { StartupFailure } from "./startup-failure";
 import {
   ACESFilmicToneMapping,
   BoxGeometry,
@@ -806,7 +807,12 @@ export function createSceneRuntime(
     -boardHalfExtent * 1.85,
   );
 
-  const renderer = new WebGLRenderer({ antialias: true });
+  let renderer: WebGLRenderer;
+  try {
+    renderer = new WebGLRenderer({ antialias: true });
+  } catch (error) {
+    throw new StartupFailure("graphics", error);
+  }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = PCFSoftShadowMap;

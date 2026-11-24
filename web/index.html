@@ -59,6 +59,21 @@
         font-size: clamp(1.8rem, 8vw, 2.7rem);
       }
 
+      #boot-loading.error-panel .boot-loading-card p { color: #d8d0c4; line-height: 1.5; }
+      #boot-loading.error-panel .boot-loading-card button {
+        min-height: 44px;
+        margin-top: 0.5rem;
+        padding: 0.65rem 1.25rem;
+        border: 1px solid #ffe7a3;
+        border-radius: 0.5rem;
+        background: #ffe7a3;
+        color: #20180d;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #boot-loading.error-panel .boot-loading-card button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
       #boot-loading-phase {
         min-height: 1.5em;
         margin: 0;
@@ -118,6 +133,6 @@
       </section>
     </main>
     <script src="./boot-language.js"></script>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/web-entry.ts"></script>
   </body>
 </html>

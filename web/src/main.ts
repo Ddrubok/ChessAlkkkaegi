@@ -43,6 +43,7 @@ import { getTier } from "./tier";
 import { formatTier, formatTierProgress } from "./tier-view";
 import { I18nManager } from "./i18n";
 import { getRuntimeText } from "./runtime-text";
+import { showStartupError } from "./startup-error";
 import { STRATEGY_STAT_STEP } from "./strategy-deck";
 import { Vector3 } from "three";
 import { AdManager } from "./ad-manager";
@@ -3501,18 +3502,4 @@ async function bootstrap(): Promise<void> {
   }
 }
 
-void bootstrap().catch((error: unknown) => {
-  const fullError =
-    error instanceof Error ? (error.stack ?? error.message) : String(error);
-  console.error(fullError);
-  app.innerHTML = `
-    <section class="error-panel" role="alert">
-      <h1>${getRuntimeText("startup.init_failed")}</h1>
-      <pre></pre>
-    </section>
-  `;
-  const errorText = app.querySelector<HTMLPreElement>(".error-panel pre");
-  if (errorText !== null) {
-    errorText.textContent = uiText("connectionHelp");
-  }
-});
+void bootstrap().catch(showStartupError);

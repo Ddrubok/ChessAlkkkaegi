@@ -1873,6 +1873,7 @@ function handleCanvasPointerMove(
       event.clientY,
       gesture.maxDragPixels,
       gesture.powerExponent ?? 1,
+      gesture.pointerType === "mouse" ? gesture.mousePowerDistance : undefined,
     );
     updateReachability(runtime, event);
   } else if (gesture.source === "red-dot") {
@@ -2019,7 +2020,11 @@ function handleCanvasPointerUp(
   if (gesture.source === "classic-canvas") {
     event.preventDefault();
     gesture.maximumDistance = Math.max(gesture.maximumDistance, Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY));
-    updateAimPointer(runtime.aimRuntime, event.clientX, event.clientY, gesture.maxDragPixels, gesture.powerExponent ?? 1);
+    updateAimPointer(
+      runtime.aimRuntime, event.clientX, event.clientY,
+      gesture.maxDragPixels, gesture.powerExponent ?? 1,
+      gesture.pointerType === "mouse" ? gesture.mousePowerDistance : undefined,
+    );
     if (isArmedPowerDrag(gesture)) commitActiveLaunch(runtime);
     else cancelInteraction(runtime, false);
     return;

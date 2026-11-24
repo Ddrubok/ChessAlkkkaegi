@@ -284,6 +284,46 @@ try {
   powerControls.resetMousePowerDistance();
   assert.equal(powerControls.getMousePowerDistance(), 180);
 
+  // Small desktop canvases must give Precise a real physical aiming range.
+  const originalCanvasRect = mockCanvas.getBoundingClientRect;
+  for (const [width, height] of [[821, 462], [907, 510]]) {
+    mockCanvas.getBoundingClientRect = () => ({ left: 0, top: 0, right: width, bottom: height, width, height });
+    const references = [180, 240, 360].map(value => powerControls.computeViewportPowerDistance(value, width, height));
+    assert.ok(Math.abs(references[0] - height * .18 / Math.pow(1.5, 1 / powerControls.MOUSE_POWER_EXPONENT)) < 1e-9, 'default scale is unchanged');
+    assert.deepEqual(references, Array(3).fill(references[0]), 'full-power distance is unchanged for every preset');
+    const bandWidths = [];
+    for (const [index, preset] of [180, 240, 360].entries()) {
+      powerControls.setMousePowerDistance(preset);
+      const distances = [];
+      for (const target of [.17, .2, .23, .5, 1]) {
+        const runtime = createTestRuntime('classic');
+        const x = width / 2, y = height / 2;
+        // The low band slopes are 1, 3/4 and 1/2 for Short, Standard and Precise.
+        const slope = [1, .75, .5][index];
+        const raw = target < .5 ? .1 + (target - .1) / slope : target;
+        const pull = powerControls.pullDistanceForPower(raw, references[index], powerControls.MOUSE_POWER_EXPONENT);
+        distances.push(pull);
+        pointerDown(runtime, event(x, y));
+        assert.equal(runtime.gesture.maxDragPixels, references[index]);
+        pointerMove(runtime, event(x, y + pull));
+        assert.ok(Math.abs(runtime.aimRuntime.activeAim.normalizedPower - target) < 1e-6);
+        pointerUp(runtime, event(x, y + pull));
+        assert.equal(launchQueueCalls.length, 1, `${width}x${height}/${preset}px: ${target * 100}% release`);
+        assert.ok(Math.abs(launchQueueCalls[0].normalizedPower - target) < 1e-6);
+      }
+      bandWidths.push(distances[2] - distances[0]);
+    }
+    assert.ok(bandWidths[0] < bandWidths[1] && bandWidths[1] < bandWidths[2]);
+    assert.ok(bandWidths[2] > bandWidths[0] * 1.5, 'Precise widens the physical 17–23% band');
+    powerControls.setMousePowerDistance(360);
+    const outside = createTestRuntime('classic');
+    pointerDown(outside, event(width / 2, height / 2));
+    pointerUp(outside, event(width + 1, height / 2));
+    assert.equal(launchQueueCalls.length, 0, `${width}x${height}: outside canvas cancels`);
+  }
+  mockCanvas.getBoundingClientRect = originalCanvasRect;
+  powerControls.resetMousePowerDistance();
+
   const rect = { left: 0, right: 400, top: 0, bottom: 400 };
   assert.equal(powerControls.rayDistanceToRectEdge(200, 200, 0, 1, rect), 200);
   assert.equal(powerControls.rayDistanceToRectEdge(390, 200, 1, 0, rect), 10);

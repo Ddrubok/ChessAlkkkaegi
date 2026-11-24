@@ -2,6 +2,7 @@ import { BufferGeometry, Mesh } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { PIECE_TYPES, type PieceType } from "./config";
 import { resolveRuntimeAssetUrl } from "./portable-assets";
+import { StartupFailure } from "./startup-failure";
 
 export type ColliderPoint = [number, number, number];
 
@@ -191,13 +192,20 @@ export async function loadChessAssets(
   const loader = new GLTFLoader();
 
   const [metaResponse, gltf] = await Promise.all([
-    fetch(metaUrl),
-    loader.loadAsync(glbUrl, onProgress),
+    fetch(metaUrl).catch((error: unknown) => { throw new StartupFailure("download", error); }),
+    loader.loadAsync(glbUrl, onProgress).catch((error: unknown) => {
+      // Three's FileLoader reports HTTP failures this way; parser errors stay unknown.
+      if (error instanceof Error && (/^fetch for ".*" responded with \d+/u.test(error.message)
+        || (error instanceof TypeError && /failed to fetch|networkerror|network request failed|^load failed$/iu.test(error.message)))) {
+        throw new StartupFailure("download", error);
+      }
+      throw error;
+    }),
   ]);
   if (!metaResponse.ok) {
-    throw new Error(
+    throw new StartupFailure("download", new Error(
       `chess-set.meta.json 요청이 실패했습니다: HTTP ${metaResponse.status} ${metaResponse.statusText}`,
-    );
+    ));
   }
 
   const meta = validateMeta((await metaResponse.json()) as unknown);
