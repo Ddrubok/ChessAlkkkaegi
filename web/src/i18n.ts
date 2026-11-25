@@ -36,6 +36,14 @@ export const SUPPORTED_LANGUAGES: LanguageMeta[] = [
 
 export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>>> = {
   "ko": {
+    "power_controls": {
+      "tab": "조작", "title": "마우스 당김 거리", "description": "마우스는 처음 당길 때 세기가 천천히 올라가 약한 샷을 조절하기 쉽습니다. 180/240/360px은 100% 세기의 기준 거리이며, 화면이 작으면 실제 거리가 줄어들 수 있습니다. 최대 발사 세기는 그대로입니다.",
+      "short": "짧게", "standard": "보통", "precise": "정밀", "reset": "기본값 복원 (180px)",
+      "actual": "이 화면에서 실제 사용", "limited": "화면 크기로 제한됨", "sameDistance": "100%까지의 거리는 같습니다. 클래식 마우스 조작에서 약한 샷을 더 세밀하게 조준하려면 ‘보통’이나 ‘정밀’을 선택하세요.",
+      "unavailable": "이 방향에서는 화면 가장자리 때문에 최대 세기에 도달할 수 없습니다. 다른 방향이나 더 짧은 거리를 사용하세요.",
+      "redDotUnavailable": "이 화면에서는 빨간 점 아래 공간이 부족해 최대 세기에 도달할 수 없습니다. 더 짧은 거리를 선택하세요.",
+      "hint": "살짝 당기면 약하게 발사합니다. 말 쪽으로 되돌리면 세기가 줄어듭니다."
+    },
     "feedback": {
       "practice": "약한 샷 연습", "practiceTitle": "파워 조절 연습", "practiceGoal": "30~50% 세기로 한 번 발사해 보세요. 장외시킬 필요는 없습니다.",
       "practiceGuide": "조금만 당기면 약한 샷입니다. 말 쪽으로 되돌리면 세기가 줄어듭니다.", "practiceSuccess": "원하는 세기로 발사했습니다!", "practiceRetry": "다시 연습", "practiceExit": "연습 끝내기", "menu": "메뉴로",
@@ -466,6 +474,14 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "en": {
+    "power_controls": {
+      "tab": "Controls", "title": "Mouse pull distance", "description": "Mouse power rises gently at the start of a pull for finer soft shots. 180/240/360px are 100% power reference distances; the actual distance may shrink to fit the canvas. Maximum shot power stays the same.",
+      "short": "Short", "standard": "Standard", "precise": "Precise", "reset": "Reset to 180px",
+      "actual": "Actual on this screen", "limited": "Limited by screen size", "sameDistance": "Full power takes the same pull distance. For finer soft shots with a mouse in Classic mode, choose Standard or Precise.",
+      "unavailable": "The screen edge prevents full power in this direction. Try another direction or a shorter distance.",
+      "redDotUnavailable": "There is too little room below the red dot for full power. Choose a shorter distance.",
+      "hint": "Pull a little for a softer shot. Move back toward the piece to reduce power."
+    },
     "feedback": {
       "practice": "Practice a softer shot", "practiceTitle": "Power control practice", "practiceGoal": "Release one shot at 30–50% power. You do not need a knockout.",
       "practiceGuide": "Pull a little for a softer shot. Move back toward the piece to reduce power.", "practiceSuccess": "You released a controlled shot!", "practiceRetry": "Practice again", "practiceExit": "Finish practice", "menu": "Main menu",
@@ -896,6 +912,14 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "ja": {
+    "power_controls": {
+      "tab": "操作", "title": "マウスの引く距離", "description": "マウスで引き始めたときのパワーは緩やかに上がるため、弱いショットを細かく調整できます。180/240/360pxはパワー100%の基準距離です。画面に収めるため、実際の距離は短くなる場合があります。最大ショットパワーは変わりません。",
+      "short": "短め", "standard": "標準", "precise": "精密", "reset": "180pxに戻す",
+      "actual": "この画面での実際の距離", "limited": "画面サイズによる制限", "sameDistance": "最大パワーまで引く距離は同じです。クラシックモードでマウスの弱いショットをより細かく狙うには、「標準」か「精密」を選んでください。",
+      "unavailable": "この方向では画面の端があるため最大パワーに届きません。別の方向か、より短い距離を試してください。",
+      "redDotUnavailable": "赤い点の下に十分な空間がないため、最大パワーに届きません。より短い距離を選んでください。",
+      "hint": "少し引くと弱いショットになります。駒のほうへ戻すとパワーが下がります。"
+    },
     "feedback": {
       "practice": "弱いショットを練習", "practiceTitle": "パワー調整の練習", "practiceGoal": "30～50%の強さで1回打ってみましょう。相手の駒を落とす必要はありません。",
       "practiceGuide": "少しだけ引くと弱いショットになります。駒の方へ戻すとパワーが下がります。", "practiceSuccess": "狙った強さで打てました！", "practiceRetry": "もう一度練習", "practiceExit": "練習を終える", "menu": "メインメニューへ",
@@ -1325,6 +1349,14 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "zh-CN": {
+    "power_controls": {
+      "tab": "操作", "title": "鼠标拖拽距离", "description": "用鼠标开始拖拽时，力度会缓慢增加，方便精细控制轻击。180/240/360px 是 100% 力度的基准距离；实际距离可能缩短以适应画面。最大发射力度不变。",
+      "short": "短", "standard": "标准", "precise": "精细", "reset": "恢复为 180px",
+      "actual": "此屏幕的实际距离", "limited": "受屏幕尺寸限制", "sameDistance": "达到最大力度所需的拖拽距离相同。在经典模式中使用鼠标时，若想更精细地控制轻击，请选择“标准”或“精细”。",
+      "unavailable": "在这个方向上，屏幕边缘会阻止力度达到最大值。请尝试其他方向或更短的距离。",
+      "redDotUnavailable": "红点下方空间不足，无法达到最大力度。请选择更短的距离。",
+      "hint": "稍微拖拽即可轻击。向棋子方向移回可减小力度。"
+    },
     "feedback": {
       "practice": "练习轻击", "practiceTitle": "力度控制练习", "practiceGoal": "以30%～50%的力度击出一球。不需要把棋子击出场外。",
       "practiceGuide": "稍微向后拉即可轻击。向棋子方向回拉可减小力度。", "practiceSuccess": "你成功控制了击球力度！", "practiceRetry": "再练一次", "practiceExit": "结束练习", "menu": "返回主菜单",
@@ -1754,6 +1786,14 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "de": {
+    "power_controls": {
+      "tab": "Steuerung", "title": "Maus-Zugdistanz", "description": "Beim Ziehen mit der Maus steigt die Kraft anfangs sanft an, damit sich schwache Schüsse genauer dosieren lassen. 180/240/360px sind die Referenzdistanzen für 100 % Kraft; die tatsächliche Distanz kann sich verkürzen, um auf die Anzeige zu passen. Die maximale Schusskraft bleibt gleich.",
+      "short": "Kurz", "standard": "Standard", "precise": "Präzise", "reset": "Auf 180px zurücksetzen",
+      "actual": "Tatsächlich auf diesem Bildschirm", "limited": "Durch Bildschirmgröße begrenzt", "sameDistance": "Für volle Kraft ist dieselbe Zugdistanz nötig. Für feinere schwache Schüsse mit der Maus im Klassikmodus wähle Standard oder Präzise.",
+      "unavailable": "Der Bildschirmrand verhindert in dieser Richtung volle Kraft. Versuche eine andere Richtung oder eine kürzere Distanz.",
+      "redDotUnavailable": "Unter dem roten Punkt ist zu wenig Platz für volle Kraft. Wähle eine kürzere Distanz.",
+      "hint": "Ziehe nur ein wenig für einen schwächeren Schuss. Bewege die Maus zurück zur Figur, um die Kraft zu verringern."
+    },
     "feedback": {
       "practice": "Schwächeren Stoß üben", "practiceTitle": "Kraftkontrolle üben", "practiceGoal": "Stoße einmal mit 30–50 % Kraft. Du musst keine Figur vom Brett stoßen.",
       "practiceGuide": "Ziehe nur ein wenig zurück, um schwächer zu stoßen. Bewege dich wieder zur Figur hin, um die Kraft zu verringern.", "practiceSuccess": "Du hast mit kontrollierter Kraft gestoßen!", "practiceRetry": "Erneut üben", "practiceExit": "Übung beenden", "menu": "Hauptmenü",
@@ -2183,6 +2223,14 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "fr": {
+    "power_controls": {
+      "tab": "Commandes", "title": "Distance de traction à la souris", "description": "Au début d'une traction à la souris, la puissance augmente doucement pour mieux doser les tirs faibles. 180/240/360px sont les distances de référence pour atteindre 100 % de puissance ; la distance réelle peut diminuer pour tenir à l'écran. La puissance maximale du tir reste identique.",
+      "short": "Courte", "standard": "Standard", "precise": "Précise", "reset": "Rétablir 180px",
+      "actual": "Distance réelle sur cet écran", "limited": "Limitée par la taille de l'écran", "sameDistance": "La distance de traction nécessaire pour atteindre la puissance maximale est la même. Pour mieux doser les tirs faibles à la souris en mode Classique, choisissez Standard ou Précise.",
+      "unavailable": "Le bord de l'écran empêche d'atteindre la puissance maximale dans cette direction. Essayez une autre direction ou une distance plus courte.",
+      "redDotUnavailable": "L'espace sous le point rouge est insuffisant pour atteindre la puissance maximale. Choisissez une distance plus courte.",
+      "hint": "Tirez légèrement pour un tir plus faible. Revenez vers la pièce pour réduire la puissance."
+    },
     "feedback": {
       "practice": "S'entraîner à tirer doucement", "practiceTitle": "Exercice de dosage", "practiceGoal": "Effectuez un tir à 30–50 % de puissance. Vous n'avez pas besoin d'éliminer une pièce.",
       "practiceGuide": "Tirez légèrement en arrière pour un coup plus doux. Rapprochez-vous de la pièce pour réduire la puissance.", "practiceSuccess": "Vous avez réussi un tir maîtrisé !", "practiceRetry": "Réessayer", "practiceExit": "Terminer l'exercice", "menu": "Menu principal",
@@ -2612,6 +2660,14 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "es": {
+    "power_controls": {
+      "tab": "Controles", "title": "Distancia de arrastre con el ratón", "description": "Al empezar a arrastrar con el ratón, la potencia aumenta poco a poco para ajustar mejor los tiros suaves. 180/240/360px son las distancias de referencia para el 100 % de potencia; la distancia real puede reducirse para caber en pantalla. La potencia máxima del tiro no cambia.",
+      "short": "Corta", "standard": "Estándar", "precise": "Precisa", "reset": "Restablecer a 180px",
+      "actual": "Distancia real en esta pantalla", "limited": "Limitada por el tamaño de la pantalla", "sameDistance": "La distancia de arrastre para alcanzar la potencia máxima es la misma. Para apuntar con más precisión los tiros suaves con el ratón en modo Clásico, elige Estándar o Precisa.",
+      "unavailable": "El borde de la pantalla impide alcanzar la potencia máxima en esta dirección. Prueba otra dirección o una distancia más corta.",
+      "redDotUnavailable": "No hay espacio suficiente debajo del punto rojo para alcanzar la potencia máxima. Elige una distancia más corta.",
+      "hint": "Arrastra un poco para disparar con menos fuerza. Vuelve hacia la pieza para reducir la potencia."
+    },
     "feedback": {
       "practice": "Practica un tiro suave", "practiceTitle": "Práctica de control de potencia", "practiceGoal": "Lanza una vez con un 30–50 % de potencia. No necesitas sacar ninguna pieza del tablero.",
       "practiceGuide": "Tira un poco hacia atrás para lanzar más suave. Acércate de nuevo a la pieza para reducir la potencia.", "practiceSuccess": "¡Has lanzado con la potencia adecuada!", "practiceRetry": "Practicar otra vez", "practiceExit": "Terminar práctica", "menu": "Menú principal",
@@ -3041,6 +3097,14 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "ru": {
+    "power_controls": {
+      "tab": "Управление", "title": "Дистанция оттягивания мышью", "description": "В начале оттягивания мышью сила растёт плавно, чтобы было удобнее настраивать слабые удары. 180/240/360px — опорные дистанции для 100 % силы; фактическая дистанция может уменьшиться, чтобы поместиться на экране. Максимальная сила удара не меняется.",
+      "short": "Короткая", "standard": "Стандартная", "precise": "Точная", "reset": "Сбросить до 180px",
+      "actual": "Фактически на этом экране", "limited": "Ограничено размером экрана", "sameDistance": "Для полной силы требуется одинаковая дистанция оттягивания. Чтобы точнее выполнять слабые удары мышью в классическом режиме, выберите «Стандартная» или «Точная».",
+      "unavailable": "Край экрана не позволяет достичь полной силы в этом направлении. Попробуйте другое направление или меньшую дистанцию.",
+      "redDotUnavailable": "Под красной точкой недостаточно места для полной силы. Выберите меньшую дистанцию.",
+      "hint": "Слегка оттяните для слабого удара. Верните указатель к фигуре, чтобы уменьшить силу."
+    },
     "feedback": {
       "practice": "Потренировать слабый удар", "practiceTitle": "Тренировка силы удара", "practiceGoal": "Сделайте один удар с силой 30–50 %. Выбивать фигуру с поля не нужно.",
       "practiceGuide": "Слегка оттяните назад для слабого удара. Подвиньте обратно к фигуре, чтобы уменьшить силу.", "practiceSuccess": "Удар нужной силы получился!", "practiceRetry": "Повторить тренировку", "practiceExit": "Закончить тренировку", "menu": "Главное меню",
@@ -3470,6 +3534,14 @@ export const LOCALES: Record<LanguageCode, Record<string, Record<string, string>
     }
   },
   "pt-BR": {
+    "power_controls": {
+      "tab": "Controles", "title": "Distância de arrasto do mouse", "description": "No início do arrasto com o mouse, a força aumenta suavemente para permitir tacadas fracas mais precisas. 180/240/360px são as distâncias de referência para 100% de força; a distância real pode diminuir para caber na tela. A força máxima da tacada continua igual.",
+      "short": "Curta", "standard": "Padrão", "precise": "Precisa", "reset": "Restaurar para 180px",
+      "actual": "Distância real nesta tela", "limited": "Limitada pelo tamanho da tela", "sameDistance": "A distância de arrasto para atingir a força máxima é a mesma. Para controlar melhor tacadas fracas com o mouse no modo Clássico, escolha Padrão ou Precisa.",
+      "unavailable": "A borda da tela impede atingir a força máxima nesta direção. Tente outra direção ou uma distância menor.",
+      "redDotUnavailable": "Há pouco espaço abaixo do ponto vermelho para atingir a força máxima. Escolha uma distância menor.",
+      "hint": "Arraste um pouco para uma tacada mais fraca. Volte na direção da peça para reduzir a força."
+    },
     "feedback": {
       "practice": "Pratique uma jogada mais leve", "practiceTitle": "Treino de controle de força", "practiceGoal": "Faça uma jogada com 30–50% de força. Não é preciso tirar uma peça do tabuleiro.",
       "practiceGuide": "Puxe só um pouco para uma jogada mais leve. Aproxime de volta da peça para reduzir a força.", "practiceSuccess": "Você fez uma jogada com a força desejada!", "practiceRetry": "Praticar de novo", "practiceExit": "Terminar treino", "menu": "Menu principal",

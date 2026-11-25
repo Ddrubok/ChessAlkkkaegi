@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {createServer} from 'vite';
@@ -36,5 +36,16 @@ try {
  }
  I18nManager.setLanguage('en');assert.equal(feedbackCopy().practice,'Practice a softer shot');
  I18nManager.setLanguage('fr');assert.equal(feedbackCopy().practice,LOCALES.fr.feedback.practice);
+ const {powerControlsCopy}=await vite.ssrLoadModule('/src/power-controls.ts');
+ const controlFields = ['tab','title','description','short','standard','precise','reset','actual','limited','sameDistance','unavailable','redDotUnavailable','hint'];
+ for(const {code} of SUPPORTED_LANGUAGES){
+  I18nManager.setLanguage(code);
+  const copy=powerControlsCopy();
+  for(const key of controlFields) {
+   assert.ok(copy[key]?.trim(), `${code}: missing power control ${key}`);
+   assert.equal(copy[key], I18nManager.t('power_controls.' + key));
+  }
+  if(code !== 'en') assert.notEqual(copy.limited, LOCALES.en.power_controls.limited, `${code}: English screen limit warning`);
+ }
  console.log(`PASS: ${keys.length} keys in all 9 locales, placeholders, UI text and promotion localization`);
 }finally{await vite.close()}

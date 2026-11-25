@@ -11,7 +11,7 @@ try {
   practice.isActive = practice.powerPractice = true;
   assert.equal(practice.checkStepClear(1, [], false).cleared, false);
   for (const [power, displayed, expected] of [
-    [.2949, 29, false], [.29804, 30, true], [.50222, 50, true], [.5051, 51, false],
+    [.2949, 29, false], [.295, 30, true], [.29804, 30, true], [.50222, 50, true], [.505, 51, false], [.5051, 51, false],
   ]) {
     practice.recordPracticeShot(power);
     const { cleared, hint } = practice.checkStepClear(1, [], false);

@@ -7,6 +7,7 @@ import { I18nManager } from "./i18n";
 import { beginResultMotion, closeResultMotion } from './result-motion';
 import { PLATFORM } from './platform';
 import { presentCard, type CardPreview } from './crazygames-progression';
+import { stageResultReason } from './stage-result-copy';
 import './crazygames-progression.css';
 import './feedback-cards.css';
 
@@ -495,6 +496,7 @@ export function createStageRunResultCopy(
   payout: number,
   completed: boolean,
   winner: MatchWinner = completed ? "white" : "black",
+  reason: "natural" | "forfeit" = "natural",
 ): StageRunResultCopy {
   if (!Number.isInteger(stageNumber) || stageNumber < 1) {
     throw new Error(
@@ -522,7 +524,7 @@ export function createStageRunResultCopy(
           : I18nManager.t("ingame.game_over"),
         heading: winner === "draw"
           ? I18nManager.t("ingame.draw")
-          : I18nManager.t("ingame.stage_ended", { stage: stageNumber }),
+          : stageResultReason(reason === "forfeit" ? "forfeit" : "loss", stageNumber),
         detailLines: [I18nManager.t("ingame.points_earned", { points: payout })],
         buttonLabel: I18nManager.t("ingame.go_to_main"),
       };
@@ -539,6 +541,7 @@ export function showStageRunResult(
   onReturnToMenu: () => Promise<void>,
   winner: MatchWinner = completed ? "white" : "black",
   onRestart: (() => Promise<void>) | null = null,
+  reason: "natural" | "forfeit" = "natural",
 ): void {
   runtime.presentationVersion = (runtime.presentationVersion ?? 0) + 1;
   delete runtime.overlay.dataset.soloRunState;
@@ -549,6 +552,7 @@ export function showStageRunResult(
     payout,
     completed,
     winner,
+    reason,
   );
   runtime.winner = winner;
   runtime.restarting = false;

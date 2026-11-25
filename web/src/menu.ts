@@ -1177,6 +1177,7 @@ export function createMainMenu(
         }
         confirmButton.disabled = false;
         cancelButton.disabled = false;
+        cancelButton.focus();
       },
     );
   });

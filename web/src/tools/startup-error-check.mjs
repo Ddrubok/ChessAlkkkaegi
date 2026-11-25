@@ -24,6 +24,9 @@ try {
 
   assert.equal(startupFailureKind(new StartupFailure("graphics", new Error("context unavailable"))), "graphics");
   assert.equal(startupFailureKind(new TypeError("Failed to fetch dynamically imported module: main.js")), "download");
+  assert.equal(startupFailureKind(new TypeError("Failed to fetch")), "download");
+  assert.equal(startupFailureKind(new Error('fetch for "piece.glb" responded with 404: Not Found')), "download");
+  assert.equal(startupFailureKind(new Error("chess-set.meta.json 요청이 실패했습니다: HTTP 404 Not Found")), "download");
   assert.equal(startupFailureKind(new Error("physics invariant failed")), "unknown");
 
   GLTFLoader.prototype.loadAsync = async () => ({ scene: { traverse() {} } });
@@ -67,6 +70,13 @@ try {
   showStartupError(new StartupFailure("download", new Error("private download URL")));
   assert.match(app.child.children[0].children[0].textContent, /게임 파일/);
   assert.doesNotMatch(JSON.stringify(app.child), /private download URL/);
+  for (const language of ["en", "ko", "ja", "zh-CN", "de", "fr", "es", "ru", "pt-BR"]) {
+    globalThis.document.documentElement.lang = language;
+    showStartupError(new Error("internal details"));
+    const [title, instructions, action] = app.child.children[0].children;
+    assert.ok(title.textContent && instructions.textContent && action.textContent, language);
+    assert.doesNotMatch(JSON.stringify(app.child), /internal details/);
+  }
   console.log("Startup graphics, download, unknown, localized screen, and retry checks passed.");
 } finally {
   globalThis.fetch = originalFetch;

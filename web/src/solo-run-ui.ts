@@ -4,6 +4,7 @@ import { soloRunText as text } from "./solo-run-copy";
 import { I18nManager } from "./i18n";
 import { uiText } from "./ui-text";
 import type { PieceType } from "./config";
+import { stageResultReason } from "./stage-result-copy";
 
 /** Extend the existing result panel; none of these labels imply a successful disk write. */
 export function showSoloRunState(
@@ -17,6 +18,7 @@ export function showSoloRunState(
     showStageRunResult(runtime, run.stage, 0, run.endReason === "completed", onMenu,
       run.endReason === "completed" ? "white" : "black", null);
     runtime.resultDetails.replaceChildren();
+    if (run.endReason === "user-ended") runtime.winnerHeading.textContent = stageResultReason("forfeit", run.stage);
   } else {
     showSoloDrawResult(runtime, run.stage, onRetry, onMenu);
   }

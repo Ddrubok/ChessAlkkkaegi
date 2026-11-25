@@ -170,7 +170,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
 
     card.innerHTML = `
       <!-- 헤더 -->
-      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px; flex-shrink:0;">
+      <div style="position:sticky; top:0; z-index:1; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:12px; flex-shrink:0;">
         <h3 id="settings-modal-title" style="margin:0; font-size:18px; font-weight:800; color:#f8fafc; white-space:nowrap;">${escapeHtml(I18nManager.t("common.settings"))}</h3>
         <button id="settings-modal-close" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer; padding:4px 8px; line-height:1;" aria-label="${escapeHtml(I18nManager.t("common.close") || "Close")}">✕</button>
       </div>
@@ -343,7 +343,7 @@ export function openSettingsModal(parentContainer?: HTMLElement, getProfile?: ()
           ${SUPPORTED_LANGUAGES.map((lang) => {
             const isSelected = currentLang === lang.code;
             return `
-              <button class="lang-select-btn" data-lang="${escapeHtml(lang.code)}" style="
+              <button id="settings-lang-${escapeHtml(lang.code)}" class="lang-select-btn" data-lang="${escapeHtml(lang.code)}" aria-pressed="${isSelected}" style="
                 background: ${isSelected ? "#1e3a8a" : "#0f172a"};
                 border: 1px solid ${isSelected ? "#3b82f6" : "#334155"};
                 color: ${isSelected ? "#ffffff" : "#cbd5e1"};

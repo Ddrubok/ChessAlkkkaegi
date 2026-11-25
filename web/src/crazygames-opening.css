@@ -62,3 +62,12 @@ body:has(.game-canvas-crazygames) .tutorial-step-title { color: #ffe1a0; display
   body[data-solo-opening="true"] #app .turn-hud-container { width: calc(100% - 150px); top: 8px; gap: 3px; }
   body[data-solo-opening="true"] #app .mastery-hud-objective { padding: 4px 8px; }
 }
+
+/* The portal's guest notice occupies the first 58px during the introduction. */
+body[data-tutorial][data-cg-guest-quick-intro="true"] {
+  --tutorial-coach-top: 106px;
+}
+body[data-cg-guest-quick-intro="true"] #app .turn-hud-container,
+body[data-cg-guest-quick-intro="true"] #app .return-menu-button {
+  top: 66px;
+}

@@ -2251,6 +2251,7 @@ async function bootstrap(): Promise<void> {
   };
   setMatchOverHandler(turnRuntime, (winner) => {
     const gameMode = gameModeRuntime?.mode ?? "hotseat";
+    clearStageTip();
     // A settled stage can be reported again by a delayed callback; credit it once.
     if (gameMode === "stage" && matchRuntime.winner !== null) return;
     lockInputForMatchOver(inputRuntime);
@@ -3180,6 +3181,7 @@ async function bootstrap(): Promise<void> {
     if (gameModeRuntime === null) {
       throw new Error("대전 모드 상태가 준비되지 않았습니다.");
     }
+    clearStageTip();
     if (PLATFORM.features.solo && gameModeRuntime.mode === "stage" && soloRun) {
       await settleSoloRun();
       if (soloRun.phase === "ended") await returnToMainMenu(menuRuntime);
@@ -3209,6 +3211,7 @@ async function bootstrap(): Promise<void> {
       () => returnToMainMenu(menuRuntime),
       "black",
       restartStageRun,
+      "forfeit",
     );
     if (!PLATFORM.features.solo) appendMasteryResult(matchRuntime.resultDetails, recentMasteryItems, () => {
       openMasteryBook(app, progressStorage, () => { void returnToMainMenu(menuRuntime); });

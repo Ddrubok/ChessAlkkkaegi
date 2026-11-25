@@ -61,7 +61,7 @@ try {
       // has its own actual-callback suite in itch-feedback-draw-check.mjs.
       PLATFORM:{id:'web',features:{solo:false}},gameplay:{enter:noop},marketingRuntime:{endMatch:noop,startLocalMatch:noop},inputRuntime:{},lockInputForMatchOver:noop,
       questRun:null,masteryRun:null,weeklyRun:null,turnRuntime:{},weeklyTuningSettings:{},tuningRuntime:{settings:{cardEffectScale:1}},cardTuningRuntime:{},
-      setTurnGameMode:noop,setTuningGameMode:noop,setCardTuningGameMode:noop,renderMainMenu:noop,STAGE_RUN_LENGTH:10,
+      clearStageTip:noop,setTurnGameMode:noop,setTuningGameMode:noop,setCardTuningGameMode:noop,renderMainMenu:noop,STAGE_RUN_LENGTH:10,
       AdManager:{showBanner:noop},appendMasteryResult:noop,recentMasteryItems:[],appendQuestResult:noop,
       questResultBaseline:{},questStorage:{},openQuestBook:noop,app:{},progressStorage:{},
       resetBoard,returnToMainMenu:async()=>{await modes.switchGameMode(gameModeRuntime,'hotseat',true);},

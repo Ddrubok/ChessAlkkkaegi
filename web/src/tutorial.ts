@@ -110,6 +110,9 @@ export class TutorialManager {
       progressStorage.setItem("has_completed_tutorial", "started");
     }
     document.body.dataset.tutorial = tutorialType;
+    if (PLATFORM.id === "crazygames" && this.quickIntro && progressStorage.owner === null) {
+      document.body.dataset.cgGuestQuickIntro = "true";
+    }
     this.renderCoachOverlay();
   }
 
@@ -142,6 +145,7 @@ export class TutorialManager {
     this.nextControl?.classList.remove("tutorial-next-control");
     this.nextControl = null;
     delete document.body.dataset.tutorial;
+    delete document.body.dataset.cgGuestQuickIntro;
     this.coachResizeObserver?.disconnect();
     this.coachResizeObserver = null;
     document.body.style.removeProperty("--tutorial-coach-height");
