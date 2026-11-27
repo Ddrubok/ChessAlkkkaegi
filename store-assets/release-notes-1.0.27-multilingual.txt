@@ -1,0 +1,24 @@
+<ko-KR>
+• 약한 샷 연습에서 화면에 표시된 세기로 30~50% 성공 여부를 판정합니다.
+• 연습과 대전 안내를 게임의 지원 언어로 표시합니다.
+• 게임 파일이나 그래픽을 불러오지 못하면 원인별 안내와 ‘다시 시도’ 버튼이 표시됩니다.
+• 혼자 하기 결과에서 패배와 직접 종료를 구분합니다.
+</ko-KR>
+<en-US>
+• Soft-shot practice now judges the power percentage shown on screen.
+• Practice and match guidance appears in the game's supported languages.
+• If game files or graphics fail to load, you get a specific message and a Try again button.
+• Solo results distinguish a loss from a run you ended yourself.
+</en-US>
+<ja-JP>
+• 弱いショットの練習では、画面に表示されたパワーの割合で成功を判定します。
+• 練習と対戦の案内をゲームの対応言語で表示します。
+• ゲームファイルやグラフィックを読み込めない場合は、原因に応じた案内と「再試行」ボタンを表示します。
+• ソロの結果で敗北と自分で終了した挑戦を区別します。
+</ja-JP>
+<fr-FR>
+• L'entraînement aux tirs doux évalue désormais le pourcentage de puissance affiché à l'écran.
+• Les conseils d'entraînement et de match s'affichent dans les langues prises en charge par le jeu.
+• Si les fichiers ou les graphismes ne se chargent pas, un message adapté et un bouton Réessayer s'affichent.
+• Les résultats solo distinguent une défaite d'une partie terminée par vous.
+</fr-FR>
